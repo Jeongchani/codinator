@@ -1,0 +1,5 @@
+version: '3.8'
+services:
+  postgres:
+    ports:
+      - "5432:5432" # 로컬 컴퓨터(DBeaver 등)에서 DB 접속 허용

@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-codinator}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-codinator_pw}
+      POSTGRES_DB: ${POSTGRES_DB:-codinator_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
