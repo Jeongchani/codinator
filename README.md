@@ -29,6 +29,7 @@ pnpm --filter @codinator/contracts run build
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
 cp apps/ai/.env.example apps/ai/.env
+cp apps/mobile/.env.example apps/mobile/.env
 ```
 ---
 
@@ -53,7 +54,5 @@ source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 
-# 루트 개발서버 (web/api/contracts)
-pnpm run dev
 
 ```

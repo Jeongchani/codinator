@@ -5,10 +5,10 @@ import { FeedbackTag } from '@codinator/contracts'; // 💡 공용 패키지 정
 export class HealthController {
   @Get()
   check() {
-    return { 
-      status: 'ok', 
-      timestamp: new Date().toISOString(),
-      testSharedTag: FeedbackTag.FIT_PERFECT // 공용 패키지 연결 확인용
-    };
+    return {
+  status: 'ok',
+  service: 'api',
+  timestamp: new Date().toISOString(),
+};
   }
 }
