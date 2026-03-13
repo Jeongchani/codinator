@@ -1,20 +1,19 @@
 import { useEffect, useState } from 'react';
 import { FeedbackTag } from '@codinator/contracts'; // 💡 공용 패키지 임포트!
+import { fetcher } from './lib/api';
 
-function App() {
+  function App() {
   const [healthStatus, setHealthStatus] = useState<string>('로딩 중...');
-  
   // 타입 추론 테스트용 변수
   const exampleTag: FeedbackTag = FeedbackTag.COLOR_GOOD;
 
   useEffect(() => {
     // 백엔드 API 호출 테스트
-    fetch('/api/v1/health')
-      .then((res) => res.json())
+    fetcher('/health')
       .then((data) => setHealthStatus(`백엔드 상태: ${data.status} (태그: ${data.testSharedTag})`))
-      .catch(() => setHealthStatus('백엔드 연결 실패! 백엔드 서버가 켜져 있는지 확인하세요.'));
+      .catch(() => setHealthStatus('백엔드 연결 실패!'));
   }, []);
-
+  
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">
       <h1 className="text-4xl font-bold text-blue-600 mb-4">Codinator Web</h1>
