@@ -42,6 +42,7 @@ docker compose -f infra/docker/compose.yaml -f infra/docker/compose.dev.yaml up 
 # 서버 실행하기
 pnpm run dev
 
+
 # AI 서버(FastAPI) 별도 실행 방법
 cd apps/ai
 python -m venv .venv
@@ -49,8 +50,10 @@ python -m venv .venv
 .\.venv\Scripts\activate 
 # 가상환경 활성화 (Mac/Linux)
 source .venv/bin/activate
-
 pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+
+# 루트 개발서버 (web/api/contracts)
 pnpm run dev
 
 ```
