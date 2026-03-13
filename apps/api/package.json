@@ -6,7 +6,6 @@
     "build": "nest build",
     "dev": "nest start --watch",
     "start": "nest start",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:studio": "prisma studio"
