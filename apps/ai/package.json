@@ -1,0 +1,9 @@
+{
+  "name": "@codinator/ai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/run-uvicorn.mjs --reload",
+    "start": "node scripts/run-uvicorn.mjs --host 0.0.0.0"
+  }
+}
