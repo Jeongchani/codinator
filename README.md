@@ -25,6 +25,16 @@
 pnpm install
 pnpm --filter @codinator/contracts run build
 
+# AI 서버(FastAPI) 별도 실행 방법
+cd apps/ai
+python -m venv .venv
+ 
+# 가상환경 활성화 [경로 중요! (.venv) cd/apps/ai]
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000 #(^C 로 종료)
+#deactivate (가상환경 종료 코드)
+
 # 각 앱의 .env 파일 생성
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
@@ -33,7 +43,7 @@ cp apps/mobile/.env.example apps/mobile/.env
 ```
 ---
 
-### 3. 실행 명령어
+### 3. 실행 명령어 (git bash에서 진행!!)
 
 ```bash
 
@@ -44,15 +54,7 @@ docker compose -f infra/docker/compose.yaml -f infra/docker/compose.dev.yaml up 
 pnpm run dev
 
 
-# AI 서버(FastAPI) 별도 실행 방법
-cd apps/ai
-python -m venv .venv
-# 가상환경 활성화 (Windows)
-.\.venv\Scripts\activate 
-# 가상환경 활성화 (Mac/Linux)
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+
 
 
 ```
