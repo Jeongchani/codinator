@@ -30,7 +30,7 @@ cd apps/ai
 python -m venv .venv
  
 # 가상환경 활성화 [경로 중요! (.venv) cd/apps/ai]
-source .venv/bin/activate
+source .venv/Scripts/activate  # (cmd 사용).venv\Scripts\activate.bat
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000 #(^C 로 종료)
 #deactivate (가상환경 종료 코드) -> 루트 폴더로 이동 (cd codinator)
