@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "run-dev.bat",
-    "start": ".venv\\Scripts\\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    "dev": "node scripts/run-uvicorn.mjs --reload",
+    "start": "node scripts/run-uvicorn.mjs --host 0.0.0.0"
   }
 }
