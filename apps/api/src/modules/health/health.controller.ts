@@ -1,14 +1,25 @@
 import { Controller, Get } from '@nestjs/common';
-import { FeedbackTag } from '@codinator/contracts'; // 💡 공용 패키지 정상 임포트 테스트!
+import {
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { HealthCheckResponseDto } from './dto/health-check-response.dto';
 
+@ApiTags('health')
 @Controller('health')
 export class HealthController {
   @Get()
-  check() {
+  @ApiOperation({ summary: '서버 상태 확인' })
+  @ApiOkResponse({
+    description: '서버가 정상 동작 중일 때 반환',
+    type: HealthCheckResponseDto,
+  })
+  check(): HealthCheckResponseDto {
     return {
-  status: 'ok',
-  service: 'api',
-  timestamp: new Date().toISOString(),
-};
+      status: 'ok',
+      service: 'api',
+      timestamp: new Date().toISOString(),
+    };
   }
 }
