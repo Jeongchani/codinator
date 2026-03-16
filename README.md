@@ -33,7 +33,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000 #(^C 로 종료)
-#deactivate (가상환경 종료 코드)
+#deactivate (가상환경 종료 코드) -> 루트 폴더로 이동 (cd codinator)
 
 # 각 앱의 .env 파일 생성
 cp apps/api/.env.example apps/api/.env
