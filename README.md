@@ -19,8 +19,8 @@
 - Python (v3.10+)
 - Docker Desktop
 
-### 2. 패키지 설치 및 환경 변수 설정
-```bash
+### 2. 패키지 설치 및 환경 변수 설정 (git bash에서 진행하세요!!!!!!!!!!!!!)
+```bash 
 # 의존성 설치 및 Contracts 공용 패키지 최초 빌드 (매우 중요!)
 pnpm install
 pnpm --filter @codinator/contracts run build
