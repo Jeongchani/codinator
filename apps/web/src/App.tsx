@@ -1,17 +1,23 @@
 // src/App.tsx
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Login from './pages/Login';
+import Splash from './pages/Splash';
+import Login from './pages/Login'; // 파일명이 소문자 login.tsx라면 거기에 맞게 import 해주세요!
+import Main from './pages/Main';
+import RankingProfile from './pages/RankingProfile';
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* 기본 경로('/')로 접속하면 Login 컴포넌트를 보여줍니다 */}
-        <Route path="/" element={<Login />} />
+        {/* 기본 접속 시 스플래시(로딩) 화면 렌더링 */}
+        <Route path="/" element={<Splash />} />
         
-        {/* 나중에 다른 페이지가 생기면 아래처럼 추가하시면 됩니다! */}
-        {/* <Route path="/home" element={<Home />} /> */}
-        {/* <Route path="/guest" element={<GuestPage />} /> */}
+        {/* 1초 뒤 자동으로 넘어올 로그인 화면 */}
+        <Route path="/login" element={<Login />} />
+        {/* 메인 화면 라우터 추가 */}
+        <Route path="/main" element={<Main />} />
+        {/* 🌟 프로필 라우터 추가 */}
+        <Route path="/profile" element={<RankingProfile />} />
       </Routes>
     </BrowserRouter>
   );

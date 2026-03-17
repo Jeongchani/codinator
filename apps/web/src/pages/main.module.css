@@ -1,0 +1,294 @@
+/* src/pages/main.module.css */
+
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #e5e7eb;
+}
+
+.mobileWrapper {
+  width: 375px;
+  height: 812px;
+  position: relative;
+  background: white;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-radius: 40px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.mobileWrapper::-webkit-scrollbar {
+  display: none;
+}
+
+/* ==================================
+   상단 아이콘
+================================== */
+.searchIcon {
+  width: 24px;
+  height: 24px;
+  left: 30px;
+  top: 64px;
+  position: absolute;
+  overflow: hidden;
+  cursor: pointer;
+}
+.menuIcon {
+  width: 24px;
+  height: 24px;
+  left: 328px;
+  top: 64px;
+  position: absolute;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+/* ==================================
+   완벽한 50:50 슬라이딩 토글 버튼
+================================== */
+.toggleContainer {
+  position: absolute;
+  left: 25px;
+  top: 107px;
+  width: 270px;
+  height: 34px;
+  background-color: #d9d9d9;
+  border-radius: 30px;
+  display: flex;
+  position: relative;
+}
+
+.toggleIndicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background-color: #939393;
+  border-radius: 30px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.indicatorMonth {
+  transform: translateX(0);
+}
+.indicatorYear {
+  transform: translateX(100%);
+}
+
+.tabButton {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 18px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 10;
+}
+
+/* ==================================
+   랭킹 캐러셀 (가로 드래그 스크롤)
+================================== */
+.carouselContainer {
+  width: 375px;
+  height: 236px;
+  left: 0px;
+  top: 158px;
+  position: absolute;
+  display: flex;
+  gap: 10px;
+  padding-left: 20px;
+  padding-right: 20px;
+  box-sizing: border-box;
+  overflow-x: auto;
+  overflow-y: hidden;
+  cursor: grab;
+}
+
+.carouselContainer:active {
+  cursor: grabbing;
+}
+.carouselContainer::-webkit-scrollbar {
+  display: none;
+}
+
+.cardWrapper {
+  position: relative;
+  width: 335px;
+  height: 236px;
+  flex-shrink: 0;
+}
+
+/* 🌟 카드 배경 자리 (나중에 이미지 태그로 바꿀 때를 대비해 설정) */
+.cardBg {
+  width: 100%;
+  height: 212px;
+  left: 0px;
+  top: 24px;
+  position: absolute;
+  background: #d9d9d9;
+  border-radius: 20px;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+/* 🌟 프로필 원형 자리 */
+.profileCircle {
+  width: 57px;
+  height: 57px;
+  left: 15px;
+  top: 38px;
+  position: absolute;
+  background: #b8b8b8;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid white;
+  pointer-events: none;
+}
+
+.crownIconWrap {
+  width: 48px;
+  height: 48px;
+  left: 275px;
+  top: 0px;
+  position: absolute;
+  overflow: hidden;
+  pointer-events: none;
+}
+.crownIconFill {
+  width: 48px;
+  height: 38.83px;
+  left: 0px;
+  top: 4.59px;
+  position: absolute;
+  background: #5a5a5a;
+}
+
+/* ==================================
+   커스텀 가로 스크롤바 (Range Input)
+================================== */
+.customScrollbar {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 205px;
+  height: 5px;
+  background: #d9d9d9;
+  position: absolute;
+  left: 85px;
+  top: 416px;
+  outline: none;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.customScrollbar::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 70px;
+  height: 5px;
+  background: #4a4a4a;
+  cursor: pointer;
+}
+.customScrollbar::-moz-range-thumb {
+  width: 70px;
+  height: 5px;
+  background: #4a4a4a;
+  cursor: pointer;
+  border: none;
+}
+
+.divider {
+  width: 334px;
+  height: 0px;
+  left: 18px;
+  top: 451px;
+  position: absolute;
+  outline: 1px black solid;
+}
+
+/* ==================================
+   하단 배너 및 카테고리
+================================== */
+.darkBanner {
+  width: 375px;
+  height: 93px;
+  left: 0px;
+  top: 468px;
+  position: absolute;
+  background: #5a5a5a;
+}
+
+/* 🌟 카테고리 박스 자리 */
+.categoryBox {
+  width: 318px;
+  height: 100px;
+  left: 28px;
+  position: absolute;
+  background: #d9d9d9;
+  border-radius: 20px;
+  object-fit: cover;
+}
+.cat1 {
+  top: 584px;
+}
+.cat2 {
+  top: 706px;
+}
+.cat3 {
+  top: 830px;
+}
+
+/* 원래의 검은색 텍스트로 원복 */
+.categoryText {
+  left: 38px;
+  position: absolute;
+  color: black;
+  font-size: 16px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500;
+  line-height: 20px;
+  z-index: 5;
+}
+.catText1 {
+  top: 653px;
+}
+.catText2 {
+  top: 775px;
+}
+.catText3 {
+  top: 899px;
+}
+
+/* ==================================
+   하단 네비게이션 바
+================================== */
+.bottomNav {
+  width: 375px;
+  height: 84px;
+  padding: 18px 43px 21px 41px;
+  left: 0px;
+  top: 952px;
+  position: absolute;
+  background: #d3d3d3;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.navIconWrap {
+  width: 39px;
+  height: 39px;
+  position: relative;
+  overflow: hidden;
+}
+.navIconCenterWrap {
+  width: 45px;
+  height: 45px;
+  position: relative;
+  overflow: hidden;
+}

@@ -1,5 +1,4 @@
 /* src/pages/login.module.css */
-
 .container {
   display: flex;
   justify-content: center;
@@ -16,73 +15,38 @@
   overflow: hidden;
   border-radius: 40px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  /* 🌟 배경색이 스플래시(진한 회색)에서 로그인(흰색)으로 부드럽게 변경 */
+  animation: bgTransition 0.6s ease-in-out forwards;
 }
 
-/* 상단 상태바 */
-.statusBar {
-  width: 330px;
-  height: 47px;
-  left: 23px;
-  top: 0px;
-  position: absolute;
-}
-.timeText {
-  left: 35px;
-  top: 15px;
-  position: absolute;
-  text-align: center;
-  justify-content: center;
-  display: flex;
-  flex-direction: column;
-  color: #052224;
-  font-size: 15.66px;
-  font-family: 'SF Pro Text', sans-serif;
-  font-weight: 600;
-  word-wrap: break-word;
-}
-.batteryIcon {
-  width: 73px;
-  height: 16px;
-  left: 240px;
-  top: 16px;
-  position: absolute;
-}
-.batteryBody {
-  width: 22.66px;
-  height: 12px;
-  left: 0px;
-  top: 0px;
-  position: absolute;
-  border-radius: 3.33px;
-  border: 1px #052224 solid;
-}
-.batteryTip {
-  width: 1.33px;
-  height: 4px;
-  left: 23.67px;
-  top: 4px;
-  position: absolute;
-  background: #052224;
-}
-.batteryFill {
-  width: 18.66px;
-  height: 8px;
-  left: 2px;
-  top: 2px;
-  position: absolute;
-  background: #052224;
-  border-radius: 1.33px;
+@keyframes bgTransition {
+  from {
+    background: #939393;
+  }
+  to {
+    background: #fdfdfd;
+  }
 }
 
-/* 중앙 그래픽 */
 .centerCircle {
   width: 248px;
   height: 248px;
-  left: 64px;
-  top: 199px;
+  left: 64px; /* 🌟 위치 고정 */
+  top: 199px; /* 🌟 위치 고정 */
   position: absolute;
   background: #dfdfdf;
   border-radius: 9999px;
+}
+
+@keyframes circleMove {
+  from {
+    left: 56px;
+    top: 221px;
+  }
+  to {
+    left: 64px;
+    top: 199px;
+  }
 }
 
 /* 버튼 공통 & 개별 스타일 */
@@ -142,4 +106,21 @@
   width: 220px;
   left: -7px;
   color: white;
+}
+
+/* 🌟 로그인 요소(버튼들)가 서서히 떠오르며 나타나는 애니메이션 */
+.fadeInElements {
+  animation: elementsFadeIn 0.7s ease-out forwards;
+  opacity: 0; /* 처음엔 투명하게 시작 */
+}
+
+@keyframes elementsFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(15px); /* 살짝 아래에서 위로 올라옴 */
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
