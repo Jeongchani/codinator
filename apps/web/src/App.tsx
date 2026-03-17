@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { FeedbackTag } from '@codinator/contracts'; // 💡 공용 패키지 임포트!
+import { FeedbackTagCode } from '@codinator/contracts'; // 💡 공용 패키지 임포트!
 import { fetcher } from './lib/api';
 
   function App() {
   const [healthStatus, setHealthStatus] = useState<string>('로딩 중...');
   // 타입 추론 테스트용 변수
-  const exampleTag: FeedbackTag = FeedbackTag.COLOR_GOOD;
+  const exampleTag: FeedbackTagCode = 'FIT'; // 💡 공용 패키지에서 정의된 타입 사용!
 
   useEffect(() => {
     // 백엔드 API 호출 테스트
