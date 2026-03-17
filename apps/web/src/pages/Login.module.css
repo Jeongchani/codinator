@@ -1,0 +1,145 @@
+/* src/pages/login.module.css */
+
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #e5e7eb;
+}
+
+.mobileWrapper {
+  width: 375px;
+  height: 812px;
+  position: relative;
+  background: #fdfdfd;
+  overflow: hidden;
+  border-radius: 40px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* 상단 상태바 */
+.statusBar {
+  width: 330px;
+  height: 47px;
+  left: 23px;
+  top: 0px;
+  position: absolute;
+}
+.timeText {
+  left: 35px;
+  top: 15px;
+  position: absolute;
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  color: #052224;
+  font-size: 15.66px;
+  font-family: 'SF Pro Text', sans-serif;
+  font-weight: 600;
+  word-wrap: break-word;
+}
+.batteryIcon {
+  width: 73px;
+  height: 16px;
+  left: 240px;
+  top: 16px;
+  position: absolute;
+}
+.batteryBody {
+  width: 22.66px;
+  height: 12px;
+  left: 0px;
+  top: 0px;
+  position: absolute;
+  border-radius: 3.33px;
+  border: 1px #052224 solid;
+}
+.batteryTip {
+  width: 1.33px;
+  height: 4px;
+  left: 23.67px;
+  top: 4px;
+  position: absolute;
+  background: #052224;
+}
+.batteryFill {
+  width: 18.66px;
+  height: 8px;
+  left: 2px;
+  top: 2px;
+  position: absolute;
+  background: #052224;
+  border-radius: 1.33px;
+}
+
+/* 중앙 그래픽 */
+.centerCircle {
+  width: 248px;
+  height: 248px;
+  left: 64px;
+  top: 199px;
+  position: absolute;
+  background: #dfdfdf;
+  border-radius: 9999px;
+}
+
+/* 버튼 공통 & 개별 스타일 */
+.btn {
+  width: 207px;
+  height: 45px;
+  left: 85px;
+  position: absolute;
+  cursor: pointer;
+}
+.btnLogin {
+  top: 508px;
+}
+.btnGuest {
+  top: 568px;
+}
+
+.btnBgGray {
+  width: 207px;
+  height: 45px;
+  left: 0px;
+  top: 0px;
+  position: absolute;
+  background: #dfdfdf;
+  border-radius: 30px;
+}
+.btnBgDark {
+  width: 207px;
+  height: 45px;
+  left: 0px;
+  top: 0px;
+  position: absolute;
+  background: #939393;
+  border-radius: 30px;
+}
+
+.btnText {
+  position: absolute;
+  top: 11px;
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  font-size: 20px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  text-transform: capitalize;
+  line-height: 22px;
+  word-wrap: break-word;
+}
+.btnTextGuest {
+  width: 208px;
+  left: -1px;
+  color: #2c2c28;
+}
+.btnTextLogin {
+  width: 220px;
+  left: -7px;
+  color: white;
+}
