@@ -60,3 +60,46 @@ pnpm run dev
 
 
 ```
+
+### 4. 수정 후 프로젝트 재시작
+
+```bash
+
+# #프로젝트 캐시 삭제
+pnpm clearn
+#프로젝트 캐시 삭제 및 서버 재구동
+pnpm reset
+
+```
+
+Ctrl + Shift + P → Reset Ts
+TypeScript: Restart TS Server (타입스크립트 서버 다시 시작)
+
+### 5. 서버 구동 명령어
+
+```bash
+
+# 프로젝트 내의 모든 서비스(Web, API, Mobile, AI 등)를 한 번에 실행
+turbo run dev
+
+# 웹 프론트엔드(web) 환경만 단독으로 실행
+pnpm dev:web
+
+# NestJS 백엔드(api) 서버만 실행
+pnpm dev:api
+
+# 모바일 애플리케이션 환경만 따로 실행
+pnpm dev:mobile
+
+# AI 기능이 구현된 서버(주로 Python/FastAPI)만 단독으로 실행
+pnpm dev:ai
+
+# Codinator 프로젝트의 핵심 뼈대인 공통 타입(contracts), 백엔드(api), 웹(web) 세 가지만 묶어서 동시에 실행
+pnpm dev:core
+
+
+```
+
+### 6. DB관련 명령어
+
+자세한 명령어는 [DB 명령어 가이드](apps/api/prisma/README.md)를 참고
