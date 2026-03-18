@@ -1,8 +1,8 @@
 // src/pages/RankingProfile.tsx
 import { useNavigate } from 'react-router-dom';
-import styles from './rankingProfile.module.css';
+import styles from './ranking.module.css';
 
-export default function RankingProfile() {
+export default function RankingList() {
   const navigate = useNavigate();
 
   return (
