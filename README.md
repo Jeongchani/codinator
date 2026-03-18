@@ -13,6 +13,23 @@
 
 ## 🚀 팀원 로컬 개발 세팅 가이드
 
+작업을 진행할 때는 fetch -> pull 진행먼저 합니다.
+git 명령어를 실행하기 전에 꼭! 자신의 작업 위치를 확인합니다.
+```bash
+
+#작업 위치 확인
+git branch -v
+
+```
+branch에서 작업중 develop이 변경되었을 경우
+작업중인 내용을 저장(commit -> push) 이후 develop 폴더에서 pull하면 됩니다.
+```bash
+
+#파일 최신화
+git pull origin develop
+
+```
+
 처음 Clone을 받으셨다면 아래 순서대로 세팅을 진행해 주세요.
 
 ### 1. 필수 설치

@@ -1,8 +1,8 @@
 export interface CreateFeedbackRequest {
-  tagIds: number[];
+  tagId: number;
 }
 
 export interface CreateFeedbackResponse {
   postId: number;
-  selectedTagIds: number[];
+  selectedTagId: number;
 }
