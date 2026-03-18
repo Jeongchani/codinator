@@ -1,17 +1,13 @@
-// common/enums.ts
-export type PostStatus = 'UNDER_REVIEW' | 'RANKED' | 'REMOVED';
 
-export type PostZone = 'EVALUATION' | 'RANKING';
+export type PostStatus = 'ACTIVE' | 'DELETED';
+
+export type EvaluationStatus = 'OPEN' | 'CLOSED' | 'ENDED';
 
 export type VoteChoice = 'LIKE' | 'DISLIKE';
 
-export type RankingPeriod = 'DAILY' | 'WEEKLY' | 'MONTHLY';
+export type RankingPeriod = 'WEEKLY' | 'MONTHLY';
 
-export type ReportReason =
-  | 'SPAM'
-  | 'ABUSE'
-  | 'INAPPROPRIATE'
-  | 'OTHER';
+export type FeedbackTagPolarity = 'POSITIVE' | 'NEGATIVE';
 
 export type GarmentCategory =
   | 'TOP'
@@ -22,9 +18,9 @@ export type GarmentCategory =
   | 'ACCESSORY'
   | 'ETC';
 
-  export type FeedbackTagCode =
-  | 'FIT'
-  | 'COLOR'
-  | 'MATCHING'
-  | 'SEASON'
-  | 'SILHOUETTE';
+export type FeedbackTagCode =
+  | 'POS_FIT_GOOD'
+  | 'POS_POINT_GOOD'
+  | 'NEG_SIZE_BAD'
+  | 'NEG_COLOR_BAD'
+  | 'NEG_MATCHING_BAD';

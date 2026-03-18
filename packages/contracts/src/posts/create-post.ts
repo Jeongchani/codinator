@@ -1,24 +1,21 @@
 import type { GarmentCategory } from '../common/enums';
 
-export interface CreatePostImageInput {
-  imageUrl: string;
-  sortOrder: number;
-  isRepresentative: boolean;
-}
-
 export interface CreateOutfitItemInput {
   category: GarmentCategory;
-  itemName: string;
+  itemName?: string | null;
   brand?: string | null;
 }
 
 export interface CreatePostRequest {
   content?: string | null;
-  images: CreatePostImageInput[];
-  outfitItems: CreateOutfitItemInput[];
+  image: {
+    imageUrl: string;
+  };
+  outfitItems?: CreateOutfitItemInput[];
 }
 
 export interface CreatePostResponse {
   postId: number;
-  status: 'UNDER_REVIEW';
+  evaluationId: number;
+  status: 'ACTIVE';
 }
