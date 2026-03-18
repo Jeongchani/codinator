@@ -2,8 +2,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Splash from './pages/splash/Splash';
 import Login from './pages/auth/Login';
-import Home from './pages/main/Home';
 import RankingList from './pages/ranking/RankingList';
+import Detail from './pages/look/Detail'
 
 function App() {
   return (
@@ -14,9 +14,9 @@ function App() {
         {/* 1초 뒤 자동으로 넘어올 로그인 화면 */}
         <Route path="/login" element={<Login />} />
         {/* 메인 화면 라우터 추가 */}
-        <Route path="/home" element={<Home />} />
-        {/*  프로필 라우터 추가 */}
-        <Route path="/ranking" element={<RankingList />} />
+        <Route path="/rankingList" element={<RankingList />} />
+        {/* 상세정보 화면 라우터 추가 */}
+        <Route path="/detail" element={<Detail />} />
       </Routes>
     </BrowserRouter>
   );

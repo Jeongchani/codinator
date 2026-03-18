@@ -1,5 +1,3 @@
-/* src/pages/rankingProfile.module.css */
-
 .container {
   display: flex;
   justify-content: center;
@@ -12,190 +10,210 @@
   width: 375px;
   height: 812px;
   position: relative;
-  background: #fdfdfd;
-  overflow-y: auto;
+  background: white;
+  overflow-y: auto; /* ⭐️ 내부 세로 스크롤 허용 */
   overflow-x: hidden;
   border-radius: 40px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
 }
 
 .mobileWrapper::-webkit-scrollbar {
   display: none;
 }
 
-/* 🌟 상단 배경/코디 이미지 영역 (나중에 img 태그로 변경될 자리) */
-.topImageArea {
-  width: 375px;
-  height: 464px; /* 위쪽 여백(46px)을 포함하여 꽉 차게 조절 */
-  left: 0px;
-  top: 0px;
-  position: absolute;
-  background: linear-gradient(180deg, #848484 0%, #d9d9d9 100%);
-  object-fit: cover;
-  pointer-events: none;
+/* ⭐️ 핵심: 유령 같은 absolute 요소들의 실제 높이를 브라우저에게 알려줌 */
+.scrollSpacer {
+  width: 100%;
+  height: 980px; /* 마지막 카테고리 텍스트(899px)보다 여유 있게 설정 */
+  flex-shrink: 0;
 }
 
-/* ==================================
-   상단 아이콘 및 프로필 요소
-================================== */
-/* 뒤로가기 버튼 */
-.backButton {
+/* 상단 아이콘 */
+.searchIcon {
   width: 24px;
   height: 24px;
-  left: 24px;
+  left: 30px;
   top: 64px;
   position: absolute;
-  overflow: hidden;
-  cursor: pointer;
   z-index: 10;
+  cursor: pointer;
+}
+.menuIcon {
+  width: 24px;
+  height: 24px;
+  left: 328px;
+  top: 64px;
+  position: absolute;
+  z-index: 10;
+  cursor: pointer;
 }
 
-/* 왕관 아이콘 */
+/* 토글 버튼 */
+.toggleContainer {
+  position: absolute;
+  left: 25px;
+  top: 107px;
+  width: 270px;
+  height: 34px;
+  background: #d9d9d9;
+  border-radius: 30px;
+  display: flex;
+}
+.toggleIndicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: #939393;
+  border-radius: 30px;
+  transition: transform 0.3s ease;
+}
+.indicatorMonth {
+  transform: translateX(0);
+}
+.indicatorYear {
+  transform: translateX(100%);
+}
+.tabButton {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-weight: 600;
+  z-index: 10;
+  cursor: pointer;
+}
+
+/* 캐러셀 */
+.carouselContainer {
+  width: 375px;
+  height: 236px;
+  left: 0;
+  top: 158px;
+  position: absolute;
+  display: flex;
+  gap: 10px;
+  padding: 0 20px;
+  overflow-x: auto;
+  cursor: grab;
+}
+.carouselContainer::-webkit-scrollbar {
+  display: none;
+}
+.cardWrapper {
+  position: relative;
+  width: 335px;
+  height: 236px;
+  flex-shrink: 0;
+}
+.cardBg {
+  width: 100%;
+  height: 212px;
+  left: 0;
+  top: 24px;
+  position: absolute;
+  background: #d9d9d9;
+  border-radius: 20px;
+}
+.profileCircle {
+  width: 57px;
+  height: 57px;
+  left: 15px;
+  top: 38px;
+  position: absolute;
+  background: #b8b8b8;
+  border-radius: 50%;
+  border: 2px solid white;
+}
 .crownIconWrap {
   width: 48px;
   height: 48px;
-  left: 27px;
-  top: 352px;
+  left: 275px;
+  top: 0;
   position: absolute;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 10;
 }
 .crownIconFill {
   width: 48px;
   height: 38.83px;
-  left: 0px;
-  top: 4.59px;
+  background: #5a5a5a;
+  position: absolute;
+}
+
+/* 🌟 커스텀 스크롤바 */
+.customScrollbar {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 205px;
+  height: 5px;
+  background: #d9d9d9;
+  position: absolute;
+  left: 85px;
+  top: 416px;
+  outline: none;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.customScrollbar::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 70px;
+  height: 5px;
+  background: #4a4a4a;
+  cursor: pointer;
+}
+.divider {
+  width: 334px;
+  left: 18px;
+  top: 451px;
+  position: absolute;
+  border-top: 1px solid black;
+}
+.darkBanner {
+  width: 375px;
+  height: 93px;
+  left: 0;
+  top: 468px;
   position: absolute;
   background: #5a5a5a;
 }
 
-/* 🌟 프로필 원형 아바타 (이미지 자리) */
-.profileAvatar {
-  width: 63px;
-  height: 63px;
-  left: 19px;
-  top: 381px;
+/* 카테고리 */
+.categoryBox {
+  width: 318px;
+  height: 100px;
+  left: 28px;
   position: absolute;
-  background: white;
-  border-radius: 9999px;
-  object-fit: cover;
-  z-index: 10;
+  background: #d9d9d9;
+  border-radius: 20px;
 }
-
-/* 레벨 및 닉네임 텍스트 */
-.profileName {
-  left: 97px;
-  top: 417px;
-  position: absolute;
-  color: white;
-  font-size: 12px;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 500;
-  word-wrap: break-word;
-  z-index: 10;
+.cat1 {
+  top: 584px;
 }
-
-/* ==================================
-   본문 텍스트 및 아이콘
-================================== */
-.descText {
-  left: 21px;
-  top: 518px;
+.cat2 {
+  top: 706px;
+}
+.cat3 {
+  top: 830px;
+}
+.categoryText {
+  left: 38px;
   position: absolute;
   color: black;
-  font-size: 12px;
-  font-family: 'Poppins', sans-serif;
   font-weight: 500;
-  line-height: 20px;
-  word-wrap: break-word;
+  z-index: 5;
 }
-
-/* 북마크(저장) 아이콘 */
-.bookmarkIconWrap {
-  width: 32px;
-  height: 32px;
-  left: 322px;
-  top: 520px;
-  position: absolute;
-  overflow: hidden;
-  cursor: pointer;
+.catText1 {
+  top: 653px;
 }
-.bookmarkIconFill {
-  width: 29.33px;
-  height: 32px;
-  left: 1.33px;
-  top: 0px;
-  position: absolute;
-  background: #374957;
+.catText2 {
+  top: 755px;
 }
-
-/* 구분선 */
-.divider1 {
-  width: 334px;
-  height: 0px;
-  left: 20px;
-  top: 613px;
-  position: absolute;
-  outline: 1px black solid;
-}
-.divider2 {
-  width: 335px;
-  height: 0px;
-  left: 19px;
-  top: 698px;
-  position: absolute;
-  outline: 1px black solid;
-}
-
-/* 🌟 긍정적 평가 아이콘 (이미지 자리) */
-.ratingIcon {
-  width: 58px;
-  height: 58px;
-  left: 25px;
-  top: 627px;
-  position: absolute;
-  background: #374957; /* 피그마의 겹친 도형을 하나로 단순화 */
-  border-radius: 10px; /* 둥근 사각형 느낌 추가 */
-  object-fit: cover;
-}
-
-.ratingText {
-  left: 101px;
-  top: 646px;
-  position: absolute;
-  color: black;
-  font-size: 12px;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 500;
-  line-height: 20px;
-  word-wrap: break-word;
-}
-
-/* ==================================
-   하단 네비게이션 바 (메인 화면과 동일)
-================================== */
-.bottomNav {
-  width: 375px;
-  height: 84px;
-  padding: 18px 43px 21px 41px;
-  left: 0px;
-  top: 728px;
-  position: absolute;
-  background: #d3d3d3;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-}
-.navIconWrap {
-  width: 39px;
-  height: 39px;
-  position: relative;
-  overflow: hidden;
-}
-.navIconCenterWrap {
-  width: 45px;
-  height: 45px;
-  position: relative;
-  overflow: hidden;
+.catText3 {
+  top: 899px;
 }
