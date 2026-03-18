@@ -1,7 +1,11 @@
 import type { Id } from '../common/id';
-import type { PostCard } from '../posts/models';
-
-export interface GetUserFeedResponse {
+export interface GetMyFeedResponse {
   userId: Id;
-  items: PostCard[]; // 여기엔 RANKED 게시글만 포함
+  items: Array<{
+    postId: Id;
+    thumbnailUrl: string;
+    createdAt: string;
+    evaluationStatus: 'OPEN' | 'CLOSED' | 'ENDED';
+    rankingPeriod?: 'WEEKLY' | 'MONTHLY' | null;
+  }>;
 }

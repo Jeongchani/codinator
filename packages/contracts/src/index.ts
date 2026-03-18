@@ -5,7 +5,6 @@ export * from './feeds';
 export * from './health';
 export * from './posts';
 export * from './rankings';
-export * from './reports';
 export * from './tags';
 export * from './votes';
 
