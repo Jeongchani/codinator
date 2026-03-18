@@ -94,3 +94,6 @@ pnpm dev:core
 
 
 ```
+
+### 6. DB관련 명령어
+자세한 명령어는 [DB 명령어 가이드](apps/api/prisma/README.md)를 참고

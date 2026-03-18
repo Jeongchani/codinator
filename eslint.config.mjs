@@ -50,11 +50,11 @@ export default defineConfig(
   // Node 환경 파일
   {
     files: [
-      'eslint.config.mjs',
-      '**/*.{config.js,config.cjs,config.mjs,config.ts}',
-      'apps/api/**/*.ts',
-      'packages/contracts/**/*.ts',
-    ],
+    'eslint.config.mjs',
+    '**/*.{config.js,config.cjs,config.mjs,config.ts}',
+    'apps/api/**/*.{js,cjs,mjs,ts}',
+    'packages/contracts/**/*.{js,cjs,mjs,ts}',
+  ],
     languageOptions: {
       globals: {
         ...globals.node,
