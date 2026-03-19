@@ -1,0 +1,126 @@
+/* src/pages/login.module.css */
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #e5e7eb;
+}
+
+.mobileWrapper {
+  width: 375px;
+  height: 812px;
+  position: relative;
+  background: #fdfdfd;
+  overflow: hidden;
+  border-radius: 40px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  /* 🌟 배경색이 스플래시(진한 회색)에서 로그인(흰색)으로 부드럽게 변경 */
+  animation: bgTransition 0.6s ease-in-out forwards;
+}
+
+@keyframes bgTransition {
+  from {
+    background: #939393;
+  }
+  to {
+    background: #fdfdfd;
+  }
+}
+
+.centerCircle {
+  width: 248px;
+  height: 248px;
+  left: 64px; /* 🌟 위치 고정 */
+  top: 199px; /* 🌟 위치 고정 */
+  position: absolute;
+  background: #dfdfdf;
+  border-radius: 9999px;
+}
+
+@keyframes circleMove {
+  from {
+    left: 56px;
+    top: 221px;
+  }
+  to {
+    left: 64px;
+    top: 199px;
+  }
+}
+
+/* 버튼 공통 & 개별 스타일 */
+.btn {
+  width: 207px;
+  height: 45px;
+  left: 85px;
+  position: absolute;
+  cursor: pointer;
+}
+.btnLogin {
+  top: 508px;
+}
+.btnGuest {
+  top: 568px;
+}
+
+.btnBgGray {
+  width: 207px;
+  height: 45px;
+  left: 0px;
+  top: 0px;
+  position: absolute;
+  background: #dfdfdf;
+  border-radius: 30px;
+}
+.btnBgDark {
+  width: 207px;
+  height: 45px;
+  left: 0px;
+  top: 0px;
+  position: absolute;
+  background: #939393;
+  border-radius: 30px;
+}
+
+.btnText {
+  position: absolute;
+  top: 11px;
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  font-size: 20px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  text-transform: capitalize;
+  line-height: 22px;
+  word-wrap: break-word;
+}
+.btnTextGuest {
+  width: 208px;
+  left: -1px;
+  color: #2c2c28;
+}
+.btnTextLogin {
+  width: 220px;
+  left: -7px;
+  color: white;
+}
+
+/* 🌟 로그인 요소(버튼들)가 서서히 떠오르며 나타나는 애니메이션 */
+.fadeInElements {
+  animation: elementsFadeIn 0.7s ease-out forwards;
+  opacity: 0; /* 처음엔 투명하게 시작 */
+}
+
+@keyframes elementsFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(15px); /* 살짝 아래에서 위로 올라옴 */
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

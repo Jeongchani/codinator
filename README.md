@@ -3,6 +3,7 @@
 얼굴이 아닌 룩 자체를 익명으로 평가받고 피드백을 통해 스타일을 개선하는 패션 피드백 플랫폼입니다.
 
 ## 🛠 기술 스택
+
 - **Web:** React, TypeScript, Vite, Tailwind CSS
 - **API:** Node.js, NestJS, Prisma, PostgreSQL
 - **AI API:** Python, FastAPI
@@ -32,12 +33,14 @@ git pull origin develop
 처음 Clone을 받으셨다면 아래 순서대로 세팅을 진행해 주세요.
 
 ### 1. 필수 설치
+
 - Node.js (v18+) / pnpm (`npm install -g pnpm`)
 - Python (v3.10+)
 - Docker Desktop
 
-### 2. 패키지 설치 및 환경 변수 설정 (git bash에서 진행하세요!!!)
-```bash 
+### 2. 패키지 설치 및 환경 변수 설정 (git bash에서 진행하세요!!!!!!!!!!!!!)
+
+```bash
 # 의존성 설치 및 Contracts 공용 패키지 최초 빌드 (매우 중요!)
 pnpm install
 pnpm --filter @codinator/contracts run build
@@ -45,7 +48,7 @@ pnpm --filter @codinator/contracts run build
 # AI 서버(FastAPI) 별도 실행 방법
 cd apps/ai
 python -m venv .venv
- 
+
 # 가상환경 활성화 [경로 중요! (.venv) cd/apps/ai]
 source .venv/Scripts/activate  # (cmd 사용).venv\Scripts\activate.bat
 pip install -r requirements.txt
@@ -58,6 +61,7 @@ cp apps/web/.env.example apps/web/.env
 cp apps/ai/.env.example apps/ai/.env
 cp apps/mobile/.env.example apps/mobile/.env
 ```
+
 ---
 
 ### 3. 실행 명령어 (git bash에서 진행!!)
@@ -71,10 +75,10 @@ prpm db:down    #도커 내리기
 # 서버 실행하기
 pnpm run dev
 
-# 가상환경 충돌 날 시 apps/ai/.venv (가상환경) 삭제 후 재설치
 
 
 ```
+
 ### 4. 수정 후 프로젝트 재시작
 
 ```bash
@@ -85,12 +89,13 @@ pnpm clearn
 pnpm reset
 
 ```
-Ctrl + Shift + P  → Reset Ts
+
+Ctrl + Shift + P → Reset Ts
 TypeScript: Restart TS Server (타입스크립트 서버 다시 시작)
 
 ### 5. 서버 구동 명령어
 
-``` bash
+```bash
 
 # 프로젝트 내의 모든 서비스(Web, API, Mobile, AI 등)를 한 번에 실행
 turbo run dev
@@ -114,4 +119,5 @@ pnpm dev:core
 ```
 
 ### 6. DB관련 명령어
+
 자세한 명령어는 [DB 명령어 가이드](apps/api/prisma/README.md)를 참고

@@ -1,0 +1,46 @@
+/* src/pages/splash.module.css */
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #e5e7eb;
+}
+
+.mobileWrapper {
+  width: 375px;
+  height: 812px;
+  position: relative;
+  background: #939393;
+  overflow: hidden;
+  border-radius: 40px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.logoText {
+  width: 301px;
+  left: 37px;
+  top: 495px;
+  position: absolute;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: white;
+  font-size: 52.14px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  text-transform: capitalize;
+  line-height: 57.36px;
+  word-wrap: break-word;
+}
+
+.centerCircle {
+  width: 248px;
+  height: 248px;
+  left: 64px; /* 🌟 로그인 화면과 똑같은 위치로 고정 */
+  top: 199px; /* 🌟 로그인 화면과 똑같은 위치로 고정 */
+  position: absolute;
+  background: #dfdfdf;
+  border-radius: 9999px;
+}
