@@ -1,24 +1,42 @@
-
 // src/App.tsx
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import Splash from './pages/splash/Splash';
-import Login from './pages/auth/Login';
+import MemberGuest from './pages/auth/MemberGuest';
 import RankingList from './pages/ranking/RankingList';
-import Detail from './pages/look/Detail'
+import Detail from './pages/look/Detail';
+import Signup from './pages/auth/Signup';
+import Login from './pages/auth/Login';
 
+
+// 1. 라우팅 로직을 별도의 컴포넌트로 분리 (useNavigate를 사용하기 위함)
+function AppRoutes() {
+  const navigate = useNavigate();
+
+  return (
+    <Routes>
+      {/* 🔴 Splash에 onFinish 함수를 전달하여 1초 뒤 /login으로 이동하게 합니다 */}
+      <Route 
+        path="/" 
+        element={<Splash onFinish={() => navigate('/member-guest')} />} 
+      />
+      
+      <Route path="/member-guest" element={<MemberGuest />} />
+      <Route path="/login" element={<Login />} />
+
+      <Route path="/signup" element={<Signup />} />
+      
+      <Route path="/rankingList" element={<RankingList />} />
+      <Route path="/detail" element={<Detail />} />
+    </Routes>
+  );
+}
+
+// 2. 최상위 App 컴포넌트
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        {/* 기본 접속 시 스플래시(로딩) 화면 렌더링 */}
-        <Route path="/" element={<Splash />} />
-        {/* 1초 뒤 자동으로 넘어올 로그인 화면 */}
-        <Route path="/login" element={<Login />} />
-        {/* 메인 화면 라우터 추가 */}
-        <Route path="/rankingList" element={<RankingList />} />
-        {/* 상세정보 화면 라우터 추가 */}
-        <Route path="/detail" element={<Detail />} />
-      </Routes>
+      {/* BrowserRouter가 AppRoutes를 감싸고 있어야 navigate가 작동합니다 */}
+      <AppRoutes />
     </BrowserRouter>
   );
 }

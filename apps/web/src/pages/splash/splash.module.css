@@ -1,46 +1,30 @@
-/* src/pages/splash.module.css */
+/* splash.module.css */
+
 .container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background-color: #e5e7eb;
+  @apply w-96 h-[812px] relative bg-neutral-900 overflow-hidden mx-auto flex flex-col items-center justify-center;
 }
 
-.mobileWrapper {
-  width: 375px;
-  height: 812px;
-  position: relative;
-  background: #939393;
-  overflow: hidden;
-  border-radius: 40px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+.circleBg {
+  @apply w-40 h-40 bg-white rounded-full flex items-center justify-center mb-6;
+}
+
+.userIconWrapper {
+  @apply w-28 h-28 relative overflow-hidden flex flex-col items-center justify-end;
+}
+
+/* SVG 내부 색상이나 세밀한 조정이 필요할 때 사용 */
+.userHead {
+  @apply w-10 h-10 bg-neutral-900 rounded-full mb-1;
+}
+
+.userBody {
+  @apply w-20 h-11 bg-neutral-900 rounded-t-full;
 }
 
 .logoText {
-  width: 301px;
-  left: 37px;
-  top: 495px;
-  position: absolute;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  color: white;
-  font-size: 52.14px;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  text-transform: capitalize;
-  line-height: 57.36px;
-  word-wrap: break-word;
+  @apply text-white text-3xl font-semibold font-sans capitalize tracking-wider text-center;
 }
 
-.centerCircle {
-  width: 248px;
-  height: 248px;
-  left: 64px; /* 🌟 로그인 화면과 똑같은 위치로 고정 */
-  top: 199px; /* 🌟 로그인 화면과 똑같은 위치로 고정 */
-  position: absolute;
-  background: #dfdfdf;
-  border-radius: 9999px;
+.fadeAnimation {
+  @apply animate-pulse;
 }

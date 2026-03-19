@@ -1,26 +1,35 @@
-// src/pages/Splash.tsx
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
 import styles from './splash.module.css';
 
-export default function Splash() {
-  const navigate = useNavigate();
+interface SplashProps {
+  onFinish: () => void;
+}
 
+const Splash: React.FC<SplashProps> = ({ onFinish }) => {
   useEffect(() => {
-    // 1.2초 뒤에 로그인 페이지로 바로 이동
-    const navTimer = setTimeout(() => {
-      navigate('/login');
-    }, 1200);
-
-    return () => clearTimeout(navTimer);
-  }, [navigate]);
+    const timer = setTimeout(() => {
+      onFinish(); // 1초 뒤 부모 컴포넌트에 알림
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [onFinish]);
 
   return (
-    <div className={styles.container}>
-      <div className={styles.mobileWrapper}>
-        <div className={styles.centerCircle} />
-        <div className={styles.logoText}>Coodinator</div>
+    <div className={`${styles.container} ${styles.fadeAnimation}`}>
+      {/* 흰색 원형 배경 */}
+      <div className={styles.circleBg}>
+        {/* 유저 아이콘 형상화 */}
+        <div className={styles.userIconWrapper}>
+          <div className={styles.userHead} />
+          <div className={styles.userBody} />
+        </div>
+      </div>
+
+      {/* 로고 텍스트 */}
+      <div className={styles.logoText}>
+        C:dinator
       </div>
     </div>
   );
-}
+};
+
+export default Splash;

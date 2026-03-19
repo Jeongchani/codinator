@@ -1,0 +1,78 @@
+/* src/pages/auth/Login.module.css */
+
+.container {
+  /* 피그마 사이즈 그대로 w-[375px] h-[812px] 적용 */
+  @apply w-[375px] h-[812px] relative bg-white overflow-hidden mx-auto shadow-2xl;
+}
+
+/* 상단 환영 문구 섹션 */
+.headerSection {
+  @apply w-[343px] p-2.5 absolute left-4 top-[93px] flex flex-col justify-center items-start gap-2.5;
+}
+
+.welcomeTextWrapper {
+  @apply self-stretch flex flex-col justify-start items-start gap-[5px];
+}
+
+.mainTitle {
+  @apply self-stretch text-neutral-900 text-4xl font-bold font-sans leading-10;
+}
+
+.subTitle {
+  @apply self-stretch text-neutral-900 text-xl font-medium font-sans leading-7;
+}
+
+/* 이메일/비밀번호 입력 섹션 */
+.inputSection {
+  @apply w-[343px] absolute left-4 top-[277px];
+}
+
+.inputBg {
+  @apply w-[343px] h-12 absolute bg-slate-50 rounded-[20px];
+}
+
+.inputField {
+  @apply w-[310px] h-12 absolute left-4 bg-transparent border-none outline-none text-neutral-900 text-xl font-normal leading-6 placeholder:text-neutral-400 flex items-center;
+}
+
+/* 🔴 체크박스 및 비밀번호 찾기 (수정된 부분) */
+.optionSection {
+  /* 좌우 밸런스를 위해 전체 너비를 343px로 맞추고 양끝 정렬 */
+  @apply w-[343px] absolute left-4 top-[452px] flex justify-between items-center px-1;
+}
+
+.checkboxWrapper {
+  /* w-32 제거하여 글자가 한 줄로 예쁘게 나오도록 수정 */
+  @apply flex justify-start items-center gap-2 cursor-pointer;
+}
+
+.optionText {
+  /* text-center 제거하여 텍스트 정렬 자연스럽게 수정 */
+  @apply text-neutral-900 text-sm font-medium font-sans leading-5;
+}
+
+/* 버튼 그룹 */
+.buttonGroup {
+  @apply w-[343px] absolute left-4 top-[527px] flex flex-col justify-center items-center gap-3;
+}
+
+.primaryButton {
+  @apply w-full h-14 bg-neutral-900 rounded-[100px] flex justify-center items-center text-white text-base font-normal transition-transform active:scale-95;
+}
+
+.secondaryButton {
+  @apply w-full h-14 bg-white rounded-[100px] border border-zinc-300 flex justify-center items-center text-neutral-900 text-base font-normal transition-transform active:scale-95;
+}
+
+/* 최하단 회원가입 유도 */
+.footerSection {
+  @apply w-[343px] absolute left-4 top-[735px] flex justify-center items-center gap-1.5;
+}
+
+.footerTextGray {
+  @apply text-neutral-400 text-sm font-medium leading-5;
+}
+
+.footerTextBlack {
+  @apply text-neutral-900 text-sm font-bold leading-5 cursor-pointer hover:underline;
+}
