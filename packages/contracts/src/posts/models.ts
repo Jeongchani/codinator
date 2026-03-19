@@ -1,10 +1,5 @@
 import type { Id } from '../common/id';
-import type {
-  PostStatus,
-  EvaluationStatus,
-  GarmentCategory,
-  VoteChoice,
-} from '../common/enums';
+import type { EvaluationStatus, GarmentCategory } from '../common/enums';
 
 export interface PostImage {
   id: Id;
@@ -35,24 +30,17 @@ export interface FeedbackTagSummary {
 export interface PostDetail {
   postId: Id;
   authorId: Id;
-  status: PostStatus;
   content?: string | null;
   createdAt: string;
-
   image: PostImage;
-
   outfitItems: OutfitItem[];
-
   evaluation: {
     id: Id;
     status: EvaluationStatus;
     endsAt: string;
   };
-
   hasVoted: boolean;
   canVote: boolean;
-  myVote?: VoteChoice | null;
-
   voteSummary?: VoteSummary;
   feedbackSummary?: FeedbackTagSummary[];
 }

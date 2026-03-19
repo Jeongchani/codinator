@@ -1,9 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
+import type { SeedCheckRequest } from '@codinator/contracts';
 
-// 컨트롤러에서 body타입으로 사용
-export class FindUserByEmailDto {
+export class FindUserByEmailDto implements SeedCheckRequest {
   @ApiProperty({
-    example: 'test1@codinator.com',
+    example: 'alice@codinator.com',
     description: '조회할 seed 유저 이메일',
   })
   email: string;
