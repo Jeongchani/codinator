@@ -12,6 +12,9 @@
     "dev:ai": "pnpm --filter @codinator/ai dev",
     "dev:core": "turbo run dev --filter=@codinator/contracts --filter=@codinator/api --filter=@codinator/web",
 
+    "db:up": "docker compose -f infra/docker/compose.yaml -f infra/docker/compose.dev.yaml up -d",
+    "db:down": "docker compose -f infra/docker/compose.yaml -f infra/docker/compose.dev.yaml down",
+
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     

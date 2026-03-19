@@ -65,7 +65,8 @@ cp apps/mobile/.env.example apps/mobile/.env
 ```bash
 
 # 로컬 DB(PostgreSQL) 실행
-docker compose -f infra/docker/compose.yaml -f infra/docker/compose.dev.yaml up -d
+pnpm db:up      #도커 올리기
+prpm db:down    #도커 내리기
 
 # 서버 실행하기
 pnpm run dev
