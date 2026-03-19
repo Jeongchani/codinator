@@ -1,9 +1,16 @@
+import type { Id } from '../common/id';
+import type {
+  FeedbackTagCode,
+  FeedbackTagPolarity,
+  VoteChoice,
+} from '../common/enums';
+
 export interface FeedbackTag {
-  id: number;
-  code: string;
+  id: Id;
+  code: FeedbackTagCode;
   label: string;
-  polarity: 'POSITIVE' | 'NEGATIVE';
-  voteChoice: 'LIKE' | 'DISLIKE';
+  polarity: FeedbackTagPolarity;
+  voteChoice: VoteChoice;
   isActive: boolean;
 }
 
