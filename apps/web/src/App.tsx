@@ -20,10 +20,27 @@ type SeedCheckResponse = {
   } | null;
 };
 
+type SignupResponse = {
+  userId: number;
+  email: string;
+};
+
+type LoginResponse = {
+  userId: number;
+  email: string;
+  accessToken: string;
+};
+
+type LogoutResponse = {
+  message: string;
+};
+
 function App() {
   const [healthStatus, setHealthStatus] = useState('로딩 중...');
   const [email, setEmail] = useState('test1@codinator.com');
+  const [password, setPassword] = useState('1234');
   const [result, setResult] = useState<SeedCheckResponse | null>(null);
+  const [authResult, setAuthResult] = useState<SignupResponse | LoginResponse | LogoutResponse | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -39,6 +56,7 @@ function App() {
       });
   }, []);
 
+  // Seed 유저 조회
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -48,12 +66,9 @@ function App() {
     try {
       const data = await fetcher<SeedCheckResponse>('/users/seed-check', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : '요청 실패');
@@ -62,12 +77,48 @@ function App() {
     }
   };
 
+  // 회원가입
+  const handleSignup = async () => {
+    try {
+      const data = await fetcher<SignupResponse>('/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      setAuthResult(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '회원가입 실패');
+    }
+  };
+
+  // 로그인
+  const handleLogin = async () => {
+    try {
+      const data = await fetcher<LoginResponse>('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      setAuthResult(data);
+      localStorage.setItem('token', data.accessToken);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '로그인 실패');
+    }
+  };
+
+  // 로그아웃 (프론트에서 토큰 삭제)
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setAuthResult({ message: '로그아웃 완료 (토큰 삭제)' });
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50">
       <h1 className="text-4xl font-bold text-blue-600 mb-4">Codinator Web</h1>
-      <p className="text-lg mb-8">프론트 ↔ 백엔드 ↔ DB seed 왕복 테스트</p>
+      <p className="text-lg mb-8">프론트 ↔ 백엔드 ↔ DB + Auth 테스트</p>
 
       <div className="p-6 bg-white rounded-xl shadow-md space-y-6 w-full max-w-xl">
+        {/* API 상태 */}
         <div className="p-4 bg-gray-100 rounded border border-gray-200">
           <h2 className="font-semibold mb-2">API 기본 상태</h2>
           <p className={healthStatus.includes('실패') ? 'text-red-500' : 'text-green-600 font-medium'}>
@@ -75,6 +126,7 @@ function App() {
           </p>
         </div>
 
+        {/* 공용 타입 테스트 */}
         <div className="p-4 bg-gray-100 rounded border border-gray-200">
           <h2 className="font-semibold mb-2">공용 패키지 타입 테스트</h2>
           <p>
@@ -83,9 +135,9 @@ function App() {
           </p>
         </div>
 
+        {/* Seed 유저 조회 */}
         <form onSubmit={handleSubmit} className="p-4 bg-gray-100 rounded border border-gray-200 space-y-3">
           <h2 className="font-semibold">Seed 유저 조회 테스트</h2>
-
           <input
             type="email"
             value={email}
@@ -93,21 +145,13 @@ function App() {
             className="w-full border rounded px-3 py-2"
             placeholder="test1@codinator.com"
           />
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
-          >
+          <button type="submit" disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50">
             {loading ? '조회 중...' : '조회하기'}
           </button>
-
           {error && <p className="text-red-500">{error}</p>}
-
           {result && (
             <div className="mt-4 p-4 bg-white rounded border">
               <p className="font-medium">조회 결과: {result.found ? '성공' : '없음'}</p>
-
               {result.user && (
                 <ul className="mt-2 text-sm space-y-1">
                   <li><strong>ID:</strong> {result.user.id}</li>
@@ -121,6 +165,28 @@ function App() {
             </div>
           )}
         </form>
+
+        {/* Auth 테스트 */}
+        <div className="p-4 bg-gray-100 rounded border border-gray-200 space-y-3">
+          <h2 className="font-semibold">Auth 테스트 (회원가입/로그인/로그아웃)</h2>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full border rounded px-3 py-2"
+            placeholder="비밀번호 입력"
+          />
+          <div className="flex space-x-2">
+            <button onClick={handleSignup} className="bg-green-600 text-white px-4 py-2 rounded">회원가입</button>
+            <button onClick={handleLogin} className="bg-blue-600 text-white px-4 py-2 rounded">로그인</button>
+            <button onClick={handleLogout} className="bg-red-600 text-white px-4 py-2 rounded">로그아웃</button>
+          </div>
+          {authResult && (
+            <div className="mt-4 p-4 bg-white rounded border text-sm">
+              <pre>{JSON.stringify(authResult, null, 2)}</pre>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

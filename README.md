@@ -45,7 +45,6 @@ pnpm --filter @codinator/contracts run build
 # AI 서버(FastAPI) 별도 실행 방법
 cd apps/ai
 python -m venv .venv
- 
 # 가상환경 활성화 [경로 중요! (.venv) cd/apps/ai]
 source .venv/Scripts/activate  # (cmd 사용).venv\Scripts\activate.bat
 pip install -r requirements.txt
