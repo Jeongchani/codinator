@@ -1,51 +1,36 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { FeedbackTagCode } from '@codinator/contracts'; // 공용 타입 가져오기
-import { fetcher } from './lib/api'; // 공용 fetcher 유틸 가져오기
-
-type HealthResponse = {
-  status: string;
-  service: string;
-  timestamp: string;
-};
-
-type SeedCheckResponse = {
-  found: boolean;
-  user: {
-    id: number;
-    email: string;
-    gender: 'M' | 'F';
-    birthDate: string;
-    phoneNumber: string;
-    createdAt: string;
-  } | null;
-};
+import type {
+  HealthCheckResponse,
+  SeedCheckRequest,
+  SeedCheckResponse,
+} from '@codinator/contracts';
+import { fetcher } from './lib/api';
 
 function App() {
-  const [healthStatus, setHealthStatus] = useState('로딩 중...');
-  const [email, setEmail] = useState('test1@codinator.com');
+  const [health, setHealth] = useState<HealthCheckResponse | null>(null);
+  const [healthError, setHealthError] = useState('');
+  const [email, setEmail] = useState('alice@codinator.com');
   const [result, setResult] = useState<SeedCheckResponse | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const exampleTag: FeedbackTagCode = 'POS_FIT_GOOD';
-
   useEffect(() => {
-    fetcher<HealthResponse>('/health')
+    fetcher<HealthCheckResponse>('/health')
       .then((data) => {
-        setHealthStatus(`백엔드 상태: ${data.status} / 서비스: ${data.service}`);
+        setHealth(data);
       })
-      .catch(() => {
-        setHealthStatus('백엔드 연결 실패');
+      .catch((err) => {
+        setHealthError(err instanceof Error ? err.message : '헬스체크 실패');
       });
   }, []);
-  
 
-  // 사용자 버튼클릭 -> 이메일로 시드 유저 조회 -> 결과 출력
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     setResult(null);
+
+    const body: SeedCheckRequest = { email };
 
     try {
       const data = await fetcher<SeedCheckResponse>('/users/seed-check', {
@@ -53,9 +38,9 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify(body),
       });
-// awwait fetcher(...) 결과 받음
+
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : '요청 실패');
@@ -65,64 +50,81 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50">
-      <h1 className="text-4xl font-bold text-blue-600 mb-4">Codinator Web</h1>
-      <p className="text-lg mb-8">프론트 ↔ 백엔드 ↔ DB seed 왕복 테스트</p>
-
-      <div className="p-6 bg-white rounded-xl shadow-md space-y-6 w-full max-w-xl">
-        <div className="p-4 bg-gray-100 rounded border border-gray-200">
-          <h2 className="font-semibold mb-2">API 기본 상태</h2>
-          <p className={healthStatus.includes('실패') ? 'text-red-500' : 'text-green-600 font-medium'}>
-            {healthStatus}
+    <div className="min-h-screen bg-slate-50 p-6">
+      <div className="mx-auto max-w-2xl space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Codinator Smoke Test</h1>
+          <p className="mt-2 text-slate-600">
+            프론트 ↔ API ↔ Prisma ↔ Docker DB ↔ contracts 연결 확인용 임시 화면
           </p>
         </div>
 
-        <div className="p-4 bg-gray-100 rounded border border-gray-200">
-          <h2 className="font-semibold mb-2">공용 패키지 타입 테스트</h2>
-          <p>
-            FeedbackTagCode 예시:
-            <span className="ml-2 font-mono bg-gray-200 px-2 py-1 rounded">{exampleTag}</span>
-          </p>
-        </div>
+        <section className="rounded-xl border bg-white p-5 shadow-sm">
+          <h2 className="mb-3 text-lg font-semibold">1. API 헬스체크</h2>
 
-        <form onSubmit={handleSubmit} className="p-4 bg-gray-100 rounded border border-gray-200 space-y-3">
-          <h2 className="font-semibold">Seed 유저 조회 테스트</h2>
+          {health && (
+            <div className="space-y-1 text-sm">
+              <p>
+                <strong>status:</strong> {health.status}
+              </p>
+              <p>
+                <strong>timestamp:</strong> {health.timestamp}
+              </p>
+            </div>
+          )}
 
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full border rounded px-3 py-2"
-            placeholder="test1@codinator.com"
-          />
+          {healthError && <p className="text-sm text-red-600">{healthError}</p>}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
-          >
-            {loading ? '조회 중...' : '조회하기'}
-          </button>
+          {!health && !healthError && <p className="text-sm text-slate-500">확인 중...</p>}
+        </section>
 
-          {error && <p className="text-red-500">{error}</p>}
+        <section className="rounded-xl border bg-white p-5 shadow-sm">
+          <h2 className="mb-3 text-lg font-semibold">2. DB seed 유저 조회</h2>
+
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+              placeholder="alice@codinator.com"
+            />
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
+            >
+              {loading ? '조회 중...' : '조회하기'}
+            </button>
+          </form>
+
+          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
           {result && (
-            <div className="mt-4 p-4 bg-white rounded border">
-              <p className="font-medium">조회 결과: {result.found ? '성공' : '없음'}</p>
+            <div className="mt-4 rounded border bg-slate-50 p-4 text-sm">
+              <p>
+                <strong>found:</strong> {String(result.found)}
+              </p>
 
-              {result.user && (
-                <ul className="mt-2 text-sm space-y-1">
-                  <li><strong>ID:</strong> {result.user.id}</li>
-                  <li><strong>Email:</strong> {result.user.email}</li>
-                  <li><strong>Gender:</strong> {result.user.gender}</li>
-                  <li><strong>BirthDate:</strong> {result.user.birthDate}</li>
-                  <li><strong>Phone:</strong> {result.user.phoneNumber}</li>
-                  <li><strong>CreatedAt:</strong> {result.user.createdAt}</li>
+              {result.user ? (
+                <ul className="mt-2 space-y-1">
+                  <li>
+                    <strong>id:</strong> {result.user.id}
+                  </li>
+                  <li>
+                    <strong>email:</strong> {result.user.email}
+                  </li>
+                  <li>
+                    <strong>createdAt:</strong> {result.user.createdAt}
+                  </li>
                 </ul>
+              ) : (
+                <p className="mt-2">해당 유저 없음</p>
               )}
             </div>
           )}
-        </form>
+        </section>
       </div>
     </div>
   );

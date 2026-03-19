@@ -24,7 +24,7 @@ pnpm --filter @codinator/api run prisma:studio #http://localhost:5555
 ```bash
 
 #마이그레이션 새로 만들기
-pnpm --filter @codinator/api run prisma:migrate --name add-user-fields
+pnpm --filter @codinator/api run prisma:migrate --name 이름
 
 #DB 초기화 후 다시 마이그레이션 + seed  사용조심!
 pnpm --filter @codinator/api run prisma:reset
