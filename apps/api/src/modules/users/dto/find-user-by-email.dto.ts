@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
+// 컨트롤러에서 body타입으로 사용
 export class FindUserByEmailDto {
   @ApiProperty({
     example: 'test1@codinator.com',

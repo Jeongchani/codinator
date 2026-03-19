@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {} // DB 연결 (DI): Nest가 PrismaService 인스턴스를 주입
 
   async findSeedUserByEmail(email: string) {
     const user = await this.prisma.user.findUnique({

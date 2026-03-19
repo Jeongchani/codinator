@@ -33,6 +33,6 @@ export class UsersController {
     },
   })
   async seedCheck(@Body() body: FindUserByEmailDto) {
-    return this.usersService.findSeedUserByEmail(body.email);
+    return this.usersService.findSeedUserByEmail(body.email); // 서비스로 넘김
   }
 }

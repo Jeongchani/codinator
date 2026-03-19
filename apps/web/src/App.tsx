@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { FeedbackTagCode } from '@codinator/contracts';
-import { fetcher } from './lib/api';
+import { FeedbackTagCode } from '@codinator/contracts'; // 공용 타입 가져오기
+import { fetcher } from './lib/api'; // 공용 fetcher 유틸 가져오기
 
 type HealthResponse = {
   status: string;
@@ -38,7 +38,9 @@ function App() {
         setHealthStatus('백엔드 연결 실패');
       });
   }, []);
+  
 
+  // 사용자 버튼클릭 -> 이메일로 시드 유저 조회 -> 결과 출력
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -53,7 +55,7 @@ function App() {
         },
         body: JSON.stringify({ email }),
       });
-
+// awwait fetcher(...) 결과 받음
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : '요청 실패');

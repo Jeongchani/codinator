@@ -2,7 +2,7 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 export const fetcher = async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, options); // 엔드포인트 생성 예)/api/v1/users/seed-check
 
   if (!response.ok) {
     const message = await response.text();
