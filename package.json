@@ -10,6 +10,9 @@
     "dev:mobile": "pnpm --filter @codinator/mobile dev",
     "dev:ai": "pnpm --filter @codinator/ai dev",
     "dev:core": "turbo run dev --filter=@codinator/contracts --filter=@codinator/api --filter=@codinator/web",
+    "db:up": "docker compose -f infra/docker/compose.yaml -f infra/docker/compose.dev.yaml up -d",
+    "db:down": "docker compose -f infra/docker/compose.yaml -f infra/docker/compose.dev.yaml down",
+
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "clean": "pnpm dlx rimraf --glob node_modules pnpm-lock.yaml .turbo dist \"apps/*/node_modules\" \"apps/*/.turbo\" \"apps/*/dist\"",

@@ -1,8 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
+import type { SeedCheckRequest } from '@codinator/contracts';
 
-export class FindUserByEmailDto {
+export class FindUserByEmailDto implements SeedCheckRequest {
   @ApiProperty({
-    example: 'test1@codinator.com',
+    example: 'alice@codinator.com',
     description: '조회할 seed 유저 이메일',
   })
   email: string;

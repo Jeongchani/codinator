@@ -1,10 +1,12 @@
+// 백엔드 진입점 예) main.ts -> app.modue.ts -> users.module.ts
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { AppModule } from './app.module';
+import { AppModule } from './app.module';  
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // API 버전 관리 및 글로벌 프리픽스 설정 -> 모든 엔드포인트가 /api/v1/로 시작하도록
   app.setGlobalPrefix('api/v1');
 
   const config = new DocumentBuilder()

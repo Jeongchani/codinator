@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+// 프론트 -> 벡엔드 API 프록시 설정
 export default defineConfig({
   plugins: [react()],
   server: {

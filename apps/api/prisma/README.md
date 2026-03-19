@@ -9,8 +9,8 @@ cp apps/api/.env.example apps/api/.env
 #Prisma Client 생성
 pnpm --filter @codinator/api run prisma:generate
 
-#마이그레이션 실행  [ pnpm --filter @codinator/api run prisma:migrate --name init-스키마 이름 ]
-pnpm --filter @codinator/api run prisma:migrate --name init-user #migration 파일 생성 , #실제 PostgreSQL에 users 테이블 생성
+#마이그레이션 실행 
+pnpm --filter @codinator/api run prisma:migrate --name init_v1 #migration 파일 생성 , #실제 PostgreSQL에 users 테이블 생성
 
 #seed 실행
 pnpm --filter @codinator/api run prisma:seed
@@ -24,7 +24,7 @@ pnpm --filter @codinator/api run prisma:studio #http://localhost:5555
 ```bash
 
 #마이그레이션 새로 만들기
-pnpm --filter @codinator/api run prisma:migrate --name add-user-fields
+pnpm --filter @codinator/api run prisma:migrate --name 이름
 
 #DB 초기화 후 다시 마이그레이션 + seed  사용조심!
 pnpm --filter @codinator/api run prisma:reset
