@@ -3,24 +3,12 @@ import type {
   HealthCheckResponse,
   SeedCheckRequest,
   SeedCheckResponse,
+  SignupResponse,
+  LoginResponse,
+  LogoutResponse
 } from '@codinator/contracts';
 import { fetcher } from './lib/api';
 
-// 인증 응답을 위한 임시 타입 (필요에 따라 contracts로 이동하거나 수정하세요)
-type SignupResponse = {
-  userId: number;
-  email: string;
-};
-
-type LoginResponse = {
-  userId: number;
-  email: string;
-  accessToken: string;
-};
-
-type LogoutResponse = {
-  message: string;
-};
 
 function App() {
   const [health, setHealth] = useState<HealthCheckResponse | null>(null);

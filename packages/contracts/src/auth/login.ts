@@ -1,4 +1,3 @@
-import type { Id } from '../common/id';
 
 export interface LoginRequest {
   email: string;
@@ -6,7 +5,7 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  userId: Id;
+  userId: number;
   email: string;
   accessToken: string;
 }
