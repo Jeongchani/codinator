@@ -5,6 +5,7 @@ import { HealthModule } from './modules/health/health.module';
 import { PostsModule } from './modules/posts/posts.module';
 import { UsersModule } from './modules/users/users.module';
 import { VotesModule } from './modules/votes/votes.module';
+import { RankingsModule } from './modules/rankings/rankings.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
@@ -16,6 +17,7 @@ import { PrismaModule } from './prisma/prisma.module';
     EvaluationsModule,
     PostsModule,
     VotesModule,
+    RankingsModule,
   ],
 })
 export class AppModule {}
