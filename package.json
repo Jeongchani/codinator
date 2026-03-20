@@ -9,6 +9,7 @@
     "dev:api": "pnpm --filter @codinator/api dev",
     "dev:mobile": "pnpm --filter @codinator/mobile dev",
     "dev:ai": "pnpm --filter @codinator/ai dev",
+    "dev:prisma": "pnpm --filter @codinator/api run prisma:studio",
     "dev:core": "turbo run dev --filter=@codinator/contracts --filter=@codinator/api --filter=@codinator/web",
     "db:up": "docker compose -f infra/docker/compose.yaml -f infra/docker/compose.dev.yaml up -d",
     "db:down": "docker compose -f infra/docker/compose.yaml -f infra/docker/compose.dev.yaml down",
