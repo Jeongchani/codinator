@@ -1,5 +1,5 @@
 import type { Id } from '../common/id';
-import type { EvaluationStatus, GarmentCategory, PostStatus } from '../common/enums';
+import type { EvaluationStatus, GarmentCategory, PostStatus, RankingPeriod } from '../common/enums';
 
 export interface PostImage {
   id: Id;
@@ -27,9 +27,13 @@ export interface FeedbackTagSummary {
   count: number;
 }
 
-export interface BasePostDetail {
+export interface PostAuthorSummary {
+  userId: Id;
+  nickname?: string | null;
+}
+
+export interface PostCoreDetail {
   postId: Id;
-  authorId: Id;
   content?: string | null;
   status: PostStatus;
   createdAt: string;
@@ -43,10 +47,50 @@ export interface EvaluationInfo {
   endsAt: string;
 }
 
-export interface EvaluationPostDetail extends BasePostDetail {
+export interface MyPostDetail extends PostCoreDetail {
+  author: PostAuthorSummary;
+  evaluation: EvaluationInfo;
+  voteSummary: VoteSummary;
+  feedbackSummary: FeedbackTagSummary[];
+}
+
+export interface EvaluationPostDetail extends PostCoreDetail {
   evaluation: EvaluationInfo;
   hasVoted: boolean;
+  myVoteId: Id | null;
   canVote: boolean;
-  voteSummary?: VoteSummary;
-  feedbackSummary?: FeedbackTagSummary[];
+  voteSummary: VoteSummary;
+  feedbackSummary: FeedbackTagSummary[];
+}
+
+export interface RankingInfo {
+  period: RankingPeriod;
+  rank: number;
+  startDate: string;
+  endDate: string;
+}
+
+export interface RankingPostDetail extends PostCoreDetail {
+  author: PostAuthorSummary;
+  evaluation: EvaluationInfo;
+  hasVoted: boolean;
+  canVote: false;
+  voteSummary: VoteSummary;
+  feedbackSummary: FeedbackTagSummary[];
+  ranking: RankingInfo;
+}
+
+export interface FeedListItem {
+  postId: Id;
+  thumbnailUrl: string;
+  createdAt: string;
+  rankingPeriods: RankingPeriod[];
+}
+
+export interface FeedPostDetail extends PostCoreDetail {
+  author: PostAuthorSummary;
+  evaluation: EvaluationInfo;
+  voteSummary: VoteSummary;
+  feedbackSummary: FeedbackTagSummary[];
+  rankingPeriods: RankingPeriod[];
 }

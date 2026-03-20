@@ -4,107 +4,184 @@ import type {
   GetRankingsResponse,
   RankingPeriod,
 } from '@codinator/contracts';
-import { PostStatus } from '@prisma/client';
+import { EvaluationStatus, PostStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { buildFeedbackSummary } from '../evaluations/common/evaluation-summary.util';
+import { buildFeedbackSummary, buildVoteSummary } from '../evaluations/common/evaluation-summary.util';
+import { syncExpiredEvaluations } from '../evaluations/common/sync-expired-evaluations.util';
 import { validateRankingPeriod } from './common/ranking-period.util';
+
+type RankedPostRecord = Awaited<ReturnType<RankingsService['fetchRankingCandidates']>>[number];
 
 @Injectable()
 export class RankingsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getRankings(period: RankingPeriod): Promise<GetRankingsResponse> {
+    await syncExpiredEvaluations(this.prisma);
     validateRankingPeriod(period);
 
-    const snapshot = await this.prisma.rankingSnapshot.findFirst({
-      where: { period },
-      orderBy: [{ endDate: 'desc' }, { createdAt: 'desc' }],
-      include: {
-        entries: {
-          orderBy: { rank: 'asc' },
-          include: {
-            post: {
-              include: {
-                images: {
-                  orderBy: { id: 'asc' },
-                  take: 1,
-                },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!snapshot) {
-      throw new NotFoundException('랭킹 스냅샷을 찾을 수 없습니다.');
-    }
+    const rankedPosts = await this.getRankedPosts(period);
 
     return {
       period,
-      items: snapshot.entries
-        .filter((entry) => entry.post.status === PostStatus.ACTIVE && entry.post.deletedAt === null)
-        .map((entry) => ({
-          rank: entry.rank,
-          postId: entry.postId,
-          thumbnailUrl: entry.post.images[0]?.imageUrl ?? '',
-          likeCount: entry.likeCount,
-          dislikeCount: entry.dislikeCount,
-          totalCount: entry.totalCount,
-          likeRate: Number(entry.likeRate),
-        })),
+      items: rankedPosts.map((entry) => ({
+        rank: entry.rank,
+        postId: entry.post.id,
+        thumbnailUrl: entry.post.images[0]?.imageUrl ?? '',
+        likeCount: entry.summary.likeCount,
+        dislikeCount: entry.summary.dislikeCount,
+        totalCount: entry.summary.totalCount,
+        likeRate: entry.summary.likeRate,
+      })),
     };
   }
 
   async getRankingPostDetail(
     postId: number,
     period: RankingPeriod,
-    userId?: number | null,
+    userId: number,
   ): Promise<GetRankingPostDetailResponse> {
+    await syncExpiredEvaluations(this.prisma);
     validateRankingPeriod(period);
 
-    const snapshot = await this.prisma.rankingSnapshot.findFirst({
-      where: { period },
-      orderBy: [{ endDate: 'desc' }, { createdAt: 'desc' }],
-      select: {
-        id: true,
-        period: true,
-        startDate: true,
-        endDate: true,
-      },
-    });
+    const rankedPosts = await this.getRankedPosts(period);
+    const rankedPost = rankedPosts.find((entry) => entry.post.id === postId);
 
-    if (!snapshot) {
-      throw new NotFoundException('랭킹 스냅샷을 찾을 수 없습니다.');
+    if (!rankedPost || !rankedPost.post.evaluation) {
+      throw new NotFoundException('랭킹 게시글을 찾을 수 없습니다.');
     }
 
-    const rankingEntry = await this.prisma.rankingEntry.findFirst({
+    const myVote = rankedPost.post.evaluation.votes.find((vote) => vote.voterId === userId) ?? null;
+    const { startDate, endDate } = this.getPeriodRange(period);
+
+    return {
+      postId: rankedPost.post.id,
+      author: {
+        userId: rankedPost.post.author.id,
+        nickname: rankedPost.post.author.nickname,
+      },
+      content: rankedPost.post.content,
+      status: rankedPost.post.status,
+      createdAt: rankedPost.post.createdAt.toISOString(),
+      image: {
+        id: rankedPost.post.images[0]?.id ?? 0,
+        imageUrl: rankedPost.post.images[0]?.imageUrl ?? '',
+      },
+      outfitItems: rankedPost.post.outfitItems.map((item) => ({
+        id: item.id,
+        category: item.category,
+        itemName: item.itemName,
+        brand: item.brand,
+      })),
+      evaluation: {
+        id: rankedPost.post.evaluation.id,
+        status: rankedPost.post.evaluation.status,
+        endsAt: rankedPost.post.evaluation.endsAt.toISOString(),
+      },
+      hasVoted: !!myVote,
+      canVote: false,
+      voteSummary: rankedPost.summary,
+      feedbackSummary: buildFeedbackSummary(rankedPost.post.evaluation.votes),
+      ranking: {
+        period,
+        rank: rankedPost.rank,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      },
+    };
+  }
+
+  async getVisibleRankingPeriods(postId: number): Promise<RankingPeriod[]> {
+    await syncExpiredEvaluations(this.prisma);
+
+    const candidates = await this.fetchRankingCandidates();
+    const periods: RankingPeriod[] = [];
+
+    if (this.rankPostIdsByPeriod(candidates, 'WEEKLY').includes(postId)) {
+      periods.push('WEEKLY');
+    }
+
+    if (this.rankPostIdsByPeriod(candidates, 'MONTHLY').includes(postId)) {
+      periods.push('MONTHLY');
+    }
+
+    return periods;
+  }
+
+  private async getRankedPosts(period: RankingPeriod) {
+    const candidates = await this.fetchRankingCandidates();
+    const { startDate, endDate } = this.getPeriodRange(period);
+
+    return candidates
+      .filter((post) => post.evaluation && post.evaluation.endsAt >= startDate && post.evaluation.endsAt <= endDate)
+      .map((post) => ({
+        post,
+        summary: buildVoteSummary(post.evaluation!.votes),
+      }))
+      .sort(
+        (a, b) =>
+          b.summary.likeCount - a.summary.likeCount ||
+          b.summary.likeRate - a.summary.likeRate ||
+          b.summary.totalCount - a.summary.totalCount ||
+          a.post.id - b.post.id,
+      )
+      .map((entry, index) => ({
+        ...entry,
+        rank: index + 1,
+      }));
+  }
+
+  private rankPostIdsByPeriod(candidates: RankedPostRecord[], period: RankingPeriod): number[] {
+    const { startDate, endDate } = this.getPeriodRange(period);
+
+    return candidates
+      .filter((post) => post.evaluation && post.evaluation.endsAt >= startDate && post.evaluation.endsAt <= endDate)
+      .map((post) => ({
+        postId: post.id,
+        summary: buildVoteSummary(post.evaluation!.votes),
+      }))
+      .sort(
+        (a, b) =>
+          b.summary.likeCount - a.summary.likeCount ||
+          b.summary.likeRate - a.summary.likeRate ||
+          b.summary.totalCount - a.summary.totalCount ||
+          a.postId - b.postId,
+      )
+      .map((entry) => entry.postId);
+  }
+
+  private async fetchRankingCandidates() {
+    return this.prisma.post.findMany({
       where: {
-        snapshotId: snapshot.id,
-        postId,
-        post: {
-          status: PostStatus.ACTIVE,
-          deletedAt: null,
+        status: PostStatus.ACTIVE,
+        deletedAt: null,
+        evaluation: {
+          is: {
+            status: EvaluationStatus.ENDED,
+            endsAt: { lte: new Date() },
+          },
         },
       },
       include: {
-        post: {
+        author: {
+          select: {
+            id: true,
+            nickname: true,
+          },
+        },
+        images: {
+          orderBy: { id: 'asc' },
+        },
+        outfitItems: {
+          orderBy: { id: 'asc' },
+        },
+        evaluation: {
           include: {
-            images: {
-              orderBy: { id: 'asc' },
-            },
-            outfitItems: {
-              orderBy: { id: 'asc' },
-            },
-            evaluation: {
+            votes: {
               include: {
-                votes: {
+                feedbackTags: {
                   include: {
-                    feedbackTags: {
-                      include: {
-                        tag: true,
-                      },
-                    },
+                    tag: true,
                   },
                 },
               },
@@ -113,52 +190,18 @@ export class RankingsService {
         },
       },
     });
+  }
 
-    if (!rankingEntry || !rankingEntry.post.evaluation) {
-      throw new NotFoundException('랭킹 게시글을 찾을 수 없습니다.');
+  private getPeriodRange(period: RankingPeriod) {
+    const endDate = new Date();
+    const startDate = new Date(endDate);
+
+    if (period === 'WEEKLY') {
+      startDate.setDate(startDate.getDate() - 7);
+    } else {
+      startDate.setMonth(startDate.getMonth() - 1);
     }
 
-    const myVote = userId
-      ? rankingEntry.post.evaluation.votes.find((vote) => vote.voterId === userId)
-      : null;
-
-    return {
-      postId: rankingEntry.post.id,
-      authorId: rankingEntry.post.authorId,
-      content: rankingEntry.post.content,
-      status: rankingEntry.post.status,
-      createdAt: rankingEntry.post.createdAt.toISOString(),
-      image: {
-        id: rankingEntry.post.images[0]?.id ?? 0,
-        imageUrl: rankingEntry.post.images[0]?.imageUrl ?? '',
-      },
-      outfitItems: rankingEntry.post.outfitItems.map((item) => ({
-        id: item.id,
-        category: item.category,
-        itemName: item.itemName,
-        brand: item.brand,
-      })),
-      evaluation: {
-        id: rankingEntry.post.evaluation.id,
-        status: rankingEntry.post.evaluation.status,
-        endsAt: rankingEntry.post.evaluation.endsAt.toISOString(),
-      },
-      hasVoted: !!myVote,
-      canVote: false,
-      voteSummary: {
-        likeCount: rankingEntry.likeCount,
-        dislikeCount: rankingEntry.dislikeCount,
-        totalCount: rankingEntry.totalCount,
-        likeRate: Number(rankingEntry.likeRate),
-      },
-      feedbackSummary: buildFeedbackSummary(rankingEntry.post.evaluation.votes),
-      ranking: {
-        snapshotId: snapshot.id,
-        period: snapshot.period,
-        rank: rankingEntry.rank,
-        startDate: snapshot.startDate.toISOString(),
-        endDate: snapshot.endDate.toISOString(),
-      },
-    };
+    return { startDate, endDate };
   }
 }

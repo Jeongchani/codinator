@@ -1,70 +1,91 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type {
-  CreatePostRequest,
-  CreatePostResponse,
-  GetPostDetailResponse,
-} from '@codinator/contracts';
+import type { GetFeedPostDetailResponse, GetUserFeedResponse } from '@codinator/contracts';
 import { EvaluationStatus, PostStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { buildFeedbackSummary, buildVoteSummary } from '../evaluations/common/evaluation-summary.util';
 import { syncExpiredEvaluations } from '../evaluations/common/sync-expired-evaluations.util';
+import { RankingsService } from '../rankings/rankings.service';
 
 @Injectable()
-export class PostsService {
-  constructor(private readonly prisma: PrismaService) {}
+export class FeedsService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly rankingsService: RankingsService,
+  ) {}
 
-  async createPost(authorId: number, body: CreatePostRequest): Promise<CreatePostResponse> {
-    const now = new Date();
-    const endsAt = new Date(now);
-    endsAt.setDate(endsAt.getDate() + 7);
+  async getUserFeed(targetUserId: number, _viewerUserId: number): Promise<GetUserFeedResponse> {
+    await syncExpiredEvaluations(this.prisma);
 
-    const post = await this.prisma.post.create({
-      data: {
-        authorId,
-        content: body.content ?? null,
-        images: {
-          create: {
-            imageUrl: body.image.imageUrl,
-          },
-        },
-        outfitItems: body.outfitItems?.length
-          ? {
-              create: body.outfitItems.map((item) => ({
-                category: item.category,
-                itemName: item.itemName ?? null,
-                brand: item.brand ?? null,
-              })),
-            }
-          : undefined,
-        evaluation: {
-          create: {
-            startsAt: now,
-            endsAt,
-            status: EvaluationStatus.OPEN,
-          },
-        },
-      },
-      include: {
-        evaluation: true,
+    const user = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: {
+        id: true,
+        nickname: true,
       },
     });
 
+    if (!user) {
+      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    }
+
+    const posts = await this.prisma.post.findMany({
+      where: {
+        authorId: targetUserId,
+        status: PostStatus.ACTIVE,
+        deletedAt: null,
+        evaluation: {
+          is: {
+            status: EvaluationStatus.ENDED,
+            endsAt: { lte: new Date() },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        images: {
+          orderBy: { id: 'asc' },
+          take: 1,
+        },
+      },
+    });
+
+    const items = await Promise.all(
+      posts.map(async (post) => ({
+        postId: post.id,
+        thumbnailUrl: post.images[0]?.imageUrl ?? '',
+        createdAt: post.createdAt.toISOString(),
+        rankingPeriods: await this.rankingsService.getVisibleRankingPeriods(post.id),
+      })),
+    );
+
     return {
-      postId: post.id,
-      evaluationId: post.evaluation!.id,
-      status: post.status,
+      user: {
+        userId: user.id,
+        nickname: user.nickname,
+      },
+      items,
     };
   }
 
-  async getMyPostDetail(postId: number, userId: number): Promise<GetPostDetailResponse> {
+  async getFeedPostDetail(
+    targetUserId: number,
+    postId: number,
+    _viewerUserId: number,
+  ): Promise<GetFeedPostDetailResponse> {
     await syncExpiredEvaluations(this.prisma);
 
     const post = await this.prisma.post.findFirst({
       where: {
         id: postId,
-        authorId: userId,
+        authorId: targetUserId,
         status: PostStatus.ACTIVE,
         deletedAt: null,
+        evaluation: {
+          is: {
+            status: EvaluationStatus.ENDED,
+            endsAt: { lte: new Date() },
+          },
+        },
       },
       include: {
         author: {
@@ -96,7 +117,7 @@ export class PostsService {
     });
 
     if (!post || !post.evaluation) {
-      throw new NotFoundException('내 게시글을 찾을 수 없습니다.');
+      throw new NotFoundException('피드 게시글을 찾을 수 없습니다.');
     }
 
     return {
@@ -125,6 +146,7 @@ export class PostsService {
       },
       voteSummary: buildVoteSummary(post.evaluation.votes),
       feedbackSummary: buildFeedbackSummary(post.evaluation.votes),
+      rankingPeriods: await this.rankingsService.getVisibleRankingPeriods(post.id),
     };
   }
 }

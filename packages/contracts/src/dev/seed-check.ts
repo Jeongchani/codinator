@@ -9,6 +9,7 @@ export interface SeedCheckResponse {
   user: {
     id: Id;
     email: string;
+    nickname?: string | null;
     createdAt: string;
   } | null;
 }

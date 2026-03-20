@@ -14,18 +14,12 @@ enum PostStatus {
 
 enum EvaluationStatus {
   OPEN
-  CLOSED
   ENDED
 }
 
 enum VoteChoice {
   LIKE
   DISLIKE
-}
-
-enum RankingPeriod {
-  WEEKLY
-  MONTHLY
 }
 
 enum FeedbackTagPolarity {
@@ -44,14 +38,14 @@ enum GarmentCategory {
 }
 
 model User {
-  id           Int       @id @default(autoincrement())
-  email        String    @unique @db.VarChar(100)
-  passwordHash String    @map("password_hash") @db.VarChar(255)
-  createdAt    DateTime  @default(now()) @map("created_at")
-  deletedAt    DateTime? @map("deleted_at")
+  id               Int       @id @default(autoincrement())
+  email            String    @unique @db.VarChar(100)
+  nickname         String?   @db.VarChar(50)
+  passwordHash     String    @map("password_hash") @db.VarChar(255)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  deletedAt        DateTime? @map("deleted_at")
+  refreshTokenHash String?
 
-  refreshTokenHash  String?
-   
   posts Post[]
   votes Vote[]
 
@@ -66,11 +60,10 @@ model Post {
   createdAt DateTime   @default(now()) @map("created_at")
   deletedAt DateTime?  @map("deleted_at")
 
-  author         User             @relation(fields: [authorId], references: [id], onDelete: Restrict)
-  images         PostImage[]
-  outfitItems    PostOutfitItem[]
-  evaluation     Evaluation?
-  rankingEntries RankingEntry[]
+  author      User             @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  images      PostImage[]
+  outfitItems PostOutfitItem[]
+  evaluation  Evaluation?
 
   @@index([authorId])
   @@index([status])
@@ -79,13 +72,12 @@ model Post {
 
 model PostImage {
   id        Int      @id @default(autoincrement())
-  postId    Int      @map("post_id")
+  postId    Int      @unique @map("post_id")
   imageUrl  String   @map("image_url") @db.VarChar(500)
   createdAt DateTime @default(now()) @map("created_at")
 
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
-  @@index([postId])
   @@map("post_images")
 }
 
@@ -162,37 +154,4 @@ model VoteFeedbackTag {
   @@unique([voteId, tagId])
   @@index([tagId])
   @@map("vote_feedback_tags")
-}
-
-model RankingSnapshot {
-  id        Int           @id @default(autoincrement())
-  period    RankingPeriod
-  startDate DateTime      @map("start_date") @db.Date
-  endDate   DateTime      @map("end_date") @db.Date
-  createdAt DateTime      @default(now()) @map("created_at")
-
-  entries RankingEntry[]
-
-  @@unique([period, startDate, endDate])
-  @@index([period])
-  @@map("ranking_snapshots")
-}
-
-model RankingEntry {
-  id           Int      @id @default(autoincrement())
-  snapshotId   Int      @map("snapshot_id")
-  postId       Int      @map("post_id")
-  rank         Int
-  likeCount    Int      @default(0) @map("like_count")
-  dislikeCount Int      @default(0) @map("dislike_count")
-  totalCount   Int      @default(0) @map("total_count")
-  likeRate     Decimal  @map("like_rate") @db.Decimal(5, 4)
-
-  snapshot RankingSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
-  post     Post            @relation(fields: [postId], references: [id], onDelete: Cascade)
-
-  @@unique([snapshotId, postId])
-  @@unique([snapshotId, rank])
-  @@index([postId])
-  @@map("ranking_entries")
 }

@@ -1,3 +1,4 @@
+import type { Id } from '../common/id';
 import type { VoteChoice } from '../common/enums';
 import type { VoteSummary } from '../posts/models';
 
@@ -6,7 +7,8 @@ export interface CreateVoteRequest {
 }
 
 export interface CreateVoteResponse {
-  postId: number;
+  postId: Id;
+  voteId: Id;
   myVote: VoteChoice;
   summary: VoteSummary;
 }
