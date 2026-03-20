@@ -11,12 +11,12 @@ import type {
   VoteChoice,
 } from '@codinator/contracts';
 import { EvaluationStatus, PostStatus } from '@prisma/client';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { buildVoteSummary } from '../common/evaluation-summary.util';
-import { validateVoteChoice } from '../common/vote-choice.util';
+import { PrismaService } from '../../prisma/prisma.service';
+import { buildVoteSummary } from '../evaluations/common/evaluation-summary.util';
+import { validateVoteChoice } from './common/vote-choice.util';
 
 @Injectable()
-export class EvaluationVotesService {
+export class VotesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getTags(voteChoice: VoteChoice): Promise<GetTagsResponse> {

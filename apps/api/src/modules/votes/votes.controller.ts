@@ -21,17 +21,17 @@ import type {
   CreateVoteResponse,
   GetTagsResponse,
 } from '@codinator/contracts';
-import { AuthTokenService } from '../../auth/auth-token.service';
-import { CreateFeedbackBodyDto } from '../dto/create-feedback-body.dto';
-import { CreateVoteBodyDto } from '../dto/create-vote-body.dto';
-import { GetTagsQueryDto } from '../dto/get-tags-query.dto';
-import { EvaluationVotesService } from './votes.service';
+import { AuthTokenService } from '../auth/auth-token.service';
+import { CreateFeedbackBodyDto } from './dto/create-feedback-body.dto';
+import { CreateVoteBodyDto } from './dto/create-vote-body.dto';
+import { GetTagsQueryDto } from './dto/get-tags-query.dto';
+import { VotesService } from './votes.service';
 
 @ApiTags('evaluations')
 @Controller('evaluations')
-export class EvaluationVotesController {
+export class VotesController {
   constructor(
-    private readonly votesService: EvaluationVotesService,
+    private readonly votesService: VotesService,
     private readonly authTokenService: AuthTokenService,
   ) {}
 

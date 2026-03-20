@@ -1,51 +1,19 @@
-import { Controller, Get, Headers, Param, ParseIntPipe, Query } from '@nestjs/common';
+import { Controller, Get, Headers, Param, ParseIntPipe } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { GetEvaluationsResponse, GetPostDetailResponse } from '@codinator/contracts';
-import { AuthTokenService } from '../../auth/auth-token.service';
-import { GetEvaluationsQueryDto } from '../dto/get-evaluations-query.dto';
-import { EvaluationPostsService } from './posts.service';
+import type { GetPostDetailResponse } from '@codinator/contracts';
+import { AuthTokenService } from '../auth/auth-token.service';
+import { PostsService } from './posts.service';
 
 @ApiTags('evaluations')
-@Controller('evaluations')
-export class EvaluationPostsController {
+@Controller('evaluations/posts')
+export class PostsController {
   constructor(
-    private readonly postsService: EvaluationPostsService,
+    private readonly postsService: PostsService,
     private readonly authTokenService: AuthTokenService,
   ) {}
 
-  @Get()
-  @ApiOperation({ summary: '평가존 목록 조회' })
-  @ApiOkResponse({
-    description: '진행 중인 평가 게시글 목록',
-    schema: {
-      example: {
-        items: [
-          {
-            evaluationId: 1,
-            postId: 12,
-            thumbnailUrl: 'https://images.example.com/posts/open-post.jpg',
-            endsAt: '2026-03-26T12:00:00.000Z',
-            hasVoted: false,
-          },
-        ],
-        nextCursor: null,
-      },
-    },
-  })
-  async getEvaluations(
-    @Query() query: GetEvaluationsQueryDto,
-    @Headers('authorization') authorization?: string,
-  ): Promise<GetEvaluationsResponse> {
-    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(authorization);
 
-    return this.postsService.getEvaluations({
-      cursor: query.cursor !== undefined ? Number(query.cursor) : undefined,
-      limit: query.limit !== undefined ? Number(query.limit) : undefined,
-      userId,
-    });
-  }
-
-  @Get('posts/:postId')
+  @Get(':postId')
   @ApiOperation({ summary: '평가 게시글 상세 조회' })
   @ApiOkResponse({
     description: '평가 게시글 상세 정보',
