@@ -1,6 +1,5 @@
-/* src/pages/auth/auth.module.css */
+/* src/pages/auth/MemberGuest.module.css */
 
-/* 전체 컨테이너 (피그마 사이즈 완벽 고정) */
 .container {
   @apply w-[375px] h-[812px] relative bg-white overflow-hidden mx-auto shadow-2xl;
 }
@@ -10,26 +9,26 @@
   @apply w-full h-96 absolute left-0 top-0 bg-slate-50 flex items-center justify-center;
 }
 
-/* 하단 화이트 레이아웃 (둥근 모서리) */
+/* 하단 화이트 레이아웃 */
 .bottomSheet {
   @apply w-full h-96 absolute left-0 top-[372px] bg-white rounded-t-[32px];
   box-shadow: 0px -10px 20px 0px rgba(0, 0, 0, 0.06);
 }
 
-/* 환영 문구 영역 */
+/* 🔴 Login 페이지와 완벽 일치시킨 환영 문구 영역 */
 .welcomeSection {
-  @apply w-80 absolute left-4 top-[103px] flex flex-col gap-[5px];
+  @apply w-[343px] p-2.5 absolute left-4 top-[93px] flex flex-col justify-center items-start gap-[5px];
 }
 
 .mainTitle {
-  @apply text-neutral-900 text-4xl font-medium font-sans leading-10;
+  @apply self-stretch text-neutral-900 text-4xl font-bold font-sans leading-10;
 }
 
 .subTitle {
-  @apply text-neutral-900 text-xl font-medium font-sans leading-7;
+  @apply self-stretch text-neutral-900 text-xl font-medium font-sans leading-7;
 }
 
-/* 로그인 타이틀 (MemberGuest 전용) */
+/* 로그인 타이틀 */
 .loginTitle {
   @apply w-32 absolute left-[121px] top-[441px] text-center text-neutral-900 text-3xl font-semibold font-sans leading-9;
 }
@@ -49,9 +48,9 @@
   @apply text-neutral-900 text-base font-normal font-sans;
 }
 
-/* 회원가입 유도 영역 */
+/* 최하단 회원가입 유도 영역 (중앙 정렬) */
 .signupPrompt {
-  @apply absolute left-[104px] top-[735px] inline-flex items-center gap-[5px];
+  @apply absolute left-0 w-full top-[735px] flex justify-center items-center gap-[5px];
 }
 
 .noAccountText {
@@ -60,35 +59,4 @@
 
 .signupLink {
   @apply text-neutral-900 text-sm font-medium font-sans cursor-pointer hover:underline;
-}
-
-/* =========================================
-   여기서부터는 진짜 Login 페이지(이메일 입력란)를 
-   위한 공통 스타일입니다. (필요 시 함께 사용)
-   ========================================= */
-
-/* 이메일/비밀번호 입력 섹션 */
-.inputSection {
-  @apply w-80 absolute left-4 top-[277px] flex flex-col gap-[19px];
-}
-
-.inputWrapper {
-  @apply w-80 h-12 bg-slate-50 rounded-[20px] flex items-center px-4 relative;
-}
-
-.inputField {
-  @apply w-full bg-transparent border-none outline-none text-neutral-900 text-xl font-normal leading-6 placeholder:text-neutral-400;
-}
-
-/* 체크박스 및 비밀번호 찾기 */
-.optionSection {
-  @apply w-80 absolute left-4 top-[452px] flex justify-between items-center;
-}
-
-.checkboxWrapper {
-  @apply flex justify-start items-center gap-2.5 cursor-pointer;
-}
-
-.optionText {
-  @apply text-center text-neutral-900 text-sm font-medium font-sans leading-5;
 }
