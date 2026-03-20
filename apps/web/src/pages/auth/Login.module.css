@@ -4,7 +4,7 @@
   @apply w-[375px] h-[812px] relative bg-white overflow-hidden mx-auto shadow-2xl;
 }
 
-/* 🔴 MemberGuest와 구조를 맞춘 상단 환영 문구 섹션 */
+/* 상단 환영 문구 섹션 (MemberGuest와 통일) */
 .headerSection {
   @apply w-[343px] p-2.5 absolute left-4 top-[93px] flex flex-col justify-center items-start gap-[5px];
 }
@@ -20,6 +20,10 @@
 /* 이메일/비밀번호 입력 섹션 */
 .inputSection {
   @apply w-[343px] absolute left-4 top-[277px];
+}
+
+.inputGroup {
+  @apply relative h-12;
 }
 
 .inputBg {
@@ -43,7 +47,7 @@
   @apply text-neutral-900 text-sm font-medium font-sans leading-5;
 }
 
-/* 버튼 그룹 (MemberGuest와 위치/크기 동일화) */
+/* 버튼 그룹 */
 .buttonGroup {
   @apply w-72 h-32 absolute left-10 top-[527px] flex flex-col justify-between items-center;
 }
@@ -56,7 +60,7 @@
   @apply w-full h-14 bg-white rounded-[100px] border border-zinc-300 flex justify-center items-center text-neutral-900 text-base font-normal transition-transform active:scale-95;
 }
 
-/* 최하단 회원가입 유도 (가운데 정렬) */
+/* 최하단 안내 섹션 */
 .footerSection {
   @apply absolute left-0 w-full top-[735px] flex justify-center items-center gap-[5px];
 }

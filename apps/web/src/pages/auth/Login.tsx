@@ -7,6 +7,8 @@ import type { LoginResponse } from '@codinator/contracts';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  
+  // 상태 관리
   const [email, setEmail] = useState('alice@codinator.com');
   const [password, setPassword] = useState('1234');
   const [isKeepLoggedIn, setIsKeepLoggedIn] = useState(false);
@@ -14,23 +16,29 @@ const Login: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
 
+  // 로그인 처리 함수
   const handleLogin = async () => {
     if (!email || !password) {
       setModalMessage('이메일과 비밀번호를 모두 입력해주세요.');
       setShowModal(true);
       return;
     }
+
     setLoading(true);
+
     try {
       const data = await fetcher<LoginResponse>('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
+
       localStorage.setItem('token', data.accessToken);
       navigate('/rankingList'); 
-    } catch (err) {
-      console.error("로그인 에러 상세 내용", err)
+
+    } catch (err: unknown) {
+      // 🔴 TypeScript 에러 처리 (any 대신 unknown 사용)
+      console.error("로그인 에러 상세 내용:", err);
       setModalMessage('이메일 또는 비밀번호가 일치하지 않습니다.');
       setShowModal(true);
     } finally {
@@ -42,14 +50,15 @@ const Login: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      {/* 🔴 welcomeTextWrapper를 제거하고 MemberGuest와 구조를 맞춤 */}
+      {/* 상단 헤더 영역 */}
       <div className={styles.headerSection}>
         <h1 className={styles.mainTitle}>메인<br />환영글!</h1>
         <p className={styles.subTitle}>부가적인 설명 글</p>
       </div>
 
+      {/* 입력 영역 */}
       <div className={styles.inputSection}>
-        <div className="relative h-12 mb-[19px]">
+        <div className={`${styles.inputGroup} mb-[19px]`}>
           <div className={styles.inputBg} />
           <input 
             type="email" 
@@ -59,7 +68,7 @@ const Login: React.FC = () => {
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
-        <div className="relative h-12">
+        <div className={styles.inputGroup}>
           <div className={styles.inputBg} />
           <input 
             type="password" 
@@ -74,6 +83,7 @@ const Login: React.FC = () => {
         </div>
       </div>
 
+      {/* 옵션 영역 (상태 유지 및 비번 찾기) */}
       <div className={styles.optionSection}>
         <div className={styles.checkboxWrapper} onClick={() => setIsKeepLoggedIn(!isKeepLoggedIn)}>
           <svg width="25" height="25" viewBox="0 0 25 25" fill="none">
@@ -87,9 +97,10 @@ const Login: React.FC = () => {
           </svg>
           <span className={styles.optionText}>로그인 상태 유지</span>
         </div>
-        <div className={styles.optionText + " cursor-pointer"}>비밀번호를 잊으셨나요?</div>
+        <div className={`${styles.optionText} cursor-pointer`}>비밀번호를 잊으셨나요?</div>
       </div>
 
+      {/* 버튼 그룹 */}
       <div className={styles.buttonGroup}>
         <button 
           className={`${styles.primaryButton} ${loading ? 'opacity-70' : ''}`} 
@@ -101,11 +112,13 @@ const Login: React.FC = () => {
         <button className={styles.secondaryButton} onClick={() => navigate('/signup')}>회원가입</button>
       </div>
 
+      {/* 하단 푸터 안내 */}
       <div className={styles.footerSection}>
         <span className={styles.footerTextGray}>계정이 없으신가요?</span>
         <span className={styles.footerTextBlack} onClick={() => navigate('/signup')}>회원가입</span>
       </div>
 
+      {/* 로그인 실패 모달 */}
       {showModal && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-[340px] rounded-2xl bg-white p-6 shadow-xl flex flex-col items-center">
