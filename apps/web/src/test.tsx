@@ -3,14 +3,21 @@ import type {
   HealthCheckResponse,
   SeedCheckRequest,
   SeedCheckResponse,
+  SignupResponse,
+  LoginResponse,
+  LogoutResponse
 } from '@codinator/contracts';
 import { fetcher } from './lib/api';
+
 
 function App() {
   const [health, setHealth] = useState<HealthCheckResponse | null>(null);
   const [healthError, setHealthError] = useState('');
   const [email, setEmail] = useState('alice@codinator.com');
+  const [password, setPassword] = useState('1234'); // Auth용 비밀번호 상태 추가
+  
   const [result, setResult] = useState<SeedCheckResponse | null>(null);
+  const [authResult, setAuthResult] = useState<SignupResponse | LoginResponse | LogoutResponse | null>(null); // Auth 결과 상태 추가
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -47,6 +54,41 @@ function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // 회원가입
+  const handleSignup = async () => {
+    try {
+      const data = await fetcher<SignupResponse>('/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      setAuthResult(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '회원가입 실패');
+    }
+  };
+
+  // 로그인
+  const handleLogin = async () => {
+    try {
+      const data = await fetcher<LoginResponse>('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      setAuthResult(data);
+      localStorage.setItem('token', data.accessToken);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '로그인 실패');
+    }
+  };
+
+  // 로그아웃 (프론트에서 토큰 삭제)
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setAuthResult({ message: '로그아웃 완료 (토큰 삭제)' });
   };
 
   return (
@@ -125,6 +167,38 @@ function App() {
             </div>
           )}
         </section>
+
+        {/* Auth 테스트 섹션 추가 */}
+        <section className="rounded-xl border bg-white p-5 shadow-sm">
+          <h2 className="mb-3 text-lg font-semibold">3. Auth 테스트 (회원가입/로그인/로그아웃)</h2>
+          <div className="space-y-3">
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+              placeholder="비밀번호 입력"
+            />
+            <div className="flex space-x-2">
+              <button onClick={handleSignup} className="rounded bg-green-600 px-4 py-2 text-white">
+                회원가입
+              </button>
+              <button onClick={handleLogin} className="rounded bg-blue-600 px-4 py-2 text-white">
+                로그인
+              </button>
+              <button onClick={handleLogout} className="rounded bg-red-600 px-4 py-2 text-white">
+                로그아웃
+              </button>
+            </div>
+            
+            {authResult && (
+              <div className="mt-4 rounded border bg-slate-50 p-4 text-sm overflow-auto">
+                <pre>{JSON.stringify(authResult, null, 2)}</pre>
+              </div>
+            )}
+          </div>
+        </section>
+
       </div>
     </div>
   );
