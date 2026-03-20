@@ -15,14 +15,17 @@
 
 작업을 진행할 때는 fetch -> pull 진행먼저 합니다.
 git 명령어를 실행하기 전에 꼭! 자신의 작업 위치를 확인합니다.
+
 ```bash
 
 #작업 위치 확인
 git branch -v
 
 ```
+
 branch에서 작업중 develop이 변경되었을 경우
 작업중인 내용을 저장(commit -> push) 이후 develop 폴더에서 pull하면 됩니다.
+
 ```bash
 
 #파일 최신화
@@ -48,7 +51,6 @@ pnpm --filter @codinator/contracts run build
 # AI 서버(FastAPI) 별도 실행 방법
 cd apps/ai
 python -m venv .venv
-
 # 가상환경 활성화 [경로 중요! (.venv) cd/apps/ai]
 source .venv/Scripts/activate  # (cmd 사용).venv\Scripts\activate.bat
 pip install -r requirements.txt
