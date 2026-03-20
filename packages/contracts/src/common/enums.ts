@@ -1,25 +1,53 @@
-export type PostStatus = 'ACTIVE' | 'DELETED';
+// 게시글 상태
+export enum PostStatus {
+  ACTIVE = 'ACTIVE',
+  DELETED = 'DELETED',
+}
 
-export type EvaluationStatus = 'OPEN' | 'CLOSED' | 'ENDED';
+// 평가 상태
+export enum EvaluationStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  COMPLETED = 'COMPLETED',
+  OPEN = 'OPEN',
+  CLOSED = 'CLOSED',
+  ENDED = 'ENDED',
+}
 
-export type VoteChoice = 'LIKE' | 'DISLIKE';
+// 투표 선택
+export enum VoteChoice {
+  LIKE = 'LIKE',
+  DISLIKE = 'DISLIKE',
+}
 
-export type RankingPeriod = 'WEEKLY' | 'MONTHLY';
+// 랭킹 기간
+export enum RankingPeriod {
+  WEEKLY = 'WEEKLY',
+  MONTHLY = 'MONTHLY',
+}
 
-export type FeedbackTagPolarity = 'POSITIVE' | 'NEGATIVE';
+// 피드백 태그 극성
+export enum FeedbackTagPolarity {
+  POSITIVE = 'POSITIVE',
+  NEGATIVE = 'NEGATIVE',
+}
 
-export type GarmentCategory =
-  | 'TOP'
-  | 'BOTTOM'
-  | 'OUTER'
-  | 'SHOES'
-  | 'BAG'
-  | 'ACCESSORY'
-  | 'ETC';
+// 의류 카테고리
+export enum GarmentCategory {
+  TOP = 'TOP',
+  BOTTOM = 'BOTTOM',
+  OUTER = 'OUTER',
+  SHOES = 'SHOES',
+  BAG = 'BAG',
+  ACCESSORY = 'ACCESSORY',
+  ETC = 'ETC',
+}
 
-export type FeedbackTagCode =
-  | 'POS_FIT_GOOD'
-  | 'POS_POINT_GOOD'
-  | 'NEG_SIZE_BAD'
-  | 'NEG_COLOR_BAD'
-  | 'NEG_MATCHING_BAD';
+// 피드백 태그 코드
+export enum FeedbackTagCode {
+  POS_FIT_GOOD = 'POS_FIT_GOOD',
+  POS_POINT_GOOD = 'POS_POINT_GOOD',
+  NEG_SIZE_BAD = 'NEG_SIZE_BAD',
+  NEG_COLOR_BAD = 'NEG_COLOR_BAD',
+  NEG_MATCHING_BAD = 'NEG_MATCHING_BAD',
+}
