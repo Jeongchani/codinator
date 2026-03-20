@@ -1,12 +1,8 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module';
-import { PrismaModule } from '../../prisma/prisma.module';
-import { EvaluationsController } from './evaluations.controller';
-import { EvaluationsService } from './evaluations.service';
+import { EvaluationPostsModule } from './posts/posts.module';
+import { EvaluationVotesModule } from './votes/votes.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule],
-  controllers: [EvaluationsController],
-  providers: [EvaluationsService],
+  imports: [EvaluationPostsModule, EvaluationVotesModule],
 })
 export class EvaluationsModule {}

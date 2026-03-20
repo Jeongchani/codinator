@@ -33,3 +33,6 @@ export class AuthController {
     return { message: '로그아웃 성공 (프론트에서 토큰 삭제)' };
   }
 }
+
+
+"C:\Users\idgac\Downloads"
