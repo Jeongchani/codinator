@@ -10,7 +10,7 @@ import type {
 import { fetcher } from './lib/api';
 
 
-function App() {
+function Test() {
   const [health, setHealth] = useState<HealthCheckResponse | null>(null);
   const [healthError, setHealthError] = useState('');
   const [email, setEmail] = useState('alice@codinator.com');
@@ -204,4 +204,4 @@ function App() {
   );
 }
 
-export default App;
+export default Test;

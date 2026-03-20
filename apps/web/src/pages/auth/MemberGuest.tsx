@@ -16,8 +16,21 @@ const MemberGuest: React.FC = () => {
     navigate('/rankingList');
   };
 
+  const handleTestClick = () => {
+    // 비회원 메인(RankingList)으로 이동
+    navigate('/Test');
+  };
+
   return (
     <div className={styles.container}>
+      <button 
+      onClick={handleTestClick}
+      className="absolute top-3 left-3 z-50
+     bg-neutral-900 text-white text-xs 
+      px-3 py-1.5 rounded-full transition-all active:scale-95" 
+      >
+        TestPage
+      </button>
       {/* 상단 배경 영역 */}
       <div className={styles.topBackground}>
         {/* 여기에 로고나 이미지를 추가할 수 있습니다 */}

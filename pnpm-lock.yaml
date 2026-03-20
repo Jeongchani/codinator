@@ -68,6 +68,9 @@ importers:
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
+      jsonwebtoken:
+        specifier: ^9.0.3
+        version: 9.0.3
       reflect-metadata:
         specifier: ^0.2.0
         version: 0.2.2
@@ -87,6 +90,9 @@ importers:
       '@types/express':
         specifier: ^4.17.17
         version: 4.17.25
+      '@types/jsonwebtoken':
+        specifier: ^9.0.10
+        version: 9.0.10
       '@types/node':
         specifier: ^20.3.1
         version: 20.19.37
