@@ -1,0 +1,37 @@
+.footer {
+  position: sticky; /* ⭐️ 스크롤을 내려도 화면 하단에 고정 */
+  bottom: 0; /* ⭐️ 바닥 0 지점에 자석처럼 붙음 */
+  left: 0;
+  width: 100%;
+  height: 80px;
+  background-color: #e0e0e0;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  border-top-left-radius: 25px;
+  border-top-right-radius: 25px;
+  z-index: 1000; /* 콘텐츠보다 항상 위에 보이게 */
+  flex-shrink: 0; /* 찌그러짐 방지 */
+}
+
+.iconBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #374957;
+  display: flex;
+  align-items: center;
+}
+
+.homeBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.homeSquare {
+  width: 45px;
+  height: 45px;
+  background-color: #374957;
+  border-radius: 8px;
+}

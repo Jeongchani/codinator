@@ -2,13 +2,13 @@ import { Module } from '@nestjs/common';
 import { HealthModule } from './modules/health/health.module';
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './modules/auth/auth.module'; //- AuthModule을 AppModule에 등록 안 함 -> 그럼 Nestjs가 /auth/login 라우트를 모름
 
-// NestJS의 모듈 시스템을 사용하여 애플리케이션의 루트 모듈 정의
-
-@Module({ // 모듈 역할 적기
-  imports: [PrismaModule,  // DB연결 도구
-            HealthModule,  // 헬스체크 API
-            UsersModule    // 사용자 관련 API
-          ], 
+@Module({
+  imports: [PrismaModule,
+           HealthModule,
+           UsersModule,
+           AuthModule
+  ],
 })
 export class AppModule {}
