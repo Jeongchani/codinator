@@ -7,6 +7,7 @@ import type {
 import { EvaluationStatus, PostStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { buildFeedbackSummary, buildVoteSummary } from '../evaluations/common/evaluation-summary.util';
+import { syncExpiredEvaluations } from '../evaluations/common/sync-expired-evaluations.util';
 
 @Injectable()
 export class PostsService {
@@ -56,6 +57,8 @@ export class PostsService {
   }
 
   async getMyPostDetail(postId: number, userId: number): Promise<GetPostDetailResponse> {
+    await syncExpiredEvaluations(this.prisma);
+
     const post = await this.prisma.post.findFirst({
       where: {
         id: postId,

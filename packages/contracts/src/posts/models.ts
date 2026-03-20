@@ -57,6 +57,7 @@ export interface MyPostDetail extends PostCoreDetail {
 export interface EvaluationPostDetail extends PostCoreDetail {
   evaluation: EvaluationInfo;
   hasVoted: boolean;
+  myVoteId: Id | null;
   canVote: boolean;
   voteSummary: VoteSummary;
   feedbackSummary: FeedbackTagSummary[];

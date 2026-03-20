@@ -1,8 +1,9 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import type { GetFeedPostDetailResponse, GetUserFeedResponse } from '@codinator/contracts';
-import { PostStatus } from '@prisma/client';
+import { EvaluationStatus, PostStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { buildFeedbackSummary, buildVoteSummary } from '../evaluations/common/evaluation-summary.util';
+import { syncExpiredEvaluations } from '../evaluations/common/sync-expired-evaluations.util';
 import { RankingsService } from '../rankings/rankings.service';
 
 @Injectable()
@@ -12,10 +13,8 @@ export class FeedsService {
     private readonly rankingsService: RankingsService,
   ) {}
 
-  async getUserFeed(targetUserId: number, viewerUserId: number): Promise<GetUserFeedResponse> {
-    if (targetUserId !== viewerUserId) {
-      await this.ensureUserFeedIsPublic(targetUserId);
-    }
+  async getUserFeed(targetUserId: number, _viewerUserId: number): Promise<GetUserFeedResponse> {
+    await syncExpiredEvaluations(this.prisma);
 
     const user = await this.prisma.user.findUnique({
       where: { id: targetUserId },
@@ -36,6 +35,7 @@ export class FeedsService {
         deletedAt: null,
         evaluation: {
           is: {
+            status: EvaluationStatus.ENDED,
             endsAt: { lte: new Date() },
           },
         },
@@ -70,11 +70,9 @@ export class FeedsService {
   async getFeedPostDetail(
     targetUserId: number,
     postId: number,
-    viewerUserId: number,
+    _viewerUserId: number,
   ): Promise<GetFeedPostDetailResponse> {
-    if (targetUserId !== viewerUserId) {
-      await this.ensureUserFeedIsPublic(targetUserId);
-    }
+    await syncExpiredEvaluations(this.prisma);
 
     const post = await this.prisma.post.findFirst({
       where: {
@@ -84,6 +82,7 @@ export class FeedsService {
         deletedAt: null,
         evaluation: {
           is: {
+            status: EvaluationStatus.ENDED,
             endsAt: { lte: new Date() },
           },
         },
@@ -149,25 +148,5 @@ export class FeedsService {
       feedbackSummary: buildFeedbackSummary(post.evaluation.votes),
       rankingPeriods: await this.rankingsService.getVisibleRankingPeriods(post.id),
     };
-  }
-
-  private async ensureUserFeedIsPublic(targetUserId: number): Promise<void> {
-    const hasRankedPost = await this.prisma.post.findFirst({
-      where: {
-        authorId: targetUserId,
-        status: PostStatus.ACTIVE,
-        deletedAt: null,
-        evaluation: {
-          is: {
-            endsAt: { lte: new Date() },
-          },
-        },
-      },
-      select: { id: true },
-    });
-
-    if (!hasRankedPost) {
-      throw new ForbiddenException('아직 공개 가능한 사용자 피드가 없습니다.');
-    }
   }
 }

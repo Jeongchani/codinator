@@ -13,6 +13,7 @@ import type {
 import { EvaluationStatus, PostStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { buildVoteSummary } from '../evaluations/common/evaluation-summary.util';
+import { syncExpiredEvaluations } from '../evaluations/common/sync-expired-evaluations.util';
 import { validateVoteChoice } from './common/vote-choice.util';
 
 @Injectable()
@@ -47,6 +48,7 @@ export class VotesService {
     voterId: number,
     choice: VoteChoice,
   ): Promise<CreateVoteResponse> {
+    await syncExpiredEvaluations(this.prisma);
     validateVoteChoice(choice, 'choice');
 
     const evaluationPost = await this.prisma.post.findFirst({
@@ -84,7 +86,7 @@ export class VotesService {
       throw new BadRequestException('이미 투표한 게시글입니다.');
     }
 
-    await this.prisma.vote.create({
+    const createdVote = await this.prisma.vote.create({
       data: {
         evaluationId: evaluationPost.evaluation.id,
         voterId,
@@ -98,6 +100,7 @@ export class VotesService {
 
     return {
       postId: evaluationPost.id,
+      voteId: createdVote.id,
       myVote: choice,
       summary: buildVoteSummary(refreshedVotes),
     };
@@ -108,6 +111,8 @@ export class VotesService {
     voterId: number,
     tagId: number,
   ): Promise<CreateFeedbackResponse> {
+    await syncExpiredEvaluations(this.prisma);
+
     const vote = await this.prisma.vote.findUnique({
       where: { id: voteId },
       include: {

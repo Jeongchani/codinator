@@ -58,7 +58,7 @@ export class VotesController {
   @ApiOperation({ summary: '평가 게시글 투표' })
   @ApiBody({ type: CreateVoteBodyDto })
   @ApiOkResponse({
-    description: '투표 완료 후 현재 집계 반환',
+    description: '투표 완료 후 voteId와 현재 집계를 반환',
   })
   async createVote(
     @Param('postId', ParseIntPipe) postId: number,

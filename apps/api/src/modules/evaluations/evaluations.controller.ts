@@ -77,6 +77,7 @@ export class EvaluationsController {
           endsAt: '2026-03-26T12:00:00.000Z',
         },
         hasVoted: true,
+        myVoteId: 31,
         canVote: false,
         voteSummary: {
           likeCount: 3,

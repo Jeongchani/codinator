@@ -1,6 +1,6 @@
 export type PostStatus = 'ACTIVE' | 'DELETED';
 
-export type EvaluationStatus = 'OPEN' | 'CLOSED' | 'ENDED';
+export type EvaluationStatus = 'OPEN' | 'ENDED';
 
 export type VoteChoice = 'LIKE' | 'DISLIKE';
 

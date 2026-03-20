@@ -3,6 +3,7 @@ import type { GetEvaluationPostDetailResponse, GetEvaluationsResponse } from '@c
 import { EvaluationStatus, PostStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { buildFeedbackSummary, buildVoteSummary } from './common/evaluation-summary.util';
+import { syncExpiredEvaluations } from './common/sync-expired-evaluations.util';
 
 @Injectable()
 export class EvaluationsService {
@@ -13,6 +14,8 @@ export class EvaluationsService {
     limit?: number;
     userId: number;
   }): Promise<GetEvaluationsResponse> {
+    await syncExpiredEvaluations(this.prisma);
+
     const limit = this.normalizeLimit(params.limit);
     const cursor = params.cursor ?? 0;
 
@@ -64,11 +67,19 @@ export class EvaluationsService {
     postId: number,
     userId: number,
   ): Promise<GetEvaluationPostDetailResponse> {
+    await syncExpiredEvaluations(this.prisma);
+
     const post = await this.prisma.post.findFirst({
       where: {
         id: postId,
         status: PostStatus.ACTIVE,
         deletedAt: null,
+        evaluation: {
+          is: {
+            status: EvaluationStatus.OPEN,
+            endsAt: { gt: new Date() },
+          },
+        },
       },
       include: {
         images: {
@@ -94,7 +105,7 @@ export class EvaluationsService {
     });
 
     if (!post || !post.evaluation) {
-      throw new NotFoundException('평가 게시글을 찾을 수 없습니다.');
+      throw new NotFoundException('진행 중인 평가 게시글을 찾을 수 없습니다.');
     }
 
     const myVote = post.evaluation.votes.find((vote) => vote.voterId === userId) ?? null;
@@ -103,9 +114,6 @@ export class EvaluationsService {
     if (!isOwner && !myVote) {
       throw new ForbiddenException('투표 후에만 평가 상세를 볼 수 있습니다.');
     }
-
-    const isEvaluationOpen =
-      post.evaluation.status === EvaluationStatus.OPEN && post.evaluation.endsAt > new Date();
 
     return {
       postId: post.id,
@@ -128,7 +136,8 @@ export class EvaluationsService {
         endsAt: post.evaluation.endsAt.toISOString(),
       },
       hasVoted: !!myVote,
-      canVote: isEvaluationOpen && !myVote && !isOwner,
+      myVoteId: myVote?.id ?? null,
+      canVote: !myVote && !isOwner,
       voteSummary: buildVoteSummary(post.evaluation.votes),
       feedbackSummary: buildFeedbackSummary(post.evaluation.votes),
     };

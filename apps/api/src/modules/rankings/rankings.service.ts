@@ -4,9 +4,10 @@ import type {
   GetRankingsResponse,
   RankingPeriod,
 } from '@codinator/contracts';
-import { PostStatus } from '@prisma/client';
+import { EvaluationStatus, PostStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { buildFeedbackSummary, buildVoteSummary } from '../evaluations/common/evaluation-summary.util';
+import { syncExpiredEvaluations } from '../evaluations/common/sync-expired-evaluations.util';
 import { validateRankingPeriod } from './common/ranking-period.util';
 
 type RankedPostRecord = Awaited<ReturnType<RankingsService['fetchRankingCandidates']>>[number];
@@ -16,6 +17,7 @@ export class RankingsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getRankings(period: RankingPeriod): Promise<GetRankingsResponse> {
+    await syncExpiredEvaluations(this.prisma);
     validateRankingPeriod(period);
 
     const rankedPosts = await this.getRankedPosts(period);
@@ -39,6 +41,7 @@ export class RankingsService {
     period: RankingPeriod,
     userId: number,
   ): Promise<GetRankingPostDetailResponse> {
+    await syncExpiredEvaluations(this.prisma);
     validateRankingPeriod(period);
 
     const rankedPosts = await this.getRankedPosts(period);
@@ -89,6 +92,8 @@ export class RankingsService {
   }
 
   async getVisibleRankingPeriods(postId: number): Promise<RankingPeriod[]> {
+    await syncExpiredEvaluations(this.prisma);
+
     const candidates = await this.fetchRankingCandidates();
     const periods: RankingPeriod[] = [];
 
@@ -152,6 +157,7 @@ export class RankingsService {
         deletedAt: null,
         evaluation: {
           is: {
+            status: EvaluationStatus.ENDED,
             endsAt: { lte: new Date() },
           },
         },
