@@ -6,64 +6,37 @@ import styles from './MemberGuest.module.css';
 const MemberGuest: React.FC = () => {
   const navigate = useNavigate();
 
-  const handleLoginClick = () => {
-    //로그인 페이지(Login)로 이동
-    navigate('/login');
-  };
-
-  const handleGuestClick = () => {
-    // 비회원 메인(RankingList)으로 이동
-    navigate('/rankingList');
-  };
-
-  const handleTestClick = () => {
-    // 비회원 메인(RankingList)으로 이동
-    navigate('/Test');
-  };
+  const handleLoginClick = () => navigate('/login');
+  const handleGuestClick = () => navigate('/rankingList');
+  const handleTestClick = () => navigate('/Test');
 
   return (
     <div className={styles.container}>
       <button 
-      onClick={handleTestClick}
-      className="absolute top-3 left-3 z-50
-     bg-neutral-900 text-white text-xs 
-      px-3 py-1.5 rounded-full transition-all active:scale-95" 
+        onClick={handleTestClick}
+        className="absolute top-3 left-3 z-50 bg-neutral-900 text-white text-xs px-3 py-1.5 rounded-full transition-all active:scale-95" 
       >
         TestPage
       </button>
-      {/* 상단 배경 영역 */}
-      <div className={styles.topBackground}>
-        {/* 여기에 로고나 이미지를 추가할 수 있습니다 */}
-      </div>
-
-      {/* 하단 화이트 시트 레이아웃 */}
+      <div className={styles.topBackground} />
       <div className={styles.bottomSheet} />
 
-      {/* 환영 문구 */}
       <div className={styles.welcomeSection}>
+        {/* 🔴 Login 페이지와 텍스트 일치화 */}
         <h1 className={styles.mainTitle}>메인<br/>환영글!</h1>
         <p className={styles.subTitle}>부가적인 설명 글</p>
       </div>
 
-      {/* 로그인 타이틀 */}
       <h2 className={styles.loginTitle}>로그인</h2>
 
-      {/* 버튼 섹션 */}
       <div className={styles.buttonGroup}>
-        <button className={styles.loginButton} onClick={handleLoginClick}>
-          로그인
-        </button>
-        <button className={styles.guestButton} onClick={handleGuestClick}>
-          비회원
-        </button>
+        <button className={styles.loginButton} onClick={handleLoginClick}>로그인</button>
+        <button className={styles.guestButton} onClick={handleGuestClick}>비회원</button>
       </div>
 
-      {/* 회원가입 유도 */}
       <div className={styles.signupPrompt}>
         <span className={styles.noAccountText}>계정이 없으신가요?</span>
-        <span className={styles.signupLink} onClick={() => navigate('/signup')}>
-          회원가입
-        </span>
+        <span className={styles.signupLink} onClick={() => navigate('/signup')}>회원가입</span>
       </div>
     </div>
   );
