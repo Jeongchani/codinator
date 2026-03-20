@@ -1,3 +1,3 @@
-export * from './api-error';
-export * from './id';
-export * from './enums';
+export * from './api-error.js';
+export * from './id.js';
+export * from './enums.js';

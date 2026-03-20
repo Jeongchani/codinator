@@ -7,7 +7,8 @@ import { UsersModule } from './modules/users/users.module';
 import { VotesModule } from './modules/votes/votes.module';
 import { RankingsModule } from './modules/rankings/rankings.module';
 import { PrismaModule } from './prisma/prisma.module';
-
+import { FeedModule} from './modules/feeds/feeds.module';  
+import { FeedbackModule } from './modules/feedback/feedback.module';  
 @Module({
   imports: [
     PrismaModule,
@@ -18,6 +19,8 @@ import { PrismaModule } from './prisma/prisma.module';
     PostsModule,
     VotesModule,
     RankingsModule,
+    FeedModule,
+    FeedbackModule
   ],
 })
 export class AppModule {}

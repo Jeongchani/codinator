@@ -1,1 +1,1 @@
-export * from './seed-check';
+export * from './seed-check.js';

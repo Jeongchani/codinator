@@ -1,2 +1,2 @@
-export * from './get-rankings';
-export * from './get-ranking-post-detail';
+export * from './get-rankings.js';
+export * from './get-ranking-post-detail.js';

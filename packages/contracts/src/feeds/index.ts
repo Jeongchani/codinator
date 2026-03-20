@@ -1,1 +1,1 @@
-export * from './get-user-feed';
+export * from './get-user-feed.js';

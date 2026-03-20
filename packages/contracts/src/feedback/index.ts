@@ -1,2 +1,2 @@
-export * from './create-feedback';
+export * from './create-feedback.js';
 //export * from './get-tags';
