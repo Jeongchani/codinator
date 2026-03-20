@@ -16,6 +16,8 @@
     "db:up": "docker compose -f infra/docker/compose.yaml -f infra/docker/compose.dev.yaml up -d",
     "db:down": "docker compose -f infra/docker/compose.yaml -f infra/docker/compose.dev.yaml down",
 
+    "build:contracts": "pnpm --filter @codinator/contracts run build",
+    
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     
