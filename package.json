@@ -37,6 +37,6 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "jsonwebtoken": "^9.0.3"
+    
   }
 }
