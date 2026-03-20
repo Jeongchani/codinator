@@ -1,0 +1,30 @@
+/* splash.module.css */
+
+.container {
+  @apply w-96 h-[812px] relative bg-neutral-900 overflow-hidden mx-auto flex flex-col items-center justify-center;
+}
+
+.circleBg {
+  @apply w-40 h-40 bg-white rounded-full flex items-center justify-center mb-6;
+}
+
+.userIconWrapper {
+  @apply w-28 h-28 relative overflow-hidden flex flex-col items-center justify-end;
+}
+
+/* SVG 내부 색상이나 세밀한 조정이 필요할 때 사용 */
+.userHead {
+  @apply w-10 h-10 bg-neutral-900 rounded-full mb-1;
+}
+
+.userBody {
+  @apply w-20 h-11 bg-neutral-900 rounded-t-full;
+}
+
+.logoText {
+  @apply text-white text-3xl font-semibold font-sans capitalize tracking-wider text-center;
+}
+
+.fadeAnimation {
+  @apply animate-pulse;
+}
