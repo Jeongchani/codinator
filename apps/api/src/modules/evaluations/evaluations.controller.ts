@@ -1,5 +1,10 @@
 import { Controller, Get, Headers, Query } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { GetEvaluationsResponse } from '@codinator/contracts';
 import { AuthTokenService } from '../auth/auth-token.service';
 import { GetEvaluationsQueryDto } from './dto/get-evaluations-query.dto';
@@ -14,6 +19,7 @@ export class EvaluationsController {
   ) {}
 
   @Get()
+  @ApiBearerAuth()
   @ApiOperation({ summary: '평가존 목록 조회' })
   @ApiOkResponse({
     description: '진행 중인 평가 게시글 목록',
@@ -36,12 +42,14 @@ export class EvaluationsController {
     @Query() query: GetEvaluationsQueryDto,
     @Headers('authorization') authorization?: string,
   ): Promise<GetEvaluationsResponse> {
-    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(authorization);
+    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(authorization, {
+      required: true,
+    });
 
     return this.evaluationsService.getEvaluations({
       cursor: query.cursor !== undefined ? Number(query.cursor) : undefined,
       limit: query.limit !== undefined ? Number(query.limit) : undefined,
-      userId,
+      userId: userId!,
     });
   }
 }

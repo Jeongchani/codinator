@@ -126,6 +126,7 @@ export class RankingsService {
       postId: rankingEntry.post.id,
       authorId: rankingEntry.post.authorId,
       content: rankingEntry.post.content,
+      status: rankingEntry.post.status,
       createdAt: rankingEntry.post.createdAt.toISOString(),
       image: {
         id: rankingEntry.post.images[0]?.id ?? 0,

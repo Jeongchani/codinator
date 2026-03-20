@@ -27,15 +27,16 @@ import { CreateVoteBodyDto } from './dto/create-vote-body.dto';
 import { GetTagsQueryDto } from './dto/get-tags-query.dto';
 import { VotesService } from './votes.service';
 
-@ApiTags('evaluations')
-@Controller('evaluations')
+@ApiTags('votes')
+@Controller()
 export class VotesController {
   constructor(
     private readonly votesService: VotesService,
     private readonly authTokenService: AuthTokenService,
   ) {}
 
-  @Get('tags')
+  @Get('votes/tags')
+  @ApiBearerAuth()
   @ApiOperation({ summary: '투표 타입별 피드백 태그 조회' })
   @ApiQuery({ name: 'voteChoice', required: true, enum: ['LIKE', 'DISLIKE'] })
   @ApiOkResponse({
@@ -55,7 +56,14 @@ export class VotesController {
       },
     },
   })
-  async getTags(@Query() query: GetTagsQueryDto): Promise<GetTagsResponse> {
+  async getTags(
+    @Query() query: GetTagsQueryDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<GetTagsResponse> {
+    this.authTokenService.extractUserIdFromAuthorizationHeader(authorization, {
+      required: true,
+    });
+
     return this.votesService.getTags(query.voteChoice);
   }
 

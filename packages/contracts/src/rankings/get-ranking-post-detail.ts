@@ -1,6 +1,6 @@
 import type { Id } from '../common/id';
 import type { RankingPeriod } from '../common/enums';
-import type { PostDetail } from '../posts/models';
+import type { EvaluationPostDetail } from '../posts/models';
 
 export interface RankingInfo {
   snapshotId: Id;
@@ -10,7 +10,7 @@ export interface RankingInfo {
   endDate: string;
 }
 
-export interface RankingPostDetail extends PostDetail {
+export interface RankingPostDetail extends EvaluationPostDetail {
   ranking: RankingInfo;
 }
 
