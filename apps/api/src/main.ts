@@ -13,6 +13,7 @@ async function bootstrap() {
     .setTitle('Codinator API')
     .setDescription('Codinator 백엔드 API 문서')
     .setVersion('1.0')
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

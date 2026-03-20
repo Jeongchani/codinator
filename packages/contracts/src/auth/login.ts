@@ -5,7 +5,10 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  userId: number;
-  email: string;
   accessToken: string;
+  refreshToken: string;
+  user: {
+    id: number;
+    email: string;
+  };
 }
