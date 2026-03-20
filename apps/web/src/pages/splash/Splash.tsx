@@ -9,7 +9,7 @@ const Splash: React.FC<SplashProps> = ({ onFinish }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       onFinish(); // 1초 뒤 부모 컴포넌트에 알림
-    }, 1000);
+    }, 800);
     return () => clearTimeout(timer);
   }, [onFinish]);
 
