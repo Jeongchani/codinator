@@ -50,7 +50,7 @@ model User {
   createdAt    DateTime  @default(now()) @map("created_at")
   deletedAt    DateTime? @map("deleted_at")
 
-   refreshTokenHash  String?
+  refreshTokenHash  String?
    
   posts Post[]
   votes Vote[]
