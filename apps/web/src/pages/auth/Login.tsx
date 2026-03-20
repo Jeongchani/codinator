@@ -62,7 +62,7 @@ const Login: React.FC = () => {
       {/* 1. 환영 문구 */}
       <div className={styles.headerSection}>
         <div className={styles.welcomeTextWrapper}>
-          <h1 className={styles.mainTitle}>메인<br />환영글!</h1>
+          <h1 className={styles.mainTitle}>메인<br />환영글</h1>
           <p className={styles.subTitle}>부가적인 설명 글</p>
         </div>
       </div>
