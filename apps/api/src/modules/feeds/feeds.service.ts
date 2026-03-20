@@ -1,0 +1,51 @@
+import { Injectable } from '@nestjs/common';
+import type {
+  GetMyFeedResponse,
+  EvaluationStatus,
+  RankingPeriod,
+} from '@codinator/contracts';
+import { PrismaService } from '../../prisma/prisma.service';
+
+import {
+  mapEvaluationStatus,
+  mapRankingPeriod,
+} from '../../common/mappers/enums.mapper';
+
+@Injectable()
+export class FeedService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getMyFeed(userId: number): Promise<GetMyFeedResponse> {
+    const posts = await this.prisma.post.findMany({
+      where: { authorId: userId, deletedAt: null },
+      include: {
+        images: { orderBy: { id: 'asc' }, take: 1 },
+        evaluation: true,
+        rankingEntries: {
+          include: { snapshot: true },
+          orderBy: { rank: 'asc' },
+          take: 1,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return {
+      userId,
+      items: posts.map((post) => ({
+        postId: post.id,
+        thumbnailUrl: post.images[0]?.imageUrl ?? '',
+        createdAt: post.createdAt.toISOString(),
+
+        // 🔥 Prisma enum → contracts enum 변환
+        evaluationStatus: post.evaluation
+          ? mapEvaluationStatus(post.evaluation.status)
+          : null,
+
+        rankingPeriod: post.rankingEntries[0]?.snapshot?.period
+          ? mapRankingPeriod(post.rankingEntries[0].snapshot.period)
+          : null,
+      })),
+    };
+  }
+}

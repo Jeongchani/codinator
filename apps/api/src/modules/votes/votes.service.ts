@@ -9,11 +9,14 @@ import type {
   CreateVoteResponse,
   GetTagsResponse,
   VoteChoice,
+  FeedbackTagPolarity,
+  FeedbackTagCode,
 } from '@codinator/contracts';
 import { EvaluationStatus, PostStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { buildVoteSummary } from '../evaluations/common/evaluation-summary.util';
 import { validateVoteChoice } from './common/vote-choice.util';
+import { mapVoteChoice, mapEvaluationStatus } from '../../common/mappers/enums.mapper';
 
 @Injectable()
 export class VotesService {
@@ -33,10 +36,10 @@ export class VotesService {
     return {
       items: tags.map((tag) => ({
         id: tag.id,
-        code: tag.code as GetTagsResponse['items'][number]['code'],
+        code: tag.code as FeedbackTagCode,
         label: tag.label,
-        polarity: tag.polarity,
-        voteChoice: tag.voteChoice,
+        polarity: tag.polarity as FeedbackTagPolarity,
+        voteChoice: mapVoteChoice(tag.voteChoice),
         isActive: tag.isActive,
       })),
     };
@@ -79,7 +82,9 @@ export class VotesService {
       throw new BadRequestException('이미 종료된 평가입니다.');
     }
 
-    const alreadyVoted = evaluationPost.evaluation.votes.some((vote) => vote.voterId === voterId);
+    const alreadyVoted = evaluationPost.evaluation.votes.some(
+      (vote) => vote.voterId === voterId,
+    );
     if (alreadyVoted) {
       throw new BadRequestException('이미 투표한 게시글입니다.');
     }
@@ -99,7 +104,12 @@ export class VotesService {
     return {
       postId: evaluationPost.id,
       myVote: choice,
-      summary: buildVoteSummary(refreshedVotes),
+      summary: buildVoteSummary(
+        refreshedVotes.map((v) => ({
+          ...v,
+          choice: mapVoteChoice(v.choice),
+        })),
+      ),
     };
   }
 
@@ -112,9 +122,7 @@ export class VotesService {
       where: { id: voteId },
       include: {
         evaluation: {
-          include: {
-            post: true,
-          },
+          include: { post: true },
         },
       },
     });
@@ -128,7 +136,7 @@ export class VotesService {
     }
 
     if (
-      vote.evaluation.status !== EvaluationStatus.OPEN ||
+      mapEvaluationStatus(vote.evaluation.status) !== EvaluationStatus.OPEN ||
       vote.evaluation.endsAt <= new Date()
     ) {
       throw new BadRequestException('이미 종료된 평가에는 피드백을 남길 수 없습니다.');
@@ -150,21 +158,13 @@ export class VotesService {
     }
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.voteFeedbackTag.deleteMany({
-        where: { voteId },
-      });
-
-      await tx.voteFeedbackTag.create({
-        data: {
-          voteId,
-          tagId,
-        },
-      });
+      await tx.voteFeedbackTag.deleteMany({ where: { voteId } });
+      await tx.voteFeedbackTag.create({ data: { voteId, tagId } });
     });
 
     return {
-      postId: vote.evaluation.post.id,
-      selectedTagId: tagId,
+      voteId,
+      selectedTagIds: [tagId],
     };
   }
 }

@@ -7,6 +7,13 @@ import { EvaluationStatus, PostStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { buildFeedbackSummary, buildVoteSummary } from './common/evaluation-summary.util';
 
+import {
+  mapPostStatus,
+  mapGarmentCategory,
+  mapEvaluationStatus,
+  mapVoteChoice,
+} from '../../common/mappers/enums.mapper';
+
 @Injectable()
 export class EvaluationsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -108,7 +115,7 @@ export class EvaluationsService {
       postId: post.id,
       authorId: post.authorId,
       content: post.content,
-      status: post.status,
+      status: mapPostStatus(post.status),
       createdAt: post.createdAt.toISOString(),
       image: {
         id: post.images[0]?.id ?? 0,
@@ -116,19 +123,33 @@ export class EvaluationsService {
       },
       outfitItems: post.outfitItems.map((item) => ({
         id: item.id,
-        category: item.category,
+        category: mapGarmentCategory(item.category),
         itemName: item.itemName,
         brand: item.brand,
       })),
       evaluation: {
         id: post.evaluation.id,
-        status: post.evaluation.status,
+        status: mapEvaluationStatus(post.evaluation.status),
         endsAt: post.evaluation.endsAt.toISOString(),
       },
       hasVoted: !!myVote,
       canVote: isEvaluationOpen && !myVote && post.authorId !== userId,
-      voteSummary: canRevealResult ? buildVoteSummary(post.evaluation.votes) : undefined,
-      feedbackSummary: canRevealResult ? buildFeedbackSummary(post.evaluation.votes) : undefined,
+      voteSummary: canRevealResult
+        ? buildVoteSummary(
+            post.evaluation.votes.map((v) => ({
+              ...v,
+              choice: mapVoteChoice(v.choice),
+            })),
+          )
+        : undefined,
+      feedbackSummary: canRevealResult
+        ? buildFeedbackSummary(
+            post.evaluation.votes.map((v) => ({
+              ...v,
+              choice: mapVoteChoice(v.choice),
+            })),
+          )
+        : undefined,
     };
   }
 

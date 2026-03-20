@@ -3,11 +3,21 @@ import type {
   GetRankingPostDetailResponse,
   GetRankingsResponse,
   RankingPeriod,
+  EvaluationStatus,
+  PostStatus as ContractPostStatus,
+  GarmentCategory,
 } from '@codinator/contracts';
 import { PostStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { buildFeedbackSummary } from '../evaluations/common/evaluation-summary.util';
 import { validateRankingPeriod } from './common/ranking-period.util';
+import {
+  mapPostStatus,
+  mapGarmentCategory,
+  mapEvaluationStatus,
+  mapRankingPeriod,
+  mapVoteChoice,
+} from '../../common/mappers/enums.mapper';
 
 @Injectable()
 export class RankingsService {
@@ -41,9 +51,13 @@ export class RankingsService {
     }
 
     return {
-      period,
+      period: mapRankingPeriod(snapshot.period),
       items: snapshot.entries
-        .filter((entry) => entry.post.status === PostStatus.ACTIVE && entry.post.deletedAt === null)
+        .filter(
+          (entry) =>
+            entry.post.status === PostStatus.ACTIVE &&
+            entry.post.deletedAt === null,
+        )
         .map((entry) => ({
           rank: entry.rank,
           postId: entry.postId,
@@ -119,14 +133,16 @@ export class RankingsService {
     }
 
     const myVote = userId
-      ? rankingEntry.post.evaluation.votes.find((vote) => vote.voterId === userId)
+      ? rankingEntry.post.evaluation.votes.find(
+          (vote) => vote.voterId === userId,
+        )
       : null;
 
     return {
       postId: rankingEntry.post.id,
       authorId: rankingEntry.post.authorId,
       content: rankingEntry.post.content,
-      status: rankingEntry.post.status,
+      status: mapPostStatus(rankingEntry.post.status),
       createdAt: rankingEntry.post.createdAt.toISOString(),
       image: {
         id: rankingEntry.post.images[0]?.id ?? 0,
@@ -134,13 +150,13 @@ export class RankingsService {
       },
       outfitItems: rankingEntry.post.outfitItems.map((item) => ({
         id: item.id,
-        category: item.category,
+        category: mapGarmentCategory(item.category),
         itemName: item.itemName,
         brand: item.brand,
       })),
       evaluation: {
         id: rankingEntry.post.evaluation.id,
-        status: rankingEntry.post.evaluation.status,
+        status: mapEvaluationStatus(rankingEntry.post.evaluation.status),
         endsAt: rankingEntry.post.evaluation.endsAt.toISOString(),
       },
       hasVoted: !!myVote,
@@ -151,10 +167,15 @@ export class RankingsService {
         totalCount: rankingEntry.totalCount,
         likeRate: Number(rankingEntry.likeRate),
       },
-      feedbackSummary: buildFeedbackSummary(rankingEntry.post.evaluation.votes),
+      feedbackSummary: buildFeedbackSummary(
+        rankingEntry.post.evaluation.votes.map((v) => ({
+          ...v,
+          choice: mapVoteChoice(v.choice),
+        })),
+      ),
       ranking: {
         snapshotId: snapshot.id,
-        period: snapshot.period,
+        period: mapRankingPeriod(snapshot.period),
         rank: rankingEntry.rank,
         startDate: snapshot.startDate.toISOString(),
         endDate: snapshot.endDate.toISOString(),

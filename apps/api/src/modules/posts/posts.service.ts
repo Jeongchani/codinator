@@ -7,6 +7,12 @@ import type {
 import { EvaluationStatus, PostStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
+import {
+  mapPostStatus,
+  mapGarmentCategory,
+  mapEvaluationStatus,
+} from '../../common/mappers/enums.mapper';
+
 @Injectable()
 export class PostsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -28,7 +34,7 @@ export class PostsService {
         outfitItems: body.outfitItems?.length
           ? {
               create: body.outfitItems.map((item) => ({
-                category: item.category,
+                category: item.category, // Prisma는 string literal 허용
                 itemName: item.itemName ?? null,
                 brand: item.brand ?? null,
               })),
@@ -50,7 +56,7 @@ export class PostsService {
     return {
       postId: post.id,
       evaluationId: post.evaluation!.id,
-      status: post.status,
+      status: mapPostStatus(post.status),
     };
   }
 
@@ -79,7 +85,7 @@ export class PostsService {
       postId: post.id,
       authorId: post.authorId,
       content: post.content,
-      status: post.status,
+      status: mapPostStatus(post.status),
       createdAt: post.createdAt.toISOString(),
       image: {
         id: post.images[0]?.id ?? 0,
@@ -87,7 +93,7 @@ export class PostsService {
       },
       outfitItems: post.outfitItems.map((item) => ({
         id: item.id,
-        category: item.category,
+        category: mapGarmentCategory(item.category),
         itemName: item.itemName,
         brand: item.brand,
       })),
