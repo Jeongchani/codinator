@@ -1,8 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import type {
-  GetEvaluationPostDetailResponse,
-  GetEvaluationsResponse,
-} from '@codinator/contracts';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import type { GetEvaluationPostDetailResponse, GetEvaluationsResponse } from '@codinator/contracts';
 import { EvaluationStatus, PostStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { buildFeedbackSummary, buildVoteSummary } from './common/evaluation-summary.util';
@@ -25,6 +22,7 @@ export class EvaluationsService {
         status: EvaluationStatus.OPEN,
         endsAt: { gt: new Date() },
         post: {
+          authorId: { not: params.userId },
           status: PostStatus.ACTIVE,
           deletedAt: null,
         },
@@ -100,13 +98,17 @@ export class EvaluationsService {
     }
 
     const myVote = post.evaluation.votes.find((vote) => vote.voterId === userId) ?? null;
+    const isOwner = post.authorId === userId;
+
+    if (!isOwner && !myVote) {
+      throw new ForbiddenException('투표 후에만 평가 상세를 볼 수 있습니다.');
+    }
+
     const isEvaluationOpen =
       post.evaluation.status === EvaluationStatus.OPEN && post.evaluation.endsAt > new Date();
-    const canRevealResult = post.authorId === userId || !!myVote || !isEvaluationOpen;
 
     return {
       postId: post.id,
-      authorId: post.authorId,
       content: post.content,
       status: post.status,
       createdAt: post.createdAt.toISOString(),
@@ -126,9 +128,9 @@ export class EvaluationsService {
         endsAt: post.evaluation.endsAt.toISOString(),
       },
       hasVoted: !!myVote,
-      canVote: isEvaluationOpen && !myVote && post.authorId !== userId,
-      voteSummary: canRevealResult ? buildVoteSummary(post.evaluation.votes) : undefined,
-      feedbackSummary: canRevealResult ? buildFeedbackSummary(post.evaluation.votes) : undefined,
+      canVote: isEvaluationOpen && !myVote && !isOwner,
+      voteSummary: buildVoteSummary(post.evaluation.votes),
+      feedbackSummary: buildFeedbackSummary(post.evaluation.votes),
     };
   }
 

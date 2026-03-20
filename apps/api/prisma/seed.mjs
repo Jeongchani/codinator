@@ -12,10 +12,10 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 const userSeeds = [
-  { key: 'alice', email: 'alice@codinator.com', password: '1234' },
-  { key: 'bob', email: 'bob@codinator.com', password: '1234' },
-  { key: 'charlie', email: 'charlie@codinator.com', password: '1234' },
-  { key: 'diana', email: 'diana@codinator.com', password: '1234' },
+  { key: 'alice', email: 'alice@codinator.com', nickname: '앨리스', password: '1234' },
+  { key: 'bob', email: 'bob@codinator.com', nickname: '밥', password: '1234' },
+  { key: 'charlie', email: 'charlie@codinator.com', nickname: '찰리', password: '1234' },
+  { key: 'diana', email: 'diana@codinator.com', nickname: '다이애나', password: '1234' },
 ];
 
 const feedbackTagSeeds = [
@@ -84,10 +84,12 @@ async function upsertUsers() {
     const user = await prisma.user.upsert({
       where: { email: seed.email },
       update: {
+        nickname: seed.nickname,
         passwordHash,
       },
       create: {
         email: seed.email,
+        nickname: seed.nickname,
         passwordHash,
       },
     });

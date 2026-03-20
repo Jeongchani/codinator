@@ -28,33 +28,19 @@ import { GetTagsQueryDto } from './dto/get-tags-query.dto';
 import { VotesService } from './votes.service';
 
 @ApiTags('votes')
-@Controller()
+@Controller('evaluations')
 export class VotesController {
   constructor(
     private readonly votesService: VotesService,
     private readonly authTokenService: AuthTokenService,
   ) {}
 
-  @Get('votes/tags')
+  @Get('tags')
   @ApiBearerAuth()
   @ApiOperation({ summary: '투표 타입별 피드백 태그 조회' })
   @ApiQuery({ name: 'voteChoice', required: true, enum: ['LIKE', 'DISLIKE'] })
   @ApiOkResponse({
     description: '좋아요/싫어요에 맞는 태그 목록',
-    schema: {
-      example: {
-        items: [
-          {
-            id: 3,
-            code: 'NEG_SIZE_BAD',
-            label: '핏/사이즈가 아쉬워요',
-            polarity: 'NEGATIVE',
-            voteChoice: 'DISLIKE',
-            isActive: true,
-          },
-        ],
-      },
-    },
   })
   async getTags(
     @Query() query: GetTagsQueryDto,
@@ -73,18 +59,6 @@ export class VotesController {
   @ApiBody({ type: CreateVoteBodyDto })
   @ApiOkResponse({
     description: '투표 완료 후 현재 집계 반환',
-    schema: {
-      example: {
-        postId: 12,
-        myVote: 'LIKE',
-        summary: {
-          likeCount: 3,
-          dislikeCount: 1,
-          totalCount: 4,
-          likeRate: 0.75,
-        },
-      },
-    },
   })
   async createVote(
     @Param('postId', ParseIntPipe) postId: number,
@@ -104,12 +78,6 @@ export class VotesController {
   @ApiBody({ type: CreateFeedbackBodyDto })
   @ApiOkResponse({
     description: '피드백 태그 선택 결과',
-    schema: {
-      example: {
-        postId: 12,
-        selectedTagId: 3,
-      },
-    },
   })
   async createFeedback(
     @Param('voteId', ParseIntPipe) voteId: number,

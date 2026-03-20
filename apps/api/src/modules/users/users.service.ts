@@ -12,6 +12,7 @@ export class UsersService {
       select: {
         id: true,
         email: true,
+        nickname: true,
         createdAt: true,
       },
     });
@@ -22,6 +23,7 @@ export class UsersService {
         ? {
             id: user.id,
             email: user.email,
+            nickname: user.nickname,
             createdAt: user.createdAt.toISOString(),
           }
         : null,

@@ -6,6 +6,7 @@ import type {
 } from '@codinator/contracts';
 import { EvaluationStatus, PostStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { buildFeedbackSummary, buildVoteSummary } from '../evaluations/common/evaluation-summary.util';
 
 @Injectable()
 export class PostsService {
@@ -54,30 +55,53 @@ export class PostsService {
     };
   }
 
-  async getPostDetail(postId: number, _userId: number): Promise<GetPostDetailResponse> {
+  async getMyPostDetail(postId: number, userId: number): Promise<GetPostDetailResponse> {
     const post = await this.prisma.post.findFirst({
       where: {
         id: postId,
+        authorId: userId,
         status: PostStatus.ACTIVE,
         deletedAt: null,
       },
       include: {
+        author: {
+          select: {
+            id: true,
+            nickname: true,
+          },
+        },
         images: {
           orderBy: { id: 'asc' },
         },
         outfitItems: {
           orderBy: { id: 'asc' },
         },
+        evaluation: {
+          include: {
+            votes: {
+              include: {
+                feedbackTags: {
+                  include: {
+                    tag: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
-    if (!post) {
-      throw new NotFoundException('게시글을 찾을 수 없습니다.');
+    if (!post || !post.evaluation) {
+      throw new NotFoundException('내 게시글을 찾을 수 없습니다.');
     }
 
     return {
       postId: post.id,
-      authorId: post.authorId,
+      author: {
+        userId: post.author.id,
+        nickname: post.author.nickname,
+      },
       content: post.content,
       status: post.status,
       createdAt: post.createdAt.toISOString(),
@@ -91,6 +115,13 @@ export class PostsService {
         itemName: item.itemName,
         brand: item.brand,
       })),
+      evaluation: {
+        id: post.evaluation.id,
+        status: post.evaluation.status,
+        endsAt: post.evaluation.endsAt.toISOString(),
+      },
+      voteSummary: buildVoteSummary(post.evaluation.votes),
+      feedbackSummary: buildFeedbackSummary(post.evaluation.votes),
     };
   }
 }

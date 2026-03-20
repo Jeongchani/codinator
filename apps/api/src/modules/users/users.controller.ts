@@ -20,6 +20,7 @@ export class UsersController {
         user: {
           id: 1,
           email: 'alice@codinator.com',
+          nickname: '앨리스',
           createdAt: '2026-03-19T03:00:00.000Z',
         },
       },
