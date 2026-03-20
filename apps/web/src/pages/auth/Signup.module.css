@@ -1,0 +1,99 @@
+/* src/pages/auth/Signup.module.css */
+
+.container {
+  @apply w-[375px] h-[812px] bg-white mx-auto shadow-2xl overflow-y-auto flex flex-col relative;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.container::-webkit-scrollbar {
+  display: none;
+}
+
+.headerSection {
+  @apply w-full px-6 pt-[93px] pb-10 flex flex-col gap-2;
+}
+
+.mainTitle {
+  @apply text-neutral-900 text-4xl font-bold font-sans leading-tight tracking-tight;
+}
+
+.subTitle {
+  @apply text-neutral-900 text-xl font-medium font-sans;
+}
+
+.formContainer {
+  @apply w-full px-6 flex flex-col gap-6 pb-20;
+}
+
+.fieldGroup {
+  @apply w-full flex flex-col gap-2;
+}
+
+.label {
+  @apply text-neutral-900 text-sm font-medium font-sans pl-1;
+}
+
+/* 🔴 이메일 전용: 입력창과 버튼의 가로 배치 */
+.emailInputRow {
+  @apply flex gap-2 items-center w-full;
+}
+
+.inputWrapper {
+  @apply h-14 bg-slate-50 rounded-[20px] flex items-center px-5;
+}
+
+/* 이메일 입력창이 버튼을 제외한 나머지를 다 채우도록 */
+.flexFill {
+  @apply flex-1;
+}
+
+.inputField {
+  @apply w-full bg-transparent border-none outline-none text-neutral-900 text-lg font-normal placeholder:text-neutral-400;
+}
+
+/* 🔴 중복 확인 버튼 전용 스타일 */
+.checkButton {
+  @apply h-[44px] px-3 rounded-[15px] text-[13px] font-bold transition-all flex-none;
+  min-width: 70px;
+}
+
+.checkButtonDefault {
+  @apply bg-neutral-900 text-white active:scale-95 shadow-sm;
+}
+
+.checkButtonDone {
+  @apply bg-green-100 text-green-600 border border-green-200;
+}
+
+/* 성별 선택 */
+.genderSection {
+  @apply w-full flex flex-col gap-1;
+}
+
+.genderOption {
+  @apply flex items-center gap-4 py-2 cursor-pointer;
+}
+
+.genderText {
+  @apply text-neutral-400 text-lg font-medium font-sans;
+}
+
+.genderTextActive {
+  @apply text-neutral-900 font-bold;
+}
+
+.submitButton {
+  @apply w-full h-14 bg-neutral-900 rounded-[100px] flex justify-center items-center text-white text-base font-medium transition-transform active:scale-95 mt-4;
+}
+
+.loginPrompt {
+  @apply w-full flex justify-center items-center gap-2 mt-2;
+}
+
+.promptTextGray {
+  @apply text-neutral-500 text-sm font-medium font-sans;
+}
+
+.promptTextBlack {
+  @apply text-neutral-900 text-sm font-bold font-sans cursor-pointer hover:underline;
+}

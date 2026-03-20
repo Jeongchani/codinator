@@ -1,0 +1,62 @@
+/* src/pages/auth/MemberGuest.module.css */
+
+.container {
+  @apply w-[375px] h-[812px] relative bg-white overflow-hidden mx-auto shadow-2xl;
+}
+
+/* 상단 배경 영역 */
+.topBackground {
+  @apply w-full h-96 absolute left-0 top-0 bg-slate-50 flex items-center justify-center;
+}
+
+/* 하단 화이트 레이아웃 */
+.bottomSheet {
+  @apply w-full h-96 absolute left-0 top-[372px] bg-white rounded-t-[32px];
+  box-shadow: 0px -10px 20px 0px rgba(0, 0, 0, 0.06);
+}
+
+/* 🔴 Login 페이지와 완벽 일치시킨 환영 문구 영역 */
+.welcomeSection {
+  @apply w-[343px] p-2.5 absolute left-4 top-[93px] flex flex-col justify-center items-start gap-[5px];
+}
+
+.mainTitle {
+  @apply self-stretch text-neutral-900 text-4xl font-bold font-sans leading-10;
+}
+
+.subTitle {
+  @apply self-stretch text-neutral-900 text-xl font-medium font-sans leading-7;
+}
+
+/* 로그인 타이틀 */
+.loginTitle {
+  @apply w-32 absolute left-[121px] top-[441px] text-center text-neutral-900 text-3xl font-semibold font-sans leading-9;
+}
+
+/* 버튼 그룹 */
+.buttonGroup {
+  @apply w-72 h-32 absolute left-10 top-[527px] flex flex-col justify-between items-center;
+}
+
+.loginButton {
+  @apply w-full h-14 py-4 bg-neutral-900 rounded-[100px] flex justify-center items-center transition-transform active:scale-95;
+  @apply text-white text-base font-normal font-sans;
+}
+
+.guestButton {
+  @apply w-full h-14 py-4 bg-white rounded-[100px] border border-zinc-300 flex justify-center items-center transition-transform active:scale-95;
+  @apply text-neutral-900 text-base font-normal font-sans;
+}
+
+/* 최하단 회원가입 유도 영역 (중앙 정렬) */
+.signupPrompt {
+  @apply absolute left-0 w-full top-[735px] flex justify-center items-center gap-[5px];
+}
+
+.noAccountText {
+  @apply text-neutral-400 text-sm font-medium font-sans;
+}
+
+.signupLink {
+  @apply text-neutral-900 text-sm font-medium font-sans cursor-pointer hover:underline;
+}

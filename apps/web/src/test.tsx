@@ -10,27 +10,7 @@ import type {
 import { fetcher } from './lib/api';
 
 
-
-// 1. 라우팅 로직을 별도의 컴포넌트로 분리 (useNavigate를 사용하기 위함)
-function AppRoutes() {
-  const navigate = useNavigate();
-  return (
-    <Routes>
-      {/* 🔴 Splash에 onFinish 함수를 전달하여 1초 뒤 /login으로 이동하게 합니다 */}
-      <Route path="/" element={<Splash onFinish={() => navigate('/member-guest')} />} />
-      <Route path="/member-guest" element={<MemberGuest />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/rankingList" element={<RankingList />} />
-      <Route path="/detail" element={<Detail />} />
-      <Route path="/Test" element={<Test />} />
-    </Routes>
-  );
-}
-
-// 2. 최상위 App 컴포넌트
-
-function App() {
+function Test() {
   const [health, setHealth] = useState<HealthCheckResponse | null>(null);
   const [healthError, setHealthError] = useState('');
   const [email, setEmail] = useState('alice@codinator.com');
@@ -108,7 +88,7 @@ function App() {
   // 로그아웃 (프론트에서 토큰 삭제)
   const handleLogout = () => {
     localStorage.removeItem('token');
-    setAuthResult({ message: '로그아웃 완료 (토큰 삭제)' });
+    setAuthResult({ success: true, message: '로그아웃 완료 (토큰 삭제)' });
   };
 
   return (
@@ -224,4 +204,4 @@ function App() {
   );
 }
 
-export default App;
+export default Test;
