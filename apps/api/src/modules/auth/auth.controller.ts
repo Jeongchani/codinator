@@ -34,5 +34,3 @@ export class AuthController {
   }
 }
 
-
-"C:\Users\idgac\Downloads"
