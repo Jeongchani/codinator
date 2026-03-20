@@ -1,20 +1,61 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
+import type { JwtPayload } from 'jsonwebtoken';
 
-interface AccessTokenPayload {
+type AccessTokenPayload = JwtPayload & {
   sub: number;
-  iat?: number;
-  exp?: number;
-}
+  email: string;
+  type: 'access';
+};
+
+type RefreshTokenPayload = JwtPayload & {
+  sub: number;
+  email: string;
+  type: 'refresh';
+};
 
 @Injectable()
 export class AuthTokenService {
-  private readonly jwtSecret = process.env.JWT_SECRET || 'SECRET_KEY';
+  private readonly accessTokenSecret =
+    process.env.ACCESS_TOKEN_SECRET || 'SECRET_KEY';
 
-  signAccessToken(userId: number): string {
-    return jwt.sign({ sub: userId }, this.jwtSecret, {
-      expiresIn: '1h',
-    });
+  private readonly refreshTokenSecret =
+    process.env.REFRESH_TOKEN_SECRET || 'REFRESH_SECRET_KEY';
+
+  signAccessToken(userId: number, email: string): string {
+    return jwt.sign(
+      { sub: userId, email, type: 'access' },
+      this.accessTokenSecret,
+      {
+        expiresIn: '15m',
+      },
+    );
+  }
+
+  signRefreshToken(userId: number, email: string): string {
+    return jwt.sign(
+      { sub: userId, email, type: 'refresh' },
+      this.refreshTokenSecret,
+      {
+        expiresIn: '7d',
+      },
+    );
+  }
+
+  verifyRefreshToken(refreshToken: string): RefreshTokenPayload {
+    try {
+      const decoded = jwt.verify(refreshToken, this.refreshTokenSecret);
+
+      if (!this.isRefreshTokenPayload(decoded)) {
+        throw new UnauthorizedException('유효하지 않은 리프레시 토큰입니다.');
+      }
+
+      return decoded;
+    } catch {
+      throw new UnauthorizedException(
+        '유효하지 않거나 만료된 리프레시 토큰입니다.',
+      );
+    }
   }
 
   extractUserIdFromAuthorizationHeader(
@@ -32,13 +73,13 @@ export class AuthTokenService {
     }
 
     try {
-      const payload = jwt.verify(token, this.jwtSecret) as unknown as AccessTokenPayload;
+      const decoded = jwt.verify(token, this.accessTokenSecret);
 
-      if (typeof payload.sub !== 'number') {
+      if (!this.isAccessTokenPayload(decoded)) {
         throw new UnauthorizedException('유효하지 않은 토큰입니다.');
       }
 
-      return payload.sub;
+      return decoded.sub;
     } catch {
       throw new UnauthorizedException('유효하지 않거나 만료된 토큰입니다.');
     }
@@ -56,5 +97,27 @@ export class AuthTokenService {
     }
 
     return token;
+  }
+
+  private isAccessTokenPayload(
+    value: string | JwtPayload,
+  ): value is AccessTokenPayload {
+    return (
+      typeof value !== 'string' &&
+      typeof value.sub === 'number' &&
+      typeof value.email === 'string' &&
+      value.type === 'access'
+    );
+  }
+
+  private isRefreshTokenPayload(
+    value: string | JwtPayload,
+  ): value is RefreshTokenPayload {
+    return (
+      typeof value !== 'string' &&
+      typeof value.sub === 'number' &&
+      typeof value.email === 'string' &&
+      value.type === 'refresh'
+    );
   }
 }
