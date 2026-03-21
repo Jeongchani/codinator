@@ -1,5 +1,23 @@
-import { Body, Controller, Get, Headers, Param, ParseIntPipe, Post, Query,} from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiQuery, ApiTags,} from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  ParseIntPipe,
+  Post,
+  Query,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import type {
   CreatePostResponse,
   GetEvaluationPostDetailResponse,
@@ -25,7 +43,12 @@ export class PostsController {
 
   @Post()
   @ApiBearerAuth()
-  @ApiOperation({ summary: '일반 게시글 작성' })
+  @ApiOperation({
+    summary: '게시글 작성',
+    description:
+      '사진 1장 + 착용 아이템 정보로 게시글을 작성합니다. ' +
+      '작성 즉시 평가(Evaluation)가 자동 생성되며 7일간 진행됩니다.',
+  })
   @ApiBody({ type: CreatePostDto })
   @ApiCreatedResponse({
     description: '게시글 생성 완료',
@@ -41,18 +64,24 @@ export class PostsController {
     @Body() body: CreatePostDto,
     @Headers('authorization') authorization?: string,
   ): Promise<CreatePostResponse> {
-    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(authorization, {
-      required: true,
-    });
+    const userId =
+      this.authTokenService.extractUserIdFromAuthorizationHeader(
+        authorization,
+        { required: true },
+      );
 
     return this.postsService.createPost(userId!, body);
   }
 
   @Get(':postId')
   @ApiBearerAuth()
-  @ApiOperation({ summary: '일반 게시글 상세 조회' })
+  @ApiOperation({
+    summary: '게시글 상세 조회',
+    description: '게시글의 이미지, 착용 아이템 등 기본 정보를 조회합니다.',
+  })
+  @ApiParam({ name: 'postId', description: '게시글 ID', example: 12 })
   @ApiOkResponse({
-    description: '일반 게시글 상세 정보',
+    description: '게시글 상세 정보',
     schema: {
       example: {
         postId: 12,
@@ -79,16 +108,25 @@ export class PostsController {
     @Param('postId', ParseIntPipe) postId: number,
     @Headers('authorization') authorization?: string,
   ): Promise<GetPostDetailResponse> {
-    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(authorization, {
-      required: true,
-    });
+    const userId =
+      this.authTokenService.extractUserIdFromAuthorizationHeader(
+        authorization,
+        { required: true },
+      );
 
     return this.postsService.getPostDetail(postId, userId!);
   }
 
   @Get(':postId/evaluation')
   @ApiBearerAuth()
-  @ApiOperation({ summary: '평가 게시글 조회' })
+  @ApiOperation({
+    summary: '평가 게시글 상세 조회',
+    description:
+      '평가 문맥에서 게시글을 조회합니다. ' +
+      '투표 여부, 투표 가능 여부, 투표 결과 요약이 포함됩니다. ' +
+      '투표 전에는 결과를 볼 수 없습니다.',
+  })
+  @ApiParam({ name: 'postId', description: '게시글 ID', example: 12 })
   @ApiOkResponse({
     description: '평가 문맥의 게시글 상세 정보',
     schema: {
@@ -103,12 +141,7 @@ export class PostsController {
           imageUrl: 'https://images.example.com/posts/open-post.jpg',
         },
         outfitItems: [
-          {
-            id: 1,
-            category: 'TOP',
-            itemName: '화이트 셔츠',
-            brand: 'SPAO',
-          },
+          { id: 1, category: 'TOP', itemName: '화이트 셔츠', brand: 'SPAO' },
         ],
         evaluation: {
           id: 5,
@@ -124,24 +157,37 @@ export class PostsController {
     @Param('postId', ParseIntPipe) postId: number,
     @Headers('authorization') authorization?: string,
   ): Promise<GetEvaluationPostDetailResponse> {
-    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(authorization, {
-      required: true,
-    });
+    const userId =
+      this.authTokenService.extractUserIdFromAuthorizationHeader(
+        authorization,
+        { required: true },
+      );
 
     return this.evaluationsService.getEvaluationPostDetail(postId, userId!);
   }
 
   @Get(':postId/ranking')
   @ApiBearerAuth()
-  @ApiOperation({ summary: '랭킹 게시글 조회' })
-  @ApiQuery({ name: 'period', required: true, enum: ['WEEKLY', 'MONTHLY'] })
+  @ApiOperation({
+    summary: '랭킹 게시글 상세 조회',
+    description:
+      '랭킹존에서 게시글 상세를 조회합니다. ' +
+      '투표 집계, 피드백 태그 요약, 랭킹 순위 정보가 포함됩니다.',
+  })
+  @ApiParam({ name: 'postId', description: '게시글 ID', example: 13 })
+  @ApiQuery({
+    name: 'period',
+    required: true,
+    enum: ['WEEKLY', 'MONTHLY'],
+    description: '조회할 랭킹 기간',
+  })
   @ApiOkResponse({
     description: '랭킹 문맥의 게시글 상세 정보',
     schema: {
       example: {
         postId: 13,
         authorId: 2,
-        content: '[SEED] 스트릿 코디 랭킹 테스트용 게시글 1',
+        content: '스트릿 코디',
         status: 'ACTIVE',
         createdAt: '2026-03-20T02:00:00.000Z',
         image: {
@@ -156,11 +202,7 @@ export class PostsController {
             brand: 'ZARA',
           },
         ],
-        evaluation: {
-          id: 6,
-          status: 'ENDED',
-          endsAt: '2026-03-13T12:00:00.000Z',
-        },
+        evaluation: { id: 6, status: 'ENDED', endsAt: '2026-03-13T12:00:00.000Z' },
         hasVoted: true,
         canVote: false,
         voteSummary: {
@@ -170,12 +212,7 @@ export class PostsController {
           likeRate: 0.6667,
         },
         feedbackSummary: [
-          {
-            tagId: 4,
-            code: 'NEG_COLOR_BAD',
-            label: '색 조합이 아쉬워요',
-            count: 1,
-          },
+          { tagId: 4, code: 'NEG_COLOR_BAD', label: '색 조합이 아쉬워요', count: 1 },
         ],
         ranking: {
           snapshotId: 1,
@@ -192,10 +229,16 @@ export class PostsController {
     @Query() query: GetRankingPostQueryDto,
     @Headers('authorization') authorization?: string,
   ): Promise<GetRankingPostDetailResponse> {
-    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(authorization, {
-      required: true,
-    });
+    const userId =
+      this.authTokenService.extractUserIdFromAuthorizationHeader(
+        authorization,
+        { required: true },
+      );
 
-    return this.rankingsService.getRankingPostDetail(postId, query.period, userId!);
+    return this.rankingsService.getRankingPostDetail(
+      postId,
+      query.period,
+      userId!,
+    );
   }
 }

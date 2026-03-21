@@ -4,13 +4,12 @@ import type {
   CreatePostResponse,
   GetPostDetailResponse,
 } from '@codinator/contracts';
-import { EvaluationStatus, PostStatus } from '@prisma/client';
+import { PostStatus, EvaluationStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 import {
   mapPostStatus,
   mapGarmentCategory,
-  mapEvaluationStatus,
 } from '../../common/mappers/enums.mapper';
 
 @Injectable()

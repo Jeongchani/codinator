@@ -20,7 +20,12 @@ export class EvaluationsController {
 
   @Get()
   @ApiBearerAuth()
-  @ApiOperation({ summary: '평가존 목록 조회' })
+  @ApiOperation({
+    summary: '평가존 목록 조회',
+    description:
+      '현재 진행 중(OPEN)인 평가 게시글 목록을 조회합니다. ' +
+      '커서 기반 페이지네이션을 지원하며, 각 항목에 투표 여부가 포함됩니다.',
+  })
   @ApiOkResponse({
     description: '진행 중인 평가 게시글 목록',
     schema: {
@@ -42,9 +47,11 @@ export class EvaluationsController {
     @Query() query: GetEvaluationsQueryDto,
     @Headers('authorization') authorization?: string,
   ): Promise<GetEvaluationsResponse> {
-    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(authorization, {
-      required: true,
-    });
+    const userId =
+      this.authTokenService.extractUserIdFromAuthorizationHeader(
+        authorization,
+        { required: true },
+      );
 
     return this.evaluationsService.getEvaluations({
       cursor: query.cursor !== undefined ? Number(query.cursor) : undefined,

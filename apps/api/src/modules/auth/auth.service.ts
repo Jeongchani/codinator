@@ -8,13 +8,13 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { SignupRequestDto } from './dto/signup-request.dto';
 import { SignupResponseDto } from './dto/signup-response.dto';
 import { LoginRequestDto } from './dto/login-request.dto';
+import { RefreshRequestDto } from './dto/refresh-request.dto';
+import { LogoutRequestDto } from './dto/logout-request.dto';
 import { AuthTokenService } from './auth-token.service';
 import * as bcrypt from 'bcryptjs';
-import {
+import type {
   LoginResponse,
-  RefreshTokenRequest,
   RefreshTokenResponse,
-  LogoutRequest,
   LogoutResponse,
 } from '@codinator/contracts';
 
@@ -81,7 +81,7 @@ export class AuthService {
     };
   }
 
-  async refresh(dto: RefreshTokenRequest): Promise<RefreshTokenResponse> {
+  async refresh(dto: RefreshRequestDto): Promise<RefreshTokenResponse> {
     const payload = this.authTokenService.verifyRefreshToken(dto.refreshToken);
 
     const user = await this.prisma.user.findUnique({
@@ -103,7 +103,7 @@ export class AuthService {
     return { accessToken };
   }
 
-  async logout(dto: LogoutRequest): Promise<LogoutResponse> {
+  async logout(dto: LogoutRequestDto): Promise<LogoutResponse> {
     const payload = this.authTokenService.verifyRefreshToken(dto.refreshToken);
 
     const user = await this.prisma.user.findUnique({

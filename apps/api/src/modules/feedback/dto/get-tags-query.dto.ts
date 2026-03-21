@@ -5,7 +5,7 @@ export class GetTagsQueryDto {
   @ApiProperty({
     example: 'DISLIKE',
     enum: ['LIKE', 'DISLIKE'],
-    description: '선택한 투표 타입',
+    description: '투표 타입 (LIKE → 긍정 태그, DISLIKE → 부정 태그)',
   })
   voteChoice: VoteChoice;
 }

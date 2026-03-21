@@ -1,17 +1,34 @@
-// 백엔드 진입점 예) main.ts -> app.modue.ts -> users.module.ts
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { AppModule } from './app.module';  
+import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // API 버전 관리 및 글로벌 프리픽스 설정 -> 모든 엔드포인트가 /api/v1/로 시작하도록
+  // CORS 허용 (프론트엔드 개발용)
+  app.enableCors();
+
+  // API 버전 관리 — 모든 엔드포인트가 /api/v1/로 시작
   app.setGlobalPrefix('api/v1');
 
+  // DTO 유효성 검증 파이프라인
+  // TODO: class-validator, class-transformer 설치 후 주석 해제
+  // pnpm add --filter @codinator/api class-validator class-transformer
+  // app.useGlobalPipes(
+  //   new ValidationPipe({
+  //     whitelist: true,
+  //     transform: true,
+  //   }),
+  // );
+
+  // Swagger 문서 설정
   const config = new DocumentBuilder()
     .setTitle('Codinator API')
-    .setDescription('Codinator 백엔드 API 문서')
+    .setDescription(
+      'Codinator v1 백엔드 API 문서\n\n' +
+        '인증이 필요한 API는 우측 상단 Authorize 버튼으로 Bearer Token을 입력해주세요.',
+    )
     .setVersion('1.0')
     .addBearerAuth()
     .build();

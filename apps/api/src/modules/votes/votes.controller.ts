@@ -1,30 +1,21 @@
 import {
   Body,
   Controller,
-  Get,
   Headers,
   Param,
   ParseIntPipe,
   Post,
-  Query,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
   ApiOkResponse,
   ApiOperation,
-  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
-import type {
-  CreateFeedbackResponse,
-  CreateVoteResponse,
-  GetTagsResponse,
-} from '@codinator/contracts';
+import type { CreateVoteResponse } from '@codinator/contracts';
 import { AuthTokenService } from '../auth/auth-token.service';
-import { CreateFeedbackBodyDto } from './dto/create-feedback-body.dto';
 import { CreateVoteBodyDto } from './dto/create-vote-body.dto';
-import { GetTagsQueryDto } from './dto/get-tags-query.dto';
 import { VotesService } from './votes.service';
 
 @ApiTags('votes')
@@ -35,41 +26,15 @@ export class VotesController {
     private readonly authTokenService: AuthTokenService,
   ) {}
 
-  @Get('votes/tags')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: '투표 타입별 피드백 태그 조회' })
-  @ApiQuery({ name: 'voteChoice', required: true, enum: ['LIKE', 'DISLIKE'] })
-  @ApiOkResponse({
-    description: '좋아요/싫어요에 맞는 태그 목록',
-    schema: {
-      example: {
-        items: [
-          {
-            id: 3,
-            code: 'NEG_SIZE_BAD',
-            label: '핏/사이즈가 아쉬워요',
-            polarity: 'NEGATIVE',
-            voteChoice: 'DISLIKE',
-            isActive: true,
-          },
-        ],
-      },
-    },
-  })
-  async getTags(
-    @Query() query: GetTagsQueryDto,
-    @Headers('authorization') authorization?: string,
-  ): Promise<GetTagsResponse> {
-    this.authTokenService.extractUserIdFromAuthorizationHeader(authorization, {
-      required: true,
-    });
-
-    return this.votesService.getTags(query.voteChoice);
-  }
-
   @Post('posts/:postId/votes')
   @ApiBearerAuth()
-  @ApiOperation({ summary: '평가 게시글 투표' })
+  @ApiOperation({
+    summary: '평가 게시글 투표',
+    description:
+      '게시글에 좋아요/싫어요 투표를 합니다. ' +
+      '1인 1회만 가능하며, 자기 게시글에는 투표 불가합니다. ' +
+      '투표 후 현재 집계 결과가 반환됩니다.',
+  })
   @ApiBody({ type: CreateVoteBodyDto })
   @ApiOkResponse({
     description: '투표 완료 후 현재 집계 반환',
@@ -91,35 +56,11 @@ export class VotesController {
     @Body() body: CreateVoteBodyDto,
     @Headers('authorization') authorization?: string,
   ): Promise<CreateVoteResponse> {
-    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(authorization, {
-      required: true,
-    });
+    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
 
     return this.votesService.createVote(postId, userId!, body.choice);
-  }
-
-  @Post('votes/:voteId/feedback')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: '내 투표에 피드백 태그 1개 선택' })
-  @ApiBody({ type: CreateFeedbackBodyDto })
-  @ApiOkResponse({
-    description: '피드백 태그 선택 결과',
-    schema: {
-      example: {
-        postId: 12,
-        selectedTagId: 3,
-      },
-    },
-  })
-  async createFeedback(
-    @Param('voteId', ParseIntPipe) voteId: number,
-    @Body() body: CreateFeedbackBodyDto,
-    @Headers('authorization') authorization?: string,
-  ): Promise<CreateFeedbackResponse> {
-    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(authorization, {
-      required: true,
-    });
-
-    return this.votesService.createFeedback(voteId, userId!, body.tagId);
   }
 }

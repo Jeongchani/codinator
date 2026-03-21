@@ -21,8 +21,18 @@ export class RankingsController {
 
   @Get()
   @ApiBearerAuth()
-  @ApiOperation({ summary: '랭킹 목록 조회' })
-  @ApiQuery({ name: 'period', required: true, enum: ['WEEKLY', 'MONTHLY'] })
+  @ApiOperation({
+    summary: '랭킹 목록 조회 (메인 홈)',
+    description:
+      '좋아요 많은 순으로 정렬된 랭킹을 조회합니다. ' +
+      '주간(WEEKLY) / 월간(MONTHLY) 기간 필터를 지원합니다.',
+  })
+  @ApiQuery({
+    name: 'period',
+    required: true,
+    enum: ['WEEKLY', 'MONTHLY'],
+    description: '조회할 랭킹 기간',
+  })
   @ApiOkResponse({
     description: '선택한 기간의 최신 랭킹 목록',
     schema: {
