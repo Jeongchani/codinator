@@ -38,21 +38,21 @@ export class RankingsService {
 
     return {
       period,
-      items: ranking.entries
+      items: ranking.details
         .filter(
-          (entry) =>
-            entry.post.status === PostStatus.ACTIVE &&
-            entry.post.deletedAt === null &&
-            entry.post.publishedAt !== null,
+          (detail) =>
+            detail.post.status === PostStatus.ACTIVE &&
+            detail.post.deletedAt === null &&
+            detail.post.publishedAt !== null,
         )
-        .map((entry) => ({
-          rank: entry.rank,
-          postId: entry.post.id,
-          thumbnailUrl: entry.post.images[0]?.thumbnailUrl ?? entry.post.images[0]?.imageUrl ?? '',
-          likeCount: entry.likeCount,
-          dislikeCount: entry.dislikeCount,
-          totalCount: entry.totalCount,
-          likeRate: Number(entry.likeRate),
+        .map((detail) => ({
+          rank: detail.rank,
+          postId: detail.post.id,
+          thumbnailUrl: detail.post.images[0]?.thumbnailUrl ?? detail.post.images[0]?.imageUrl ?? '',
+          likeCount: detail.likeCount,
+          dislikeCount: detail.dislikeCount,
+          totalCount: detail.totalCount,
+          likeRate: Number(detail.likeRate),
         })),
     };
   }
@@ -72,7 +72,7 @@ export class RankingsService {
       throw new NotFoundException('랭킹 게시글을 찾을 수 없습니다.');
     }
 
-    const rankingEntry = await this.prisma.rankingEntry.findFirst({
+    const rankingDetail = await this.prisma.rankingDetail.findFirst({
       where: {
         rankingId: ranking.id,
         postId,
@@ -115,48 +115,48 @@ export class RankingsService {
       },
     });
 
-    if (!rankingEntry || !rankingEntry.post.evaluation) {
+    if (!rankingDetail || !rankingDetail.post.evaluation) {
       throw new NotFoundException('랭킹 게시글을 찾을 수 없습니다.');
     }
 
-    const myVote = rankingEntry.post.evaluation.votes.find((vote) => vote.voterId === userId) ?? null;
+    const myVote = rankingDetail.post.evaluation.votes.find((vote) => vote.voterId === userId) ?? null;
 
     return {
-      postId: rankingEntry.post.id,
+      postId: rankingDetail.post.id,
       author: {
-        userId: rankingEntry.post.author.id,
-        nickname: rankingEntry.post.author.nickname,
+        userId: rankingDetail.post.author.id,
+        nickname: rankingDetail.post.author.nickname,
       },
-      content: rankingEntry.post.content,
-      status: rankingEntry.post.status,
-      createdAt: rankingEntry.post.createdAt.toISOString(),
+      content: rankingDetail.post.content,
+      status: rankingDetail.post.status,
+      createdAt: rankingDetail.post.createdAt.toISOString(),
       image: {
-        id: rankingEntry.post.images[0]?.id ?? 0,
-        imageUrl: rankingEntry.post.images[0]?.imageUrl ?? '',
+        id: rankingDetail.post.images[0]?.id ?? 0,
+        imageUrl: rankingDetail.post.images[0]?.imageUrl ?? '',
       },
-      outfitItems: rankingEntry.post.outfitItems.map((item) => ({
+      outfitItems: rankingDetail.post.outfitItems.map((item) => ({
         id: item.id,
         category: item.category,
         itemName: item.itemName,
         brand: item.brand,
       })),
       evaluation: {
-        id: rankingEntry.post.evaluation.id,
-        status: rankingEntry.post.evaluation.status,
-        endsAt: rankingEntry.post.evaluation.endsAt.toISOString(),
+        id: rankingDetail.post.evaluation.id,
+        status: rankingDetail.post.evaluation.status,
+        endsAt: rankingDetail.post.evaluation.endsAt.toISOString(),
       },
       hasVoted: !!myVote,
       canVote: false,
       voteSummary: {
-        likeCount: rankingEntry.likeCount,
-        dislikeCount: rankingEntry.dislikeCount,
-        totalCount: rankingEntry.totalCount,
-        likeRate: Number(rankingEntry.likeRate),
+        likeCount: rankingDetail.likeCount,
+        dislikeCount: rankingDetail.dislikeCount,
+        totalCount: rankingDetail.totalCount,
+        likeRate: Number(rankingDetail.likeRate),
       },
-      feedbackSummary: buildFeedbackSummary(rankingEntry.post.evaluation.votes),
+      feedbackSummary: buildFeedbackSummary(rankingDetail.post.evaluation.votes),
       ranking: {
         period: ranking.period,
-        rank: rankingEntry.rank,
+        rank: rankingDetail.rank,
         startDate: ranking.startDate.toISOString(),
         endDate: ranking.endDate.toISOString(),
       },
@@ -164,7 +164,7 @@ export class RankingsService {
   }
 
   async getVisibleRankingPeriods(postId: number): Promise<RankingPeriod[]> {
-    const entries = await this.prisma.rankingEntry.findMany({
+    const details = await this.prisma.rankingDetail.findMany({
       where: {
         postId,
         ranking: {
@@ -180,7 +180,7 @@ export class RankingsService {
       },
     });
 
-    return Array.from(new Set(entries.map((entry) => entry.ranking.period)));
+    return Array.from(new Set(details.map((detail) => detail.ranking.period)));
   }
 
   private async getCurrentReadyRanking(period: RankingPeriod) {
@@ -194,7 +194,7 @@ export class RankingsService {
         endDate: window.endDate,
       },
       include: {
-        entries: {
+        details: {
           orderBy: { rank: 'asc' },
           include: {
             post: {

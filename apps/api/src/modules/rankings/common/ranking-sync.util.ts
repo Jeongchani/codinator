@@ -6,7 +6,7 @@ import { getAllCurrentRankingWindows, getCurrentRankingWindow } from './ranking-
 const RANKING_TIMEZONE = 'Asia/Seoul';
 const RANKING_ALGORITHM_VERSION = 1;
 
-type RankedPostEntry = {
+type RankedPostDetail = {
   postId: number;
   score: number;
   likeCount: number;
@@ -15,7 +15,7 @@ type RankedPostEntry = {
   likeRate: number;
 };
 
-function buildRankedPostEntries(
+function buildRankedPostDetails(
   posts: Array<{
     id: number;
     evaluation: {
@@ -24,7 +24,7 @@ function buildRankedPostEntries(
       }>;
     } | null;
   }>,
-): RankedPostEntry[] {
+): RankedPostDetail[] {
   return posts
     .map((post) => {
       const votes = post.evaluation?.votes ?? [];
@@ -95,7 +95,7 @@ export async function syncCurrentRankingPeriod(
     },
   });
 
-  const rankedEntries = buildRankedPostEntries(posts);
+  const rankedDetails = buildRankedPostDetails(posts);
 
   await prisma.$transaction(async (tx) => {
     const ranking = await tx.ranking.upsert({
@@ -123,23 +123,23 @@ export async function syncCurrentRankingPeriod(
       },
     });
 
-    await tx.rankingEntry.deleteMany({
+    await tx.rankingDetail.deleteMany({
       where: {
         rankingId: ranking.id,
       },
     });
 
-    if (rankedEntries.length > 0) {
-      await tx.rankingEntry.createMany({
-        data: rankedEntries.map((entry, index) => ({
+    if (rankedDetails.length > 0) {
+      await tx.rankingDetail.createMany({
+        data: rankedDetails.map((detail, index) => ({
           rankingId: ranking.id,
-          postId: entry.postId,
+          postId: detail.postId,
           rank: index + 1,
-          score: entry.score,
-          likeCount: entry.likeCount,
-          dislikeCount: entry.dislikeCount,
-          totalCount: entry.totalCount,
-          likeRate: entry.likeRate,
+          score: detail.score,
+          likeCount: detail.likeCount,
+          dislikeCount: detail.dislikeCount,
+          totalCount: detail.totalCount,
+          likeRate: detail.likeRate,
         })),
       });
     }
