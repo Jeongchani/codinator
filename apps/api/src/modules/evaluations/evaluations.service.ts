@@ -5,6 +5,12 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { buildFeedbackSummary, buildVoteSummary } from './common/evaluation-summary.util';
 import { syncExpiredEvaluations } from './common/sync-expired-evaluations.util';
 
+const IMAGE_ORDER_BY = [
+  { isPrimary: 'desc' as const },
+  { sortOrder: 'asc' as const },
+  { id: 'asc' as const },
+];
+
 @Injectable()
 export class EvaluationsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -36,7 +42,7 @@ export class EvaluationsService {
         post: {
           include: {
             images: {
-              orderBy: { id: 'asc' },
+              orderBy: IMAGE_ORDER_BY,
               take: 1,
             },
           },
@@ -55,7 +61,7 @@ export class EvaluationsService {
       items: pageItems.map((evaluation) => ({
         evaluationId: evaluation.id,
         postId: evaluation.postId,
-        thumbnailUrl: evaluation.post.images[0]?.imageUrl ?? '',
+        thumbnailUrl: evaluation.post.images[0]?.thumbnailUrl ?? evaluation.post.images[0]?.imageUrl ?? '',
         endsAt: evaluation.endsAt.toISOString(),
         hasVoted: evaluation.votes.length > 0,
       })),
@@ -83,16 +89,16 @@ export class EvaluationsService {
       },
       include: {
         images: {
-          orderBy: { id: 'asc' },
+          orderBy: IMAGE_ORDER_BY,
         },
         outfitItems: {
-          orderBy: { id: 'asc' },
+          orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
         },
         evaluation: {
           include: {
             votes: {
               include: {
-                feedbackTags: {
+                feedback: {
                   include: {
                     tag: true,
                   },

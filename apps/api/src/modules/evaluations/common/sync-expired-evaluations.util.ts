@@ -2,13 +2,45 @@ import { EvaluationStatus } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 
 export async function syncExpiredEvaluations(prisma: PrismaService): Promise<void> {
-  await prisma.evaluation.updateMany({
+  const now = new Date();
+
+  const expiredEvaluations = await prisma.evaluation.findMany({
     where: {
       status: EvaluationStatus.OPEN,
-      endsAt: { lte: new Date() },
+      endsAt: { lte: now },
     },
-    data: {
-      status: EvaluationStatus.ENDED,
+    select: {
+      id: true,
+      postId: true,
     },
   });
+
+  if (expiredEvaluations.length === 0) {
+    return;
+  }
+
+  const evaluationIds = expiredEvaluations.map((evaluation) => evaluation.id);
+  const postIds = expiredEvaluations.map((evaluation) => evaluation.postId);
+
+  await prisma.$transaction([
+    prisma.evaluation.updateMany({
+      where: {
+        id: { in: evaluationIds },
+      },
+      data: {
+        status: EvaluationStatus.ENDED,
+        closedAt: now,
+        closeReason: 'AUTO_ENDED',
+      },
+    }),
+    prisma.post.updateMany({
+      where: {
+        id: { in: postIds },
+        publishedAt: null,
+      },
+      data: {
+        publishedAt: now,
+      },
+    }),
+  ]);
 }

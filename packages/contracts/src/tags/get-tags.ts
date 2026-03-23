@@ -1,17 +1,14 @@
 import type { Id } from '../common/id';
-import type {
-  FeedbackTagCode,
-  FeedbackTagPolarity,
-  VoteChoice,
-} from '../common/enums';
+import type { FeedbackTagCode, VoteChoice } from '../common/enums';
 
 export interface FeedbackTag {
   id: Id;
   code: FeedbackTagCode;
   label: string;
-  polarity: FeedbackTagPolarity;
+  groupCode?: string | null;
   voteChoice: VoteChoice;
   isActive: boolean;
+  sortOrder: number;
 }
 
 export interface GetTagsResponse {

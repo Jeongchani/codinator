@@ -26,24 +26,35 @@ export class AuthService {
   ) {}
 
   async signup(dto: SignupRequestDto): Promise<SignupResponseDto> {
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-      select: { id: true },
-    });
+    const [existingEmailUser, existingNicknameUser] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { email: dto.email },
+        select: { id: true },
+      }),
+      this.prisma.user.findUnique({
+        where: { nickname: dto.nickname },
+        select: { id: true },
+      }),
+    ]);
 
-    if (existingUser) {
+    if (existingEmailUser) {
       throw new BadRequestException('이미 가입된 이메일입니다.');
+    }
+
+    if (existingNicknameUser) {
+      throw new BadRequestException('이미 사용 중인 닉네임입니다.');
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = await this.prisma.user.create({
       data: {
         email: dto.email,
+        nickname: dto.nickname,
         passwordHash: hashedPassword,
       },
     });
 
-    return { userId: user.id, email: user.email };
+    return { userId: user.id, email: user.email, nickname: user.nickname };
   }
 
   async login(dto: LoginRequestDto): Promise<LoginResponse> {
@@ -63,11 +74,14 @@ export class AuthService {
 
     const accessToken = this.authTokenService.signAccessToken(user.id, user.email);
     const refreshToken = this.authTokenService.signRefreshToken(user.id, user.email);
+    const refreshTokenHash = this.hashToken(refreshToken);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    await this.prisma.user.update({
-      where: { id: user.id },
+    await this.prisma.userSession.create({
       data: {
-        refreshTokenHash: this.hashToken(refreshToken),
+        userId: user.id,
+        refreshTokenHash,
+        expiresAt,
       },
     });
 
@@ -75,6 +89,7 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
+        nickname: user.nickname,
       },
       accessToken,
       refreshToken,
@@ -83,48 +98,63 @@ export class AuthService {
 
   async refresh(dto: RefreshTokenRequest): Promise<RefreshTokenResponse> {
     const payload = this.authTokenService.verifyRefreshToken(dto.refreshToken);
+    const incomingRefreshTokenHash = this.hashToken(dto.refreshToken);
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
+    const session = await this.prisma.userSession.findUnique({
+      where: { refreshTokenHash: incomingRefreshTokenHash },
+      include: {
+        user: true,
+      },
     });
 
-    if (!user || !user.refreshTokenHash) {
+    if (
+      !session ||
+      session.user.id !== payload.sub ||
+      session.revokedAt ||
+      session.expiresAt <= new Date()
+    ) {
       throw new UnauthorizedException('다시 로그인해 주세요.');
     }
 
-    const incomingRefreshTokenHash = this.hashToken(dto.refreshToken);
+    await this.prisma.userSession.update({
+      where: { id: session.id },
+      data: { lastUsedAt: new Date() },
+    });
 
-    if (user.refreshTokenHash !== incomingRefreshTokenHash) {
-      throw new UnauthorizedException('유효하지 않은 리프레시 토큰입니다.');
-    }
-
-    const accessToken = this.authTokenService.signAccessToken(user.id, user.email);
+    const accessToken = this.authTokenService.signAccessToken(
+      session.user.id,
+      session.user.email,
+    );
 
     return { accessToken };
   }
 
   async logout(dto: LogoutRequest): Promise<LogoutResponse> {
     const payload = this.authTokenService.verifyRefreshToken(dto.refreshToken);
+    const incomingRefreshTokenHash = this.hashToken(dto.refreshToken);
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: { id: true, refreshTokenHash: true },
+    const session = await this.prisma.userSession.findUnique({
+      where: { refreshTokenHash: incomingRefreshTokenHash },
+      include: {
+        user: {
+          select: { id: true },
+        },
+      },
     });
 
-    if (!user || !user.refreshTokenHash) {
+    if (
+      !session ||
+      session.user.id !== payload.sub ||
+      session.revokedAt ||
+      session.expiresAt <= new Date()
+    ) {
       throw new UnauthorizedException('이미 로그아웃되었거나 유효하지 않은 토큰입니다.');
     }
 
-    const incomingRefreshTokenHash = this.hashToken(dto.refreshToken);
-
-    if (user.refreshTokenHash !== incomingRefreshTokenHash) {
-      throw new UnauthorizedException('유효하지 않은 리프레시 토큰입니다.');
-    }
-
-    await this.prisma.user.update({
-      where: { id: user.id },
+    await this.prisma.userSession.update({
+      where: { id: session.id },
       data: {
-        refreshTokenHash: null,
+        revokedAt: new Date(),
       },
     });
 

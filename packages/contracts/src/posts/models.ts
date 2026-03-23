@@ -29,7 +29,7 @@ export interface FeedbackTagSummary {
 
 export interface PostAuthorSummary {
   userId: Id;
-  nickname?: string | null;
+  nickname: string;
 }
 
 export interface PostCoreDetail {

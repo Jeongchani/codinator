@@ -6,6 +6,12 @@ import { buildFeedbackSummary, buildVoteSummary } from '../evaluations/common/ev
 import { syncExpiredEvaluations } from '../evaluations/common/sync-expired-evaluations.util';
 import { RankingsService } from '../rankings/rankings.service';
 
+const IMAGE_ORDER_BY = [
+  { isPrimary: 'desc' as const },
+  { sortOrder: 'asc' as const },
+  { id: 'asc' as const },
+];
+
 @Injectable()
 export class FeedsService {
   constructor(
@@ -33,6 +39,7 @@ export class FeedsService {
         authorId: targetUserId,
         status: PostStatus.ACTIVE,
         deletedAt: null,
+        publishedAt: { not: null },
         evaluation: {
           is: {
             status: EvaluationStatus.ENDED,
@@ -43,7 +50,7 @@ export class FeedsService {
       orderBy: { createdAt: 'desc' },
       include: {
         images: {
-          orderBy: { id: 'asc' },
+          orderBy: IMAGE_ORDER_BY,
           take: 1,
         },
       },
@@ -52,7 +59,7 @@ export class FeedsService {
     const items = await Promise.all(
       posts.map(async (post) => ({
         postId: post.id,
-        thumbnailUrl: post.images[0]?.imageUrl ?? '',
+        thumbnailUrl: post.images[0]?.thumbnailUrl ?? post.images[0]?.imageUrl ?? '',
         createdAt: post.createdAt.toISOString(),
         rankingPeriods: await this.rankingsService.getVisibleRankingPeriods(post.id),
       })),
@@ -80,6 +87,7 @@ export class FeedsService {
         authorId: targetUserId,
         status: PostStatus.ACTIVE,
         deletedAt: null,
+        publishedAt: { not: null },
         evaluation: {
           is: {
             status: EvaluationStatus.ENDED,
@@ -95,16 +103,16 @@ export class FeedsService {
           },
         },
         images: {
-          orderBy: { id: 'asc' },
+          orderBy: IMAGE_ORDER_BY,
         },
         outfitItems: {
-          orderBy: { id: 'asc' },
+          orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
         },
         evaluation: {
           include: {
             votes: {
               include: {
-                feedbackTags: {
+                feedback: {
                   include: {
                     tag: true,
                   },
