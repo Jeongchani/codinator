@@ -4,6 +4,7 @@ import { EvaluationStatus, PostStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { buildFeedbackSummary, buildVoteSummary } from '../evaluations/common/evaluation-summary.util';
 import { syncExpiredEvaluations } from '../evaluations/common/sync-expired-evaluations.util';
+import { syncCurrentRankings } from '../rankings/common/ranking-sync.util';
 import { RankingsService } from '../rankings/rankings.service';
 
 const IMAGE_ORDER_BY = [
@@ -21,6 +22,7 @@ export class FeedsService {
 
   async getUserFeed(targetUserId: number, _viewerUserId: number): Promise<GetUserFeedResponse> {
     await syncExpiredEvaluations(this.prisma);
+    await syncCurrentRankings(this.prisma);
 
     const user = await this.prisma.user.findUnique({
       where: { id: targetUserId },
@@ -80,6 +82,7 @@ export class FeedsService {
     _viewerUserId: number,
   ): Promise<GetFeedPostDetailResponse> {
     await syncExpiredEvaluations(this.prisma);
+    await syncCurrentRankings(this.prisma);
 
     const post = await this.prisma.post.findFirst({
       where: {

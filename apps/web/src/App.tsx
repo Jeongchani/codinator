@@ -35,6 +35,7 @@ function App() {
       {/* BrowserRouter가 AppRoutes를 감싸고 있어야 navigate가 작동합니다 */}
       <AppRoutes />
     </BrowserRouter>
+
   );
 }
 
