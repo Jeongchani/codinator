@@ -8,7 +8,9 @@ import { PostStatus, RankingStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { buildFeedbackSummary } from '../evaluations/common/evaluation-summary.util';
 import { syncExpiredEvaluations } from '../evaluations/common/sync-expired-evaluations.util';
+import { syncCurrentRankingPeriod } from './common/ranking-sync.util';
 import { validateRankingPeriod } from './common/ranking-period.util';
+import { getCurrentRankingWindow } from './common/ranking-window.util';
 
 const IMAGE_ORDER_BY = [
   { isPrimary: 'desc' as const },
@@ -23,33 +25,9 @@ export class RankingsService {
   async getRankings(period: RankingPeriod): Promise<GetRankingsResponse> {
     await syncExpiredEvaluations(this.prisma);
     validateRankingPeriod(period);
+    await syncCurrentRankingPeriod(this.prisma, period);
 
-    const ranking = await this.prisma.ranking.findFirst({
-      where: {
-        period,
-        status: RankingStatus.READY,
-      },
-      orderBy: [
-        { endDate: 'desc' },
-        { generatedAt: 'desc' },
-        { id: 'desc' },
-      ],
-      include: {
-        entries: {
-          orderBy: { rank: 'asc' },
-          include: {
-            post: {
-              include: {
-                images: {
-                  orderBy: IMAGE_ORDER_BY,
-                  take: 1,
-                },
-              },
-            },
-          },
-        },
-      },
-    });
+    const ranking = await this.getCurrentReadyRanking(period);
 
     if (!ranking) {
       return {
@@ -61,7 +39,12 @@ export class RankingsService {
     return {
       period,
       items: ranking.entries
-        .filter((entry) => entry.post.status === PostStatus.ACTIVE && entry.post.deletedAt === null)
+        .filter(
+          (entry) =>
+            entry.post.status === PostStatus.ACTIVE &&
+            entry.post.deletedAt === null &&
+            entry.post.publishedAt !== null,
+        )
         .map((entry) => ({
           rank: entry.rank,
           postId: entry.post.id,
@@ -81,24 +64,9 @@ export class RankingsService {
   ): Promise<GetRankingPostDetailResponse> {
     await syncExpiredEvaluations(this.prisma);
     validateRankingPeriod(period);
+    await syncCurrentRankingPeriod(this.prisma, period);
 
-    const ranking = await this.prisma.ranking.findFirst({
-      where: {
-        period,
-        status: RankingStatus.READY,
-      },
-      orderBy: [
-        { endDate: 'desc' },
-        { generatedAt: 'desc' },
-        { id: 'desc' },
-      ],
-      select: {
-        id: true,
-        period: true,
-        startDate: true,
-        endDate: true,
-      },
-    });
+    const ranking = await this.getCurrentReadyRankingMeta(period);
 
     if (!ranking) {
       throw new NotFoundException('랭킹 게시글을 찾을 수 없습니다.');
@@ -196,8 +164,6 @@ export class RankingsService {
   }
 
   async getVisibleRankingPeriods(postId: number): Promise<RankingPeriod[]> {
-    await syncExpiredEvaluations(this.prisma);
-
     const entries = await this.prisma.rankingEntry.findMany({
       where: {
         postId,
@@ -215,5 +181,52 @@ export class RankingsService {
     });
 
     return Array.from(new Set(entries.map((entry) => entry.ranking.period)));
+  }
+
+  private async getCurrentReadyRanking(period: RankingPeriod) {
+    const window = getCurrentRankingWindow(period);
+
+    return this.prisma.ranking.findFirst({
+      where: {
+        period,
+        status: RankingStatus.READY,
+        startDate: window.startDate,
+        endDate: window.endDate,
+      },
+      include: {
+        entries: {
+          orderBy: { rank: 'asc' },
+          include: {
+            post: {
+              include: {
+                images: {
+                  orderBy: IMAGE_ORDER_BY,
+                  take: 1,
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  private async getCurrentReadyRankingMeta(period: RankingPeriod) {
+    const window = getCurrentRankingWindow(period);
+
+    return this.prisma.ranking.findFirst({
+      where: {
+        period,
+        status: RankingStatus.READY,
+        startDate: window.startDate,
+        endDate: window.endDate,
+      },
+      select: {
+        id: true,
+        period: true,
+        startDate: true,
+        endDate: true,
+      },
+    });
   }
 }
