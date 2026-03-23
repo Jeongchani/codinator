@@ -169,7 +169,7 @@ CREATE TABLE "rankings" (
 );
 
 -- CreateTable
-CREATE TABLE "ranking_entries" (
+CREATE TABLE "ranking_details" (
     "id" SERIAL NOT NULL,
     "ranking_id" INTEGER NOT NULL,
     "post_id" INTEGER NOT NULL,
@@ -182,7 +182,7 @@ CREATE TABLE "ranking_entries" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "ranking_entries_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "ranking_details_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -267,13 +267,13 @@ CREATE INDEX "rankings_status_idx" ON "rankings"("status");
 CREATE UNIQUE INDEX "rankings_period_start_date_end_date_timezone_algorithm_vers_key" ON "rankings"("period", "start_date", "end_date", "timezone", "algorithm_version");
 
 -- CreateIndex
-CREATE INDEX "ranking_entries_post_id_idx" ON "ranking_entries"("post_id");
+CREATE INDEX "ranking_details_post_id_idx" ON "ranking_details"("post_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "ranking_entries_ranking_id_post_id_key" ON "ranking_entries"("ranking_id", "post_id");
+CREATE UNIQUE INDEX "ranking_details_ranking_id_post_id_key" ON "ranking_details"("ranking_id", "post_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "ranking_entries_ranking_id_rank_key" ON "ranking_entries"("ranking_id", "rank");
+CREATE UNIQUE INDEX "ranking_details_ranking_id_rank_key" ON "ranking_details"("ranking_id", "rank");
 
 -- AddForeignKey
 ALTER TABLE "user_sessions" ADD CONSTRAINT "user_sessions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -306,7 +306,7 @@ ALTER TABLE "feedbacks" ADD CONSTRAINT "feedbacks_vote_id_fkey" FOREIGN KEY ("vo
 ALTER TABLE "feedbacks" ADD CONSTRAINT "feedbacks_tag_id_fkey" FOREIGN KEY ("tag_id") REFERENCES "feedback_tags"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ranking_entries" ADD CONSTRAINT "ranking_entries_ranking_id_fkey" FOREIGN KEY ("ranking_id") REFERENCES "rankings"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ranking_details" ADD CONSTRAINT "ranking_details_ranking_id_fkey" FOREIGN KEY ("ranking_id") REFERENCES "rankings"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ranking_entries" ADD CONSTRAINT "ranking_entries_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "posts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ranking_details" ADD CONSTRAINT "ranking_details_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "posts"("id") ON DELETE CASCADE ON UPDATE CASCADE;

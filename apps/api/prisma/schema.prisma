@@ -112,7 +112,7 @@ model Post {
   images         PostImage[]
   outfitItems    PostOutfit[]
   evaluation     Evaluation?
-  rankingEntries RankingEntry[]
+  rankingDetails RankingDetail[]
 
   @@index([authorId])
   @@index([status])
@@ -237,7 +237,7 @@ model Ranking {
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
 
-  entries RankingEntry[]
+  details RankingDetail[]
 
   @@unique([period, startDate, endDate, timezone, algorithmVersion])
   @@index([period, startDate, endDate])
@@ -245,7 +245,7 @@ model Ranking {
   @@map("rankings")
 }
 
-model RankingEntry {
+model RankingDetail {
   id           Int      @id @default(autoincrement())
   rankingId    Int      @map("ranking_id")
   postId       Int      @map("post_id")
@@ -264,5 +264,5 @@ model RankingEntry {
   @@unique([rankingId, postId])
   @@unique([rankingId, rank])
   @@index([postId])
-  @@map("ranking_entries")
+  @@map("ranking_details")
 }

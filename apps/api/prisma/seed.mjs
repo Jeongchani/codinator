@@ -141,7 +141,7 @@ async function upsertFeedbackTags() {
 }
 
 async function resetSampleData() {
-  await prisma.rankingEntry.deleteMany();
+  await prisma.rankingDetail.deleteMany();
   await prisma.ranking.deleteMany();
   await prisma.feedback.deleteMany();
   await prisma.vote.deleteMany();
@@ -384,7 +384,7 @@ async function createSamplePosts(userMap, tagMap) {
     },
   });
 
-  await prisma.rankingEntry.createMany({
+  await prisma.rankingDetail.createMany({
     data: [
       {
         rankingId: weeklyRanking.id,
