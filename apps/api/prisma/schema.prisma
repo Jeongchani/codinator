@@ -7,13 +7,26 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
 enum PostStatus {
   ACTIVE
+  HIDDEN
   DELETED
 }
 
 enum EvaluationStatus {
   OPEN
+  CLOSED
   ENDED
 }
 
@@ -22,9 +35,15 @@ enum VoteChoice {
   DISLIKE
 }
 
-enum FeedbackTagPolarity {
-  POSITIVE
-  NEGATIVE
+enum RankingPeriod {
+  WEEKLY
+  MONTHLY
+}
+
+enum RankingStatus {
+  PENDING
+  READY
+  FAILED
 }
 
 enum GarmentCategory {
@@ -38,75 +57,122 @@ enum GarmentCategory {
 }
 
 model User {
-  id               Int       @id @default(autoincrement())
-  email            String    @unique @db.VarChar(100)
-  nickname         String?   @db.VarChar(50)
-  passwordHash     String    @map("password_hash") @db.VarChar(255)
-  createdAt        DateTime  @default(now()) @map("created_at")
-  deletedAt        DateTime? @map("deleted_at")
-  refreshTokenHash String?
+  id           Int        @id @default(autoincrement())
+  email        String     @unique @db.VarChar(100)
+  nickname     String     @unique @db.VarChar(30)
+  passwordHash String     @map("password_hash") @db.VarChar(255)
+  role         UserRole   @default(USER)
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  deletedAt    DateTime?  @map("deleted_at")
 
-  posts Post[]
-  votes Vote[]
+  posts             Post[]
+  votes             Vote[]
+  sessions          UserSession[]
+  closedEvaluations Evaluation[] @relation("EvaluationClosedBy")
 
+  @@index([status])
   @@map("users")
 }
 
-model Post {
-  id        Int        @id @default(autoincrement())
-  authorId  Int        @map("author_id")
-  content   String?    @db.Text
-  status    PostStatus @default(ACTIVE)
-  createdAt DateTime   @default(now()) @map("created_at")
-  deletedAt DateTime?  @map("deleted_at")
+model UserSession {
+  id               Int       @id @default(autoincrement())
+  userId           Int       @map("user_id")
+  refreshTokenHash String    @unique @map("refresh_token_hash") @db.VarChar(255)
+  deviceName       String?   @map("device_name") @db.VarChar(100)
+  userAgent        String?   @map("user_agent") @db.VarChar(500)
+  ipAddress        String?   @map("ip_address") @db.VarChar(64)
+  expiresAt        DateTime  @map("expires_at")
+  lastUsedAt       DateTime? @map("last_used_at")
+  revokedAt        DateTime? @map("revoked_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  author      User             @relation(fields: [authorId], references: [id], onDelete: Restrict)
-  images      PostImage[]
-  outfitItems PostOutfitItem[]
-  evaluation  Evaluation?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+  @@map("user_sessions")
+}
+
+model Post {
+  id           Int        @id @default(autoincrement())
+  authorId     Int        @map("author_id")
+  content      String?    @db.VarChar(500)
+  status       PostStatus @default(ACTIVE)
+  publishedAt  DateTime?  @map("published_at")
+  hiddenAt     DateTime?  @map("hidden_at")
+  hiddenReason String?    @map("hidden_reason") @db.VarChar(255)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  deletedAt    DateTime?  @map("deleted_at")
+
+  author         User           @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  images         PostImage[]
+  outfitItems    PostOutfit[]
+  evaluation     Evaluation?
+  rankingEntries RankingEntry[]
 
   @@index([authorId])
   @@index([status])
+  @@index([publishedAt])
   @@map("posts")
 }
 
 model PostImage {
-  id        Int      @id @default(autoincrement())
-  postId    Int      @unique @map("post_id")
-  imageUrl  String   @map("image_url") @db.VarChar(500)
-  createdAt DateTime @default(now()) @map("created_at")
+  id           Int      @id @default(autoincrement())
+  postId       Int      @map("post_id")
+  storageKey   String?  @map("storage_key") @db.VarChar(255)
+  imageUrl     String   @map("image_url") @db.VarChar(500)
+  thumbnailUrl String?  @map("thumbnail_url") @db.VarChar(500)
+  sortOrder    Int      @default(0) @map("sort_order")
+  isPrimary    Boolean  @default(false) @map("is_primary")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
+  @@unique([postId, sortOrder])
+  @@index([postId, isPrimary])
   @@map("post_images")
 }
 
-model PostOutfitItem {
+model PostOutfit {
   id        Int             @id @default(autoincrement())
   postId    Int             @map("post_id")
   category  GarmentCategory
   itemName  String?         @map("item_name") @db.VarChar(100)
   brand     String?         @db.VarChar(100)
+  sortOrder Int             @default(0) @map("sort_order")
   createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
 
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
+  @@unique([postId, sortOrder])
   @@index([postId])
-  @@map("post_outfit_items")
+  @@map("post_outfits")
 }
 
 model Evaluation {
-  id        Int              @id @default(autoincrement())
-  postId    Int              @unique @map("post_id")
-  startsAt  DateTime         @map("starts_at")
-  endsAt    DateTime         @map("ends_at")
-  status    EvaluationStatus @default(OPEN)
-  createdAt DateTime         @default(now()) @map("created_at")
+  id          Int              @id @default(autoincrement())
+  postId      Int              @unique @map("post_id")
+  startsAt    DateTime         @map("starts_at")
+  endsAt      DateTime         @map("ends_at")
+  status      EvaluationStatus @default(OPEN)
+  closedAt    DateTime?        @map("closed_at")
+  closeReason String?          @map("close_reason") @db.VarChar(255)
+  closedById  Int?             @map("closed_by_id")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
 
-  post  Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
-  votes Vote[]
+  post     Post  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  votes    Vote[]
+  closedBy User? @relation("EvaluationClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
 
   @@index([status, endsAt])
+  @@index([closedById])
   @@map("evaluations")
 }
 
@@ -117,9 +183,9 @@ model Vote {
   choice       VoteChoice
   createdAt    DateTime   @default(now()) @map("created_at")
 
-  evaluation   Evaluation        @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
-  voter        User              @relation(fields: [voterId], references: [id], onDelete: Restrict)
-  feedbackTags VoteFeedbackTag[]
+  evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  voter      User       @relation(fields: [voterId], references: [id], onDelete: Restrict)
+  feedback   Feedback?
 
   @@unique([evaluationId, voterId])
   @@index([voterId])
@@ -128,30 +194,75 @@ model Vote {
 }
 
 model FeedbackTag {
-  id         Int                 @id @default(autoincrement())
-  code       String              @unique @db.VarChar(50)
-  label      String              @db.VarChar(100)
-  polarity   FeedbackTagPolarity
-  voteChoice VoteChoice          @map("vote_choice")
-  isActive   Boolean             @default(true) @map("is_active")
-  sortOrder  Int                 @default(0) @map("sort_order")
+  id         Int        @id @default(autoincrement())
+  code       String     @unique @db.VarChar(50)
+  label      String     @db.VarChar(100)
+  groupCode  String?    @map("group_code") @db.VarChar(50)
+  voteChoice VoteChoice @map("vote_choice")
+  isActive   Boolean    @default(true) @map("is_active")
+  sortOrder  Int        @default(0) @map("sort_order")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
 
-  voteFeedbackTags VoteFeedbackTag[]
+  feedbacks Feedback[]
 
   @@index([voteChoice, isActive, sortOrder])
+  @@index([groupCode])
   @@map("feedback_tags")
 }
 
-model VoteFeedbackTag {
+model Feedback {
   id        Int      @id @default(autoincrement())
-  voteId    Int      @map("vote_id")
+  voteId    Int      @unique @map("vote_id")
   tagId     Int      @map("tag_id")
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   vote Vote        @relation(fields: [voteId], references: [id], onDelete: Cascade)
   tag  FeedbackTag @relation(fields: [tagId], references: [id], onDelete: Restrict)
 
-  @@unique([voteId, tagId])
   @@index([tagId])
-  @@map("vote_feedback_tags")
+  @@map("feedbacks")
+}
+
+model Ranking {
+  id               Int           @id @default(autoincrement())
+  period           RankingPeriod
+  startDate        DateTime      @map("start_date") @db.Date
+  endDate          DateTime      @map("end_date") @db.Date
+  timezone         String        @default("Asia/Seoul") @db.VarChar(50)
+  algorithmVersion Int           @default(1) @map("algorithm_version")
+  status           RankingStatus @default(PENDING)
+  generatedAt      DateTime?     @map("generated_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  entries RankingEntry[]
+
+  @@unique([period, startDate, endDate, timezone, algorithmVersion])
+  @@index([period, startDate, endDate])
+  @@index([status])
+  @@map("rankings")
+}
+
+model RankingEntry {
+  id           Int      @id @default(autoincrement())
+  rankingId    Int      @map("ranking_id")
+  postId       Int      @map("post_id")
+  rank         Int
+  score        Decimal  @default(0) @db.Decimal(10, 4)
+  likeCount    Int      @default(0) @map("like_count")
+  dislikeCount Int      @default(0) @map("dislike_count")
+  totalCount   Int      @default(0) @map("total_count")
+  likeRate     Decimal  @default(0) @map("like_rate") @db.Decimal(5, 4)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  ranking Ranking @relation(fields: [rankingId], references: [id], onDelete: Cascade)
+  post    Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([rankingId, postId])
+  @@unique([rankingId, rank])
+  @@index([postId])
+  @@map("ranking_entries")
 }

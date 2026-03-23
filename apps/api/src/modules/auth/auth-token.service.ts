@@ -1,4 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import * as jwt from 'jsonwebtoken';
 import type { JwtPayload } from 'jsonwebtoken';
 
@@ -12,6 +13,7 @@ type RefreshTokenPayload = JwtPayload & {
   sub: number;
   email: string;
   type: 'refresh';
+  jti?: string;
 };
 
 @Injectable()
@@ -34,7 +36,7 @@ export class AuthTokenService {
 
   signRefreshToken(userId: number, email: string): string {
     return jwt.sign(
-      { sub: userId, email, type: 'refresh' },
+      { sub: userId, email, type: 'refresh', jti: randomUUID() },
       this.refreshTokenSecret,
       {
         expiresIn: '7d',

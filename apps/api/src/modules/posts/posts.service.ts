@@ -9,6 +9,12 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { buildFeedbackSummary, buildVoteSummary } from '../evaluations/common/evaluation-summary.util';
 import { syncExpiredEvaluations } from '../evaluations/common/sync-expired-evaluations.util';
 
+const IMAGE_ORDER_BY = [
+  { isPrimary: 'desc' as const },
+  { sortOrder: 'asc' as const },
+  { id: 'asc' as const },
+];
+
 @Injectable()
 export class PostsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -25,14 +31,17 @@ export class PostsService {
         images: {
           create: {
             imageUrl: body.image.imageUrl,
+            sortOrder: 0,
+            isPrimary: true,
           },
         },
         outfitItems: body.outfitItems?.length
           ? {
-              create: body.outfitItems.map((item) => ({
+              create: body.outfitItems.map((item, index) => ({
                 category: item.category,
                 itemName: item.itemName ?? null,
                 brand: item.brand ?? null,
+                sortOrder: index,
               })),
             }
           : undefined,
@@ -74,16 +83,16 @@ export class PostsService {
           },
         },
         images: {
-          orderBy: { id: 'asc' },
+          orderBy: IMAGE_ORDER_BY,
         },
         outfitItems: {
-          orderBy: { id: 'asc' },
+          orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
         },
         evaluation: {
           include: {
             votes: {
               include: {
-                feedbackTags: {
+                feedback: {
                   include: {
                     tag: true,
                   },

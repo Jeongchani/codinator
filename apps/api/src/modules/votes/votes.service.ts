@@ -34,11 +34,12 @@ export class VotesService {
     return {
       items: tags.map((tag) => ({
         id: tag.id,
-        code: tag.code as GetTagsResponse['items'][number]['code'],
+        code: tag.code,
         label: tag.label,
-        polarity: tag.polarity,
+        groupCode: tag.groupCode,
         voteChoice: tag.voteChoice,
         isActive: tag.isActive,
+        sortOrder: tag.sortOrder,
       })),
     };
   }
@@ -154,17 +155,13 @@ export class VotesService {
       throw new BadRequestException('선택한 투표와 맞지 않는 피드백 태그입니다.');
     }
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.voteFeedbackTag.deleteMany({
-        where: { voteId },
-      });
-
-      await tx.voteFeedbackTag.create({
-        data: {
-          voteId,
-          tagId,
-        },
-      });
+    await this.prisma.feedback.upsert({
+      where: { voteId },
+      update: { tagId },
+      create: {
+        voteId,
+        tagId,
+      },
     });
 
     return {
