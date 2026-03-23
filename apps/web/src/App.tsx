@@ -88,7 +88,7 @@ function App() {
   // 로그아웃 (프론트에서 토큰 삭제)
   const handleLogout = () => {
     localStorage.removeItem('token');
-    setAuthResult({ message: '로그아웃 완료 (토큰 삭제)' });
+    setAuthResult({ success: true, message: '로그아웃 완료 (토큰 삭제)' });
   };
 
   return (
