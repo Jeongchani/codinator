@@ -4,7 +4,8 @@ import MemberGuest from './pages/auth/MemberGuest';
 import Detail from './pages/look/Detail';
 import Signup from './pages/auth/Signup';
 import Login from './pages/auth/Login';
-import RankingZone from './pages/ranking/RankingZone'; // 🔴 경로와 대소문자 확인
+import RankingZone from './pages/ranking/RankingZone';
+import RankingDetail from './pages/ranking/RankingDetail';
 import Test from './test';
 
 function AppRoutes() {
@@ -16,6 +17,10 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/rankingZone" element={<RankingZone />} />
+      
+      {/* 🔴 이 부분을 수정했습니다. :postId를 추가하고 경로를 RankingZone과 맞췄습니다. */}
+      <Route path="/ranking-detail/:postId" element={<RankingDetail />} />
+      
       <Route path="/detail" element={<Detail />} />
       <Route path="/test" element={<Test />} />
     </Routes>
