@@ -7,9 +7,9 @@ import RankingDetail from './pages/ranking/RankingDetail';
 import RankingZone from './pages/ranking/RankingZone';
 import Splash from './pages/splash/Splash';
 import UserFeed from './pages/user/UserFeed';
-import EvaluationDetail1 from './pages/Evaluation/EvaluationDetail1';
-import EvaluationDetail2 from './pages/Evaluation/EvaluationDetail2';
-import EvaluationZone from './pages/Evaluation/EvaluationZone';
+import EvaluationDetail1 from './pages/evaluation/EvaluationDetail1';
+import EvaluationDetail2 from './pages/evaluation/EvaluationDetail2';
+import EvaluationZone from './pages/evaluation/EvaluationZone';
 import Test from './Test';
 
 function AppRoutes() {

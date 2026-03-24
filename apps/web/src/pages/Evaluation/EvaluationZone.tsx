@@ -110,7 +110,7 @@ const EvaluationZone: React.FC = () => {
   const goToEvaluationDetail = () => {
     if (!selectedVote) return;
 
-    navigate('/evaluation-detail', {
+    navigate('/evaluation-detail1', {
       state: {
         voteType: selectedVote,
         postId: currentPost.id,
@@ -234,38 +234,41 @@ const EvaluationZone: React.FC = () => {
                 {isLikeSelected && '평가하러가기'}
                 {isDislikeSelected && '평가하러가기'}
               </div>
-                {isLikeSelected && (
-                  <div className={styles.trackHintRight}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M8.59 16.59L13.17 12L8.59 7.41L10 6L16 12L10 18L8.59 16.59Z"
-                        fill="white"
-                      />
-                    </svg>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M8.59 16.59L13.17 12L8.59 7.41L10 6L16 12L10 18L8.59 16.59Z"
-                        fill="white"
-                      />
-                    </svg>
-                  </div>
-                )}
-                {isDislikeSelected && (
-                  <div className={styles.trackHintLeft}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M15.41 16.59L10.83 12L15.41 7.41L14 6L8 12L14 18L15.41 16.59Z"
-                        fill="white"
-                      />
-                    </svg>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M15.41 16.59L10.83 12L15.41 7.41L14 6L8 12L14 18L15.41 16.59Z"
-                        fill="white"
-                      />
-                    </svg>
-                  </div>
-                )}
+
+              {isLikeSelected && (
+                <div className={styles.trackHintRight}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M8.59 16.59L13.17 12L8.59 7.41L10 6L16 12L10 18L8.59 16.59Z"
+                      fill="white"
+                    />
+                  </svg>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M8.59 16.59L13.17 12L8.59 7.41L10 6L16 12L10 18L8.59 16.59Z"
+                      fill="white"
+                    />
+                  </svg>
+                </div>
+              )}
+
+              {isDislikeSelected && (
+                <div className={styles.trackHintLeft}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M15.41 16.59L10.83 12L15.41 7.41L14 6L8 12L14 18L15.41 16.59Z"
+                      fill="white"
+                    />
+                  </svg>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M15.41 16.59L10.83 12L15.41 7.41L14 6L8 12L14 18L15.41 16.59Z"
+                      fill="white"
+                    />
+                  </svg>
+                </div>
+              )}
+
               <motion.div
                 className={styles.dragThumb}
                 drag="x"
