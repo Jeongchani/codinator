@@ -34,7 +34,7 @@ const Login: React.FC = () => {
       });
 
       localStorage.setItem('token', data.accessToken);
-      navigate('/rankingList'); 
+      navigate('/rankingZone'); 
 
     } catch (err: unknown) {
       // 🔴 TypeScript 에러 처리 (any 대신 unknown 사용)

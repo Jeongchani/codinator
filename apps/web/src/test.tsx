@@ -40,7 +40,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 /* ------------------------------------------------------------------ */
 /*  메인 App                                                           */
 /* ------------------------------------------------------------------ */
-function App() {
+function Test() {
   /* ---- 공통 상태 ---- */
   const [health, setHealth] = useState<HealthCheckResponse | null>(null);
   const [healthError, setHealthError] = useState('');
@@ -644,4 +644,4 @@ function App() {
   );
 }
 
-export default App;
+export default Test;

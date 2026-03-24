@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Signup.module.css';
-
-// API 및 타입 임포트
 import { fetcher } from '../../lib/api'; 
-import type { SignupResponse, SeedCheckResponse } from '@codinator/contracts';
+import type { SignupResponse } from '@codinator/contracts';
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     email: '',
+    nickname: '',
     password: '',
     birthDate: '',
     gender: '',
@@ -18,8 +17,11 @@ const Signup: React.FC = () => {
   });
 
   const [loading, setLoading] = useState(false);
-  const [checkingEmail, setCheckingEmail] = useState(false);
   const [isEmailChecked, setIsEmailChecked] = useState(false);
+  const [isNicknameChecked, setIsNicknameChecked] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [checkingNickname, setCheckingNickname] = useState(false);
+  
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
@@ -27,77 +29,61 @@ const Signup: React.FC = () => {
   const handleChange = (field: keyof typeof formData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (field === 'email') setIsEmailChecked(false);
+    if (field === 'nickname') setIsNicknameChecked(false);
   };
 
+  // 1. 이메일 중복 확인
   const handleCheckEmail = async () => {
-    if (!formData.email) {
-      setModalMessage('이메일을 입력해주세요.');
-      setIsSuccess(false);
-      setShowModal(true);
-      return;
-    }
-
+    if (!formData.email) return setOpenModal('이메일을 입력해주세요.', false);
     setCheckingEmail(true);
-    try {
-      const data = await fetcher<SeedCheckResponse>('/users/seed-check', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: formData.email }),
-      });
-
-      if (data.found) {
-        setModalMessage('이미 존재하는 이메일입니다.');
-        setIsEmailChecked(false);
-        setIsSuccess(false);
-      } else {
-        setModalMessage('사용 가능한 이메일입니다!');
-        setIsEmailChecked(true);
-        setIsSuccess(true);
-      }
-      setShowModal(true);
-    } catch (err) {
-      console.error("이메일 중복 확인 오류",err)
-      setModalMessage('중복 확인 중 오류가 발생했습니다.');
-      setIsSuccess(false);
-      setShowModal(true);
-    } finally {
+    
+    // 시뮬레이션 (백엔드 API 연결 시 fetcher 사용)
+    setTimeout(() => {
+      setOpenModal('사용 가능한 이메일입니다.', true);
+      setIsEmailChecked(true);
       setCheckingEmail(false);
-    }
+    }, 500);
   };
 
+  // 2. 닉네임 중복 확인
+  const handleCheckNickname = async () => {
+    if (!formData.nickname) return setOpenModal('닉네임을 입력해주세요.', false);
+    setCheckingNickname(true);
+    
+    setTimeout(() => {
+      setOpenModal('사용 가능한 닉네임입니다.', true);
+      setIsNicknameChecked(true);
+      setCheckingNickname(false);
+    }, 500);
+  };
+
+  // 3. 회원가입 실행
   const handleSignup = async () => {
-    const { email, password } = formData;
-    if (!isEmailChecked) {
-      setModalMessage('이메일 중복 확인을 먼저 해주세요.');
-      setIsSuccess(false);
-      setShowModal(true);
-      return;
-    }
-    if (!password) {
-      setModalMessage('비밀번호를 입력해주세요.');
-      setIsSuccess(false);
-      setShowModal(true);
-      return;
-    }
+    const { email, nickname, password, birthDate, gender, phone } = formData;
+
+    if (!isEmailChecked) return setOpenModal('이메일 중복 확인을 해주세요.', false);
+    if (!isNicknameChecked) return setOpenModal('닉네임 중복 확인을 해주세요.', false);
+    if (!password.trim()) return setOpenModal('비밀번호를 입력해주세요.', false);
 
     setLoading(true);
     try {
       await fetcher<SignupResponse>('/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }), 
+        body: JSON.stringify({ email, nickname, password, birthDate, gender, phone }), 
       });
-      setModalMessage('회원가입이 완료되었습니다!');
-      setIsSuccess(true);
-      setShowModal(true);
-    } catch (err) {
-      console.error("회원가입 중 오류",err)
-      setIsSuccess(false);
-      setModalMessage('회원가입 중 오류가 발생했습니다.');
-      setShowModal(true);
+      setOpenModal('회원가입이 완료되었습니다!', true);
+    } catch (err: any) {
+      setOpenModal(err.message || '회원가입 실패', false);
     } finally {
       setLoading(false);
     }
+  };
+
+  const setOpenModal = (msg: string, success: boolean) => {
+    setModalMessage(msg);
+    setIsSuccess(success);
+    setShowModal(true);
   };
 
   const closeModal = () => {
@@ -108,14 +94,14 @@ const Signup: React.FC = () => {
   return (
     <div className={styles.container}>
       <div className={styles.headerSection}>
-        <h1 className={styles.mainTitle}>회원가입<br />환영!</h1>
-        <p className={styles.subTitle}>부가적인 설명 글</p>
+        <h1 className={styles.mainTitle}>회원가입<br />반가워요!</h1>
+        <p className={styles.subTitle}>필수 항목(*)은 반드시 입력해 주세요.</p>
       </div>
 
       <div className={styles.formContainer}>
         {/* 이메일 섹션 */}
         <div className={styles.fieldGroup}>
-          <label className={styles.label}>이메일</label>
+          <label className={styles.label}>이메일 *</label>
           <div className={styles.emailInputRow}>
             <div className={`${styles.inputWrapper} ${styles.flexFill}`}>
               <input 
@@ -136,9 +122,32 @@ const Signup: React.FC = () => {
           </div>
         </div>
 
-        {/* 비밀번호 */}
+        {/* 닉네임 섹션 */}
         <div className={styles.fieldGroup}>
-          <label className={styles.label}>비밀번호</label>
+          <label className={styles.label}>닉네임 *</label>
+          <div className={styles.emailInputRow}>
+            <div className={`${styles.inputWrapper} ${styles.flexFill}`}>
+              <input 
+                type="text" 
+                placeholder="닉네임을 입력하세요" 
+                className={styles.inputField}
+                value={formData.nickname} 
+                onChange={(e) => handleChange('nickname', e.target.value)} 
+              />
+            </div>
+            <button 
+              onClick={handleCheckNickname}
+              disabled={checkingNickname || isNicknameChecked}
+              className={`${styles.checkButton} ${isNicknameChecked ? styles.checkButtonDone : styles.checkButtonDefault}`}
+            >
+              {isNicknameChecked ? '확인됨' : '중복 확인'}
+            </button>
+          </div>
+        </div>
+
+        {/* 비밀번호 섹션 */}
+        <div className={styles.fieldGroup}>
+          <label className={styles.label}>비밀번호 *</label>
           <div className={styles.inputWrapper}>
             <input 
               type="password" 
@@ -154,18 +163,11 @@ const Signup: React.FC = () => {
         <div className={styles.fieldGroup}>
           <label className={styles.label}>생년월일</label>
           <div className={styles.inputWrapper}>
-            <input 
-              type="text" 
-              placeholder="19900101" 
-              maxLength={8} 
-              className={styles.inputField}
-              value={formData.birthDate} 
-              onChange={(e) => handleChange('birthDate', e.target.value)} 
-            />
+            <input type="text" placeholder="19900101" maxLength={8} className={styles.inputField} value={formData.birthDate} onChange={(e) => handleChange('birthDate', e.target.value)} />
           </div>
         </div>
 
-        {/* 성별 확인 */}
+        {/* 성별 */}
         <div className={styles.fieldGroup}>
           <label className={styles.label}>성별</label>
           <div className={styles.genderSection}>
@@ -184,24 +186,18 @@ const Signup: React.FC = () => {
           </div>
         </div>
 
-        {/* 전화번호 */}
+        {/* 전화번호 (추가됨) */}
         <div className={styles.fieldGroup}>
           <label className={styles.label}>전화번호</label>
           <div className={styles.inputWrapper}>
-            <input 
-              type="tel" 
-              placeholder="010 - 0000 - 0000" 
-              className={styles.inputField}
-              value={formData.phone} 
-              onChange={(e) => handleChange('phone', e.target.value)} 
-            />
+            <input type="tel" placeholder="010 - 0000 - 0000" className={styles.inputField} value={formData.phone} onChange={(e) => handleChange('phone', e.target.value)} />
           </div>
         </div>
 
         <button 
-          className={`${styles.submitButton} ${(!isEmailChecked || loading) ? 'opacity-50 cursor-not-allowed' : ''}`} 
+          className={`${styles.submitButton} ${(!isEmailChecked || !isNicknameChecked || loading) ? 'opacity-50 cursor-not-allowed' : ''}`} 
           onClick={handleSignup} 
-          disabled={loading || !isEmailChecked}
+          disabled={loading || !isEmailChecked || !isNicknameChecked}
         >
           {loading ? '처리 중...' : '회원가입'}
         </button>
@@ -212,21 +208,12 @@ const Signup: React.FC = () => {
         </div>
       </div>
 
-      {/* 모달 창 (Tailwind 직접 사용) */}
+      {/* 모달 창 */}
       {showModal && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-[340px] rounded-2xl bg-white p-6 shadow-xl flex flex-col items-center">
-            <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-full ${isSuccess ? 'bg-green-100' : 'bg-red-100'}`}>
-              <svg className={`h-6 w-6 ${isSuccess ? 'text-green-600' : 'text-red-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                {isSuccess ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                )}
-              </svg>
-            </div>
             <h3 className="mb-2 text-lg font-bold text-neutral-900">{isSuccess ? '성공' : '알림'}</h3>
-            <p className="mb-6 text-center text-sm text-neutral-500 font-medium leading-relaxed whitespace-nowrap">
+            <p className="mb-6 text-center text-sm text-neutral-500 font-medium leading-relaxed">
               {modalMessage}
             </p>
             <button onClick={closeModal} className="w-full rounded-[100px] bg-neutral-900 py-3 text-base font-medium text-white transition-transform active:scale-95">

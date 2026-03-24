@@ -1,81 +1,71 @@
-/* src/pages/auth/Signup.module.css */
-
 .container {
-  @apply w-[375px] h-[812px] bg-white mx-auto shadow-2xl overflow-y-auto flex flex-col relative;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.container::-webkit-scrollbar {
-  display: none;
+  @apply w-[375px] min-h-[812px] bg-white mx-auto relative overflow-y-auto pb-10;
 }
 
 .headerSection {
-  @apply w-full px-6 pt-[93px] pb-10 flex flex-col gap-2;
+  @apply px-8 pt-16 pb-8;
 }
 
 .mainTitle {
-  @apply text-neutral-900 text-4xl font-bold font-sans leading-tight tracking-tight;
+  @apply text-neutral-900 text-3xl font-bold leading-tight;
 }
 
 .subTitle {
-  @apply text-neutral-900 text-xl font-medium font-sans;
+  @apply text-neutral-400 text-sm mt-2;
 }
 
 .formContainer {
-  @apply w-full px-6 flex flex-col gap-6 pb-20;
+  @apply px-8 space-y-5;
 }
 
 .fieldGroup {
-  @apply w-full flex flex-col gap-2;
+  @apply space-y-1.5;
 }
 
 .label {
-  @apply text-neutral-900 text-sm font-medium font-sans pl-1;
+  @apply text-neutral-900 text-sm font-bold;
 }
 
-/* 🔴 이메일 전용: 입력창과 버튼의 가로 배치 */
 .emailInputRow {
-  @apply flex gap-2 items-center w-full;
+  @apply flex gap-2;
 }
 
-.inputWrapper {
-  @apply h-14 bg-slate-50 rounded-[20px] flex items-center px-5;
-}
-
-/* 이메일 입력창이 버튼을 제외한 나머지를 다 채우도록 */
 .flexFill {
   @apply flex-1;
 }
 
-.inputField {
-  @apply w-full bg-transparent border-none outline-none text-neutral-900 text-lg font-normal placeholder:text-neutral-400;
+.inputWrapper {
+  @apply h-12 bg-neutral-50 rounded-xl px-4 flex items-center border border-neutral-100;
 }
 
-/* 🔴 중복 확인 버튼 전용 스타일 */
+.inputField {
+  @apply w-full bg-transparent outline-none text-neutral-900 text-sm placeholder:text-neutral-300;
+}
+
+/* 🔴 중복 확인 기본 버튼 */
 .checkButton {
-  @apply h-[44px] px-3 rounded-[15px] text-[13px] font-bold transition-all flex-none;
-  min-width: 70px;
+  @apply px-4 h-12 rounded-xl text-xs font-bold transition-all active:scale-95;
 }
 
 .checkButtonDefault {
-  @apply bg-neutral-900 text-white active:scale-95 shadow-sm;
+  @apply bg-neutral-900 text-white;
 }
 
+/* 🟢 중복 확인 성공 시 (연두색) */
 .checkButtonDone {
-  @apply bg-green-100 text-green-600 border border-green-200;
+  @apply bg-green-500 text-white;
 }
 
-/* 성별 선택 */
 .genderSection {
-  @apply w-full flex flex-col gap-1;
+  @apply flex gap-8 py-1.5;
 }
 
 .genderOption {
-  @apply flex items-center gap-4 py-2 cursor-pointer;
+  @apply flex items-center gap-2 cursor-pointer;
 }
 
 .genderText {
-  @apply text-neutral-400 text-lg font-medium font-sans;
+  @apply text-neutral-400 text-sm font-medium;
 }
 
 .genderTextActive {
@@ -83,17 +73,17 @@
 }
 
 .submitButton {
-  @apply w-full h-14 bg-neutral-900 rounded-[100px] flex justify-center items-center text-white text-base font-medium transition-transform active:scale-95 mt-4;
+  @apply w-full h-14 bg-neutral-900 text-white rounded-[100px] text-base font-bold mt-8;
 }
 
 .loginPrompt {
-  @apply w-full flex justify-center items-center gap-2 mt-2;
+  @apply flex justify-center gap-2 mt-6;
 }
 
 .promptTextGray {
-  @apply text-neutral-500 text-sm font-medium font-sans;
+  @apply text-neutral-400 text-sm;
 }
 
 .promptTextBlack {
-  @apply text-neutral-900 text-sm font-bold font-sans cursor-pointer hover:underline;
+  @apply text-neutral-900 text-sm font-bold cursor-pointer underline;
 }
