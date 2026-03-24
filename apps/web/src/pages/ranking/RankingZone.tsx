@@ -1,28 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import styles from './RankingZone.module.css';
 import Footer from '../../components/Footer';
-import { fetcher } from '../../lib/api';
-import type { LogoutResponse } from '@codinator/contracts';
-import { DUMMY_RANKINGS } from '../../data/dummy';
+import {
+  fetcher,
+  getAuthHeaders,
+  getRefreshToken,
+  clearAuthTokens,
+} from '../../lib/api';
+import type { GetRankingsResponse, LogoutResponse, RankingItem } from '@codinator/contracts';
 
-type RankingUser = {
-  nickname: string;
-};
-
-type OutfitItem = {
-  brand: string;
-  itemName: string;
-};
-
-type RankingPost = {
-  id: number | string;
-  content: string;
-  likeCount: number;
-  imageUrl?: string;
-  image_url?: string;
-  user?: RankingUser;
-  outfitItems?: OutfitItem[];
+type RankingSection = {
+  id: string;
+  title: string;
+  period: 'WEEKLY' | 'MONTHLY' | 'WEATHER';
+  items: RankingItem[];
 };
 
 const RankingZone: React.FC = () => {
@@ -30,8 +22,11 @@ const RankingZone: React.FC = () => {
   const location = useLocation();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [rankings, setRankings] = useState<RankingPost[]>([]);
+  const [weeklyRankings, setWeeklyRankings] = useState<RankingItem[]>([]);
+  const [monthlyRankings, setMonthlyRankings] = useState<RankingItem[]>([]);
+  const [weatherRankings, setWeatherRankings] = useState<RankingItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const [bookmarks, setBookmarks] = useState<Record<string, boolean>>(() => {
     const saved = localStorage.getItem('codinator_bookmarks');
@@ -49,28 +44,49 @@ const RankingZone: React.FC = () => {
     const loadRankings = async () => {
       try {
         setLoading(true);
-        const data = await fetcher<RankingPost[]>('/rankings?period=WEEKLY');
+        setError('');
 
-        if (data && data.length > 0) {
-          setRankings(data);
-        } else {
-          setRankings(DUMMY_RANKINGS as RankingPost[]);
+        const [weeklyData, monthlyData] = await Promise.all([
+          fetcher<GetRankingsResponse>('/rankings?period=WEEKLY', {
+            headers: getAuthHeaders(),
+          }),
+          fetcher<GetRankingsResponse>('/rankings?period=MONTHLY', {
+            headers: getAuthHeaders(),
+          }),
+        ]);
+
+        setWeeklyRankings(weeklyData.items ?? []);
+        setMonthlyRankings(monthlyData.items ?? []);
+        setWeatherRankings([]);
+      } catch (err) {
+        console.error('랭킹 불러오기 실패:', err);
+
+        const message =
+          err instanceof Error ? err.message : '랭킹 데이터를 불러오지 못했습니다.';
+        setError(message);
+
+        if (message.includes('Unauthorized') || message.includes('로그인이 필요합니다')) {
+          clearAuthTokens();
+          navigate('/login');
+          return;
         }
-      } catch {
-        setRankings(DUMMY_RANKINGS as RankingPost[]);
+
+        setWeeklyRankings([]);
+        setMonthlyRankings([]);
+        setWeatherRankings([]);
       } finally {
         setLoading(false);
       }
     };
 
     loadRankings();
-  }, []);
+  }, [navigate]);
 
   const handleLogout = async () => {
     if (!window.confirm('로그아웃 하시겠습니까?')) return;
 
     try {
-      const refreshToken = localStorage.getItem('refreshToken');
+      const refreshToken = getRefreshToken();
 
       if (refreshToken) {
         await fetcher<LogoutResponse>('/auth/logout', {
@@ -79,13 +95,10 @@ const RankingZone: React.FC = () => {
           body: JSON.stringify({ refreshToken }),
         });
       }
-
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      navigate('/login');
-    } catch {
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
+    } catch (err) {
+      console.error('로그아웃 요청 실패:', err);
+    } finally {
+      clearAuthTokens();
       navigate('/login');
     }
   };
@@ -100,10 +113,10 @@ const RankingZone: React.FC = () => {
     });
   };
 
-  const sections = [
-    { id: 'week', title: 'this week' },
-    { id: 'month', title: 'this month' },
-    { id: 'weather', title: 'this weather' },
+  const sections: RankingSection[] = [
+    { id: 'week', title: 'this week', period: 'WEEKLY', items: weeklyRankings },
+    { id: 'month', title: 'this month', period: 'MONTHLY', items: monthlyRankings },
+    { id: 'weather', title: 'this weather', period: 'WEATHER', items: weatherRankings },
   ];
 
   return (
@@ -154,6 +167,8 @@ const RankingZone: React.FC = () => {
 
         {loading ? (
           <div className={styles.loadingBox}>데이터 불러오는 중...</div>
+        ) : error ? (
+          <div className={styles.loadingBox}>{error}</div>
         ) : (
           sections.map((section) => (
             <section key={section.id} className={styles.section}>
@@ -172,42 +187,56 @@ const RankingZone: React.FC = () => {
               </div>
 
               <div className={styles.horizontalScroll}>
-                {rankings.map((post) => (
-                  <div
-                    key={String(post.id)}
-                    className={styles.card}
-                    onClick={() =>
-                      navigate(`/ranking-detail/${post.id}`, {
-                        state: {
-                          sectionTitle: section.title,
-                          period: section.id === 'month' ? 'MONTHLY' : 'WEEKLY',
-                        },
-                      })
-                    }
-                    style={{
-                      backgroundImage: `url(${post.imageUrl || post.image_url || ''})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                    }}
-                  >
-                    <div
-                      className={styles.heartIcon}
-                      onClick={(e) => toggleBookmark(e, String(post.id))}
-                    >
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
+                {section.items.length > 0 ? (
+                  section.items.map((post) => {
+                    const postId = String(post.postId);
+
+                    return (
+                      <div
+                        key={`${section.period}-${post.postId}`}
+                        className={styles.card}
+                        onClick={() =>
+                          navigate(`/ranking-detail/${post.postId}`, {
+                            state: {
+                              sectionTitle: section.title,
+                              period:
+                                section.period === 'WEATHER' ? 'WEEKLY' : section.period,
+                            },
+                          })
+                        }
+                        style={{
+                          backgroundImage: `url(${post.thumbnailUrl || ''})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          backgroundRepeat: 'no-repeat',
+                        }}
                       >
-                        <path
-                          d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.03L12 21.35Z"
-                          fill={bookmarks[String(post.id)] ? '#FF3B30' : 'rgba(255,255,255,0.75)'}
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                ))}
+                        <div
+                          className={styles.heartIcon}
+                          onClick={(e) => toggleBookmark(e, postId)}
+                        >
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.03L12 21.35Z"
+                              fill={
+                                bookmarks[postId]
+                                  ? '#FF3B30'
+                                  : 'rgba(255,255,255,0.75)'
+                              }
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className={styles.loadingBox}>표시할 랭킹이 없습니다.</div>
+                )}
               </div>
             </section>
           ))

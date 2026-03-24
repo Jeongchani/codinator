@@ -2,26 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import styles from './RankingDetail.module.css';
 import { motion, useAnimation, PanInfo } from 'framer-motion';
-import { fetcher } from '../../lib/api';
-import { DUMMY_RANKINGS } from '../../data/dummy';
+import { fetcher, getAuthHeaders, clearAuthTokens } from '../../lib/api';
+import type { GetRankingPostDetailResponse } from '@codinator/contracts';
 
-type RankingUser = {
-  nickname: string;
-};
-
-type OutfitItem = {
-  brand: string;
-  itemName: string;
-};
-
-type RankingPost = {
-  id: number | string;
-  content: string;
-  likeCount: number;
-  imageUrl?: string;
-  image_url?: string;
-  user?: RankingUser;
-  outfitItems?: OutfitItem[];
+type LocationState = {
+  sectionTitle?: string;
+  period?: string;
 };
 
 const RankingDetail: React.FC = () => {
@@ -30,49 +16,69 @@ const RankingDetail: React.FC = () => {
   const location = useLocation();
   const controls = useAnimation();
 
-  const sectionTitle = (location.state as { sectionTitle?: string; period?: string } | null)?.sectionTitle || 'this week';
-  const period = (location.state as { sectionTitle?: string; period?: string } | null)?.period || 'WEEKLY';
+  const state = (location.state as LocationState | null) ?? null;
+  const sectionTitle = state?.sectionTitle || 'this week';
+  const period = state?.period === 'MONTHLY' ? 'MONTHLY' : 'WEEKLY';
 
-  const [postData, setPostData] = useState<RankingPost | null>(null);
+  const [postData, setPostData] = useState<GetRankingPostDetailResponse | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isBookmarked, setIsBookmarked] = useState(false);
-
-  useEffect(() => {
-    if (postId) {
-      const saved = localStorage.getItem('codinator_bookmarks');
-      if (saved) {
-        const parsed = JSON.parse(saved) as Record<string, boolean>;
-        setIsBookmarked(!!parsed[String(postId)]);
-      }
-    }
-  }, [postId]);
 
   const EXPANDED_Y = 350;
   const COLLAPSED_Y = 685;
   const FULL_BOTTOM_Y = 770;
 
   useEffect(() => {
+    if (!postId) return;
+
+    const saved = localStorage.getItem('codinator_bookmarks');
+    if (saved) {
+      const parsed = JSON.parse(saved) as Record<string, boolean>;
+      setIsBookmarked(!!parsed[String(postId)]);
+    }
+  }, [postId]);
+
+  useEffect(() => {
     const loadDetail = async () => {
+      if (!postId) {
+        setLoading(false);
+        setPostData(null);
+        return;
+      }
+
       try {
         setLoading(true);
-        const data = await fetcher<RankingPost>(`/rankings/posts/${postId}?period=${period}`);
-        setPostData(data);
-      } catch {
-        const dummy = (DUMMY_RANKINGS as RankingPost[]).find(
-          (item) => String(item.id) === String(postId)
+
+        const data = await fetcher<GetRankingPostDetailResponse>(
+          `/rankings/posts/${postId}?period=${period}`,
+          {
+            headers: getAuthHeaders(),
+          },
         );
-        setPostData(dummy || (DUMMY_RANKINGS as RankingPost[])[0]);
+
+        setPostData(data);
+      } catch (err) {
+        console.error('랭킹 상세 불러오기 실패:', err);
+
+        const message =
+          err instanceof Error ? err.message : '상세 데이터를 불러오지 못했습니다.';
+
+        if (message.includes('Unauthorized') || message.includes('로그인이 필요합니다')) {
+          clearAuthTokens();
+          navigate('/login');
+          return;
+        }
+
+        setPostData(null);
       } finally {
         setLoading(false);
         controls.start({ y: COLLAPSED_Y });
       }
     };
 
-    if (postId) {
-      loadDetail();
-    }
-  }, [postId, period, controls]);
+    loadDetail();
+  }, [postId, period, navigate, controls]);
 
   const onDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const currentY = info.point.y;
@@ -125,7 +131,7 @@ const RankingDetail: React.FC = () => {
   }
 
   if (!postData) {
-    return <div className={styles.loading}>해당 게시글을 찾을 수 없습니다.</div>;
+    return <div className={styles.loading}>게시글을 불러올 수 없습니다.</div>;
   }
 
   return (
@@ -133,7 +139,12 @@ const RankingDetail: React.FC = () => {
       <div className={styles.imageSection}>
         <div
           className={styles.mainImage}
-          style={{ backgroundImage: `url(${postData.imageUrl || postData.image_url || ''})` }}
+          style={{
+            backgroundImage: `url(${postData.image.imageUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
         />
         <div className={styles.topGradient} />
         <div className={styles.bottomGradient} />
@@ -172,7 +183,7 @@ const RankingDetail: React.FC = () => {
           <div className={styles.infoRow}>
             <div>
               <h2 className={styles.title}>{postData.content}</h2>
-              <p className={styles.author}>작성자: {postData.user?.nickname ?? '알 수 없음'}</p>
+              <p className={styles.author}>작성자: {postData.author.nickname}</p>
             </div>
 
             <div className={styles.actionGroup}>
@@ -192,7 +203,7 @@ const RankingDetail: React.FC = () => {
 
               <div className={styles.likeBadge}>
                 <span className={styles.likeCount}>
-                  {postData.likeCount?.toLocaleString?.() ?? 0}
+                  {postData.voteSummary.likeCount.toLocaleString()}
                 </span>
               </div>
             </div>
@@ -202,7 +213,7 @@ const RankingDetail: React.FC = () => {
 
           <h3 className={styles.subTitle}>착용 아이템</h3>
           <div className={styles.itemScroll}>
-            {(postData.outfitItems ?? []).map((item, idx) => (
+            {postData.outfitItems.map((item, idx) => (
               <div key={idx} className={styles.outfitCard}>
                 <div className={styles.itemImg} />
                 <p className={styles.brandName}>{item.brand}</p>
