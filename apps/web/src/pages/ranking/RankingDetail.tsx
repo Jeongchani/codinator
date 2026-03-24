@@ -1,27 +1,52 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import styles from './RankingDetail.module.css';
 import { motion, useAnimation, PanInfo } from 'framer-motion';
 import { fetcher, getAuthHeaders, clearAuthTokens } from '../../lib/api';
 import type { GetRankingPostDetailResponse } from '@codinator/contracts';
 
+type LocationState = {
+  sectionTitle?: string;
+  period?: string;
+};
+
 const RankingDetail: React.FC = () => {
-  const { postId } = useParams();
-  const [searchParams] = useSearchParams();
+  const { postId } = useParams<{ postId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const controls = useAnimation();
+
+  const state = (location.state as LocationState | null) ?? null;
+  const sectionTitle = state?.sectionTitle || 'this week';
+  const period = state?.period === 'MONTHLY' ? 'MONTHLY' : 'WEEKLY';
 
   const [postData, setPostData] = useState<GetRankingPostDetailResponse | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isBookmarked, setIsBookmarked] = useState(false);
 
-  const COLLAPSED_Y = 740;
   const EXPANDED_Y = 350;
+  const COLLAPSED_Y = 685;
+  const FULL_BOTTOM_Y = 770;
 
-  const period = searchParams.get('period') === 'MONTHLY' ? 'MONTHLY' : 'WEEKLY';
+  useEffect(() => {
+    if (!postId) return;
+
+    const saved = localStorage.getItem('codinator_bookmarks');
+    if (saved) {
+      const parsed = JSON.parse(saved) as Record<string, boolean>;
+      setIsBookmarked(!!parsed[String(postId)]);
+    }
+  }, [postId]);
 
   useEffect(() => {
     const loadDetail = async () => {
+      if (!postId) {
+        setLoading(false);
+        setPostData(null);
+        return;
+      }
+
       try {
         setLoading(true);
 
@@ -52,21 +77,19 @@ const RankingDetail: React.FC = () => {
       }
     };
 
-    if (postId) {
-      loadDetail();
-    } else {
-      setLoading(false);
-      setPostData(null);
-    }
+    loadDetail();
   }, [postId, period, navigate, controls]);
 
-  const onDragEnd = (_: unknown, info: PanInfo) => {
+  const onDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const currentY = info.point.y;
     const isDraggingUp = info.offset.y < -50 || info.velocity.y < -500;
     const isDraggingDown = info.offset.y > 50 || info.velocity.y > 500;
 
-    if (!isExpanded && isDraggingUp) {
+    if (currentY > COLLAPSED_Y + 50 || (isExpanded && currentY > COLLAPSED_Y)) {
+      collapseSheet();
+    } else if (!isExpanded && isDraggingUp) {
       expandSheet();
-    } else if (isExpanded && isDraggingDown) {
+    } else if (isExpanded && isDraggingDown && currentY <= COLLAPSED_Y + 50) {
       collapseSheet();
     } else {
       controls.start({ y: isExpanded ? EXPANDED_Y : COLLAPSED_Y });
@@ -89,8 +112,27 @@ const RankingDetail: React.FC = () => {
     });
   };
 
-  if (loading) return <div className={styles.loading}>데이터 로드 중...</div>;
-  if (!postData) return <div className={styles.loading}>게시글을 불러올 수 없습니다.</div>;
+  const handleToggleBookmark = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    const nextState = !isBookmarked;
+    setIsBookmarked(nextState);
+
+    if (postId) {
+      const safeId = String(postId);
+      const saved = localStorage.getItem('codinator_bookmarks');
+      const parsed = saved ? (JSON.parse(saved) as Record<string, boolean>) : {};
+      parsed[safeId] = nextState;
+      localStorage.setItem('codinator_bookmarks', JSON.stringify(parsed));
+    }
+  };
+
+  if (loading) {
+    return <div className={styles.loading}>데이터 로드 중...</div>;
+  }
+
+  if (!postData) {
+    return <div className={styles.loading}>게시글을 불러올 수 없습니다.</div>;
+  }
 
   return (
     <div className={styles.container}>
@@ -108,9 +150,7 @@ const RankingDetail: React.FC = () => {
         <div className={styles.bottomGradient} />
       </div>
 
-      <div className={styles.headerTitle}>
-        {period === 'MONTHLY' ? 'this month' : 'this week'}
-      </div>
+      <div className={styles.headerTitle}>{sectionTitle}</div>
 
       <button onClick={() => navigate(-1)} className={styles.closeBtn}>
         <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
@@ -124,11 +164,13 @@ const RankingDetail: React.FC = () => {
       <motion.div
         className={styles.bottomSheet}
         drag="y"
-        dragConstraints={{ top: EXPANDED_Y, bottom: COLLAPSED_Y }}
-        dragElastic={0}
-        initial={{ y: COLLAPSED_Y }}
+        dragConstraints={{ top: EXPANDED_Y, bottom: FULL_BOTTOM_Y }}
+        dragElastic={{ top: 0, bottom: 0.5 }}
         animate={controls}
+        initial={{ y: COLLAPSED_Y }}
         onDragEnd={onDragEnd}
+        style={{ cursor: 'grab' }}
+        whileTap={{ cursor: 'grabbing' }}
       >
         <div
           className={styles.handlerArea}
@@ -144,10 +186,26 @@ const RankingDetail: React.FC = () => {
               <p className={styles.author}>작성자: {postData.author.nickname}</p>
             </div>
 
-            <div className={styles.likeBadge}>
-              <span className={styles.likeCount}>
-                {postData.voteSummary.likeCount.toLocaleString()}
-              </span>
+            <div className={styles.actionGroup}>
+              <button onClick={handleToggleBookmark} className={styles.bookmarkBtn}>
+                <svg
+                  width="26"
+                  height="26"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.03L12 21.35Z"
+                    fill={isBookmarked ? '#FF3B30' : '#D9D9D9'}
+                  />
+                </svg>
+              </button>
+
+              <div className={styles.likeBadge}>
+                <span className={styles.likeCount}>
+                  {postData.voteSummary.likeCount.toLocaleString()}
+                </span>
+              </div>
             </div>
           </div>
 
