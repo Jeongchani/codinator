@@ -8,7 +8,7 @@ import Upload from './pages/post/Upload';
 import RankingDetail from './pages/ranking/RankingDetail';
 import RankingZone from './pages/ranking/RankingZone';
 import Splash from './pages/splash/Splash';
-import UserFeed from './pages/user/UserFeed';
+import UserFeed from './pages/user/UserFeed.tsx';
 import Evaluation from './pages/vote/Evaluation';
 import Feedback from './pages/vote/Feedback';
 import Test from './test';
