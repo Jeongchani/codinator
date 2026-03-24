@@ -10,13 +10,19 @@ import {
 } from '../../lib/api';
 import type { GetRankingsResponse, LogoutResponse, RankingItem } from '@codinator/contracts';
 
+type RankingSection = {
+  id: string;
+  title: string;
+  period: 'WEEKLY' | 'MONTHLY';
+  items: RankingItem[];
+};
+
 const RankingZone: React.FC = () => {
   const navigate = useNavigate();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [weeklyRankings, setWeeklyRankings] = useState<RankingItem[]>([]);
   const [monthlyRankings, setMonthlyRankings] = useState<RankingItem[]>([]);
-  const [dailyRankings, setDailyRankings] = useState<RankingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -26,21 +32,17 @@ const RankingZone: React.FC = () => {
         setLoading(true);
         setError('');
 
-        const [weeklyData, monthlyData, dailyData] = await Promise.all([
+        const [weeklyData, monthlyData] = await Promise.all([
           fetcher<GetRankingsResponse>('/rankings?period=WEEKLY', {
             headers: getAuthHeaders(),
           }),
           fetcher<GetRankingsResponse>('/rankings?period=MONTHLY', {
             headers: getAuthHeaders(),
           }),
-          fetcher<GetRankingsResponse>('/rankings?period=DAILY', {
-            headers: getAuthHeaders(),
-          }),
         ]);
 
         setWeeklyRankings(weeklyData.items ?? []);
         setMonthlyRankings(monthlyData.items ?? []);
-        setDailyRankings(dailyData.items ?? []);
       } catch (err) {
         console.error('랭킹 불러오기 실패:', err);
 
@@ -56,7 +58,6 @@ const RankingZone: React.FC = () => {
 
         setWeeklyRankings([]);
         setMonthlyRankings([]);
-        setDailyRankings([]);
       } finally {
         setLoading(false);
       }
@@ -86,10 +87,9 @@ const RankingZone: React.FC = () => {
     }
   };
 
-  const sections = [
-    { id: 'week', title: 'This Week', items: weeklyRankings },
-    { id: 'month', title: 'This Month', items: monthlyRankings },
-    { id: 'day', title: 'Today', items: dailyRankings },
+  const sections: RankingSection[] = [
+    { id: 'week', title: 'This Week', period: 'WEEKLY', items: weeklyRankings },
+    { id: 'month', title: 'This Month', period: 'MONTHLY', items: monthlyRankings },
   ];
 
   return (
@@ -149,9 +149,11 @@ const RankingZone: React.FC = () => {
                 {section.items.length > 0 ? (
                   section.items.map((post) => (
                     <div
-                      key={post.postId}
+                      key={`${section.period}-${post.postId}`}
                       className={styles.card}
-                      onClick={() => navigate(`/ranking-detail/${post.postId}`)}
+                      onClick={() =>
+                        navigate(`/ranking-detail/${post.postId}?period=${section.period}`)
+                      }
                       style={{
                         backgroundImage: `url(${post.thumbnailUrl})`,
                         backgroundSize: 'cover',

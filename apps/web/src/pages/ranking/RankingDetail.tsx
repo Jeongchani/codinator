@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import styles from './RankingDetail.module.css';
 import { motion, useAnimation, PanInfo } from 'framer-motion';
 import { fetcher, getAuthHeaders, clearAuthTokens } from '../../lib/api';
@@ -7,6 +7,7 @@ import type { GetRankingPostDetailResponse } from '@codinator/contracts';
 
 const RankingDetail: React.FC = () => {
   const { postId } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const controls = useAnimation();
 
@@ -17,13 +18,15 @@ const RankingDetail: React.FC = () => {
   const COLLAPSED_Y = 740;
   const EXPANDED_Y = 350;
 
+  const period = searchParams.get('period') === 'MONTHLY' ? 'MONTHLY' : 'WEEKLY';
+
   useEffect(() => {
     const loadDetail = async () => {
       try {
         setLoading(true);
 
         const data = await fetcher<GetRankingPostDetailResponse>(
-          `/rankings/posts/${postId}?period=WEEKLY`,
+          `/rankings/posts/${postId}?period=${period}`,
           {
             headers: getAuthHeaders(),
           },
@@ -55,7 +58,7 @@ const RankingDetail: React.FC = () => {
       setLoading(false);
       setPostData(null);
     }
-  }, [postId, navigate, controls]);
+  }, [postId, period, navigate, controls]);
 
   const onDragEnd = (_: unknown, info: PanInfo) => {
     const isDraggingUp = info.offset.y < -50 || info.velocity.y < -500;
@@ -105,7 +108,9 @@ const RankingDetail: React.FC = () => {
         <div className={styles.bottomGradient} />
       </div>
 
-      <div className={styles.headerTitle}>this week</div>
+      <div className={styles.headerTitle}>
+        {period === 'MONTHLY' ? 'this month' : 'this week'}
+      </div>
 
       <button onClick={() => navigate(-1)} className={styles.closeBtn}>
         <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
