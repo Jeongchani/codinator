@@ -1,8 +1,9 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
-const Feedback: React.FC = () => {
+function UserFeed() {
   const navigate = useNavigate();
+  const { userId } = useParams();
 
   return (
     <div className="min-h-screen bg-white px-5 py-8 text-neutral-900">
@@ -10,14 +11,14 @@ const Feedback: React.FC = () => {
         <button className="w-fit rounded-full border px-4 py-2 text-sm" onClick={() => navigate(-1)}>
           뒤로가기
         </button>
-        <h1 className="text-2xl font-bold">피드백 선택</h1>
+        <h1 className="text-2xl font-bold">유저 피드</h1>
+        <p className="text-sm text-neutral-500">선택한 유저 ID: {userId}</p>
         <p className="text-sm text-neutral-500">
-          현재 이 페이지는 비어 있던 파일을 임시 복구한 상태다. 실제 태그 선택 UI를 붙이기 전까지
-          라우팅 에러만 막아준다.
+          이 파일은 비어 있어서 라우트 연결 시 바로 깨질 상태였다. 일단 임시 화면으로 복구했다.
         </p>
       </div>
     </div>
   );
-};
+}
 
-export default Feedback;
+export default UserFeed;
