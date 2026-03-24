@@ -161,7 +161,7 @@ async function createSamplePosts(userMap, tagMap) {
       content: '[SEED] 봄 데일리 코디 평가 부탁드립니다.',
       images: {
         create: {
-          imageUrl: 'https://images.example.com/posts/open-post.jpg',
+          imageUrl: '/uploads/look1.jpg',
           sortOrder: 0,
           isPrimary: true,
         },
@@ -208,7 +208,7 @@ async function createSamplePosts(userMap, tagMap) {
       publishedAt: subDays(now, 7),
       images: {
         create: {
-          imageUrl: 'https://images.example.com/posts/ranked-post-1.jpg',
+          imageUrl: '/uploads/look2.jpg',
           sortOrder: 0,
           isPrimary: true,
         },
@@ -257,7 +257,7 @@ async function createSamplePosts(userMap, tagMap) {
       publishedAt: subDays(now, 5),
       images: {
         create: {
-          imageUrl: 'https://images.example.com/posts/ranked-post-2.jpg',
+          imageUrl: '/uploads/look3.jpg',
           sortOrder: 0,
           isPrimary: true,
         },
