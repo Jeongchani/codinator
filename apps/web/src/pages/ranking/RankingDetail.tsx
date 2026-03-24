@@ -2,34 +2,38 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion, type PanInfo, useAnimation } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { GetRankingPostDetailResponse, RankingPostDetail } from '@codinator/contracts';
-import { DUMMY_RANKINGS } from '../../data/dummy';
 import { fetcher, getAuthHeaders } from '../../lib/api';
 import styles from './RankingDetail.module.css';
 
+const PUBLIC_SAMPLE_IMAGE_URLS = ['/uploads/look1.jpg', '/uploads/look2.jpg', '/uploads/look3.jpg'];
+
+const getFallbackImageUrl = (postId?: string): string => {
+  const parsedId = Number(postId);
+
+  if (Number.isInteger(parsedId) && parsedId > 0) {
+    return PUBLIC_SAMPLE_IMAGE_URLS[(parsedId - 1) % PUBLIC_SAMPLE_IMAGE_URLS.length];
+  }
+
+  return PUBLIC_SAMPLE_IMAGE_URLS[0];
+};
+
 const makeFallbackPost = (postId?: string): RankingPostDetail => {
-  const matched =
-    DUMMY_RANKINGS.find((item) => item.id === postId) ??
-    DUMMY_RANKINGS.find((item) => item.id === '1') ??
-    DUMMY_RANKINGS[0];
+  const parsedId = Number(postId);
+  const resolvedPostId = Number.isInteger(parsedId) && parsedId > 0 ? parsedId : 1;
 
   return {
-    postId: Number(matched.id),
-    content: matched.content,
+    postId: resolvedPostId,
+    content: '업로드한 이미지 상세',
     status: 'ACTIVE',
     createdAt: new Date().toISOString(),
     image: {
-      id: Number(matched.id),
-      imageUrl: matched.imageUrl,
+      id: resolvedPostId,
+      imageUrl: getFallbackImageUrl(postId),
     },
-    outfitItems: matched.outfitItems.map((item, index) => ({
-      id: index + 1,
-      category: 'TOP',
-      itemName: item.itemName,
-      brand: item.brand,
-    })),
+    outfitItems: [],
     author: {
       userId: 1,
-      nickname: matched.user.nickname,
+      nickname: '작성자',
     },
     evaluation: {
       id: 1,
@@ -39,15 +43,15 @@ const makeFallbackPost = (postId?: string): RankingPostDetail => {
     hasVoted: false,
     canVote: false,
     voteSummary: {
-      likeCount: matched.likeCount,
+      likeCount: 0,
       dislikeCount: 0,
-      totalCount: matched.likeCount,
-      likeRate: 100,
+      totalCount: 0,
+      likeRate: 0,
     },
     feedbackSummary: [],
     ranking: {
       period: 'WEEKLY',
-      rank: Number(matched.id),
+      rank: resolvedPostId,
       startDate: new Date().toISOString(),
       endDate: new Date().toISOString(),
     },
@@ -164,15 +168,19 @@ const RankingDetail: React.FC = () => {
           <div className={styles.divider} />
 
           <h3 className={styles.subTitle}>착용 아이템</h3>
-          <div className={styles.itemScroll}>
-            {displayData.outfitItems.map((item) => (
-              <div key={item.id} className={styles.outfitCard}>
-                <div className={styles.itemImg} />
-                <p className={styles.brandName}>{item.brand ?? '브랜드 미정'}</p>
-                <p className={styles.itemName}>{item.itemName ?? '아이템 정보 없음'}</p>
-              </div>
-            ))}
-          </div>
+          {displayData.outfitItems.length > 0 ? (
+            <div className={styles.itemScroll}>
+              {displayData.outfitItems.map((item) => (
+                <div key={item.id} className={styles.outfitCard}>
+                  <div className={styles.itemImg} />
+                  <p className={styles.brandName}>{item.brand ?? '브랜드 미정'}</p>
+                  <p className={styles.itemName}>{item.itemName ?? '아이템 정보 없음'}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className={styles.author}>아이템 정보가 아직 없습니다.</p>
+          )}
         </div>
       </motion.div>
     </div>

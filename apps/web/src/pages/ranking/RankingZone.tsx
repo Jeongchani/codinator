@@ -2,18 +2,19 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { GetRankingsResponse, LogoutResponse, RankingItem } from '@codinator/contracts';
 import Footer from '../../components/Footer';
-import { DUMMY_RANKINGS } from '../../data/dummy';
 import { clearAuthTokens, fetcher, getAuthHeaders, getRefreshToken } from '../../lib/api';
 import styles from './RankingZone.module.css';
 
-const FALLBACK_RANKINGS: RankingItem[] = DUMMY_RANKINGS.map((item, index) => ({
+const PUBLIC_SAMPLE_IMAGE_URLS = ['/uploads/look1.jpg', '/uploads/look2.jpg', '/uploads/look3.jpg'];
+
+const FALLBACK_RANKINGS: RankingItem[] = PUBLIC_SAMPLE_IMAGE_URLS.map((thumbnailUrl, index) => ({
   rank: index + 1,
-  postId: Number(item.id),
-  thumbnailUrl: item.imageUrl,
-  likeCount: item.likeCount,
+  postId: index + 1,
+  thumbnailUrl,
+  likeCount: 0,
   dislikeCount: 0,
-  totalCount: item.likeCount,
-  likeRate: 100,
+  totalCount: 0,
+  likeRate: 0,
 }));
 
 const RankingZone: React.FC = () => {
