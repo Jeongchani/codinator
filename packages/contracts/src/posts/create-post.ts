@@ -1,4 +1,4 @@
-import type { GarmentCategory } from '../common/enums';
+import type { GarmentCategory, PostStatus } from '../common/enums';
 
 export interface CreateOutfitItemInput {
   category: GarmentCategory;
@@ -17,5 +17,5 @@ export interface CreatePostRequest {
 export interface CreatePostResponse {
   postId: number;
   evaluationId: number;
-  status: 'ACTIVE';
+  status: PostStatus;
 }

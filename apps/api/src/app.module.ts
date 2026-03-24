@@ -1,14 +1,23 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from './modules/auth/auth.module';
+import { EvaluationsModule } from './modules/evaluations/evaluations.module';
+import { FeedsModule } from './modules/feeds/feeds.module';
 import { HealthModule } from './modules/health/health.module';
-import { UsersModule } from './modules/users/users.module';
+import { PostsModule } from './modules/posts/posts.module';
+import { RankingsModule } from './modules/rankings/rankings.module';
+import { VotesModule } from './modules/votes/votes.module';
 import { PrismaModule } from './prisma/prisma.module';
 
-// NestJS의 모듈 시스템을 사용하여 애플리케이션의 루트 모듈 정의
-
-@Module({ // 모듈 역할 적기
-  imports: [PrismaModule,  // DB연결 도구
-            HealthModule,  // 헬스체크 API
-            UsersModule    // 사용자 관련 API
-          ], 
+@Module({
+  imports: [
+    PrismaModule,
+    HealthModule,
+    AuthModule,
+    PostsModule,
+    EvaluationsModule,
+    VotesModule,
+    RankingsModule,
+    FeedsModule,
+  ],
 })
 export class AppModule {}

@@ -1,13 +1,8 @@
-import type { Id } from '../common/id';
-import type { EvaluationStatus, RankingPeriod } from '../common/enums';
+import type { FeedListItem, FeedPostDetail, PostAuthorSummary } from '../posts/models';
 
-export interface GetMyFeedResponse {
-  userId: Id;
-  items: Array<{
-    postId: Id;
-    thumbnailUrl: string;
-    createdAt: string;
-    evaluationStatus: EvaluationStatus;
-    rankingPeriod?: RankingPeriod | null;
-  }>;
+export interface GetUserFeedResponse {
+  user: PostAuthorSummary;
+  items: FeedListItem[];
 }
+
+export type GetFeedPostDetailResponse = FeedPostDetail;

@@ -24,10 +24,13 @@ pnpm --filter @codinator/api run prisma:studio #http://localhost:5555
 ```bash
 
 #마이그레이션 새로 만들기
-pnpm --filter @codinator/api run prisma:migrate --name 이름
+pnpm --filter @codinator/api run prisma:migrate --name init_v1
 
 #DB 초기화 후 다시 마이그레이션 + seed  사용조심!
 pnpm --filter @codinator/api run prisma:reset
+
+#마이그레이션 초기화
+pnpm --filter @codinator/api exec prisma migrate dev --name init_v1
 
 #Prisma Studio
 pnpm --filter @codinator/api run prisma:studio

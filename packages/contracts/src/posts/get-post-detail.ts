@@ -1,3 +1,3 @@
-import type { PostDetail } from './models';
+import type { MyPostDetail } from './models';
 
-export type GetPostDetailResponse = PostDetail;
+export type GetPostDetailResponse = MyPostDetail;

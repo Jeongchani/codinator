@@ -1,28 +1,27 @@
 import {
   PrismaClient,
-  Prisma,
   EvaluationStatus,
-  FeedbackTagPolarity,
   GarmentCategory,
-  RankingPeriod,
   VoteChoice,
+  RankingPeriod,
+  RankingStatus,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 const userSeeds = [
-  { key: 'alice', email: 'alice@codinator.com', password: '1234' },
-  { key: 'bob', email: 'bob@codinator.com', password: '1234' },
-  { key: 'charlie', email: 'charlie@codinator.com', password: '1234' },
-  { key: 'diana', email: 'diana@codinator.com', password: '1234' },
+  { key: 'alice', email: 'alice@codinator.com', nickname: '앨리스', password: '1234' },
+  { key: 'bob', email: 'bob@codinator.com', nickname: '밥', password: '1234' },
+  { key: 'charlie', email: 'charlie@codinator.com', nickname: '찰리', password: '1234' },
+  { key: 'diana', email: 'diana@codinator.com', nickname: '다이애나', password: '1234' },
 ];
 
 const feedbackTagSeeds = [
   {
     code: 'POS_FIT_GOOD',
     label: '핏이 좋아요',
-    polarity: FeedbackTagPolarity.POSITIVE,
+    groupCode: 'FIT',
     voteChoice: VoteChoice.LIKE,
     isActive: true,
     sortOrder: 1,
@@ -30,7 +29,7 @@ const feedbackTagSeeds = [
   {
     code: 'POS_POINT_GOOD',
     label: '포인트가 좋아요',
-    polarity: FeedbackTagPolarity.POSITIVE,
+    groupCode: 'STYLE',
     voteChoice: VoteChoice.LIKE,
     isActive: true,
     sortOrder: 2,
@@ -38,7 +37,7 @@ const feedbackTagSeeds = [
   {
     code: 'NEG_SIZE_BAD',
     label: '핏/사이즈가 아쉬워요',
-    polarity: FeedbackTagPolarity.NEGATIVE,
+    groupCode: 'FIT',
     voteChoice: VoteChoice.DISLIKE,
     isActive: true,
     sortOrder: 3,
@@ -46,7 +45,7 @@ const feedbackTagSeeds = [
   {
     code: 'NEG_COLOR_BAD',
     label: '색 조합이 아쉬워요',
-    polarity: FeedbackTagPolarity.NEGATIVE,
+    groupCode: 'COLOR',
     voteChoice: VoteChoice.DISLIKE,
     isActive: true,
     sortOrder: 4,
@@ -54,7 +53,7 @@ const feedbackTagSeeds = [
   {
     code: 'NEG_MATCHING_BAD',
     label: '아이템 매치가 어색해요',
-    polarity: FeedbackTagPolarity.NEGATIVE,
+    groupCode: 'MATCHING',
     voteChoice: VoteChoice.DISLIKE,
     isActive: true,
     sortOrder: 5,
@@ -71,8 +70,27 @@ function subDays(date, days) {
   return addDays(date, -days);
 }
 
-function startOfDay(date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+function startOfWeek(date) {
+  const value = new Date(date);
+  value.setHours(0, 0, 0, 0);
+  const day = value.getDay();
+  const diff = day === 0 ? 6 : day - 1;
+  value.setDate(value.getDate() - diff);
+  return value;
+}
+
+function endOfWeek(date) {
+  const value = startOfWeek(date);
+  value.setDate(value.getDate() + 6);
+  return value;
+}
+
+function startOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function endOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
 }
 
 async function upsertUsers() {
@@ -84,10 +102,12 @@ async function upsertUsers() {
     const user = await prisma.user.upsert({
       where: { email: seed.email },
       update: {
+        nickname: seed.nickname,
         passwordHash,
       },
       create: {
         email: seed.email,
+        nickname: seed.nickname,
         passwordHash,
       },
     });
@@ -106,7 +126,7 @@ async function upsertFeedbackTags() {
       where: { code: seed.code },
       update: {
         label: seed.label,
-        polarity: seed.polarity,
+        groupCode: seed.groupCode,
         voteChoice: seed.voteChoice,
         isActive: seed.isActive,
         sortOrder: seed.sortOrder,
@@ -121,14 +141,15 @@ async function upsertFeedbackTags() {
 }
 
 async function resetSampleData() {
-  await prisma.voteFeedbackTag.deleteMany();
+  await prisma.rankingDetail.deleteMany();
+  await prisma.ranking.deleteMany();
+  await prisma.feedback.deleteMany();
   await prisma.vote.deleteMany();
-  await prisma.rankingEntry.deleteMany();
-  await prisma.rankingSnapshot.deleteMany();
   await prisma.evaluation.deleteMany();
-  await prisma.postOutfitItem.deleteMany();
+  await prisma.postOutfit.deleteMany();
   await prisma.postImage.deleteMany();
   await prisma.post.deleteMany();
+  await prisma.userSession.deleteMany();
 }
 
 async function createSamplePosts(userMap, tagMap) {
@@ -139,11 +160,11 @@ async function createSamplePosts(userMap, tagMap) {
       authorId: userMap.alice.id,
       content: '[SEED] 봄 데일리 코디 평가 부탁드립니다.',
       images: {
-        create: [
-          {
-            imageUrl: 'https://images.example.com/posts/open-post.jpg',
-          },
-        ],
+        create: {
+          imageUrl: 'https://images.example.com/posts/open-post.jpg',
+          sortOrder: 0,
+          isPrimary: true,
+        },
       },
       outfitItems: {
         create: [
@@ -151,16 +172,19 @@ async function createSamplePosts(userMap, tagMap) {
             category: GarmentCategory.TOP,
             itemName: '화이트 셔츠',
             brand: 'SPAO',
+            sortOrder: 0,
           },
           {
             category: GarmentCategory.BOTTOM,
             itemName: '와이드 데님',
             brand: 'MUSINSA STANDARD',
+            sortOrder: 1,
           },
           {
             category: GarmentCategory.SHOES,
             itemName: '스니커즈',
             brand: 'CONVERSE',
+            sortOrder: 2,
           },
         ],
       },
@@ -181,12 +205,13 @@ async function createSamplePosts(userMap, tagMap) {
     data: {
       authorId: userMap.bob.id,
       content: '[SEED] 스트릿 코디 랭킹 테스트용 게시글 1',
+      publishedAt: subDays(now, 7),
       images: {
-        create: [
-          {
-            imageUrl: 'https://images.example.com/posts/ranked-post-1.jpg',
-          },
-        ],
+        create: {
+          imageUrl: 'https://images.example.com/posts/ranked-post-1.jpg',
+          sortOrder: 0,
+          isPrimary: true,
+        },
       },
       outfitItems: {
         create: [
@@ -194,16 +219,19 @@ async function createSamplePosts(userMap, tagMap) {
             category: GarmentCategory.OUTER,
             itemName: '블랙 레더 자켓',
             brand: 'ZARA',
+            sortOrder: 0,
           },
           {
             category: GarmentCategory.TOP,
             itemName: '그래픽 티셔츠',
             brand: 'THISISNEVERTHAT',
+            sortOrder: 1,
           },
           {
             category: GarmentCategory.BOTTOM,
             itemName: '카고 팬츠',
             brand: 'CARHARTT',
+            sortOrder: 2,
           },
         ],
       },
@@ -212,6 +240,8 @@ async function createSamplePosts(userMap, tagMap) {
           startsAt: subDays(now, 14),
           endsAt: subDays(now, 7),
           status: EvaluationStatus.ENDED,
+          closedAt: subDays(now, 7),
+          closeReason: 'AUTO_ENDED',
         },
       },
     },
@@ -224,12 +254,13 @@ async function createSamplePosts(userMap, tagMap) {
     data: {
       authorId: userMap.diana.id,
       content: '[SEED] 랭킹 테스트용 게시글 2',
+      publishedAt: subDays(now, 5),
       images: {
-        create: [
-          {
-            imageUrl: 'https://images.example.com/posts/ranked-post-2.jpg',
-          },
-        ],
+        create: {
+          imageUrl: 'https://images.example.com/posts/ranked-post-2.jpg',
+          sortOrder: 0,
+          isPrimary: true,
+        },
       },
       outfitItems: {
         create: [
@@ -237,16 +268,19 @@ async function createSamplePosts(userMap, tagMap) {
             category: GarmentCategory.TOP,
             itemName: '니트',
             brand: '8SECONDS',
+            sortOrder: 0,
           },
           {
             category: GarmentCategory.BOTTOM,
             itemName: '슬랙스',
             brand: 'UNIQLO',
+            sortOrder: 1,
           },
           {
             category: GarmentCategory.BAG,
             itemName: '크로스백',
             brand: 'MATIN KIM',
+            sortOrder: 2,
           },
         ],
       },
@@ -255,6 +289,8 @@ async function createSamplePosts(userMap, tagMap) {
           startsAt: subDays(now, 12),
           endsAt: subDays(now, 5),
           status: EvaluationStatus.ENDED,
+          closedAt: subDays(now, 5),
+          closeReason: 'AUTO_ENDED',
         },
       },
     },
@@ -303,7 +339,7 @@ async function createSamplePosts(userMap, tagMap) {
     },
   });
 
-  await prisma.voteFeedbackTag.createMany({
+  await prisma.feedback.createMany({
     data: [
       {
         voteId: vote1.id,
@@ -328,71 +364,77 @@ async function createSamplePosts(userMap, tagMap) {
     ],
   });
 
-  const weeklyStart = startOfDay(subDays(now, 7));
-  const weeklyEnd = startOfDay(subDays(now, 1));
-  const monthlyStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const monthlyEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-
-  await prisma.rankingSnapshot.create({
+  const weeklyRanking = await prisma.ranking.create({
     data: {
       period: RankingPeriod.WEEKLY,
-      startDate: weeklyStart,
-      endDate: weeklyEnd,
-      entries: {
-        create: [
-          {
-            postId: rankedPost1.id,
-            rank: 1,
-            likeCount: 2,
-            dislikeCount: 1,
-            totalCount: 3,
-            likeRate: new Prisma.Decimal('0.6667'),
-          },
-          {
-            postId: rankedPost2.id,
-            rank: 2,
-            likeCount: 1,
-            dislikeCount: 1,
-            totalCount: 2,
-            likeRate: new Prisma.Decimal('0.5000'),
-          },
-        ],
-      },
+      startDate: startOfWeek(now),
+      endDate: endOfWeek(now),
+      status: RankingStatus.READY,
+      generatedAt: now,
     },
   });
 
-  await prisma.rankingSnapshot.create({
+  const monthlyRanking = await prisma.ranking.create({
     data: {
       period: RankingPeriod.MONTHLY,
-      startDate: monthlyStart,
-      endDate: monthlyEnd,
-      entries: {
-        create: [
-          {
-            postId: rankedPost1.id,
-            rank: 1,
-            likeCount: 2,
-            dislikeCount: 1,
-            totalCount: 3,
-            likeRate: new Prisma.Decimal('0.6667'),
-          },
-          {
-            postId: rankedPost2.id,
-            rank: 2,
-            likeCount: 1,
-            dislikeCount: 1,
-            totalCount: 2,
-            likeRate: new Prisma.Decimal('0.5000'),
-          },
-        ],
-      },
+      startDate: startOfMonth(now),
+      endDate: endOfMonth(now),
+      status: RankingStatus.READY,
+      generatedAt: now,
     },
+  });
+
+  await prisma.rankingDetail.createMany({
+    data: [
+      {
+        rankingId: weeklyRanking.id,
+        postId: rankedPost1.id,
+        rank: 1,
+        score: 0.6667,
+        likeCount: 2,
+        dislikeCount: 1,
+        totalCount: 3,
+        likeRate: 0.6667,
+      },
+      {
+        rankingId: weeklyRanking.id,
+        postId: rankedPost2.id,
+        rank: 2,
+        score: 0.5,
+        likeCount: 1,
+        dislikeCount: 1,
+        totalCount: 2,
+        likeRate: 0.5,
+      },
+      {
+        rankingId: monthlyRanking.id,
+        postId: rankedPost1.id,
+        rank: 1,
+        score: 0.6667,
+        likeCount: 2,
+        dislikeCount: 1,
+        totalCount: 3,
+        likeRate: 0.6667,
+      },
+      {
+        rankingId: monthlyRanking.id,
+        postId: rankedPost2.id,
+        rank: 2,
+        score: 0.5,
+        likeCount: 1,
+        dislikeCount: 1,
+        totalCount: 2,
+        likeRate: 0.5,
+      },
+    ],
   });
 
   return {
     openPostId: openPost.id,
     rankedPost1Id: rankedPost1.id,
     rankedPost2Id: rankedPost2.id,
+    weeklyRankingId: weeklyRanking.id,
+    monthlyRankingId: monthlyRanking.id,
   };
 }
 

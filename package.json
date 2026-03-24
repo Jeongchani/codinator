@@ -4,7 +4,6 @@
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "build": "turbo run build",
-
     "dev": "turbo run dev",
     "dev:web": "pnpm --filter @codinator/web dev",
     "dev:api": "pnpm --filter @codinator/api dev",
@@ -12,20 +11,19 @@
     "dev:ai": "pnpm --filter @codinator/ai dev",
     "dev:prisma": "pnpm --filter @codinator/api run prisma:studio",
     "dev:core": "turbo run dev --filter=@codinator/contracts --filter=@codinator/api --filter=@codinator/web",
-
     "db:up": "docker compose -f infra/docker/compose.yaml -f infra/docker/compose.dev.yaml up -d",
     "db:down": "docker compose -f infra/docker/compose.yaml -f infra/docker/compose.dev.yaml down",
 
     "build:contracts": "pnpm --filter @codinator/contracts run build",
-    
+
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    
     "clean": "pnpm dlx rimraf --glob node_modules pnpm-lock.yaml .turbo dist \"apps/*/node_modules\" \"apps/*/.turbo\" \"apps/*/dist\"",
     "reset": "pnpm run clean && pnpm install && pnpm run dev"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@types/jsonwebtoken": "^9.0.10",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.5",
@@ -37,5 +35,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    
   }
 }
