@@ -1,127 +1,208 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import styles from './RankingDetail.module.css';
 import { motion, useAnimation, PanInfo } from 'framer-motion';
 import { fetcher } from '../../lib/api';
 import { DUMMY_RANKINGS } from '../../data/dummy';
 
+type RankingUser = {
+  nickname: string;
+};
+
+type OutfitItem = {
+  brand: string;
+  itemName: string;
+};
+
+type RankingPost = {
+  id: number | string;
+  content: string;
+  likeCount: number;
+  imageUrl?: string;
+  image_url?: string;
+  user?: RankingUser;
+  outfitItems?: OutfitItem[];
+};
+
 const RankingDetail: React.FC = () => {
-  const { postId } = useParams();
+  const { postId } = useParams<{ postId: string }>();
   const navigate = useNavigate();
-  
-  // 🔴 Framer Motion 애니메이션 컨트롤러
+  const location = useLocation();
   const controls = useAnimation();
-  
-  const [postData, setPostData] = useState<any>(null);
+
+  const sectionTitle = (location.state as { sectionTitle?: string; period?: string } | null)?.sectionTitle || 'this week';
+  const period = (location.state as { sectionTitle?: string; period?: string } | null)?.period || 'WEEKLY';
+
+  const [postData, setPostData] = useState<RankingPost | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isBookmarked, setIsBookmarked] = useState(false);
 
-  // 🔴 y축 좌표 설정 (top: 0 기준으로 얼마나 내려가 있을지 결정)
-  const COLLAPSED_Y = 740; // 닫혀있을 때 (아래쪽에 살짝 보임)
-  const EXPANDED_Y = 350;  // 열려있을 때 (화면 중간까지 올라옴)
+  useEffect(() => {
+    if (postId) {
+      const saved = localStorage.getItem('codinator_bookmarks');
+      if (saved) {
+        const parsed = JSON.parse(saved) as Record<string, boolean>;
+        setIsBookmarked(!!parsed[String(postId)]);
+      }
+    }
+  }, [postId]);
+
+  const EXPANDED_Y = 350;
+  const COLLAPSED_Y = 685;
+  const FULL_BOTTOM_Y = 770;
 
   useEffect(() => {
     const loadDetail = async () => {
       try {
         setLoading(true);
-        const data = await fetcher<any>(`/rankings/posts/${postId}?period=WEEKLY`);
-        if (data) {
-          setPostData(data);
-        } else {
-          const dummy = DUMMY_RANKINGS.find(item => item.id === postId);
-          setPostData(dummy || DUMMY_RANKINGS[0]);
-        }
-      } catch (err) {
-        const dummy = DUMMY_RANKINGS.find(item => item.id === postId);
-        setPostData(dummy || DUMMY_RANKINGS[0]);
+        const data = await fetcher<RankingPost>(`/rankings/posts/${postId}?period=${period}`);
+        setPostData(data);
+      } catch {
+        const dummy = (DUMMY_RANKINGS as RankingPost[]).find(
+          (item) => String(item.id) === String(postId)
+        );
+        setPostData(dummy || (DUMMY_RANKINGS as RankingPost[])[0]);
       } finally {
         setLoading(false);
-        // 초기 로딩 시 바텀 시트를 닫힌 위치로 설정
         controls.start({ y: COLLAPSED_Y });
       }
     };
-    if (postId) loadDetail();
-  }, [postId, controls]);
 
-  // 🔴 드래그 끝났을 때 위치 판정
-  const onDragEnd = (_: any, info: PanInfo) => {
-    // 사용자가 드래그한 거리(offset.y)와 속도(velocity.y)를 계산
+    if (postId) {
+      loadDetail();
+    }
+  }, [postId, period, controls]);
+
+  const onDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const currentY = info.point.y;
     const isDraggingUp = info.offset.y < -50 || info.velocity.y < -500;
     const isDraggingDown = info.offset.y > 50 || info.velocity.y > 500;
 
-    if (!isExpanded && isDraggingUp) {
-      expandSheet(); // 위로 확 끌어올렸을 때
-    } else if (isExpanded && isDraggingDown) {
-      collapseSheet(); // 아래로 확 내렸을 때
+    if (currentY > COLLAPSED_Y + 50 || (isExpanded && currentY > COLLAPSED_Y)) {
+      collapseSheet();
+    } else if (!isExpanded && isDraggingUp) {
+      expandSheet();
+    } else if (isExpanded && isDraggingDown && currentY <= COLLAPSED_Y + 50) {
+      collapseSheet();
     } else {
-      // 어중간하게 끌다 말았을 때는 원래 위치로 튕겨 돌아가기
       controls.start({ y: isExpanded ? EXPANDED_Y : COLLAPSED_Y });
     }
   };
 
   const expandSheet = () => {
     setIsExpanded(true);
-    // top이 아니라 y를 변경합니다.
-    controls.start({ y: EXPANDED_Y, transition: { type: 'spring', stiffness: 300, damping: 30 } });
+    controls.start({
+      y: EXPANDED_Y,
+      transition: { type: 'spring', stiffness: 300, damping: 30 },
+    });
   };
 
   const collapseSheet = () => {
     setIsExpanded(false);
-    // top이 아니라 y를 변경합니다.
-    controls.start({ y: COLLAPSED_Y, transition: { type: 'spring', stiffness: 300, damping: 30 } });
+    controls.start({
+      y: COLLAPSED_Y,
+      transition: { type: 'spring', stiffness: 300, damping: 30 },
+    });
   };
 
-  if (loading) return <div className={styles.loading}>데이터 로드 중...</div>;
+  const handleToggleBookmark = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    const nextState = !isBookmarked;
+    setIsBookmarked(nextState);
+
+    if (postId) {
+      const safeId = String(postId);
+      const saved = localStorage.getItem('codinator_bookmarks');
+      const parsed = saved ? (JSON.parse(saved) as Record<string, boolean>) : {};
+      parsed[safeId] = nextState;
+      localStorage.setItem('codinator_bookmarks', JSON.stringify(parsed));
+    }
+  };
+
+  if (loading) {
+    return <div className={styles.loading}>데이터 로드 중...</div>;
+  }
+
+  if (!postData) {
+    return <div className={styles.loading}>해당 게시글을 찾을 수 없습니다.</div>;
+  }
 
   return (
     <div className={styles.container}>
-      {/* 1. 배경 이미지 */}
       <div className={styles.imageSection}>
-        <div className={styles.mainImage} style={{ backgroundImage: `url(${postData?.imageUrl})` }} />
+        <div
+          className={styles.mainImage}
+          style={{ backgroundImage: `url(${postData.imageUrl || postData.image_url || ''})` }}
+        />
         <div className={styles.topGradient} />
         <div className={styles.bottomGradient} />
       </div>
 
-      <div className={styles.headerTitle}>this week</div>
+      <div className={styles.headerTitle}>{sectionTitle}</div>
+
       <button onClick={() => navigate(-1)} className={styles.closeBtn}>
         <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-          <path d="M28.06 10.06L25.94 7.94L18 15.88L10.06 7.94L7.94 10.06L15.88 18L7.94 25.94L10.06 28.06L18 20.12L25.94 28.06L28.06 25.94L20.12 18L28.06 10.06Z" fill="white"/>
+          <path
+            d="M28.06 10.06L25.94 7.94L18 15.88L10.06 7.94L7.94 10.06L15.88 18L7.94 25.94L10.06 28.06L18 20.12L25.94 28.06L28.06 25.94L20.12 18L28.06 10.06Z"
+            fill="white"
+          />
         </svg>
       </button>
 
-      {/* 2. 바텀 시트 (드래그 영역) */}
-      <motion.div 
+      <motion.div
         className={styles.bottomSheet}
-        // 🔴 드래그 핵심 설정
         drag="y"
-        dragConstraints={{ top: EXPANDED_Y, bottom: COLLAPSED_Y }}
-        dragElastic={0} // 위로 딸려올라가는 고무줄 현상 완벽 제거 (0)
-        initial={{ y: COLLAPSED_Y }}
+        dragConstraints={{ top: EXPANDED_Y, bottom: FULL_BOTTOM_Y }}
+        dragElastic={{ top: 0, bottom: 0.5 }}
         animate={controls}
+        initial={{ y: COLLAPSED_Y }}
         onDragEnd={onDragEnd}
+        style={{ cursor: 'grab' }}
+        whileTap={{ cursor: 'grabbing' }}
       >
-        {/* 핸들러 영역 (클릭으로도 열리게 유지) */}
-        <div className={styles.handlerArea} onClick={() => isExpanded ? collapseSheet() : expandSheet()}>
+        <div
+          className={styles.handlerArea}
+          onClick={() => (isExpanded ? collapseSheet() : expandSheet())}
+        >
           <div className={styles.handlerBar} />
         </div>
 
-        {/* 내부 콘텐츠 영역 */}
         <div className={`${styles.sheetContent} ${isExpanded ? styles.scroll : styles.noScroll}`}>
           <div className={styles.infoRow}>
             <div>
-              <h2 className={styles.title}>{postData?.content}</h2>
-              <p className={styles.author}>작성자: {postData?.user?.nickname}</p>
+              <h2 className={styles.title}>{postData.content}</h2>
+              <p className={styles.author}>작성자: {postData.user?.nickname ?? '알 수 없음'}</p>
             </div>
-            <div className={styles.likeBadge}>
-              <span className={styles.likeCount}>{postData?.likeCount?.toLocaleString()}</span>
+
+            <div className={styles.actionGroup}>
+              <button onClick={handleToggleBookmark} className={styles.bookmarkBtn}>
+                <svg
+                  width="26"
+                  height="26"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.03L12 21.35Z"
+                    fill={isBookmarked ? '#FF3B30' : '#D9D9D9'}
+                  />
+                </svg>
+              </button>
+
+              <div className={styles.likeBadge}>
+                <span className={styles.likeCount}>
+                  {postData.likeCount?.toLocaleString?.() ?? 0}
+                </span>
+              </div>
             </div>
           </div>
 
           <div className={styles.divider} />
-          
+
           <h3 className={styles.subTitle}>착용 아이템</h3>
           <div className={styles.itemScroll}>
-            {postData?.outfitItems?.map((item: any, idx: number) => (
+            {(postData.outfitItems ?? []).map((item, idx) => (
               <div key={idx} className={styles.outfitCard}>
                 <div className={styles.itemImg} />
                 <p className={styles.brandName}>{item.brand}</p>

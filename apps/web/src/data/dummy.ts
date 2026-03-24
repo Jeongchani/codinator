@@ -1,4 +1,5 @@
-// 공통으로 사용할 더미 데이터
+// src/data/dummy.ts
+
 export const DUMMY_RANKINGS = [
   { 
     id: '1', 
@@ -8,7 +9,11 @@ export const DUMMY_RANKINGS = [
     user: { nickname: '패션피플1' },
     outfitItems: [
       { brand: '무신사 스탠다드', itemName: '화이트 옥스포드 셔츠' },
-      { brand: '리바이스', itemName: '501 오리지널 진' }
+      { brand: '리바이스', itemName: '501 오리지널 진' },
+      // 🔴 스크롤 테스트를 위해 아이템 3개 추가
+      { brand: '컨버스', itemName: '척테일러 올스타 하이' },
+      { brand: '아크테릭스', itemName: '헬리아드 15 백팩' },
+      { brand: '애플', itemName: '애플워치 SE 2세대' }
     ]
   },
   { 

@@ -21,20 +21,25 @@
 .headerTitle {
   @apply absolute left-[16px] top-[69px] text-white text-2xl font-bold z-10;
 }
+
 .closeBtn {
-  @apply absolute left-[323px] top-[68px] text-white z-10 active:scale-95;
+  @apply absolute right-4 top-[68px] z-10 cursor-pointer active:scale-90 transition-transform;
+  background: none;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* 🔴 바텀 시트 위치 고정 해제 */
 .bottomSheet {
   @apply absolute left-0 w-full bg-white rounded-t-[32px] shadow-[0px_-8px_20px_rgba(0,0,0,0.2)] z-20;
-  top: 0; /* 최상단을 기준으로 잡고 */
-  height: 812px; /* 길이를 길게 빼서 위아래로 움직일 때 밑부분이 잘리지 않게 함 */
-  touch-action: pan-y; /* 터치 스크롤 충돌 방지 */
+  top: 0;
+  height: 812px;
 }
 
 .handlerArea {
-  @apply w-full flex justify-center py-4 cursor-grab active:cursor-grabbing;
+  @apply w-full flex justify-center py-4;
 }
 .handlerBar {
   @apply w-[40px] h-[4px] bg-neutral-300 rounded-full;
@@ -43,7 +48,6 @@
   @apply px-5 h-full pb-20;
 }
 
-/* 열렸을 때만 내부 스크롤 허용 */
 .scroll {
   @apply overflow-y-auto;
 }
@@ -60,12 +64,27 @@
 .author {
   @apply text-stone-500 text-sm mt-1;
 }
+
+.actionGroup {
+  @apply flex items-center gap-3;
+}
+.bookmarkBtn {
+  @apply active:scale-90 transition-transform cursor-pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
 .likeBadge {
-  @apply bg-black px-4 py-2 rounded-full flex items-center gap-2;
+  @apply bg-black px-4 py-2 rounded-full flex items-center justify-center;
 }
 .likeCount {
   @apply text-white text-xs font-bold;
 }
+
 .divider {
   @apply w-full h-[1px] bg-neutral-200 my-6;
 }
@@ -77,6 +96,7 @@
   @apply flex gap-4 overflow-x-auto pb-4 flex-nowrap;
   -ms-overflow-style: none;
   scrollbar-width: none;
+  touch-action: pan-x;
 }
 .itemScroll::-webkit-scrollbar {
   display: none;

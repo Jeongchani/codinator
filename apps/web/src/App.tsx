@@ -10,6 +10,7 @@ import Test from './test';
 
 function AppRoutes() {
   const navigate = useNavigate();
+
   return (
     <Routes>
       <Route path="/" element={<Splash onFinish={() => navigate('/member-guest')} />} />
@@ -17,10 +18,7 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/rankingZone" element={<RankingZone />} />
-      
-      {/* 🔴 이 부분을 수정했습니다. :postId를 추가하고 경로를 RankingZone과 맞췄습니다. */}
       <Route path="/ranking-detail/:postId" element={<RankingDetail />} />
-      
       <Route path="/detail" element={<Detail />} />
       <Route path="/test" element={<Test />} />
     </Routes>
