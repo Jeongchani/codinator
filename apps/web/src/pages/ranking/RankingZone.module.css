@@ -60,9 +60,8 @@
 }
 
 .heartIcon {
-  @apply absolute top-4 left-4;
+  @apply absolute top-3 right-3 z-10 cursor-pointer active:scale-90 transition-transform;
 }
-
 /* Drawer & Overlay */
 .drawer {
   @apply fixed top-0 right-0 w-[280px] h-full bg-white z-[200] transition-transform duration-300 translate-x-full shadow-2xl flex flex-col;

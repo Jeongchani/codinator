@@ -26,6 +26,25 @@ const RankingZone: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const [bookmarks, setBookmarks] = useState<Record<string, boolean>>(() => {
+    const saved = localStorage.getItem('codinator_bookmarks');
+    return saved ? (JSON.parse(saved) as Record<string, boolean>) : {};
+  });
+
+  useEffect(() => {
+    const syncBookmarks = () => {
+      const saved = localStorage.getItem('codinator_bookmarks');
+      setBookmarks(saved ? (JSON.parse(saved) as Record<string, boolean>) : {});
+    };
+
+    syncBookmarks();
+    window.addEventListener('storage', syncBookmarks);
+
+    return () => {
+      window.removeEventListener('storage', syncBookmarks);
+    };
+  }, []);
+
   useEffect(() => {
     const loadRankings = async () => {
       try {
@@ -85,6 +104,16 @@ const RankingZone: React.FC = () => {
       clearAuthTokens();
       navigate('/login');
     }
+  };
+
+  const toggleBookmark = (e: React.MouseEvent, postId: string) => {
+    e.stopPropagation();
+
+    setBookmarks((prev) => {
+      const next = { ...prev, [postId]: !prev[postId] };
+      localStorage.setItem('codinator_bookmarks', JSON.stringify(next));
+      return next;
+    });
   };
 
   const sections: RankingSection[] = [
@@ -147,31 +176,40 @@ const RankingZone: React.FC = () => {
 
               <div className={styles.horizontalScroll}>
                 {section.items.length > 0 ? (
-                  section.items.map((post) => (
-                    <div
-                      key={`${section.period}-${post.postId}`}
-                      className={styles.card}
-                      onClick={() =>
-                        navigate(`/ranking-detail/${post.postId}?period=${section.period}`)
-                      }
-                      style={{
-                        backgroundImage: `url(${post.thumbnailUrl})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        backgroundRepeat: 'no-repeat',
-                      }}
-                    >
-                      <div className={styles.heartIcon}>
-                        <svg width="24" height="24" viewBox="0 0 29 27" fill="none">
-                          <path
-                            d="M20.42 0C19.11 0.02 17.82 0.39 16.7 1.06C15.57 1.74 14.64 2.7 14.01 3.85C13.37 2.7 12.44 1.74 11.31 1.06C10.19 0.39 8.9 0.02 7.59 0C5.49 0.09 3.52 1.01 2.1 2.55C0.68 4.09 -0.07 6.13 0.01 8.23C0.01 16.13 12.79 25.26 13.33 25.65L14.01 26.12L14.68 25.65C15.22 25.26 28.01 16.12 28.01 8.23Z"
-                            fill="white"
-                            fillOpacity="0.5"
-                          />
-                        </svg>
+                  section.items.map((post) => {
+                    const postId = String(post.postId);
+                    const isBookmarked = !!bookmarks[postId];
+
+                    return (
+                      <div
+                        key={`${section.period}-${post.postId}`}
+                        className={styles.card}
+                        onClick={() =>
+                          navigate(`/ranking-detail/${post.postId}?period=${section.period}`)
+                        }
+                        style={{
+                          backgroundImage: `url(${post.thumbnailUrl})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          backgroundRepeat: 'no-repeat',
+                        }}
+                      >
+                        <button
+                          type="button"
+                          className={styles.heartIcon}
+                          onClick={(e) => toggleBookmark(e, postId)}
+                          aria-label="북마크"
+                        >
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path
+                              d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.03L12 21.35Z"
+                              fill={isBookmarked ? '#FF3B30' : 'rgba(255,255,255,0.78)'}
+                            />
+                          </svg>
+                        </button>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className={styles.loadingBox}>표시할 랭킹이 없습니다.</div>
                 )}

@@ -1,0 +1,105 @@
+.container {
+  @apply w-[375px] h-[812px] mx-auto relative overflow-hidden bg-black shadow-2xl;
+}
+
+.viewport {
+  @apply w-full h-full overflow-y-auto snap-y snap-mandatory;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.slide {
+  @apply relative w-full h-[812px] snap-start;
+}
+
+.imageSection {
+  @apply absolute inset-0 bg-cover bg-center bg-no-repeat;
+}
+
+.topGradient {
+  @apply absolute top-0 left-0 w-full h-28 bg-gradient-to-b from-black/45 to-transparent;
+}
+
+.bottomGradient {
+  @apply absolute bottom-0 left-0 w-full h-40 bg-gradient-to-t from-black/55 to-transparent;
+}
+
+.overlay {
+  @apply absolute inset-0 z-20 pointer-events-none;
+}
+
+.closeButton {
+  @apply absolute top-10 left-4 z-30 pointer-events-auto flex items-center justify-center;
+}
+
+.title {
+  @apply absolute top-[49px] left-1/2 -translate-x-1/2 text-white text-xl font-semibold leading-7;
+}
+
+.slideIndicator {
+  @apply absolute top-[57px] right-4 flex flex-col gap-2;
+}
+
+.slideIndicatorDot {
+  @apply w-1.5 h-1.5 rounded-full bg-white/40;
+}
+
+.slideIndicatorActive {
+  @apply w-1.5 h-6 rounded-full bg-white;
+}
+
+.bottomActionArea {
+  @apply absolute bottom-10 left-1/2 -translate-x-1/2 w-[343px] h-16 flex items-center justify-center;
+}
+
+.circleButton {
+  @apply pointer-events-auto absolute top-0 w-16 h-16 rounded-full border border-white/40 bg-white/10 backdrop-blur-sm flex items-center justify-center transition-all duration-200;
+}
+
+.circleButtonInactive {
+  @apply opacity-100;
+}
+
+.circleButtonPassive {
+  @apply opacity-40;
+}
+
+.leftButton {
+  @apply left-0;
+}
+
+.rightButton {
+  @apply right-0;
+}
+
+.dragTrack {
+  @apply pointer-events-auto relative w-[343px] h-16 rounded-full border border-white/20 bg-white/10 backdrop-blur-md overflow-hidden;
+}
+
+.dragTrackFromLeft {
+  @apply pl-20 pr-5;
+}
+
+.dragTrackFromRight {
+  @apply pr-20 pl-5;
+}
+
+.trackText {
+  @apply absolute inset-0 flex items-center justify-center text-white text-base font-medium leading-5;
+}
+
+.trackHintRight {
+  @apply absolute right-5 top-1/2 -translate-y-1/2 flex items-center;
+}
+
+.trackHintLeft {
+  @apply absolute left-5 top-1/2 -translate-y-1/2 flex items-center;
+}
+
+.dragThumb {
+  @apply absolute top-1/2 -translate-y-1/2 rounded-full bg-white flex items-center justify-center cursor-grab active:cursor-grabbing shadow-lg;
+}

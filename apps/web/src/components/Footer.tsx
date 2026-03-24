@@ -41,7 +41,7 @@ const Footer: React.FC = () => {
         </div>
 
         {/* 평가 버튼 */}
-        <div className={styles.navItem} onClick={() => navigate('/vote')}>
+        <div className={styles.navItem} onClick={() => navigate('/evaluationZone')}>
           <div className={styles.iconBox}>
             <VoteIcon color={isActive('/vote') ? '#FFFFFF' : '#666666'} />
           </div>
