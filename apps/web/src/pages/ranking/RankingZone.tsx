@@ -148,7 +148,7 @@ const RankingZone: React.FC = () => {
         </div>
 
         <nav className={styles.drawerNav}>
-          <div className={styles.navItem} onClick={() => navigate('/post/write')}>
+          <div className={styles.navItem} onClick={() => navigate('/post-upload')}>
             게시글 작성
           </div>
           <div className={styles.navItem} onClick={() => navigate('/evaluationZone')}>
