@@ -161,6 +161,8 @@ model Post {
   evaluation     Evaluation?
   rankingDetails RankingDetail[]
 
+  @@index([authorId, status, createdAt])
+  @@index([status, createdAt])
   @@index([authorId])
   @@index([status])
   @@index([publishedAt])
@@ -220,6 +222,7 @@ model Keyword {
   postKeywords PostKeyword[]
 
   @@index([isActive, sortOrder])
+  @@index([label])
   @@map("keywords")
 }
 
@@ -236,6 +239,7 @@ model PostKeyword {
 
   @@unique([postId, keywordId])
 
+  @@index([keywordId, postId])
   @@index([postId])
   @@index([keywordId])
   @@map("post_keywords")
@@ -253,6 +257,7 @@ model Bookmark {
 
   @@unique([userId, postId])
 
+  @@index([userId, createdAt])
   @@index([userId])
   @@index([postId])
   @@map("bookmarks")
@@ -278,6 +283,8 @@ model Report {
 
   @@unique([reporterId, postId])
 
+  @@index([status, createdAt])
+  @@index([postId, createdAt])
   @@index([postId])
   @@index([status])
   @@index([reviewedById])
