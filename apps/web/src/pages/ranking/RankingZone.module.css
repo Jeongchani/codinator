@@ -44,6 +44,7 @@
   @apply flex items-center gap-1 text-xs text-neutral-400 cursor-pointer;
 }
 
+/* 가로 스크롤 설정 */
 .horizontalScroll {
   @apply flex gap-4 overflow-x-auto px-6 pb-2 flex-nowrap;
   -ms-overflow-style: none;
@@ -55,17 +56,13 @@
 }
 
 .card {
-  @apply relative w-[180px] h-[255px] bg-neutral-300 rounded-3xl overflow-hidden shadow-sm flex-shrink-0 cursor-pointer transition-transform active:scale-95;
+  @apply relative w-[155px] h-[220px] bg-neutral-300 rounded-3xl overflow-hidden shadow-sm flex-shrink-0 cursor-pointer transition-transform active:scale-95;
 }
 
 .heartIcon {
   @apply absolute top-3 right-3 z-10 cursor-pointer active:scale-90 transition-transform;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 0;
 }
-
+/* Drawer & Overlay */
 .drawer {
   @apply fixed top-0 right-0 w-[280px] h-full bg-white z-[200] transition-transform duration-300 translate-x-full shadow-2xl flex flex-col;
 }
