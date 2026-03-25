@@ -31,6 +31,8 @@ export class PostsService {
         images: {
           create: {
             imageUrl: body.image.imageUrl,
+            storageKey: body.image.storageKey ?? null,
+            thumbnailUrl: body.image.thumbnailUrl ?? null,
             sortOrder: 0,
             isPrimary: true,
           },
