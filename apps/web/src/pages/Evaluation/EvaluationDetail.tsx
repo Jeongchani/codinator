@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { GetEvaluationPostDetailResponse } from '@codinator/contracts';
 import {
   clearAuthTokens,
@@ -9,12 +9,20 @@ import {
 } from '../../lib/api';
 import styles from './EvaluationDetail.module.css';
 
+type EvaluationDetailLocationState = {
+  selectedTagId?: number | null;
+  selectedTagLabel?: string;
+  selectedVoteChoice?: 'LIKE' | 'DISLIKE' | null;
+};
+
 const EvaluationDetail: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { postId } = useParams();
   const [data, setData] = useState<GetEvaluationPostDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const locationState = (location.state ?? {}) as EvaluationDetailLocationState;
 
   useEffect(() => {
     const loadDetail = async () => {
@@ -50,16 +58,30 @@ const EvaluationDetail: React.FC = () => {
   }, [navigate, postId]);
 
   const likeKeywords = useMemo(() => {
-    return (data?.feedbackSummary ?? []).filter((item) => item.code.startsWith('POS_'));
+    return (data?.feedbackSummary ?? []).filter((item) =>
+      item.voteChoice ? item.voteChoice === 'LIKE' : item.code.startsWith('POS_'),
+    );
   }, [data]);
 
   const dislikeKeywords = useMemo(() => {
-    return (data?.feedbackSummary ?? []).filter((item) => item.code.startsWith('NEG_'));
+    return (data?.feedbackSummary ?? []).filter((item) =>
+      item.voteChoice ? item.voteChoice === 'DISLIKE' : item.code.startsWith('NEG_'),
+    );
   }, [data]);
 
   const topKeywords = useMemo(() => {
     return (data?.feedbackSummary ?? []).slice(0, 5);
   }, [data]);
+
+
+  const selectedFeedbackChip = useMemo(() => {
+    if (!locationState.selectedTagLabel) {
+      return null;
+    }
+
+    const prefix = locationState.selectedVoteChoice === 'DISLIKE' ? '👎' : '👍';
+    return `${prefix} ${locationState.selectedTagLabel}`;
+  }, [locationState.selectedTagLabel, locationState.selectedVoteChoice]);
 
   const handleGoEvaluationZone = () => {
     navigate('/evaluationZone');
@@ -70,7 +92,18 @@ const EvaluationDetail: React.FC = () => {
   }
 
   if (!data) {
-    return <div className={styles.container}><div className={styles.scrollArea}>{error || '평가 상세를 불러올 수 없습니다.'}</div></div>;
+    return (
+      <div className={styles.container}>
+        <div className={styles.scrollArea}>
+          <div style={{ padding: 24 }}>{error || '평가 상세를 불러올 수 없습니다.'}</div>
+          <div className={styles.bottomButtonWrap}>
+            <button type="button" onClick={handleGoEvaluationZone} className={styles.completeButton}>
+              평가존으로 돌아가기
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -83,15 +116,19 @@ const EvaluationDetail: React.FC = () => {
           </div>
 
           <div className={styles.topKeywordRow}>
+            {selectedFeedbackChip ? (
+              <span className={styles.topKeywordChip}>{selectedFeedbackChip}</span>
+            ) : null}
+
             {topKeywords.length > 0 ? (
               topKeywords.map((keyword) => (
                 <span key={keyword.tagId} className={styles.topKeywordChip}>
                   #{keyword.label}
                 </span>
               ))
-            ) : (
+            ) : !selectedFeedbackChip ? (
               <span className={styles.topKeywordChip}># 아직 선택된 태그 없음</span>
-            )}
+            ) : null}
           </div>
 
           <div style={{ marginTop: 16, overflow: 'hidden', borderRadius: 24 }}>

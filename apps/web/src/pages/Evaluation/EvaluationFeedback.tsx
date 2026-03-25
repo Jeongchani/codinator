@@ -77,7 +77,15 @@ const EvaluationFeedback: React.FC = () => {
         body: JSON.stringify({ tagId: selectedKeywordId }),
       });
 
-      navigate(`/evaluation-detail/${postId}`);
+      const selectedKeyword = keywords.find((keyword) => keyword.id === selectedKeywordId) ?? null;
+
+      navigate(`/evaluation-detail/${postId}`, {
+        state: {
+          selectedTagId: selectedKeyword?.id ?? null,
+          selectedTagLabel: selectedKeyword?.label ?? '',
+          selectedVoteChoice: voteChoice,
+        },
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : '피드백 저장에 실패했습니다.';
       setError(message);
