@@ -16,30 +16,33 @@ export function buildVoteSummary(votes: Array<{ choice: VoteChoice }>): VoteSumm
 
 export function buildFeedbackSummary(
   votes: Array<{
+    choice: VoteChoice;
     feedback?: {
       tag: { id: number; code: string; label: string };
     } | null;
   }>,
 ): FeedbackTagSummary[] {
-  const summaryMap = new Map<number, FeedbackTagSummary>();
+  const summaryMap = new Map<string, FeedbackTagSummary>();
 
   for (const vote of votes) {
     if (!vote.feedback) {
       continue;
     }
 
-    const current = summaryMap.get(vote.feedback.tag.id);
+    const key = `${vote.feedback.tag.id}-${vote.choice}`;
+    const current = summaryMap.get(key);
 
     if (current) {
       current.count += 1;
       continue;
     }
 
-    summaryMap.set(vote.feedback.tag.id, {
+    summaryMap.set(key, {
       tagId: vote.feedback.tag.id,
       code: vote.feedback.tag.code,
       label: vote.feedback.tag.label,
       count: 1,
+      voteChoice: vote.choice,
     });
   }
 
