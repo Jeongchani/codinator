@@ -18,6 +18,11 @@ enum UserStatus {
   DELETED
 }
 
+enum Gender {
+  MALE
+  FEMALE
+}
+
 enum PostStatus {
   ACTIVE
   HIDDEN
@@ -56,26 +61,62 @@ enum GarmentCategory {
   ETC
 }
 
+enum ReportReason {
+  SPAM            //스팸, 광고
+  ABUSE           //욕설, 비하
+  INAPPROPRIATE   //부적절한 게시물
+  ETC
+}
+
+enum ReportStatus {
+  PENDING     //검토전
+  RESOLVED    //처리 완료 
+  REJECTED    //기각
+}
+
+enum BlurMethod {
+  NONE      //블러처리 없음
+  AUTO      //AI 자동 블러
+  MANUAL    //사용자 수동 블러
+}
+
+enum AiBlurStatus {
+  NONE            //처리없음
+  PENDING         //처리 대기중
+  PROCESSING      //처리 진행중
+  DONE            //처리 완료
+  FAILED          //처리 실패
+}
+
+// 회원 
 model User {
   id           Int        @id @default(autoincrement())
   email        String     @unique @db.VarChar(100)
   nickname     String     @unique @db.VarChar(30)
   passwordHash String     @map("password_hash") @db.VarChar(255)
+  gender       Gender
+  birthDate    DateTime   @map("birth_date") @db.Date
+  phoneNumber  String     @unique @map("phone_number") @db.VarChar(20)
   role         UserRole   @default(USER)
   status       UserStatus @default(ACTIVE)
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
   deletedAt    DateTime?  @map("deleted_at")
 
-  posts             Post[]
+  posts             Post[]             @relation("PostAuthor")
+  hiddenPosts       Post[]             @relation("PostHiddenBy")
   votes             Vote[]
   sessions          UserSession[]
-  closedEvaluations Evaluation[] @relation("EvaluationClosedBy")
+  closedEvaluations Evaluation[]       @relation("EvaluationClosedBy")
+  bookmarks         Bookmark[]
+  reports           Report[]           @relation("ReportReporter")
+  reviewedReports   Report[]           @relation("ReportReviewedBy")
 
   @@index([status])
   @@map("users")
 }
 
+// 사용자 세션
 model UserSession {
   id               Int       @id @default(autoincrement())
   userId           Int       @map("user_id")
@@ -96,6 +137,7 @@ model UserSession {
   @@map("user_sessions")
 }
 
+// 게시글
 model Post {
   id           Int        @id @default(autoincrement())
   authorId     Int        @map("author_id")
@@ -104,13 +146,18 @@ model Post {
   publishedAt  DateTime?  @map("published_at")
   hiddenAt     DateTime?  @map("hidden_at")
   hiddenReason String?    @map("hidden_reason") @db.VarChar(255)
+  hiddenById   Int?       @map("hidden_by_id")
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
   deletedAt    DateTime?  @map("deleted_at")
 
-  author         User           @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  author         User           @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  hiddenBy       User?          @relation("PostHiddenBy", fields: [hiddenById], references: [id], onDelete: SetNull)
   images         PostImage[]
   outfitItems    PostOutfit[]
+  postKeywords   PostKeyword[]
+  bookmarks      Bookmark[]
+  reports        Report[]
   evaluation     Evaluation?
   rankingDetails RankingDetail[]
 
@@ -120,16 +167,20 @@ model Post {
   @@map("posts")
 }
 
+// 게시글 사진
 model PostImage {
-  id           Int      @id @default(autoincrement())
-  postId       Int      @map("post_id")
-  storageKey   String?  @map("storage_key") @db.VarChar(255)
-  imageUrl     String   @map("image_url") @db.VarChar(500)
-  thumbnailUrl String?  @map("thumbnail_url") @db.VarChar(500)
-  sortOrder    Int      @default(0) @map("sort_order")
-  isPrimary    Boolean  @default(false) @map("is_primary")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id                   Int          @id @default(autoincrement())
+  postId               Int          @map("post_id")
+  storageKey           String?      @map("storage_key") @db.VarChar(255)
+  originalImageUrl     String       @map("original_image_url") @db.VarChar(500)
+  thumbnailUrl         String?      @map("thumbnail_url") @db.VarChar(500)
+  sortOrder            Int          @default(0) @map("sort_order")
+  isPrimary            Boolean      @default(false) @map("is_primary")
+  processedImageUrl    String?      @map("processed_image_url") @db.VarChar(500)
+  BlurMethod           BlurMethod   @map("blur_method")
+  aiBlurStatus         AiBlurStatus @map("ai_blur_status")
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
 
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
@@ -138,6 +189,7 @@ model PostImage {
   @@map("post_images")
 }
 
+// 게시글 옷정보
 model PostOutfit {
   id        Int             @id @default(autoincrement())
   postId    Int             @map("post_id")
@@ -155,6 +207,84 @@ model PostOutfit {
   @@map("post_outfits")
 }
 
+// 키워드
+model Keyword {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique @db.VarChar(50)
+  label     String   @db.VarChar(50)
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  postKeywords PostKeyword[]
+
+  @@index([isActive, sortOrder])
+  @@map("keywords")
+}
+
+// 게시글-키워드 연결 테이블
+model PostKeyword {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @map("post_id")
+  keywordId Int      @map("keyword_id")
+  sortOrder Int      @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post    Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  keyword Keyword @relation(fields: [keywordId], references: [id], onDelete: Restrict)
+
+  @@unique([postId, keywordId])
+
+  @@index([postId])
+  @@index([keywordId])
+  @@map("post_keywords")
+}
+
+// 북마크
+model Bookmark {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  postId    Int      @map("post_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+
+  @@index([userId])
+  @@index([postId])
+  @@map("bookmarks")
+}
+
+// 신고
+model Report {
+  id           Int          @id @default(autoincrement())
+  reporterId   Int          @map("reporter_id")
+  postId       Int          @map("post_id")
+  title        String       @db.VarChar(100)
+  reason       ReportReason
+  description  String?      @db.VarChar(500)
+  status       ReportStatus
+  reviewedAt   DateTime?    @map("reviewed_at")
+  reviewedById Int?         @map("reviewed_by_id")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  reporter   User  @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+  post       Post  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("ReportReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([reporterId, postId])
+
+  @@index([postId])
+  @@index([status])
+  @@index([reviewedById])
+  @@map("reports")
+}
+
+// 평가존
 model Evaluation {
   id          Int              @id @default(autoincrement())
   postId      Int              @unique @map("post_id")
@@ -176,6 +306,7 @@ model Evaluation {
   @@map("evaluations")
 }
 
+// 투표
 model Vote {
   id           Int        @id @default(autoincrement())
   evaluationId Int        @map("evaluation_id")
@@ -185,7 +316,7 @@ model Vote {
 
   evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
   voter      User       @relation(fields: [voterId], references: [id], onDelete: Restrict)
-  feedback   Feedback?
+  feedback   Feedback[]
 
   @@unique([evaluationId, voterId])
   @@index([voterId])
@@ -193,6 +324,7 @@ model Vote {
   @@map("votes")
 }
 
+// 피드백 태그
 model FeedbackTag {
   id         Int        @id @default(autoincrement())
   code       String     @unique @db.VarChar(50)
@@ -211,6 +343,7 @@ model FeedbackTag {
   @@map("feedback_tags")
 }
 
+// 게시글 피드백
 model Feedback {
   id        Int      @id @default(autoincrement())
   voteId    Int      @unique @map("vote_id")
@@ -221,10 +354,14 @@ model Feedback {
   vote Vote        @relation(fields: [voteId], references: [id], onDelete: Cascade)
   tag  FeedbackTag @relation(fields: [tagId], references: [id], onDelete: Restrict)
 
+  @@unique([voteId, tagId])
+
+  @@index([voteId])
   @@index([tagId])
   @@map("feedbacks")
 }
 
+// 랭킹존
 model Ranking {
   id               Int           @id @default(autoincrement())
   period           RankingPeriod
@@ -245,6 +382,7 @@ model Ranking {
   @@map("rankings")
 }
 
+// 랭킹 상세
 model RankingDetail {
   id           Int      @id @default(autoincrement())
   rankingId    Int      @map("ranking_id")
