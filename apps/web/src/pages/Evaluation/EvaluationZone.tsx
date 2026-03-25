@@ -110,7 +110,7 @@ const EvaluationZone: React.FC = () => {
   const goToEvaluationDetail = () => {
     if (!selectedVote) return;
 
-    navigate('/evaluation-detail1', {
+    navigate('/evaluation-feedback', {
       state: {
         voteType: selectedVote,
         postId: currentPost.id,

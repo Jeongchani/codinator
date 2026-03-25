@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import styles from "./EvaluationDetail1.module.css";
+import styles from "./EvaluationFeedback.module.css";
 
 type KeywordItem = {
   id: number;
@@ -8,7 +8,7 @@ type KeywordItem = {
   emoji?: string;
 };
 
-const EvaluationDetail1 = () => {
+const EvaluationFeedback = () => {
   const navigate = useNavigate();
   const [selectedKeywordId, setSelectedKeywordId] = useState<number | null>(null);
 
@@ -37,7 +37,7 @@ const EvaluationDetail1 = () => {
 
     const selectedKeyword = keywords.find((item) => item.id === selectedKeywordId);
 
-    navigate("/evaluation-detail2", {
+    navigate("/evaluation-detail", {
       state: {
         selectedKeywordId,
         selectedKeywordLabel: selectedKeyword?.label ?? "",
@@ -47,38 +47,40 @@ const EvaluationDetail1 = () => {
 
   return (
     <div className={styles.container}>
-      <div className={styles.titleArea}>
-        <h1 className={styles.title}>
-          코디에 대한 나만의 평가를
-          <br />
-          선택해 주세요
-        </h1>
-        <p className={styles.guideText}>최대 1개 까지만 선택해주세요</p>
-      </div>
+      <main>
+        <div className={styles.titleArea}>
+          <h1 className={styles.title}>
+            코디에 대한 나만의 평가를
+            <br />
+            선택해 주세요
+          </h1>
+          <p className={styles.guideText}>최대 1개까지만 선택해주세요</p>
+        </div>
 
-      <div className={styles.keywordGrid}>
-        {keywords.map((keyword) => {
-          const isSelected = selectedKeywordId === keyword.id;
+        <div className={styles.keywordGrid}>
+          {keywords.map((keyword) => {
+            const isSelected = selectedKeywordId === keyword.id;
 
-          return (
-            <button
-              key={keyword.id}
-              type="button"
-              onClick={() => handleKeywordClick(keyword.id)}
-              className={`${styles.keywordChip} ${isSelected ? styles.keywordChipSelected : ""}`}
-            >
-              <span className={styles.emojiBox}>{keyword.emoji}</span>
-              <span className={styles.keywordText}>{keyword.label}</span>
+            return (
+              <button
+                key={keyword.id}
+                type="button"
+                onClick={() => handleKeywordClick(keyword.id)}
+                className={`${styles.keywordChip} ${isSelected ? styles.keywordChipSelected : ""}`}
+              >
+                <span className={styles.emojiBox}>{keyword.emoji}</span>
+                <span className={styles.keywordText}>{keyword.label}</span>
 
-              {isSelected && (
-                <span className={styles.checkBadge}>
-                  <span className={styles.checkPlus}>+</span>
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+                {isSelected && (
+                  <span className={styles.checkBadge}>
+                    <span className={styles.checkPlus}>+</span>
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </main>
 
       <button
         type="button"
@@ -94,4 +96,4 @@ const EvaluationDetail1 = () => {
   );
 };
 
-export default EvaluationDetail1;
+export default EvaluationFeedback;
