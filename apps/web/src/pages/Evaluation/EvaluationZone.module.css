@@ -52,6 +52,10 @@
   @apply w-2 h-2 rounded-full bg-white/35;
 }
 
+.helperText {
+  @apply absolute left-6 right-6 bottom-[132px] text-center text-white text-[14px] leading-[1.6] pointer-events-none;
+}
+
 .bottomActionArea {
   @apply absolute left-4 right-4 bottom-11 h-16;
 }
@@ -102,16 +106,8 @@
   @apply absolute right-5 top-1/2 -translate-y-1/2 flex items-center gap-0;
 }
 
-.trackHintRight svg + svg {
-  margin-left: -6px;
-}
-
 .trackHintLeft {
   @apply absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-0;
-}
-
-.trackHintLeft svg + svg {
-  margin-left: -6px;
 }
 
 .dragThumb {
@@ -120,4 +116,20 @@
 
 .dragThumb:active {
   cursor: grabbing;
+}
+
+.loadingState {
+  @apply absolute inset-0 bg-neutral-900 flex flex-col items-center justify-center;
+}
+
+.loadingTitle {
+  @apply text-white text-2xl font-bold mb-4;
+}
+
+.emptyState {
+  @apply absolute inset-0 bg-neutral-900;
+}
+
+.statusText {
+  @apply absolute left-6 right-6 top-1/2 -translate-y-1/2 text-center text-white text-[14px] leading-[1.7];
 }
