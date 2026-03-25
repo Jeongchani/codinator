@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import styles from './RankingZone.module.css';
 import Footer from '../../components/Footer';
 import {
+  clearAuthTokens,
   fetcher,
   getAuthHeaders,
   getRefreshToken,
-  clearAuthTokens,
+  resolveAssetUrl,
 } from '../../lib/api';
 import type { GetRankingsResponse, LogoutResponse, RankingItem } from '@codinator/contracts';
 
@@ -65,8 +66,7 @@ const RankingZone: React.FC = () => {
       } catch (err) {
         console.error('랭킹 불러오기 실패:', err);
 
-        const message =
-          err instanceof Error ? err.message : '랭킹 데이터를 불러오지 못했습니다.';
+        const message = err instanceof Error ? err.message : '랭킹 데이터를 불러오지 못했습니다.';
         setError(message);
 
         if (message.includes('Unauthorized') || message.includes('로그인이 필요합니다')) {
@@ -82,7 +82,7 @@ const RankingZone: React.FC = () => {
       }
     };
 
-    loadRankings();
+    void loadRankings();
   }, [navigate]);
 
   const handleLogout = async () => {
@@ -138,7 +138,7 @@ const RankingZone: React.FC = () => {
           <div className={styles.navItem} onClick={() => navigate('/post/write')}>
             게시글 작성
           </div>
-          <div className={styles.navItem} onClick={() => navigate('/vote')}>
+          <div className={styles.navItem} onClick={() => navigate('/evaluationZone')}>
             평가 존
           </div>
           <div className={`${styles.navItem} ${styles.logoutBtn}`} onClick={handleLogout}>
@@ -184,11 +184,9 @@ const RankingZone: React.FC = () => {
                       <div
                         key={`${section.period}-${post.postId}`}
                         className={styles.card}
-                        onClick={() =>
-                          navigate(`/ranking-detail/${post.postId}?period=${section.period}`)
-                        }
+                        onClick={() => navigate(`/ranking-detail/${post.postId}?period=${section.period}`)}
                         style={{
-                          backgroundImage: `url(${post.thumbnailUrl})`,
+                          backgroundImage: `url(${resolveAssetUrl(post.thumbnailUrl)})`,
                           backgroundSize: 'cover',
                           backgroundPosition: 'center',
                           backgroundRepeat: 'no-repeat',

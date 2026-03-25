@@ -26,12 +26,12 @@ function AppRoutes() {
       <Route path="/ranking-detail/:postId" element={<RankingDetail />} />
 
       <Route path="/evaluationZone" element={<EvaluationZone />} />
-      <Route path="/evaluation-feedback" element={<EvaluationFeedback />} />
-      <Route path="/evaluation-detail" element={<EvaluationDetail />} />
+      <Route path="/evaluation-feedback/:postId" element={<EvaluationFeedback />} />
+      <Route path="/evaluation-detail/:postId" element={<EvaluationDetail />} />
 
       <Route path="/post/write" element={<Upload />} />
       <Route path="/user/:userId/feed" element={<UserFeed />} />
-
+      <Route path="/user/:userId/feed/:postId" element={<UserFeed />} />
 
       <Route path="/Test" element={<Test />} />
     </Routes>

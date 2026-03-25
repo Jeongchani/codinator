@@ -1,49 +1,115 @@
-import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import styles from "./EvaluationFeedback.module.css";
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import type {
+  CreateFeedbackResponse,
+  FeedbackTag,
+  GetTagsResponse,
+  VoteChoice,
+} from '@codinator/contracts';
+import { clearAuthTokens, fetcher, getAuthHeaders } from '../../lib/api';
+import styles from './EvaluationFeedback.module.css';
 
-type KeywordItem = {
-  id: number;
-  label: string;
-  emoji?: string;
-};
-
-const EvaluationFeedback = () => {
+const EvaluationFeedback: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedKeywordId, setSelectedKeywordId] = useState<number | null>(null);
+  const { postId } = useParams();
+  const [searchParams] = useSearchParams();
 
-  const keywords: KeywordItem[] = useMemo(
-    () => [
-      { id: 1, label: "스포티하다", emoji: "🏃" },
-      { id: 2, label: "힙합적이다", emoji: "😎" },
-      { id: 3, label: "분위기 있다", emoji: "✨" },
-      { id: 4, label: "유니크하다", emoji: "🔥" },
-      { id: 5, label: "트렌디하다", emoji: "🖤" },
-      { id: 6, label: "캐주얼하다", emoji: "👕" },
-      { id: 7, label: "스트릿하다", emoji: "🛹" },
-      { id: 8, label: "깔끔하다", emoji: "🤍" },
-      { id: 9, label: "힙하다", emoji: "🎧" },
-      { id: 10, label: "감각적이다", emoji: "💫" },
-    ],
-    []
-  );
+  const voteId = searchParams.get('voteId');
+  const rawVoteChoice = searchParams.get('voteChoice');
+  const voteChoice: VoteChoice | null =
+    rawVoteChoice === 'LIKE' || rawVoteChoice === 'DISLIKE' ? rawVoteChoice : null;
+
+  const [keywords, setKeywords] = useState<FeedbackTag[]>([]);
+  const [selectedKeywordId, setSelectedKeywordId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const loadTags = async () => {
+      if (!voteChoice) {
+        setError('투표 정보가 없습니다. 평가존에서 다시 시도해주세요.');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError('');
+
+        const data = await fetcher<GetTagsResponse>(`/evaluations/tags?voteChoice=${voteChoice}`, {
+          headers: getAuthHeaders(),
+        });
+
+        setKeywords(data.items ?? []);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '피드백 태그를 불러오지 못했습니다.';
+        setError(message);
+
+        if (message.includes('Unauthorized') || message.includes('로그인이 필요합니다')) {
+          clearAuthTokens();
+          navigate('/login');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadTags();
+  }, [navigate, voteChoice]);
 
   const handleKeywordClick = (id: number) => {
     setSelectedKeywordId((prev) => (prev === id ? null : id));
   };
 
-  const handleComplete = () => {
-    if (selectedKeywordId === null) return;
+  const handleComplete = async () => {
+    if (!voteId || !postId || selectedKeywordId === null) {
+      return;
+    }
 
-    const selectedKeyword = keywords.find((item) => item.id === selectedKeywordId);
+    try {
+      setSubmitting(true);
+      setError('');
 
-    navigate("/evaluation-detail", {
-      state: {
-        selectedKeywordId,
-        selectedKeywordLabel: selectedKeyword?.label ?? "",
-      },
-    });
+      await fetcher<CreateFeedbackResponse>(`/evaluations/votes/${voteId}/feedback`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ tagId: selectedKeywordId }),
+      });
+
+      navigate(`/evaluation-detail/${postId}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '피드백 저장에 실패했습니다.';
+      setError(message);
+
+      if (message.includes('Unauthorized') || message.includes('로그인이 필요합니다')) {
+        clearAuthTokens();
+        navigate('/login');
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return <div className={styles.container}><main><div className={styles.titleArea}><h1 className={styles.title}>피드백 태그 불러오는 중...</h1></div></main></div>;
+  }
+
+  if (error && !keywords.length) {
+    return (
+      <div className={styles.container}>
+        <main>
+          <div className={styles.titleArea}>
+            <h1 className={styles.title}>피드백을 선택할 수 없습니다</h1>
+            <p className={styles.guideText}>{error}</p>
+          </div>
+        </main>
+        <button type="button" onClick={() => navigate('/evaluationZone')} className={styles.completeButton}>
+          평가존으로 돌아가기
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -66,9 +132,8 @@ const EvaluationFeedback = () => {
                 key={keyword.id}
                 type="button"
                 onClick={() => handleKeywordClick(keyword.id)}
-                className={`${styles.keywordChip} ${isSelected ? styles.keywordChipSelected : ""}`}
+                className={`${styles.keywordChip} ${isSelected ? styles.keywordChipSelected : ''}`}
               >
-                <span className={styles.emojiBox}>{keyword.emoji}</span>
                 <span className={styles.keywordText}>{keyword.label}</span>
 
                 {isSelected && (
@@ -80,17 +145,19 @@ const EvaluationFeedback = () => {
             );
           })}
         </div>
+
+        {error ? <p style={{ marginTop: 16, textAlign: 'center', color: '#ef4444' }}>{error}</p> : null}
       </main>
 
       <button
         type="button"
         onClick={handleComplete}
-        disabled={selectedKeywordId === null}
+        disabled={selectedKeywordId === null || submitting}
         className={`${styles.completeButton} ${
           selectedKeywordId !== null ? styles.completeButtonActive : styles.completeButtonDisabled
         }`}
       >
-        평가완료
+        {submitting ? '저장 중...' : '평가완료'}
       </button>
     </div>
   );

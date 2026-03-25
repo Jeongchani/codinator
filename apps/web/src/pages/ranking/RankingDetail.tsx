@@ -2,7 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import styles from './RankingDetail.module.css';
 import { motion, useAnimation, PanInfo } from 'framer-motion';
-import { fetcher, getAuthHeaders, clearAuthTokens } from '../../lib/api';
+import {
+  clearAuthTokens,
+  fetcher,
+  getAuthHeaders,
+  resolveAssetUrl,
+} from '../../lib/api';
 import type { GetRankingPostDetailResponse } from '@codinator/contracts';
 
 const RankingDetail: React.FC = () => {
@@ -49,8 +54,7 @@ const RankingDetail: React.FC = () => {
       } catch (err) {
         console.error('랭킹 상세 불러오기 실패:', err);
 
-        const message =
-          err instanceof Error ? err.message : '상세 데이터를 불러오지 못했습니다.';
+        const message = err instanceof Error ? err.message : '상세 데이터를 불러오지 못했습니다.';
 
         if (message.includes('Unauthorized') || message.includes('로그인이 필요합니다')) {
           clearAuthTokens();
@@ -66,7 +70,7 @@ const RankingDetail: React.FC = () => {
     };
 
     if (postId) {
-      loadDetail();
+      void loadDetail();
     } else {
       setLoading(false);
       setPostData(null);
@@ -125,7 +129,7 @@ const RankingDetail: React.FC = () => {
         <div
           className={styles.mainImage}
           style={{
-            backgroundImage: `url(${postData.image.imageUrl})`,
+            backgroundImage: `url(${resolveAssetUrl(postData.image.imageUrl)})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
@@ -135,9 +139,7 @@ const RankingDetail: React.FC = () => {
         <div className={styles.bottomGradient} />
       </div>
 
-      <div className={styles.headerTitle}>
-        {period === 'MONTHLY' ? 'this month' : 'this week'}
-      </div>
+      <div className={styles.headerTitle}>{period === 'MONTHLY' ? 'this month' : 'this week'}</div>
 
       <button onClick={() => navigate(-1)} className={styles.closeBtn}>
         <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
@@ -157,10 +159,7 @@ const RankingDetail: React.FC = () => {
         animate={controls}
         onDragEnd={onDragEnd}
       >
-        <div
-          className={styles.handlerArea}
-          onClick={() => (isExpanded ? collapseSheet() : expandSheet())}
-        >
+        <div className={styles.handlerArea} onClick={() => (isExpanded ? collapseSheet() : expandSheet())}>
           <div className={styles.handlerBar} />
         </div>
 
@@ -168,7 +167,14 @@ const RankingDetail: React.FC = () => {
           <div className={styles.infoRow}>
             <div>
               <h2 className={styles.title}>{postData.content}</h2>
-              <p className={styles.author}>작성자: {postData.author.nickname}</p>
+              <button
+                type="button"
+                className={styles.author}
+                onClick={() => navigate(`/user/${postData.author.userId}/feed`)}
+                style={{ background: 'transparent', border: 0, padding: 0, cursor: 'pointer' }}
+              >
+                작성자: {postData.author.nickname}
+              </button>
             </div>
 
             <div className={styles.actionGroup}>
@@ -187,9 +193,7 @@ const RankingDetail: React.FC = () => {
               </button>
 
               <div className={styles.likeBadge}>
-                <span className={styles.likeCount}>
-                  {postData.voteSummary.likeCount.toLocaleString()}
-                </span>
+                <span className={styles.likeCount}>{postData.voteSummary.likeCount.toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -198,11 +202,11 @@ const RankingDetail: React.FC = () => {
 
           <h3 className={styles.subTitle}>착용 아이템</h3>
           <div className={styles.itemScroll}>
-            {postData.outfitItems.map((item, idx) => (
-              <div key={idx} className={styles.outfitCard}>
+            {postData.outfitItems.map((item) => (
+              <div key={item.id} className={styles.outfitCard}>
                 <div className={styles.itemImg} />
-                <p className={styles.brandName}>{item.brand}</p>
-                <p className={styles.itemName}>{item.itemName}</p>
+                <p className={styles.brandName}>{item.brand || item.category}</p>
+                <p className={styles.itemName}>{item.itemName || '아이템명 없음'}</p>
               </div>
             ))}
           </div>
