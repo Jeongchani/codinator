@@ -25,6 +25,7 @@ export interface FeedbackTagSummary {
   code: string;
   label: string;
   count: number;
+  voteChoice?: 'LIKE' | 'DISLIKE';
 }
 
 export interface PostAuthorSummary {
