@@ -146,3 +146,34 @@
 .submitButton {
   @apply flex h-[46px] w-full items-center justify-center rounded-full bg-black text-[18px] font-semibold text-white;
 }
+.contentInputSection {
+  @apply flex flex-col gap-3;
+}
+
+.contentLabel {
+  @apply text-[15px] font-semibold leading-6 text-neutral-900;
+}
+
+.contentTextarea {
+  @apply min-h-[120px] w-full resize-none rounded-2xl border border-neutral-200 bg-white px-4 py-4 text-[14px] leading-6 text-neutral-900 outline-none placeholder:text-neutral-400;
+}
+
+.textMetaRow {
+  @apply flex items-center justify-between;
+}
+
+.helperText {
+  @apply text-[12px] text-neutral-500;
+}
+
+.lengthText {
+  @apply text-[12px] text-neutral-400;
+}
+
+.statusMessage {
+  @apply mt-4 text-[13px] leading-5 text-neutral-500;
+}
+
+.submitButton {
+  @apply flex h-[46px] w-full items-center justify-center rounded-full bg-black text-[18px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60;
+}
