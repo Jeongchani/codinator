@@ -10,6 +10,8 @@ export interface CreatePostRequest {
   content?: string | null;
   image: {
     imageUrl: string;
+    storageKey?: string | null;
+    thumbnailUrl?: string | null;
   };
   outfitItems?: CreateOutfitItemInput[];
 }

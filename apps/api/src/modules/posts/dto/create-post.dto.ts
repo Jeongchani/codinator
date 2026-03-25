@@ -3,10 +3,22 @@ import type { GarmentCategory } from '@codinator/contracts';
 
 export class CreatePostImageDto {
   @ApiProperty({
-    example: 'https://images.example.com/posts/new-post.jpg',
+    example: '/uploads/posts/20260325/new-post.jpg',
     description: '게시글 대표 이미지 URL',
   })
   imageUrl: string;
+
+  @ApiPropertyOptional({
+    example: 'posts/20260325/new-post.jpg',
+    description: '스토리지 내부 키',
+  })
+  storageKey?: string | null;
+
+  @ApiPropertyOptional({
+    example: '/uploads/posts/20260325/thumb-new-post.jpg',
+    description: '썸네일 URL',
+  })
+  thumbnailUrl?: string | null;
 }
 
 export class CreatePostOutfitItemDto {
