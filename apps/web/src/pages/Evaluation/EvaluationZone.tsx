@@ -23,6 +23,7 @@ const EvaluationZone: React.FC = () => {
   const trackRef = useRef<HTMLDivElement | null>(null);
 
   const [selectedVote, setSelectedVote] = useState<VoteChoice | null>(null);
+  const [createdVoteId, setCreatedVoteId] = useState<number | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [maxDrag, setMaxDrag] = useState(0);
   const [posts, setPosts] = useState<EvaluationListItem[]>([]);
@@ -38,6 +39,8 @@ const EvaluationZone: React.FC = () => {
 
   const isLikeSelected = selectedVote === 'LIKE';
   const isDislikeSelected = selectedVote === 'DISLIKE';
+  const isActionActive = selectedVote !== null;
+  const hasCurrentVoteSaved = createdVoteId !== null;
 
   useEffect(() => {
     const loadEvaluations = async () => {
@@ -49,12 +52,18 @@ const EvaluationZone: React.FC = () => {
           headers: getAuthHeaders(),
         });
 
-        setPosts(data.items ?? []);
+        const filteredItems = (data.items ?? []).filter((item) => !item.hasVoted);
+        setPosts(filteredItems);
+        setCurrentIndex(0);
       } catch (err) {
-        const message = err instanceof Error ? err.message : '평가 목록을 불러오지 못했습니다.';
+        const message =
+          err instanceof Error ? err.message : '평가 목록을 불러오지 못했습니다.';
         setError(message);
 
-        if (message.includes('Unauthorized') || message.includes('로그인이 필요합니다')) {
+        if (
+          message.includes('Unauthorized') ||
+          message.includes('로그인이 필요합니다')
+        ) {
           clearAuthTokens();
           navigate('/login');
         }
@@ -63,28 +72,71 @@ const EvaluationZone: React.FC = () => {
       }
     };
 
-    loadEvaluations();
+    void loadEvaluations();
   }, [navigate]);
 
   useEffect(() => {
     const updateMaxDrag = () => {
-      if (!trackRef.current) return;
+      if (!trackRef.current) {
+        setMaxDrag(0);
+        return;
+      }
+
       const trackWidth = trackRef.current.clientWidth;
       const nextMax = Math.max(trackWidth - THUMB_SIZE - 8, 0);
       setMaxDrag(nextMax);
     };
 
     updateMaxDrag();
+
+    const timer = window.setTimeout(updateMaxDrag, 0);
     window.addEventListener('resize', updateMaxDrag);
 
     return () => {
+      window.clearTimeout(timer);
       window.removeEventListener('resize', updateMaxDrag);
     };
-  }, []);
+  }, [selectedVote, currentIndex, posts.length]);
 
   useEffect(() => {
     animate(dragX, 0, { duration: 0.2 });
   }, [selectedVote, currentIndex, dragX]);
+
+  const handleClose = () => {
+    navigate('/rankingzone');
+  };
+
+  const navigateToFeedback = (choice: VoteChoice, voteId: number, postId: number) => {
+    navigate(`/evaluation-feedback/${postId}?voteId=${voteId}&voteChoice=${choice}`);
+  };
+
+  const removePostAndKeepFlow = (removedPostId: number, previousIndex: number) => {
+    setPosts((prev) => {
+      const nextPosts = prev.filter((post) => post.postId !== removedPostId);
+
+      requestAnimationFrame(() => {
+        const container = scrollRef.current;
+        if (!container) return;
+
+        const nextIndex =
+          nextPosts.length === 0 ? 0 : Math.min(previousIndex, nextPosts.length - 1);
+
+        container.scrollTo({
+          top: container.clientHeight * nextIndex,
+          behavior: 'auto',
+        });
+
+        setCurrentIndex(nextIndex);
+      });
+
+      return nextPosts;
+    });
+
+    setSelectedVote(null);
+    setCreatedVoteId(null);
+    setError('');
+    animate(dragX, 0, { duration: 0.15 });
+  };
 
   const handleScroll = () => {
     const container = scrollRef.current;
@@ -94,40 +146,33 @@ const EvaluationZone: React.FC = () => {
     const nextIndex = Math.round(container.scrollTop / pageHeight);
 
     if (nextIndex !== currentIndex) {
+      const prevPost = posts[currentIndex];
+      const prevIndex = currentIndex;
+      const hadSavedVote = createdVoteId !== null;
+
+      if (hadSavedVote && prevPost) {
+        removePostAndKeepFlow(prevPost.postId, nextIndex);
+        return;
+      }
+
       setCurrentIndex(nextIndex);
       setSelectedVote(null);
+      setCreatedVoteId(null);
+      setError('');
     }
   };
 
-  const navigateToDetail = (postId: number) => {
-    navigate(`/evaluation-detail/${postId}`);
-  };
-
-  const handleVoteSelect = (choice: VoteChoice) => {
-    if (!currentPost) {
-      return;
-    }
-
-    if (currentPost.hasVoted) {
-      navigateToDetail(currentPost.postId);
-      return;
-    }
-
-    setSelectedVote(choice);
-    animate(dragX, 0, { duration: 0.2 });
-  };
-
-  const submitVote = async (choice: VoteChoice) => {
-    if (!currentPost) {
-      return;
-    }
+  const submitVoteImmediately = async (choice: VoteChoice) => {
+    if (!currentPost || submitting || hasCurrentVoteSaved) return;
 
     try {
       setSubmitting(true);
       setError('');
 
+      const votedPostId = currentPost.postId;
+
       const data = await fetcher<CreateVoteResponse>(
-        `/evaluations/posts/${currentPost.postId}/votes`,
+        `/evaluations/posts/${votedPostId}/votes`,
         {
           method: 'POST',
           headers: getAuthHeaders(),
@@ -135,19 +180,24 @@ const EvaluationZone: React.FC = () => {
         },
       );
 
-      navigate(
-        `/evaluation-feedback/${currentPost.postId}?voteId=${data.voteId}&voteChoice=${choice}`,
-      );
+      setSelectedVote(choice);
+      setCreatedVoteId(data.voteId);
+      animate(dragX, 0, { duration: 0.2 });
     } catch (err) {
       const message = err instanceof Error ? err.message : '투표에 실패했습니다.';
       setError(message);
 
       if (message.includes('이미 투표한 게시글')) {
-        navigateToDetail(currentPost.postId);
+        if (currentPost) {
+          removePostAndKeepFlow(currentPost.postId, currentIndex);
+        }
         return;
       }
 
-      if (message.includes('Unauthorized') || message.includes('로그인이 필요합니다')) {
+      if (
+        message.includes('Unauthorized') ||
+        message.includes('로그인이 필요합니다')
+      ) {
         clearAuthTokens();
         navigate('/login');
       }
@@ -156,20 +206,28 @@ const EvaluationZone: React.FC = () => {
     }
   };
 
-  const handleClose = () => {
-    navigate(-1);
+  const handleVoteSelect = (choice: VoteChoice) => {
+    if (!currentPost || submitting) return;
+
+    if (hasCurrentVoteSaved) {
+      setSelectedVote(choice);
+      animate(dragX, 0, { duration: 0.2 });
+      return;
+    }
+
+    void submitVoteImmediately(choice);
   };
 
   const handleDragEnd = (
     _event: MouseEvent | TouchEvent | PointerEvent,
     info: { offset: { x: number } },
   ) => {
-    if (!selectedVote || !currentPost || submitting) return;
+    if (!selectedVote || !currentPost || !createdVoteId || submitting) return;
 
     if (selectedVote === 'LIKE') {
       if (info.offset.x > maxDrag * 0.72) {
         animate(dragX, maxDrag, { duration: 0.15 }).then(() => {
-          void submitVote('LIKE');
+          navigateToFeedback('LIKE', createdVoteId, currentPost.postId);
         });
       } else {
         animate(dragX, 0, { duration: 0.2 });
@@ -177,28 +235,72 @@ const EvaluationZone: React.FC = () => {
       return;
     }
 
-    if (info.offset.x < -maxDrag * 0.72) {
-      animate(dragX, -maxDrag, { duration: 0.15 }).then(() => {
-        void submitVote('DISLIKE');
-      });
-    } else {
-      animate(dragX, 0, { duration: 0.2 });
+    if (selectedVote === 'DISLIKE') {
+      if (info.offset.x < -maxDrag * 0.72) {
+        animate(dragX, -maxDrag, { duration: 0.15 }).then(() => {
+          navigateToFeedback('DISLIKE', createdVoteId, currentPost.postId);
+        });
+      } else {
+        animate(dragX, 0, { duration: 0.2 });
+      }
     }
   };
 
   if (loading) {
-    return <div className={styles.container}><div className={styles.title}>평가 목록 불러오는 중...</div></div>;
+    return (
+      <div className={styles.container}>
+        <div className={styles.overlay}>
+          <div className={styles.title}>평가 존</div>
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: 0,
+              right: 0,
+              transform: 'translateY(-50%)',
+              textAlign: 'center',
+              color: '#ffffff',
+            }}
+          >
+            평가 목록 불러오는 중...
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!posts.length) {
     return (
       <div className={styles.container}>
         <div className={styles.overlay}>
-          <button className={styles.closeButton} onClick={handleClose} aria-label="닫기">
-            ×
+          <button
+            className={styles.closeButton}
+            onClick={handleClose}
+            aria-label="닫기"
+          >
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+              <path
+                d="M28.0602 10.0602L25.9392 7.93921L17.9997 15.8787L10.0602 7.93921L7.93921 10.0602L15.8787 17.9997L7.93921 25.9392L10.0602 28.0602L17.9997 20.1207L25.9392 28.0602L28.0602 25.9392L20.1207 17.9997L28.0602 10.0602Z"
+                fill="white"
+              />
+            </svg>
           </button>
+
           <div className={styles.title}>평가 존</div>
-          <div style={{ marginTop: 120, textAlign: 'center', color: '#ffffff' }}>
+
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: 24,
+              right: 24,
+              transform: 'translateY(-50%)',
+              textAlign: 'center',
+              color: '#ffffff',
+              fontSize: 14,
+              lineHeight: 1.6,
+            }}
+          >
             {error || '현재 평가할 게시글이 없습니다.'}
           </div>
         </div>
@@ -213,7 +315,9 @@ const EvaluationZone: React.FC = () => {
           <section key={post.evaluationId} className={styles.slide}>
             <div
               className={styles.imageSection}
-              style={{ backgroundImage: `url(${resolveAssetUrl(post.thumbnailUrl)})` }}
+              style={{
+                backgroundImage: `url(${resolveAssetUrl(post.thumbnailUrl)})`,
+              }}
             >
               <div className={styles.topGradient} />
               <div className={styles.bottomGradient} />
@@ -223,7 +327,11 @@ const EvaluationZone: React.FC = () => {
       </div>
 
       <div className={styles.overlay}>
-        <button className={styles.closeButton} onClick={handleClose} aria-label="닫기">
+        <button
+          className={styles.closeButton}
+          onClick={handleClose}
+          aria-label="닫기"
+        >
           <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
             <path
               d="M28.0602 10.0602L25.9392 7.93921L17.9997 15.8787L10.0602 7.93921L7.93921 10.0602L15.8787 17.9997L7.93921 25.9392L10.0602 28.0602L17.9997 20.1207L25.9392 28.0602L28.0602 25.9392L20.1207 17.9997L28.0602 10.0602Z"
@@ -238,15 +346,33 @@ const EvaluationZone: React.FC = () => {
           {posts.map((_, idx) => (
             <div
               key={idx}
-              className={idx === currentIndex ? styles.slideIndicatorActive : styles.slideIndicatorDot}
+              className={
+                idx === currentIndex
+                  ? styles.slideIndicatorActive
+                  : styles.slideIndicatorDot
+              }
             />
           ))}
         </div>
 
-        <div style={{ position: 'absolute', left: 24, right: 24, bottom: 190, color: '#fff', fontSize: 14, textAlign: 'center' }}>
-          {currentPost?.hasVoted
-            ? '이미 평가한 게시글입니다. 버튼을 누르면 상세 화면으로 이동합니다.'
-            : error || '좌우 버튼 선택 후 슬라이더를 끝까지 밀면 투표됩니다.'}
+        <div
+          style={{
+            position: 'absolute',
+            left: 24,
+            right: 24,
+            bottom: 130,
+            color: '#fff',
+            fontSize: 14,
+            textAlign: 'center',
+            lineHeight: 1.5,
+            pointerEvents: 'none',
+          }}
+        >
+          {error
+            ? error
+            : hasCurrentVoteSaved
+            ? '투표가 저장되었습니다. 위아래로 넘기면 이 게시물은 다시 보이지 않고, 원하면 옆으로 드래그해서 구체적인 피드백을 남길 수 있습니다.'
+            : '좋아요 또는 싫어요를 누르면 바로 투표가 저장됩니다.'}
         </div>
 
         <div className={styles.bottomActionArea}>
@@ -254,7 +380,9 @@ const EvaluationZone: React.FC = () => {
             <button
               type="button"
               className={`${styles.circleButton} ${
-                selectedVote === null ? styles.circleButtonInactive : styles.circleButtonPassive
+                selectedVote === null
+                  ? styles.circleButtonInactive
+                  : styles.circleButtonPassive
               } ${styles.leftButton}`}
               onClick={() => handleVoteSelect('LIKE')}
               aria-label="좋아요"
@@ -273,7 +401,9 @@ const EvaluationZone: React.FC = () => {
             <button
               type="button"
               className={`${styles.circleButton} ${
-                selectedVote === null ? styles.circleButtonInactive : styles.circleButtonPassive
+                selectedVote === null
+                  ? styles.circleButtonInactive
+                  : styles.circleButtonPassive
               } ${styles.rightButton}`}
               onClick={() => handleVoteSelect('DISLIKE')}
               aria-label="싫어요"
@@ -281,18 +411,20 @@ const EvaluationZone: React.FC = () => {
             >
               <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
                 <path
-                  d="M28 16.583L25.6667 3.5H3.5C2.57174 3.5 1.6815 3.86875 1.02513 4.52513C0.368749 5.1815 0 6.07174 0 7L0 17.5C0 18.4283 0.368749 19.3185 1.02513 19.9749C1.6815 20.6313 2.57174 21 3.5 21H8.99733L11.2303 25.5255C11.6069 26.2865 12.2441 26.887 13.0261 27.2178C13.808 27.5486 14.6828 27.5878 15.4912 27.3281C16.2995 27.0683 16.9878 26.5271 17.4308 25.8027C17.8737 25.0784 18.042 24.2191 17.9048 23.3812L17.5128 21H28V16.583ZM2.33333 17.5V7C2.33333 6.69058 2.45625 6.39383 2.67504 6.17504C2.89383 5.95625 3.19058 5.83333 3.5 5.83333H8.16667V18.6667H3.5C3.19058 18.6667 2.89383 18.5437 2.67504 18.325C2.45625 18.1062 2.33333 17.8094 2.33333 17.5ZM25.6667 18.6667H14.7642L15.603 23.7592C15.6326 23.9325 15.6236 24.1101 15.5766 24.2795C15.5296 24.4489 15.4458 24.6059 15.3312 24.7392C15.1971 24.8842 15.0304 24.9952 14.8449 25.0632C14.6594 25.1312 14.4606 25.1542 14.2645 25.1304C14.0684 25.1066 13.8807 25.0367 13.7169 24.9263C13.5531 24.8159 13.4178 24.6682 13.3222 24.4955L10.5 18.6667V5.83333H23.7183L25.6667 16.583V18.6667Z"
+                  d="M28 16.583L25.6667 3.5H3.5C2.57174 3.5 1.6815 3.86875 1.02513 4.52513C0.368749 5.1815 0 6.07174 0 7L0 17.5C0 18.4283 0.368749 19.3185 1.02513 19.9749C1.6815 20.6313 2.57174 21 3.5 21H8.99733L11.2303 25.5255C11.6069 26.2865 12.2441 26.887 13.0261 27.2178C13.808 27.5486 14.6828 27.5878 15.4912 27.3281C16.2995 27.0683 16.9878 26.5271 17.4308 25.8027C17.8737 25.0784 18.042 24.2191 17.9048 23.3812L17.5128 21H28V16.583ZM2.33333 17.5V7C2.33333 6.69058 2.45625 6.39383 2.67504 6.17504C2.89383 5.95625 3.19058 5.83333 3.5 5.83333H8.16667V18.6667H3.5C3.19058 18.6667 2.89383 18.5437 2.67504 18.325C2.45625 18.1062 2.33333 17.8094 2.33333 17.5ZM25.6667 18.6667H14.7642L15.603 23.7592C15.6326 23.9325 15.6236 24.1101 15.5766 24.2795C15.5296 24.4489 15.4458 24.6059 15.3312 24.7392C15.1966 24.8838 15.0297 24.9945 14.8442 25.0622C14.6586 25.1298 14.4596 25.1525 14.2635 25.1284C14.0675 25.1042 13.8799 25.034 13.7163 24.9233C13.5527 24.8127 13.4176 24.6648 13.3222 24.4918L10.5 18.7728V5.83333H23.7183L25.6667 16.6833V18.6667Z"
                   fill="white"
                 />
               </svg>
             </button>
           )}
 
-          {selectedVote && !currentPost?.hasVoted && (
+          {isActionActive && hasCurrentVoteSaved && (
             <div
               ref={trackRef}
               className={`${styles.dragTrack} ${
-                isLikeSelected ? styles.dragTrackFromLeft : styles.dragTrackFromRight
+                isLikeSelected
+                  ? styles.dragTrackFromLeft
+                  : styles.dragTrackFromRight
               }`}
             >
               <div className={styles.trackText}>평가하러가기</div>
@@ -335,12 +467,12 @@ const EvaluationZone: React.FC = () => {
                 className={styles.dragThumb}
                 drag="x"
                 dragMomentum={false}
+                dragElastic={0}
                 dragConstraints={
                   isLikeSelected
                     ? { left: 0, right: maxDrag }
                     : { left: -maxDrag, right: 0 }
                 }
-                dragElastic={0}
                 style={{
                   x: dragX,
                   left: isLikeSelected ? 4 : 'auto',
