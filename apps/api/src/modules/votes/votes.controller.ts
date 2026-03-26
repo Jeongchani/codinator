@@ -74,10 +74,10 @@ export class VotesController {
 
   @Post('votes/:voteId/feedback')
   @ApiBearerAuth()
-  @ApiOperation({ summary: '내 투표에 피드백 태그 1개 선택' })
+  @ApiOperation({ summary: '내 투표에 피드백 태그 저장(최대 3개, 1회만 가능)' })
   @ApiBody({ type: CreateFeedbackBodyDto })
   @ApiOkResponse({
-    description: '피드백 태그 선택 결과',
+    description: '피드백 태그 저장 결과',
   })
   async createFeedback(
     @Param('voteId', ParseIntPipe) voteId: number,
@@ -88,6 +88,6 @@ export class VotesController {
       required: true,
     });
 
-    return this.votesService.createFeedback(voteId, userId!, body.tagId);
+    return this.votesService.createFeedback(voteId, userId!, body.tagIds);
   }
 }

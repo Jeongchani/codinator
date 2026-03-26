@@ -399,6 +399,7 @@ async function createSamplePosts(userMap, keywordMap, tagMap) {
       evaluationId: rankedPost1.evaluation.id,
       voterId: userMap.alice.id,
       choice: VoteChoice.LIKE,
+      feedbackSubmittedAt: now,
     },
   });
 
@@ -407,6 +408,7 @@ async function createSamplePosts(userMap, keywordMap, tagMap) {
       evaluationId: rankedPost1.evaluation.id,
       voterId: userMap.charlie.id,
       choice: VoteChoice.LIKE,
+      feedbackSubmittedAt: now,
     },
   });
 
@@ -415,6 +417,7 @@ async function createSamplePosts(userMap, keywordMap, tagMap) {
       evaluationId: rankedPost1.evaluation.id,
       voterId: userMap.diana.id,
       choice: VoteChoice.DISLIKE,
+      feedbackSubmittedAt: now,
     },
   });
 
@@ -423,6 +426,7 @@ async function createSamplePosts(userMap, keywordMap, tagMap) {
       evaluationId: rankedPost2.evaluation.id,
       voterId: userMap.alice.id,
       choice: VoteChoice.LIKE,
+      feedbackSubmittedAt: now,
     },
   });
 
@@ -431,6 +435,7 @@ async function createSamplePosts(userMap, keywordMap, tagMap) {
       evaluationId: rankedPost2.evaluation.id,
       voterId: userMap.bob.id,
       choice: VoteChoice.DISLIKE,
+      feedbackSubmittedAt: now,
     },
   });
 

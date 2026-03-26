@@ -211,6 +211,7 @@ CREATE TABLE "votes" (
     "evaluation_id" INTEGER NOT NULL,
     "voter_id" INTEGER NOT NULL,
     "choice" "VoteChoice" NOT NULL,
+    "feedback_submitted_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "votes_pkey" PRIMARY KEY ("id")

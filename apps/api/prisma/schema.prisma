@@ -328,11 +328,12 @@ model Evaluation {
 }
 
 model Vote {
-  id           Int        @id @default(autoincrement())
-  evaluationId Int        @map("evaluation_id")
-  voterId      Int        @map("voter_id")
-  choice       VoteChoice
-  createdAt    DateTime   @default(now()) @map("created_at")
+  id                  Int        @id @default(autoincrement())
+  evaluationId        Int        @map("evaluation_id")
+  voterId             Int        @map("voter_id")
+  choice              VoteChoice
+  feedbackSubmittedAt DateTime?  @map("feedback_submitted_at")
+  createdAt           DateTime   @default(now()) @map("created_at")
 
   evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
   voter      User       @relation(fields: [voterId], references: [id], onDelete: Restrict)

@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import type { UploadPostImageResponse } from '@codinator/contracts';
 import { promises as fs } from 'fs';
 import { join, extname } from 'path';
 import { randomUUID } from 'crypto';
@@ -7,27 +8,39 @@ import { randomUUID } from 'crypto';
 export class UploadsService {
   private readonly uploadRoot = join(process.cwd(), 'uploads');
 
-  async savePostImage(file: Express.Multer.File) {
+  async savePostImage(file: Express.Multer.File): Promise<UploadPostImageResponse> {
     this.validateImage(file);
 
     const today = this.getDatePath();
-    const dir = join(this.uploadRoot, 'posts', today);
+    const originalDir = join(this.uploadRoot, 'posts', 'originals', today);
+    const processedDir = join(this.uploadRoot, 'posts', 'processed', today);
 
-    await fs.mkdir(dir, { recursive: true });
+    await Promise.all([
+      fs.mkdir(originalDir, { recursive: true }),
+      fs.mkdir(processedDir, { recursive: true }),
+    ]);
 
     const extension = extname(file.originalname) || '.jpg';
     const filename = `${randomUUID()}${extension}`;
-    const fullPath = join(dir, filename);
+    const processedFilename = `processed-${filename}`;
 
-    await fs.writeFile(fullPath, file.buffer);
+    const originalFullPath = join(originalDir, filename);
+    const processedFullPath = join(processedDir, processedFilename);
 
-    const storageKey = `posts/${today}/${filename}`;
-    const imageUrl = `/uploads/${storageKey}`;
+    await fs.writeFile(originalFullPath, file.buffer);
+    await fs.writeFile(processedFullPath, file.buffer);
+
+    const storageKey = `posts/originals/${today}/${filename}`;
+    const originalImageUrl = `/uploads/${storageKey}`;
+    const processedImageUrl = `/uploads/posts/processed/${today}/${processedFilename}`;
 
     return {
-      imageUrl,
-      storageKey,
+      originalImageUrl,
+      processedImageUrl,
       thumbnailUrl: null,
+      storageKey,
+      blurMethod: 'NONE',
+      aiBlurStatus: 'NONE',
     };
   }
 

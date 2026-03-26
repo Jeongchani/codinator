@@ -102,7 +102,8 @@ export class VotesService {
     return {
       postId: evaluationPost.id,
       voteId: createdVote.id,
-      myVote: choice,
+      myVoteChoice: choice,
+      myFeedbackTagIds: [],
       summary: buildVoteSummary(refreshedVotes),
     };
   }
@@ -110,7 +111,7 @@ export class VotesService {
   async createFeedback(
     voteId: number,
     voterId: number,
-    tagId: number,
+    tagIds: number[] | undefined,
   ): Promise<CreateFeedbackResponse> {
     await syncExpiredEvaluations(this.prisma);
 
@@ -120,6 +121,11 @@ export class VotesService {
         evaluation: {
           include: {
             post: true,
+          },
+        },
+        feedbacks: {
+          select: {
+            id: true,
           },
         },
       },
@@ -140,33 +146,81 @@ export class VotesService {
       throw new BadRequestException('이미 종료된 평가에는 피드백을 남길 수 없습니다.');
     }
 
-    const tag = await this.prisma.feedbackTag.findFirst({
-      where: {
-        id: tagId,
-        isActive: true,
-      },
-    });
+    if (vote.feedbackSubmittedAt || vote.feedbacks.length > 0) {
+      throw new BadRequestException('피드백 태그는 한 번만 저장할 수 있습니다.');
+    }
 
-    if (!tag) {
+    const normalizedTagIds = this.normalizeTagIds(tagIds);
+
+    const tags = normalizedTagIds.length
+      ? await this.prisma.feedbackTag.findMany({
+          where: {
+            id: { in: normalizedTagIds },
+            isActive: true,
+          },
+          orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+        })
+      : [];
+
+    if (tags.length !== normalizedTagIds.length) {
       throw new NotFoundException('피드백 태그를 찾을 수 없습니다.');
     }
 
-    if (tag.voteChoice !== vote.choice) {
+    if (tags.some((tag) => tag.voteChoice !== vote.choice)) {
       throw new BadRequestException('선택한 투표와 맞지 않는 피드백 태그입니다.');
     }
 
-    await this.prisma.feedback.upsert({
-      where: { voteId },
-      update: { tagId },
-      create: {
-        voteId,
-        tagId,
-      },
+    const submittedAt = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      if (normalizedTagIds.length > 0) {
+        await tx.feedback.createMany({
+          data: normalizedTagIds.map((tagId, index) => ({
+            voteId,
+            tagId,
+            sortOrder: index,
+          })),
+        });
+      }
+
+      await tx.vote.update({
+        where: { id: voteId },
+        data: {
+          feedbackSubmittedAt: submittedAt,
+        },
+      });
     });
 
     return {
       postId: vote.evaluation.post.id,
-      selectedTagId: tagId,
+      myVoteId: vote.id,
+      myVoteChoice: vote.choice,
+      selectedTagIds: normalizedTagIds,
+      feedbackSubmitted: true,
     };
+  }
+
+  private normalizeTagIds(tagIds?: number[]): number[] {
+    if (!tagIds?.length) {
+      return [];
+    }
+
+    const normalized = tagIds.map((value) => Number(value));
+
+    if (normalized.some((value) => !Number.isInteger(value) || value <= 0)) {
+      throw new BadRequestException('tagIds는 양의 정수 배열이어야 합니다.');
+    }
+
+    const unique = Array.from(new Set(normalized));
+
+    if (unique.length !== normalized.length) {
+      throw new BadRequestException('중복된 피드백 태그는 선택할 수 없습니다.');
+    }
+
+    if (unique.length > 3) {
+      throw new BadRequestException('피드백 태그는 최대 3개까지 선택할 수 있습니다.');
+    }
+
+    return unique;
   }
 }

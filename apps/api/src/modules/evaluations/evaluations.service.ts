@@ -2,14 +2,21 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import type { GetEvaluationPostDetailResponse, GetEvaluationsResponse } from '@codinator/contracts';
 import { EvaluationStatus, PostStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { buildFeedbackSummary, buildVoteSummary } from './common/evaluation-summary.util';
+import {
+  buildFeedbackSummary,
+  buildMyVoteContext,
+  buildVoteSummary,
+} from './common/evaluation-summary.util';
 import { syncExpiredEvaluations } from './common/sync-expired-evaluations.util';
-
-const IMAGE_ORDER_BY = [
-  { isPrimary: 'desc' as const },
-  { sortOrder: 'asc' as const },
-  { id: 'asc' as const },
-];
+import {
+  IMAGE_ORDER_BY,
+  mapOutfitItems,
+  mapPostImages,
+  mapPostKeywords,
+  OUTFIT_ORDER_BY,
+  pickPostThumbnail,
+  POST_KEYWORD_ORDER_BY,
+} from '../posts/common/post-presenter.util';
 
 @Injectable()
 export class EvaluationsService {
@@ -61,7 +68,7 @@ export class EvaluationsService {
       items: pageItems.map((evaluation) => ({
         evaluationId: evaluation.id,
         postId: evaluation.postId,
-        thumbnailUrl: evaluation.post.images[0]?.thumbnailUrl ?? evaluation.post.images[0]?.imageUrl ?? '',
+        thumbnailUrl: pickPostThumbnail(evaluation.post.images),
         endsAt: evaluation.endsAt.toISOString(),
         hasVoted: evaluation.votes.length > 0,
       })),
@@ -92,13 +99,19 @@ export class EvaluationsService {
           orderBy: IMAGE_ORDER_BY,
         },
         outfitItems: {
-          orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+          orderBy: OUTFIT_ORDER_BY,
+        },
+        postKeywords: {
+          orderBy: POST_KEYWORD_ORDER_BY,
+          include: {
+            keyword: true,
+          },
         },
         evaluation: {
           include: {
             votes: {
               include: {
-                feedback: {
+                feedbacks: {
                   include: {
                     tag: true,
                   },
@@ -114,10 +127,10 @@ export class EvaluationsService {
       throw new NotFoundException('진행 중인 평가 게시글을 찾을 수 없습니다.');
     }
 
-    const myVote = post.evaluation.votes.find((vote) => vote.voterId === userId) ?? null;
+    const voteContext = buildMyVoteContext(post.evaluation.votes, userId);
     const isOwner = post.authorId === userId;
 
-    if (!isOwner && !myVote) {
+    if (!isOwner && !voteContext.hasVoted) {
       throw new ForbiddenException('투표 후에만 평가 상세를 볼 수 있습니다.');
     }
 
@@ -126,24 +139,16 @@ export class EvaluationsService {
       content: post.content,
       status: post.status,
       createdAt: post.createdAt.toISOString(),
-      image: {
-        id: post.images[0]?.id ?? 0,
-        imageUrl: post.images[0]?.imageUrl ?? '',
-      },
-      outfitItems: post.outfitItems.map((item) => ({
-        id: item.id,
-        category: item.category,
-        itemName: item.itemName,
-        brand: item.brand,
-      })),
+      images: mapPostImages(post.images),
+      keywords: mapPostKeywords(post.postKeywords),
+      outfitItems: mapOutfitItems(post.outfitItems),
       evaluation: {
         id: post.evaluation.id,
         status: post.evaluation.status,
         endsAt: post.evaluation.endsAt.toISOString(),
       },
-      hasVoted: !!myVote,
-      myVoteId: myVote?.id ?? null,
-      canVote: !myVote && !isOwner,
+      ...voteContext,
+      canVote: !voteContext.hasVoted && !isOwner,
       voteSummary: buildVoteSummary(post.evaluation.votes),
       feedbackSummary: buildFeedbackSummary(post.evaluation.votes),
     };

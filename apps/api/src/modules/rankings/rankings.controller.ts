@@ -27,7 +27,7 @@ export class RankingsController {
           {
             rank: 1,
             postId: 13,
-            thumbnailUrl: 'https://images.example.com/posts/ranked-post-1.jpg',
+            thumbnailUrl: '/uploads/posts/processed/20260325/ranked-post-1.jpg',
             likeCount: 12,
             dislikeCount: 3,
             totalCount: 15,
@@ -64,10 +64,27 @@ export class RankingsController {
         content: '[SEED] 스트릿 코디 랭킹 테스트용 게시글 1',
         status: 'ACTIVE',
         createdAt: '2026-03-20T02:00:00.000Z',
-        image: {
-          id: 102,
-          imageUrl: 'https://images.example.com/posts/ranked-post-1.jpg',
-        },
+        images: [
+          {
+            id: 102,
+            originalImageUrl: '/uploads/posts/originals/20260325/ranked-post-1.jpg',
+            processedImageUrl: '/uploads/posts/processed/20260325/ranked-post-1.jpg',
+            thumbnailUrl: null,
+            storageKey: 'posts/originals/20260325/ranked-post-1.jpg',
+            blurMethod: 'AUTO',
+            aiBlurStatus: 'DONE',
+            sortOrder: 0,
+            isPrimary: true,
+          },
+        ],
+        keywords: [
+          {
+            id: 4,
+            code: 'STREET_LOOK',
+            label: '스트릿룩',
+            sortOrder: 0,
+          },
+        ],
         outfitItems: [
           {
             id: 4,
@@ -82,6 +99,9 @@ export class RankingsController {
           endsAt: '2026-03-13T12:00:00.000Z',
         },
         hasVoted: true,
+        myVoteId: 21,
+        myVoteChoice: 'LIKE',
+        myFeedbackTagIds: [1],
         canVote: false,
         voteSummary: {
           likeCount: 12,
@@ -95,6 +115,7 @@ export class RankingsController {
             code: 'NEG_COLOR_BAD',
             label: '색 조합이 아쉬워요',
             count: 1,
+            voteChoice: 'DISLIKE',
           },
         ],
         ranking: {

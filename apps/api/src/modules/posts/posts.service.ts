@@ -1,19 +1,25 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   CreatePostRequest,
   CreatePostResponse,
   GetPostDetailResponse,
 } from '@codinator/contracts';
-import { EvaluationStatus, PostStatus } from '@prisma/client';
+import { AiBlurStatus, BlurMethod, EvaluationStatus, PostStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { buildFeedbackSummary, buildVoteSummary } from '../evaluations/common/evaluation-summary.util';
+import {
+  buildFeedbackSummary,
+  buildMyVoteContext,
+  buildVoteSummary,
+} from '../evaluations/common/evaluation-summary.util';
 import { syncExpiredEvaluations } from '../evaluations/common/sync-expired-evaluations.util';
-
-const IMAGE_ORDER_BY = [
-  { isPrimary: 'desc' as const },
-  { sortOrder: 'asc' as const },
-  { id: 'asc' as const },
-];
+import {
+  IMAGE_ORDER_BY,
+  mapOutfitItems,
+  mapPostImages,
+  mapPostKeywords,
+  OUTFIT_ORDER_BY,
+  POST_KEYWORD_ORDER_BY,
+} from './common/post-presenter.util';
 
 @Injectable()
 export class PostsService {
@@ -24,19 +30,33 @@ export class PostsService {
     const endsAt = new Date(now);
     endsAt.setDate(endsAt.getDate() + 7);
 
+    const keywordIds = this.normalizeKeywordIds(body.keywordIds);
+    const validKeywordIds = await this.loadValidKeywordIds(keywordIds);
+
     const post = await this.prisma.post.create({
       data: {
         authorId,
         content: body.content ?? null,
         images: {
           create: {
-            imageUrl: body.image.imageUrl,
+            originalImageUrl: body.image.originalImageUrl,
+            processedImageUrl: body.image.processedImageUrl ?? body.image.originalImageUrl,
             storageKey: body.image.storageKey ?? null,
             thumbnailUrl: body.image.thumbnailUrl ?? null,
+            blurMethod: body.image.blurMethod ?? BlurMethod.NONE,
+            aiBlurStatus: body.image.aiBlurStatus ?? AiBlurStatus.NONE,
             sortOrder: 0,
             isPrimary: true,
           },
         },
+        postKeywords: validKeywordIds.length
+          ? {
+              create: validKeywordIds.map((keywordId, index) => ({
+                keywordId,
+                sortOrder: index,
+              })),
+            }
+          : undefined,
         outfitItems: body.outfitItems?.length
           ? {
               create: body.outfitItems.map((item, index) => ({
@@ -88,13 +108,19 @@ export class PostsService {
           orderBy: IMAGE_ORDER_BY,
         },
         outfitItems: {
-          orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+          orderBy: OUTFIT_ORDER_BY,
+        },
+        postKeywords: {
+          orderBy: POST_KEYWORD_ORDER_BY,
+          include: {
+            keyword: true,
+          },
         },
         evaluation: {
           include: {
             votes: {
               include: {
-                feedback: {
+                feedbacks: {
                   include: {
                     tag: true,
                   },
@@ -119,23 +145,59 @@ export class PostsService {
       content: post.content,
       status: post.status,
       createdAt: post.createdAt.toISOString(),
-      image: {
-        id: post.images[0]?.id ?? 0,
-        imageUrl: post.images[0]?.imageUrl ?? '',
-      },
-      outfitItems: post.outfitItems.map((item) => ({
-        id: item.id,
-        category: item.category,
-        itemName: item.itemName,
-        brand: item.brand,
-      })),
+      images: mapPostImages(post.images),
+      keywords: mapPostKeywords(post.postKeywords),
+      outfitItems: mapOutfitItems(post.outfitItems),
       evaluation: {
         id: post.evaluation.id,
         status: post.evaluation.status,
         endsAt: post.evaluation.endsAt.toISOString(),
       },
+      ...buildMyVoteContext(post.evaluation.votes, userId),
       voteSummary: buildVoteSummary(post.evaluation.votes),
       feedbackSummary: buildFeedbackSummary(post.evaluation.votes),
     };
+  }
+
+  private normalizeKeywordIds(keywordIds?: number[]): number[] {
+    if (!keywordIds?.length) {
+      return [];
+    }
+
+    const normalized = keywordIds.map((value) => Number(value));
+
+    if (normalized.some((value) => !Number.isInteger(value) || value <= 0)) {
+      throw new BadRequestException('keywordIds는 양의 정수 배열이어야 합니다.');
+    }
+
+    const unique = Array.from(new Set(normalized));
+
+    if (unique.length !== normalized.length) {
+      throw new BadRequestException('중복된 키워드는 선택할 수 없습니다.');
+    }
+
+    return unique;
+  }
+
+  private async loadValidKeywordIds(keywordIds: number[]): Promise<number[]> {
+    if (keywordIds.length === 0) {
+      return [];
+    }
+
+    const keywords = await this.prisma.keyword.findMany({
+      where: {
+        id: { in: keywordIds },
+        isActive: true,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (keywords.length !== keywordIds.length) {
+      throw new BadRequestException('유효하지 않은 키워드가 포함되어 있습니다.');
+    }
+
+    return keywordIds;
   }
 }

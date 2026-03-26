@@ -6,17 +6,23 @@ import type {
 } from '@codinator/contracts';
 import { PostStatus, RankingStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { buildFeedbackSummary } from '../evaluations/common/evaluation-summary.util';
+import {
+  buildFeedbackSummary,
+  buildMyVoteContext,
+} from '../evaluations/common/evaluation-summary.util';
 import { syncExpiredEvaluations } from '../evaluations/common/sync-expired-evaluations.util';
 import { syncCurrentRankingPeriod } from './common/ranking-sync.util';
 import { validateRankingPeriod } from './common/ranking-period.util';
 import { getCurrentRankingWindow } from './common/ranking-window.util';
-
-const IMAGE_ORDER_BY = [
-  { isPrimary: 'desc' as const },
-  { sortOrder: 'asc' as const },
-  { id: 'asc' as const },
-];
+import {
+  IMAGE_ORDER_BY,
+  mapOutfitItems,
+  mapPostImages,
+  mapPostKeywords,
+  OUTFIT_ORDER_BY,
+  pickPostThumbnail,
+  POST_KEYWORD_ORDER_BY,
+} from '../posts/common/post-presenter.util';
 
 @Injectable()
 export class RankingsService {
@@ -48,7 +54,7 @@ export class RankingsService {
         .map((detail) => ({
           rank: detail.rank,
           postId: detail.post.id,
-          thumbnailUrl: detail.post.images[0]?.thumbnailUrl ?? detail.post.images[0]?.imageUrl ?? '',
+          thumbnailUrl: pickPostThumbnail(detail.post.images),
           likeCount: detail.likeCount,
           dislikeCount: detail.dislikeCount,
           totalCount: detail.totalCount,
@@ -95,13 +101,19 @@ export class RankingsService {
               orderBy: IMAGE_ORDER_BY,
             },
             outfitItems: {
-              orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+              orderBy: OUTFIT_ORDER_BY,
+            },
+            postKeywords: {
+              orderBy: POST_KEYWORD_ORDER_BY,
+              include: {
+                keyword: true,
+              },
             },
             evaluation: {
               include: {
                 votes: {
                   include: {
-                    feedback: {
+                    feedbacks: {
                       include: {
                         tag: true,
                       },
@@ -119,8 +131,6 @@ export class RankingsService {
       throw new NotFoundException('랭킹 게시글을 찾을 수 없습니다.');
     }
 
-    const myVote = rankingDetail.post.evaluation.votes.find((vote) => vote.voterId === userId) ?? null;
-
     return {
       postId: rankingDetail.post.id,
       author: {
@@ -130,22 +140,15 @@ export class RankingsService {
       content: rankingDetail.post.content,
       status: rankingDetail.post.status,
       createdAt: rankingDetail.post.createdAt.toISOString(),
-      image: {
-        id: rankingDetail.post.images[0]?.id ?? 0,
-        imageUrl: rankingDetail.post.images[0]?.imageUrl ?? '',
-      },
-      outfitItems: rankingDetail.post.outfitItems.map((item) => ({
-        id: item.id,
-        category: item.category,
-        itemName: item.itemName,
-        brand: item.brand,
-      })),
+      images: mapPostImages(rankingDetail.post.images),
+      keywords: mapPostKeywords(rankingDetail.post.postKeywords),
+      outfitItems: mapOutfitItems(rankingDetail.post.outfitItems),
       evaluation: {
         id: rankingDetail.post.evaluation.id,
         status: rankingDetail.post.evaluation.status,
         endsAt: rankingDetail.post.evaluation.endsAt.toISOString(),
       },
-      hasVoted: !!myVote,
+      ...buildMyVoteContext(rankingDetail.post.evaluation.votes, userId),
       canVote: false,
       voteSummary: {
         likeCount: rankingDetail.likeCount,
