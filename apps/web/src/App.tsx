@@ -7,10 +7,10 @@ import RankingDetail from './pages/ranking/RankingDetail';
 import RankingZone from './pages/ranking/RankingZone';
 import Splash from './pages/splash/Splash';
 import UserFeed from './pages/user/UserFeed';
-import EvaluationZone from './pages/Evaluation/EvaluationZone';
+import EvaluationZone from './pages/evaluation/EvaluationZone';
 import Test from './test';
-import EvaluationDetail from './pages/Evaluation/EvaluationDetail';
-import EvaluationFeedback from './pages/Evaluation/EvaluationFeedback';
+import EvaluationDetail from './pages/evaluation/EvaluationDetail';
+import EvaluationFeedback from './pages/evaluation/EvaluationFeedback';
 
 function AppRoutes() {
   const navigate = useNavigate();
@@ -29,7 +29,7 @@ function AppRoutes() {
       <Route path="/evaluation-feedback/:postId" element={<EvaluationFeedback />} />
       <Route path="/evaluation-detail/:postId" element={<EvaluationDetail />} />
 
-      <Route path="/post/write" element={<Upload />} />
+      <Route path="/post-upload" element={<Upload />} />
       <Route path="/user/:userId/feed" element={<UserFeed />} />
       <Route path="/user/:userId/feed/:postId" element={<UserFeed />} />
 

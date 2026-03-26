@@ -1,5 +1,6 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 export const ASSET_BASE_URL = import.meta.env.VITE_ASSET_BASE_URL || '';
+export const API_ORIGIN = import.meta.env.VITE_API_ORIGIN || 'http://localhost:3000';
 
 export const ACCESS_TOKEN_KEY = 'accessToken';
 export const LEGACY_ACCESS_TOKEN_KEY = 'token';
@@ -9,6 +10,27 @@ export type UploadedPostImageResponse = {
   imageUrl: string;
   storageKey?: string | null;
   thumbnailUrl?: string | null;
+};
+
+const trimTrailingSlash = (value: string): string => {
+  return value.endsWith('/') ? value.slice(0, -1) : value;
+};
+
+const resolveApiServerOrigin = (): string => {
+  if (ASSET_BASE_URL) {
+    return trimTrailingSlash(ASSET_BASE_URL);
+  }
+
+  if (/^https?:\/\//.test(API_BASE_URL)) {
+    try {
+      const url = new URL(API_BASE_URL);
+      return `${url.protocol}//${url.host}`;
+    } catch {
+      return trimTrailingSlash(API_ORIGIN);
+    }
+  }
+
+  return trimTrailingSlash(API_ORIGIN);
 };
 
 export const getAccessToken = (): string | null => {
@@ -62,12 +84,26 @@ export const resolveAssetUrl = (url?: string | null): string => {
     return '';
   }
 
-  if (/^https?:\/\//.test(url) || url.startsWith('data:')) {
+  if (
+    /^https?:\/\//.test(url) ||
+    url.startsWith('data:') ||
+    url.startsWith('blob:')
+  ) {
     return url;
   }
 
+  const apiServerOrigin = resolveApiServerOrigin();
+
+  if (url.startsWith('/uploads/')) {
+    return `${apiServerOrigin}${url}`;
+  }
+
   if (url.startsWith('/')) {
-    return `${ASSET_BASE_URL}${url}`;
+    if (ASSET_BASE_URL) {
+      return `${trimTrailingSlash(ASSET_BASE_URL)}${url}`;
+    }
+
+    return `${apiServerOrigin}${url}`;
   }
 
   return url;

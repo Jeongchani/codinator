@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './RankingZone.module.css';
 import Footer from '../../components/Footer';
@@ -66,10 +66,15 @@ const RankingZone: React.FC = () => {
       } catch (err) {
         console.error('랭킹 불러오기 실패:', err);
 
-        const message = err instanceof Error ? err.message : '랭킹 데이터를 불러오지 못했습니다.';
+        const message =
+          err instanceof Error ? err.message : '랭킹 데이터를 불러오지 못했습니다.';
         setError(message);
 
-        if (message.includes('Unauthorized') || message.includes('로그인이 필요합니다')) {
+        if (
+          message.includes('Unauthorized') ||
+          message.includes('유효하지 않거나 만료된 토큰') ||
+          message.includes('로그인이 필요합니다')
+        ) {
           clearAuthTokens();
           navigate('/login');
           return;
@@ -116,10 +121,13 @@ const RankingZone: React.FC = () => {
     });
   };
 
-  const sections: RankingSection[] = [
-    { id: 'week', title: 'This Week', period: 'WEEKLY', items: weeklyRankings },
-    { id: 'month', title: 'This Month', period: 'MONTHLY', items: monthlyRankings },
-  ];
+  const sections: RankingSection[] = useMemo(
+    () => [
+      { id: 'week', title: 'This Week', period: 'WEEKLY', items: weeklyRankings },
+      { id: 'month', title: 'This Month', period: 'MONTHLY', items: monthlyRankings },
+    ],
+    [weeklyRankings, monthlyRankings],
+  );
 
   return (
     <div className={styles.container}>
@@ -129,13 +137,18 @@ const RankingZone: React.FC = () => {
             <div className={styles.profileCircle} />
             <span className={styles.profileName}>내 프로필</span>
           </div>
-          <button className={styles.closeBtn} onClick={() => setIsMenuOpen(false)}>
+
+          <button
+            type="button"
+            className={styles.closeBtn}
+            onClick={() => setIsMenuOpen(false)}
+          >
             ✕
           </button>
         </div>
 
         <nav className={styles.drawerNav}>
-          <div className={styles.navItem} onClick={() => navigate('/post/write')}>
+          <div className={styles.navItem} onClick={() => navigate('/post-upload')}>
             게시글 작성
           </div>
           <div className={styles.navItem} onClick={() => navigate('/evaluationZone')}>
@@ -152,11 +165,16 @@ const RankingZone: React.FC = () => {
       <div className={styles.contentArea}>
         <header className={styles.header}>
           <div className={styles.logo}>C:dinator</div>
-          <button className={styles.menuBtn} onClick={() => setIsMenuOpen(true)}>
+
+          <button
+            type="button"
+            className={styles.menuBtn}
+            onClick={() => setIsMenuOpen(true)}
+          >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M24 11H0V13H24V11Z" fill="black" />
-              <path d="M24 4H0V6H24V4Z" fill="black" />
-              <path d="M24 18H0V20H24V18Z" fill="black" />
+              <path d="M4 6H20" stroke="black" strokeWidth="2" strokeLinecap="round" />
+              <path d="M4 12H20" stroke="black" strokeWidth="2" strokeLinecap="round" />
+              <path d="M4 18H20" stroke="black" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </button>
         </header>
@@ -179,29 +197,75 @@ const RankingZone: React.FC = () => {
                   section.items.map((post) => {
                     const postId = String(post.postId);
                     const isBookmarked = !!bookmarks[postId];
+                    const imageUrl = resolveAssetUrl(post.thumbnailUrl);
 
                     return (
                       <div
                         key={`${section.period}-${post.postId}`}
                         className={styles.card}
-                        onClick={() => navigate(`/ranking-detail/${post.postId}?period=${section.period}`)}
+                        onClick={() =>
+                          navigate(`/ranking-detail/${post.postId}?period=${section.period}`)
+                        }
                         style={{
-                          backgroundImage: `url(${resolveAssetUrl(post.thumbnailUrl)})`,
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center',
-                          backgroundRepeat: 'no-repeat',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          borderRadius: '24px',
+                          cursor: 'pointer',
+                          backgroundColor: '#f4f4f4',
                         }}
                       >
+                        {imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            alt={`ranking-${post.rank}`}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              display: 'block',
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#999',
+                              fontSize: '12px',
+                              background: '#f3f3f3',
+                            }}
+                          >
+                            이미지 없음
+                          </div>
+                        )}
+
                         <button
                           type="button"
                           className={styles.heartIcon}
                           onClick={(e) => toggleBookmark(e, postId)}
                           aria-label="북마크"
+                          style={{
+                            position: 'absolute',
+                            top: '10px',
+                            right: '10px',
+                            width: '24px',
+                            height: '24px',
+                            border: 'none',
+                            background: 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            padding: 0,
+                          }}
                         >
-                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                             <path
                               d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.03L12 21.35Z"
-                              fill={isBookmarked ? '#FF3B30' : 'rgba(255,255,255,0.78)'}
+                              fill={isBookmarked ? '#FF3B30' : '#D1D5DB'}
                             />
                           </svg>
                         </button>

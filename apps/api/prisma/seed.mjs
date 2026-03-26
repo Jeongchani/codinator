@@ -60,6 +60,21 @@ const feedbackTagSeeds = [
   },
 ];
 
+const SEED_DATE_PATH = '20260325';
+
+function createSeedImage(filename) {
+  const storageKey = `posts/${SEED_DATE_PATH}/${filename}`;
+  const imageUrl = `/uploads/${storageKey}`;
+
+  return {
+    imageUrl,
+    storageKey,
+    thumbnailUrl: imageUrl,
+    sortOrder: 0,
+    isPrimary: true,
+  };
+}
+
 function addDays(date, days) {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
@@ -160,11 +175,7 @@ async function createSamplePosts(userMap, tagMap) {
       authorId: userMap.alice.id,
       content: '[SEED] 봄 데일리 코디 평가 부탁드립니다.',
       images: {
-        create: {
-          imageUrl: '/uploads/look1.jpg',
-          sortOrder: 0,
-          isPrimary: true,
-        },
+        create: createSeedImage('test_image1.jpg'),
       },
       outfitItems: {
         create: [
@@ -207,11 +218,7 @@ async function createSamplePosts(userMap, tagMap) {
       content: '[SEED] 스트릿 코디 랭킹 테스트용 게시글 1',
       publishedAt: subDays(now, 7),
       images: {
-        create: {
-          imageUrl: '/uploads/look2.jpg',
-          sortOrder: 0,
-          isPrimary: true,
-        },
+        create: createSeedImage('test_image2.jpg'),
       },
       outfitItems: {
         create: [
@@ -256,11 +263,7 @@ async function createSamplePosts(userMap, tagMap) {
       content: '[SEED] 랭킹 테스트용 게시글 2',
       publishedAt: subDays(now, 5),
       images: {
-        create: {
-          imageUrl: '/uploads/look3.jpg',
-          sortOrder: 0,
-          isPrimary: true,
-        },
+        create: createSeedImage('test_image3.jpg'),
       },
       outfitItems: {
         create: [
