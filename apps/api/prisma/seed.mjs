@@ -2,19 +2,62 @@ import {
   PrismaClient,
   EvaluationStatus,
   GarmentCategory,
+  Gender,
   VoteChoice,
   RankingPeriod,
   RankingStatus,
+  BlurMethod,
+  AiBlurStatus,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 const userSeeds = [
-  { key: 'alice', email: 'alice@codinator.com', nickname: '앨리스', password: '1234' },
-  { key: 'bob', email: 'bob@codinator.com', nickname: '밥', password: '1234' },
-  { key: 'charlie', email: 'charlie@codinator.com', nickname: '찰리', password: '1234' },
-  { key: 'diana', email: 'diana@codinator.com', nickname: '다이애나', password: '1234' },
+  {
+    key: 'alice',
+    email: 'alice@codinator.com',
+    nickname: '앨리스',
+    password: '1234',
+    gender: Gender.FEMALE,
+    birthDate: new Date('2000-01-01'),
+    phoneNumber: '01011112222',
+  },
+  {
+    key: 'bob',
+    email: 'bob@codinator.com',
+    nickname: '밥',
+    password: '1234',
+    gender: Gender.MALE,
+    birthDate: new Date('1999-02-02'),
+    phoneNumber: '01022223333',
+  },
+  {
+    key: 'charlie',
+    email: 'charlie@codinator.com',
+    nickname: '찰리',
+    password: '1234',
+    gender: Gender.MALE,
+    birthDate: new Date('1998-03-03'),
+    phoneNumber: '01033334444',
+  },
+  {
+    key: 'diana',
+    email: 'diana@codinator.com',
+    nickname: '다이애나',
+    password: '1234',
+    gender: Gender.FEMALE,
+    birthDate: new Date('2001-04-04'),
+    phoneNumber: '01044445555',
+  },
+];
+
+const keywordSeeds = [
+  { code: 'BOYFRIEND_LOOK', label: '남친룩', sortOrder: 1 },
+  { code: 'DAILY_LOOK', label: '데일리룩', sortOrder: 2 },
+  { code: 'OFFICE_LOOK', label: '출근룩', sortOrder: 3 },
+  { code: 'STREET_LOOK', label: '스트릿룩', sortOrder: 4 },
+  { code: 'CAMPUS_LOOK', label: '캠퍼스룩', sortOrder: 5 },
 ];
 
 const feedbackTagSeeds = [
@@ -104,11 +147,17 @@ async function upsertUsers() {
       update: {
         nickname: seed.nickname,
         passwordHash,
+        gender: seed.gender,
+        birthDate: seed.birthDate,
+        phoneNumber: seed.phoneNumber,
       },
       create: {
         email: seed.email,
         nickname: seed.nickname,
         passwordHash,
+        gender: seed.gender,
+        birthDate: seed.birthDate,
+        phoneNumber: seed.phoneNumber,
       },
     });
 
@@ -116,6 +165,29 @@ async function upsertUsers() {
   }
 
   return userMap;
+}
+
+async function upsertKeywords() {
+  const keywordMap = {};
+
+  for (const seed of keywordSeeds) {
+    const keyword = await prisma.keyword.upsert({
+      where: { code: seed.code },
+      update: {
+        label: seed.label,
+        sortOrder: seed.sortOrder,
+        isActive: true,
+      },
+      create: {
+        ...seed,
+        isActive: true,
+      },
+    });
+
+    keywordMap[seed.code] = keyword;
+  }
+
+  return keywordMap;
 }
 
 async function upsertFeedbackTags() {
@@ -146,13 +218,30 @@ async function resetSampleData() {
   await prisma.feedback.deleteMany();
   await prisma.vote.deleteMany();
   await prisma.evaluation.deleteMany();
+  await prisma.bookmark.deleteMany();
+  await prisma.report.deleteMany();
+  await prisma.userReport.deleteMany();
+  await prisma.postKeyword.deleteMany();
   await prisma.postOutfit.deleteMany();
   await prisma.postImage.deleteMany();
   await prisma.post.deleteMany();
   await prisma.userSession.deleteMany();
 }
 
-async function createSamplePosts(userMap, tagMap) {
+function buildImageCreate(url) {
+  return {
+    originalImageUrl: url,
+    processedImageUrl: url,
+    thumbnailUrl: null,
+    storageKey: null,
+    blurMethod: BlurMethod.NONE,
+    aiBlurStatus: AiBlurStatus.NONE,
+    sortOrder: 0,
+    isPrimary: true,
+  };
+}
+
+async function createSamplePosts(userMap, keywordMap, tagMap) {
   const now = new Date();
 
   const openPost = await prisma.post.create({
@@ -160,11 +249,13 @@ async function createSamplePosts(userMap, tagMap) {
       authorId: userMap.alice.id,
       content: '[SEED] 봄 데일리 코디 평가 부탁드립니다.',
       images: {
-        create: {
-          imageUrl: 'https://images.example.com/posts/open-post.jpg',
-          sortOrder: 0,
-          isPrimary: true,
-        },
+        create: buildImageCreate('https://images.example.com/posts/open-post.jpg'),
+      },
+      postKeywords: {
+        create: [
+          { keywordId: keywordMap.BOYFRIEND_LOOK.id, sortOrder: 0 },
+          { keywordId: keywordMap.DAILY_LOOK.id, sortOrder: 1 },
+        ],
       },
       outfitItems: {
         create: [
@@ -207,11 +298,13 @@ async function createSamplePosts(userMap, tagMap) {
       content: '[SEED] 스트릿 코디 랭킹 테스트용 게시글 1',
       publishedAt: subDays(now, 7),
       images: {
-        create: {
-          imageUrl: 'https://images.example.com/posts/ranked-post-1.jpg',
-          sortOrder: 0,
-          isPrimary: true,
-        },
+        create: buildImageCreate('https://images.example.com/posts/ranked-post-1.jpg'),
+      },
+      postKeywords: {
+        create: [
+          { keywordId: keywordMap.STREET_LOOK.id, sortOrder: 0 },
+          { keywordId: keywordMap.DAILY_LOOK.id, sortOrder: 1 },
+        ],
       },
       outfitItems: {
         create: [
@@ -256,11 +349,13 @@ async function createSamplePosts(userMap, tagMap) {
       content: '[SEED] 랭킹 테스트용 게시글 2',
       publishedAt: subDays(now, 5),
       images: {
-        create: {
-          imageUrl: 'https://images.example.com/posts/ranked-post-2.jpg',
-          sortOrder: 0,
-          isPrimary: true,
-        },
+        create: buildImageCreate('https://images.example.com/posts/ranked-post-2.jpg'),
+      },
+      postKeywords: {
+        create: [
+          { keywordId: keywordMap.OFFICE_LOOK.id, sortOrder: 0 },
+          { keywordId: keywordMap.CAMPUS_LOOK.id, sortOrder: 1 },
+        ],
       },
       outfitItems: {
         create: [
@@ -304,6 +399,7 @@ async function createSamplePosts(userMap, tagMap) {
       evaluationId: rankedPost1.evaluation.id,
       voterId: userMap.alice.id,
       choice: VoteChoice.LIKE,
+      feedbackSubmittedAt: now,
     },
   });
 
@@ -312,6 +408,7 @@ async function createSamplePosts(userMap, tagMap) {
       evaluationId: rankedPost1.evaluation.id,
       voterId: userMap.charlie.id,
       choice: VoteChoice.LIKE,
+      feedbackSubmittedAt: now,
     },
   });
 
@@ -320,6 +417,7 @@ async function createSamplePosts(userMap, tagMap) {
       evaluationId: rankedPost1.evaluation.id,
       voterId: userMap.diana.id,
       choice: VoteChoice.DISLIKE,
+      feedbackSubmittedAt: now,
     },
   });
 
@@ -328,6 +426,7 @@ async function createSamplePosts(userMap, tagMap) {
       evaluationId: rankedPost2.evaluation.id,
       voterId: userMap.alice.id,
       choice: VoteChoice.LIKE,
+      feedbackSubmittedAt: now,
     },
   });
 
@@ -336,6 +435,7 @@ async function createSamplePosts(userMap, tagMap) {
       evaluationId: rankedPost2.evaluation.id,
       voterId: userMap.bob.id,
       choice: VoteChoice.DISLIKE,
+      feedbackSubmittedAt: now,
     },
   });
 
@@ -344,22 +444,27 @@ async function createSamplePosts(userMap, tagMap) {
       {
         voteId: vote1.id,
         tagId: tagMap.POS_FIT_GOOD.id,
+        sortOrder: 0,
       },
       {
         voteId: vote2.id,
         tagId: tagMap.POS_POINT_GOOD.id,
+        sortOrder: 0,
       },
       {
         voteId: vote3.id,
         tagId: tagMap.NEG_COLOR_BAD.id,
+        sortOrder: 0,
       },
       {
         voteId: vote4.id,
         tagId: tagMap.POS_POINT_GOOD.id,
+        sortOrder: 0,
       },
       {
         voteId: vote5.id,
         tagId: tagMap.NEG_MATCHING_BAD.id,
+        sortOrder: 0,
       },
     ],
   });
@@ -430,32 +535,29 @@ async function createSamplePosts(userMap, tagMap) {
   });
 
   return {
-    openPostId: openPost.id,
-    rankedPost1Id: rankedPost1.id,
-    rankedPost2Id: rankedPost2.id,
-    weeklyRankingId: weeklyRanking.id,
-    monthlyRankingId: monthlyRanking.id,
+    openPost,
+    rankedPost1,
+    rankedPost2,
   };
 }
 
 async function main() {
   const userMap = await upsertUsers();
+  const keywordMap = await upsertKeywords();
   const tagMap = await upsertFeedbackTags();
 
   await resetSampleData();
+  await createSamplePosts(userMap, keywordMap, tagMap);
 
-  const result = await createSamplePosts(userMap, tagMap);
-
-  console.log('Seed completed');
-  console.log(result);
+  console.log('✅ prisma seed 완료');
 }
 
 main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (error) => {
+  .catch((error) => {
+    console.error('❌ prisma seed 실패');
     console.error(error);
-    await prisma.$disconnect();
     process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
   });

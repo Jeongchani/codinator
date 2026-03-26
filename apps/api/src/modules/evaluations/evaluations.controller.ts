@@ -1,4 +1,11 @@
-import { Controller, Get, Headers, Param, ParseIntPipe, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Headers,
+  Param,
+  ParseIntPipe,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { GetEvaluationPostDetailResponse, GetEvaluationsResponse } from '@codinator/contracts';
 import { AuthTokenService } from '../auth/auth-token.service';
@@ -24,7 +31,7 @@ export class EvaluationsController {
           {
             evaluationId: 1,
             postId: 12,
-            thumbnailUrl: 'https://images.example.com/posts/open-post.jpg',
+            thumbnailUrl: '/uploads/posts/processed/20260325/open-post.jpg',
             endsAt: '2026-03-26T12:00:00.000Z',
             hasVoted: false,
           },
@@ -59,10 +66,27 @@ export class EvaluationsController {
         content: '봄 데일리 코디 평가 부탁드립니다.',
         status: 'ACTIVE',
         createdAt: '2026-03-20T02:00:00.000Z',
-        image: {
-          id: 101,
-          imageUrl: 'https://images.example.com/posts/open-post.jpg',
-        },
+        images: [
+          {
+            id: 101,
+            originalImageUrl: '/uploads/posts/originals/20260325/open-post.jpg',
+            processedImageUrl: '/uploads/posts/processed/20260325/open-post.jpg',
+            thumbnailUrl: null,
+            storageKey: 'posts/originals/20260325/open-post.jpg',
+            blurMethod: 'AUTO',
+            aiBlurStatus: 'DONE',
+            sortOrder: 0,
+            isPrimary: true,
+          },
+        ],
+        keywords: [
+          {
+            id: 1,
+            code: 'DAILY_LOOK',
+            label: '데일리룩',
+            sortOrder: 0,
+          },
+        ],
         outfitItems: [
           {
             id: 1,
@@ -78,6 +102,8 @@ export class EvaluationsController {
         },
         hasVoted: true,
         myVoteId: 31,
+        myVoteChoice: 'DISLIKE',
+        myFeedbackTagIds: [4],
         canVote: false,
         voteSummary: {
           likeCount: 3,
@@ -91,6 +117,7 @@ export class EvaluationsController {
             code: 'NEG_COLOR_BAD',
             label: '색 조합이 아쉬워요',
             count: 1,
+            voteChoice: 'DISLIKE',
           },
         ],
       },

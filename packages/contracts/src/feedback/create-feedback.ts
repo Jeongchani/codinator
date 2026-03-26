@@ -1,8 +1,14 @@
+import type { Id } from '../common/id';
+import type { VoteChoice } from '../common/enums';
+
 export interface CreateFeedbackRequest {
-  tagId: number;
+  tagIds?: Id[];
 }
 
 export interface CreateFeedbackResponse {
-  postId: number;
-  selectedTagId: number;
+  postId: Id;
+  myVoteId: Id;
+  myVoteChoice: VoteChoice;
+  selectedTagIds: Id[];
+  feedbackSubmitted: boolean;
 }

@@ -1,17 +1,24 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { GetFeedPostDetailResponse, GetUserFeedResponse } from '@codinator/contracts';
-import { EvaluationStatus, PostStatus } from '@prisma/client';
+import { EvaluationStatus, PostStatus, RankingStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { buildFeedbackSummary, buildVoteSummary } from '../evaluations/common/evaluation-summary.util';
+import {
+  buildFeedbackSummary,
+  buildMyVoteContext,
+  buildVoteSummary,
+} from '../evaluations/common/evaluation-summary.util';
 import { syncExpiredEvaluations } from '../evaluations/common/sync-expired-evaluations.util';
 import { syncCurrentRankings } from '../rankings/common/ranking-sync.util';
 import { RankingsService } from '../rankings/rankings.service';
-
-const IMAGE_ORDER_BY = [
-  { isPrimary: 'desc' as const },
-  { sortOrder: 'asc' as const },
-  { id: 'asc' as const },
-];
+import {
+  IMAGE_ORDER_BY,
+  mapOutfitItems,
+  mapPostImages,
+  mapPostKeywords,
+  OUTFIT_ORDER_BY,
+  pickPostThumbnail,
+  POST_KEYWORD_ORDER_BY,
+} from '../posts/common/post-presenter.util';
 
 @Injectable()
 export class FeedsService {
@@ -48,6 +55,13 @@ export class FeedsService {
             endsAt: { lte: new Date() },
           },
         },
+        rankingDetails: {
+          some: {
+            ranking: {
+              status: RankingStatus.READY,
+            },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
       include: {
@@ -61,7 +75,7 @@ export class FeedsService {
     const items = await Promise.all(
       posts.map(async (post) => ({
         postId: post.id,
-        thumbnailUrl: post.images[0]?.thumbnailUrl ?? post.images[0]?.imageUrl ?? '',
+        thumbnailUrl: pickPostThumbnail(post.images),
         createdAt: post.createdAt.toISOString(),
         rankingPeriods: await this.rankingsService.getVisibleRankingPeriods(post.id),
       })),
@@ -79,7 +93,7 @@ export class FeedsService {
   async getFeedPostDetail(
     targetUserId: number,
     postId: number,
-    _viewerUserId: number,
+    viewerUserId: number,
   ): Promise<GetFeedPostDetailResponse> {
     await syncExpiredEvaluations(this.prisma);
     await syncCurrentRankings(this.prisma);
@@ -97,6 +111,13 @@ export class FeedsService {
             endsAt: { lte: new Date() },
           },
         },
+        rankingDetails: {
+          some: {
+            ranking: {
+              status: RankingStatus.READY,
+            },
+          },
+        },
       },
       include: {
         author: {
@@ -109,13 +130,19 @@ export class FeedsService {
           orderBy: IMAGE_ORDER_BY,
         },
         outfitItems: {
-          orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+          orderBy: OUTFIT_ORDER_BY,
+        },
+        postKeywords: {
+          orderBy: POST_KEYWORD_ORDER_BY,
+          include: {
+            keyword: true,
+          },
         },
         evaluation: {
           include: {
             votes: {
               include: {
-                feedback: {
+                feedbacks: {
                   include: {
                     tag: true,
                   },
@@ -140,21 +167,15 @@ export class FeedsService {
       content: post.content,
       status: post.status,
       createdAt: post.createdAt.toISOString(),
-      image: {
-        id: post.images[0]?.id ?? 0,
-        imageUrl: post.images[0]?.imageUrl ?? '',
-      },
-      outfitItems: post.outfitItems.map((item) => ({
-        id: item.id,
-        category: item.category,
-        itemName: item.itemName,
-        brand: item.brand,
-      })),
+      images: mapPostImages(post.images),
+      keywords: mapPostKeywords(post.postKeywords),
+      outfitItems: mapOutfitItems(post.outfitItems),
       evaluation: {
         id: post.evaluation.id,
         status: post.evaluation.status,
         endsAt: post.evaluation.endsAt.toISOString(),
       },
+      ...buildMyVoteContext(post.evaluation.votes, viewerUserId),
       voteSummary: buildVoteSummary(post.evaluation.votes),
       feedbackSummary: buildFeedbackSummary(post.evaluation.votes),
       rankingPeriods: await this.rankingsService.getVisibleRankingPeriods(post.id),

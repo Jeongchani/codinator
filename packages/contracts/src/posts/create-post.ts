@@ -1,4 +1,4 @@
-import type { GarmentCategory, PostStatus } from '../common/enums';
+import type { AiBlurStatus, BlurMethod, GarmentCategory, PostStatus } from '../common/enums';
 
 export interface CreateOutfitItemInput {
   category: GarmentCategory;
@@ -6,13 +6,19 @@ export interface CreateOutfitItemInput {
   brand?: string | null;
 }
 
+export interface CreatePostImageInput {
+  originalImageUrl: string;
+  processedImageUrl?: string | null;
+  thumbnailUrl?: string | null;
+  storageKey?: string | null;
+  blurMethod?: BlurMethod;
+  aiBlurStatus?: AiBlurStatus;
+}
+
 export interface CreatePostRequest {
   content?: string | null;
-  image: {
-    imageUrl: string;
-    storageKey?: string | null;
-    thumbnailUrl?: string | null;
-  };
+  image: CreatePostImageInput;
+  keywordIds?: number[];
   outfitItems?: CreateOutfitItemInput[];
 }
 

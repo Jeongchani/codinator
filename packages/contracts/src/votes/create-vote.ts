@@ -9,6 +9,7 @@ export interface CreateVoteRequest {
 export interface CreateVoteResponse {
   postId: Id;
   voteId: Id;
-  myVote: VoteChoice;
+  myVoteChoice: VoteChoice;
+  myFeedbackTagIds: Id[];
   summary: VoteSummary;
 }

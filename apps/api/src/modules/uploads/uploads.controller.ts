@@ -7,7 +7,15 @@ import {
   Headers,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiConsumes, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import type { UploadPostImageResponse } from '@codinator/contracts';
 import { AuthTokenService } from '../auth/auth-token.service';
 import { UploadsService } from './uploads.service';
 
@@ -35,11 +43,24 @@ export class UploadsController {
       required: ['file'],
     },
   })
+  @ApiOkResponse({
+    description: 'V2 이미지 구조 반환',
+    schema: {
+      example: {
+        originalImageUrl: '/uploads/posts/originals/20260325/abc.jpg',
+        processedImageUrl: '/uploads/posts/processed/20260325/processed-abc.jpg',
+        thumbnailUrl: null,
+        storageKey: 'posts/originals/20260325/abc.jpg',
+        blurMethod: 'NONE',
+        aiBlurStatus: 'NONE',
+      },
+    },
+  })
   @UseInterceptors(FileInterceptor('file'))
   async uploadPostImage(
     @UploadedFile() file: Express.Multer.File,
     @Headers('authorization') authorization?: string,
-  ) {
+  ): Promise<UploadPostImageResponse> {
     this.authTokenService.extractUserIdFromAuthorizationHeader(authorization, {
       required: true,
     });

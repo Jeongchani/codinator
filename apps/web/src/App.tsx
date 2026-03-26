@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type {
+  Gender,
   HealthCheckResponse,
   LoginResponse,
   LogoutResponse,
@@ -13,6 +14,9 @@ function App() {
   const [email, setEmail] = useState('alice@codinator.com');
   const [nickname, setNickname] = useState('앨리스테스트');
   const [password, setPassword] = useState('1234');
+  const [birthDate, setBirthDate] = useState('2000-01-01');
+  const [gender, setGender] = useState<Gender>('FEMALE');
+  const [phoneNumber, setPhoneNumber] = useState('010-1234-5678');
   const [authResult, setAuthResult] = useState<SignupResponse | LoginResponse | LogoutResponse | null>(
     null,
   );
@@ -35,7 +39,7 @@ function App() {
       const data = await fetcher<SignupResponse>('/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, nickname, password }),
+        body: JSON.stringify({ email, nickname, password, birthDate, gender, phoneNumber }),
       });
       setAuthResult(data);
     } catch (err) {
@@ -113,6 +117,27 @@ function App() {
               onChange={(event) => setPassword(event.target.value)}
               className="w-full rounded border px-3 py-2"
               placeholder="비밀번호 입력"
+            />
+            <input
+              type="date"
+              value={birthDate}
+              onChange={(event) => setBirthDate(event.target.value)}
+              className="w-full rounded border px-3 py-2"
+            />
+            <select
+              value={gender}
+              onChange={(event) => setGender(event.target.value as Gender)}
+              className="w-full rounded border px-3 py-2"
+            >
+              <option value="MALE">MALE</option>
+              <option value="FEMALE">FEMALE</option>
+            </select>
+            <input
+              type="text"
+              value={phoneNumber}
+              onChange={(event) => setPhoneNumber(event.target.value)}
+              className="w-full rounded border px-3 py-2"
+              placeholder="전화번호 입력"
             />
             <div className="flex space-x-2">
               <button onClick={handleSignup} className="rounded bg-green-600 px-4 py-2 text-white">
