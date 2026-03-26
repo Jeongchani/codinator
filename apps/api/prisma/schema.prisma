@@ -18,6 +18,11 @@ enum UserStatus {
   DELETED
 }
 
+enum Gender {
+  MALE
+  FEMALE
+}
+
 enum PostStatus {
   ACTIVE
   HIDDEN
@@ -56,21 +61,58 @@ enum GarmentCategory {
   ETC
 }
 
+enum ReportReason {
+  SPAM
+  ABUSE
+  INAPPROPRIATE
+  ETC
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  REJECTED
+}
+
+enum BlurMethod {
+  NONE
+  AUTO
+  MANUAL
+}
+
+enum AiBlurStatus {
+  NONE
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
 model User {
   id           Int        @id @default(autoincrement())
   email        String     @unique @db.VarChar(100)
   nickname     String     @unique @db.VarChar(30)
   passwordHash String     @map("password_hash") @db.VarChar(255)
+  gender       Gender
+  birthDate    DateTime   @map("birth_date") @db.Date
+  phoneNumber  String     @unique @map("phone_number") @db.VarChar(20)
   role         UserRole   @default(USER)
   status       UserStatus @default(ACTIVE)
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
   deletedAt    DateTime?  @map("deleted_at")
 
-  posts             Post[]
-  votes             Vote[]
-  sessions          UserSession[]
-  closedEvaluations Evaluation[] @relation("EvaluationClosedBy")
+  posts               Post[]       @relation("PostAuthor")
+  hiddenPosts         Post[]       @relation("PostHiddenBy")
+  votes               Vote[]
+  sessions            UserSession[]
+  closedEvaluations   Evaluation[] @relation("EvaluationClosedBy")
+  bookmarks           Bookmark[]
+  reports             Report[]     @relation("ReportReporter")
+  reviewedReports     Report[]     @relation("ReportReviewedBy")
+  userReports         UserReport[] @relation("UserReportReporter")
+  receivedUserReports UserReport[] @relation("UserReportTarget")
+  reviewedUserReports UserReport[] @relation("UserReportReviewedBy")
 
   @@index([status])
   @@map("users")
@@ -104,16 +146,23 @@ model Post {
   publishedAt  DateTime?  @map("published_at")
   hiddenAt     DateTime?  @map("hidden_at")
   hiddenReason String?    @map("hidden_reason") @db.VarChar(255)
+  hiddenById   Int?       @map("hidden_by_id")
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
   deletedAt    DateTime?  @map("deleted_at")
 
-  author         User           @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  author         User            @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  hiddenBy       User?           @relation("PostHiddenBy", fields: [hiddenById], references: [id], onDelete: SetNull)
   images         PostImage[]
   outfitItems    PostOutfit[]
+  postKeywords   PostKeyword[]
+  bookmarks      Bookmark[]
+  reports        Report[]
   evaluation     Evaluation?
   rankingDetails RankingDetail[]
 
+  @@index([authorId, status, createdAt])
+  @@index([status, createdAt])
   @@index([authorId])
   @@index([status])
   @@index([publishedAt])
@@ -121,15 +170,18 @@ model Post {
 }
 
 model PostImage {
-  id           Int      @id @default(autoincrement())
-  postId       Int      @map("post_id")
-  storageKey   String?  @map("storage_key") @db.VarChar(255)
-  imageUrl     String   @map("image_url") @db.VarChar(500)
-  thumbnailUrl String?  @map("thumbnail_url") @db.VarChar(500)
-  sortOrder    Int      @default(0) @map("sort_order")
-  isPrimary    Boolean  @default(false) @map("is_primary")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id                Int          @id @default(autoincrement())
+  postId            Int          @map("post_id")
+  storageKey        String?      @map("storage_key") @db.VarChar(255)
+  originalImageUrl  String       @map("original_image_url") @db.VarChar(500)
+  thumbnailUrl      String?      @map("thumbnail_url") @db.VarChar(500)
+  sortOrder         Int          @default(0) @map("sort_order")
+  isPrimary         Boolean      @default(false) @map("is_primary")
+  processedImageUrl String?      @map("processed_image_url") @db.VarChar(500)
+  blurMethod        BlurMethod   @default(NONE) @map("blur_method")
+  aiBlurStatus      AiBlurStatus @default(NONE) @map("ai_blur_status")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
 
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
@@ -153,6 +205,105 @@ model PostOutfit {
   @@unique([postId, sortOrder])
   @@index([postId])
   @@map("post_outfits")
+}
+
+model Keyword {
+  id           Int           @id @default(autoincrement())
+  code         String        @unique @db.VarChar(50)
+  label        String        @db.VarChar(50)
+  isActive     Boolean       @default(true) @map("is_active")
+  sortOrder    Int           @default(0) @map("sort_order")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  postKeywords PostKeyword[]
+
+  @@index([isActive, sortOrder])
+  @@index([label])
+  @@map("keywords")
+}
+
+model PostKeyword {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @map("post_id")
+  keywordId Int      @map("keyword_id")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post    Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  keyword Keyword @relation(fields: [keywordId], references: [id], onDelete: Restrict)
+
+  @@unique([postId, keywordId])
+  @@index([keywordId, postId])
+  @@index([postId])
+  @@index([keywordId])
+  @@map("post_keywords")
+}
+
+model Bookmark {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  postId    Int      @map("post_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([userId, createdAt])
+  @@index([userId])
+  @@index([postId])
+  @@map("bookmarks")
+}
+
+model Report {
+  id           Int          @id @default(autoincrement())
+  reporterId   Int          @map("reporter_id")
+  postId       Int          @map("post_id")
+  title        String       @db.VarChar(100)
+  reason       ReportReason
+  description  String?      @db.VarChar(500)
+  status       ReportStatus @default(PENDING)
+  reviewedAt   DateTime?    @map("reviewed_at")
+  reviewedById Int?         @map("reviewed_by_id")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  reporter   User  @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+  post       Post  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("ReportReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([reporterId, postId])
+  @@index([status, createdAt])
+  @@index([postId, createdAt])
+  @@index([postId])
+  @@index([status])
+  @@index([reviewedById])
+  @@map("reports")
+}
+
+model UserReport {
+  id             Int          @id @default(autoincrement())
+  reporterId     Int          @map("reporter_id")
+  reportedUserId Int          @map("reported_user_id")
+  title          String       @db.VarChar(100)
+  reason         ReportReason
+  description    String?      @db.VarChar(500)
+  status         ReportStatus @default(PENDING)
+  reviewedAt     DateTime?    @map("reviewed_at")
+  reviewedById   Int?         @map("reviewed_by_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  reporter     User  @relation("UserReportReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+  reportedUser User  @relation("UserReportTarget", fields: [reportedUserId], references: [id], onDelete: Restrict)
+  reviewedBy   User? @relation("UserReportReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([reporterId, reportedUserId])
+  @@index([reportedUserId, createdAt])
+  @@index([status, createdAt])
+  @@index([reviewedById])
+  @@map("user_reports")
 }
 
 model Evaluation {
@@ -185,7 +336,7 @@ model Vote {
 
   evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
   voter      User       @relation(fields: [voterId], references: [id], onDelete: Restrict)
-  feedback   Feedback?
+  feedbacks  Feedback[]
 
   @@unique([evaluationId, voterId])
   @@index([voterId])
@@ -213,14 +364,18 @@ model FeedbackTag {
 
 model Feedback {
   id        Int      @id @default(autoincrement())
-  voteId    Int      @unique @map("vote_id")
+  voteId    Int      @map("vote_id")
   tagId     Int      @map("tag_id")
+  sortOrder Int      @default(0) @map("sort_order")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   vote Vote        @relation(fields: [voteId], references: [id], onDelete: Cascade)
   tag  FeedbackTag @relation(fields: [tagId], references: [id], onDelete: Restrict)
 
+  @@unique([voteId, tagId])
+  @@unique([voteId, sortOrder])
+  @@index([voteId])
   @@index([tagId])
   @@map("feedbacks")
 }
