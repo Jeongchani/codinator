@@ -8,18 +8,21 @@ import {
   getAuthHeaders,
   resolveAssetUrl,
 } from "../../lib/api";
-import styles from "./MyFeedDetail.module.css";
+import styles from "./UserFeedDetail.module.css";
 
 type PreviewPost = {
   id?: number;
   postId?: number;
   authorId?: number;
   imageUrl?: string;
+  createdAt?: string;
+  content?: string;
   nickname?: string;
 };
 
 type LocationState = {
   post?: PreviewPost;
+  userId?: number;
 };
 
 type FeedbackGroup = {
@@ -207,7 +210,7 @@ function extractWearItems(post: GetFeedPostDetailResponse): WearItem[] {
   });
 }
 
-export default function MyFeedDetail() {
+export default function UserFeedDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const { postId } = useParams();
@@ -217,12 +220,14 @@ export default function MyFeedDetail() {
 
   const resolvedPostId =
     toSafeNumber(postId) ??
-    previewPost?.id ??
-    previewPost?.postId;
+    previewPost?.postId ??
+    previewPost?.id;
 
   const currentUserId = useMemo(() => getCurrentUserId(), []);
   const resolvedAuthorId =
-    previewPost?.authorId ?? currentUserId;
+    previewPost?.authorId ??
+    locationState?.userId ??
+    currentUserId;
 
   const [postData, setPostData] = useState<GetFeedPostDetailResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -238,24 +243,19 @@ export default function MyFeedDetail() {
         return;
       }
 
-      if (!resolvedAuthorId) {
-        setError("작성자 정보가 없습니다.");
-        setLoading(false);
-        return;
-      }
-
       try {
         setLoading(true);
         setError("");
 
-        const endpoint = `/users/${resolvedAuthorId}/feed/${resolvedPostId}`;
+        const endpoint = resolvedAuthorId
+          ? `/users/${resolvedAuthorId}/feed/${resolvedPostId}`
+          : `/users/me/feed/${resolvedPostId}`;
 
         const detail = await fetcher<GetFeedPostDetailResponse>(endpoint, {
           headers: getAuthHeaders(),
         });
 
         if (cancelled) return;
-
         setPostData(detail);
       } catch (err: unknown) {
         const message =

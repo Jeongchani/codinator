@@ -4,7 +4,7 @@ import type {
   GetFeedPostDetailResponse,
   GetUserFeedResponse,
 } from "@codinator/contracts";
-import { Heart, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import {
   clearAuthTokens,
   fetcher,
@@ -167,24 +167,6 @@ function HeartCountIcon() {
   );
 }
 
-function BookmarkHeart({ active }: { active: boolean }) {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.03L12 21.35Z"
-        fill={active ? "#FF3B30" : "rgba(255,255,255,0.88)"}
-      />
-    </svg>
-  );
-}
-
 export default function MyFeeds() {
   const navigate = useNavigate();
 
@@ -193,26 +175,7 @@ export default function MyFeeds() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [bookmarks, setBookmarks] = useState<Record<string, boolean>>(() => {
-    const saved = localStorage.getItem("codinator_bookmarks");
-    return saved ? (JSON.parse(saved) as Record<string, boolean>) : {};
-  });
-
   const currentUserId = useMemo(() => getCurrentUserId(), []);
-
-  useEffect(() => {
-    const syncBookmarks = () => {
-      const saved = localStorage.getItem("codinator_bookmarks");
-      setBookmarks(saved ? (JSON.parse(saved) as Record<string, boolean>) : {});
-    };
-
-    syncBookmarks();
-    window.addEventListener("storage", syncBookmarks);
-
-    return () => {
-      window.removeEventListener("storage", syncBookmarks);
-    };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -348,16 +311,6 @@ export default function MyFeeds() {
     };
   }, [currentUserId, navigate]);
 
-  const toggleBookmark = (e: React.MouseEvent, postId: string) => {
-    e.stopPropagation();
-
-    setBookmarks((prev) => {
-      const next = { ...prev, [postId]: !prev[postId] };
-      localStorage.setItem("codinator_bookmarks", JSON.stringify(next));
-      return next;
-    });
-  };
-
   const handleOpenDetail = (item: FeedCardItem) => {
     navigate(`/my-feed-detail/${item.postId}`, {
       state: {
@@ -424,8 +377,6 @@ export default function MyFeeds() {
           {!error && items.length > 0 ? (
             <div className={styles.feedGrid}>
               {items.map((item) => {
-                const postId = String(item.postId);
-
                 return (
                   <article
                     key={item.postId}
@@ -450,15 +401,6 @@ export default function MyFeeds() {
                       ) : (
                         <div className={styles.placeholder} />
                       )}
-
-                      <button
-                        type="button"
-                        className={styles.heartButton}
-                        onClick={(e) => toggleBookmark(e, postId)}
-                        aria-label="북마크"
-                      >
-                        <BookmarkHeart active={!!bookmarks[postId]} />
-                      </button>
                     </div>
 
                     <div className={styles.cardInfo}>

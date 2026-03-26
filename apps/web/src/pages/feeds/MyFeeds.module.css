@@ -64,10 +64,6 @@
   @apply w-full h-full bg-neutral-300;
 }
 
-.heartButton {
-  @apply absolute top-2 right-2 w-7 h-7 rounded-full bg-black/10 backdrop-blur-[1px] flex items-center justify-center;
-}
-
 .cardInfo {
   @apply px-3 pt-2 pb-3;
 }

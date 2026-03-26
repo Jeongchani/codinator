@@ -215,8 +215,19 @@ export default function UserFeeds() {
     });
   };
 
-  const handleClickCard = (postId: number) => {
-    navigate(`/user/${userId}/feed/${postId}`);
+  const handleClickCard = (item: FeedCardItem) => {
+    navigate(`/user/${userId}/feed/${item.postId}`, {
+      state: {
+        post: {
+          postId: item.postId,
+          authorId: Number(userId),
+          imageUrl: item.imageUrl,
+          createdAt: item.createdAt,
+          content: item.content,
+          nickname: displayUserName,
+        },
+      },
+    });
   };
 
   if (loading && items.length === 0) {
@@ -272,13 +283,13 @@ export default function UserFeeds() {
                   <article
                     key={item.postId}
                     className={styles.feedCard}
-                    onClick={() => handleClickCard(item.postId)}
+                    onClick={() => handleClickCard(item)}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        handleClickCard(item.postId);
+                        handleClickCard(item);
                       }
                     }}
                   >
