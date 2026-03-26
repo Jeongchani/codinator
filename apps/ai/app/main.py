@@ -1,14 +1,13 @@
 from fastapi import FastAPI
-from app.api.v1.router import api_router
+from app.api.v2.router import api_router
 
 app = FastAPI(
     title="Codinator AI API",
     description="AI 피드백 및 유사 코디 추천 API",
-    version="0.1.0",
+    version="0.2.0",
 )
 
-# API 라우터 등록 (기획서 URL 규칙 /api/v1 에 맞춤)
-app.include_router(api_router, prefix="/api/v1")
+app.include_router(api_router, prefix="/api/v2")
 
 @app.get("/")
 def root():
