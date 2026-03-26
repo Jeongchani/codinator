@@ -1,0 +1,203 @@
+.container {
+  @apply w-[375px] h-[812px] mx-auto bg-[#f5f5f5] text-neutral-900 overflow-hidden shadow-sm;
+}
+
+.scrollArea {
+  @apply h-full overflow-y-auto bg-[#f5f5f5];
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollArea::-webkit-scrollbar {
+  display: none;
+}
+
+.heroSection {
+  @apply relative;
+}
+
+.heroImage {
+  @apply relative w-full h-[430px] bg-[#cfcfcf] overflow-hidden;
+}
+
+.backButton {
+  @apply absolute top-[18px] right-[18px] z-10
+    w-9 h-9 rounded-full bg-white shadow-md
+    flex items-center justify-center text-black;
+}
+
+.imageEditButton {
+  @apply absolute bottom-[18px] right-[18px] z-10
+    w-12 h-12 rounded-full bg-white shadow-md
+    flex items-center justify-center text-black;
+}
+
+.infoSection {
+  @apply px-4 pt-4 flex items-start justify-between gap-3 bg-[#f5f5f5];
+}
+
+.infoText {
+  @apply flex-1 min-w-0;
+}
+
+.title {
+  @apply text-[20px] leading-7 font-semibold tracking-[-0.02em] text-neutral-900;
+}
+
+.description {
+  @apply mt-1 text-[12px] leading-[18px] text-neutral-500 whitespace-pre-line;
+}
+
+.editButton {
+  @apply mt-1 min-w-[78px] h-9 px-4 rounded-full bg-black text-white
+    text-[12px] font-medium leading-none flex items-center justify-center;
+}
+
+.keywordSection {
+  @apply px-4 pt-4;
+}
+
+.keywordRow {
+  @apply flex flex-wrap gap-[6px];
+}
+
+.conceptChip {
+  @apply inline-flex items-center justify-center
+    h-6 px-2 rounded-full bg-[#e8e8e8]
+    text-[10px] leading-none text-neutral-700;
+}
+
+.divider {
+  @apply mx-4 mt-4 h-px bg-neutral-300;
+}
+
+.feedbackScoreSection {
+  @apply px-4 pt-4;
+}
+
+.sectionTitle {
+  @apply text-[15px] font-semibold leading-6 text-neutral-900;
+}
+
+.scoreBlock {
+  @apply mt-3;
+}
+
+.likeRow {
+  @apply flex items-end gap-3;
+}
+
+.likeBarTrack {
+  @apply flex-1 h-5 rounded-sm bg-[#d9d9d9] overflow-hidden;
+}
+
+.likeBarFill {
+  @apply h-full rounded-sm bg-neutral-900;
+}
+
+.likePercent {
+  @apply min-w-[64px] flex items-end justify-end leading-none;
+}
+
+.likePercentNumber {
+  @apply text-[36px] font-semibold tracking-[-0.03em] text-neutral-900;
+}
+
+.likePercentUnit {
+  @apply ml-[2px] mb-[4px] text-[15px] font-semibold text-neutral-900;
+}
+
+.dislikeRow {
+  @apply mt-4 flex items-center gap-3;
+}
+
+.dislikeBarTrack {
+  @apply w-[78%] h-5 rounded-sm bg-[#d9d9d9] overflow-hidden;
+}
+
+.dislikeBarFill {
+  @apply h-full rounded-sm bg-neutral-500;
+}
+
+.dislikePercent {
+  @apply text-[12px] font-semibold text-neutral-700;
+}
+
+.feedbackKeywordSection {
+  @apply px-4 pt-5;
+}
+
+.feedbackList {
+  @apply mt-3 flex flex-col gap-3;
+}
+
+.feedbackItem {
+  @apply flex items-center gap-3;
+}
+
+.feedbackIconWrap {
+  @apply w-8 h-8 rounded-full bg-white shadow-md
+    flex items-center justify-center text-black shrink-0;
+}
+
+.feedbackChips {
+  @apply flex flex-wrap gap-[6px];
+}
+
+.feedbackChip {
+  @apply inline-flex items-center justify-center
+    min-h-7 px-3 rounded-full bg-[#e3e3e3]
+    text-[10px] leading-none text-neutral-700;
+}
+
+.itemSection {
+  @apply px-4 pt-4 pb-8;
+}
+
+.itemHeader {
+  @apply flex items-center justify-between;
+}
+
+.moreButton {
+  @apply flex items-center gap-0.5 text-[11px] text-neutral-500 leading-none;
+}
+
+.itemScroller {
+  @apply mt-3 flex flex-nowrap gap-3 overflow-x-auto overflow-y-hidden pb-1;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+}
+
+.itemScroller::-webkit-scrollbar {
+  display: none;
+}
+
+.itemCard {
+  @apply w-[106px] min-w-[106px] shrink-0 bg-white rounded-2xl overflow-hidden shadow-[6px_6px_12px_rgba(0,0,0,0.06)];
+}
+
+.itemImage {
+  @apply w-full h-[88px] bg-[#c9c9c9];
+}
+
+.itemImageTag {
+  @apply w-full h-full object-cover;
+}
+
+.itemInfo {
+  @apply px-2.5 py-2;
+}
+
+.itemBrand {
+  @apply text-[10px] leading-4 font-medium text-neutral-900;
+}
+
+.itemName {
+  @apply mt-0.5 text-[10px] leading-4 text-neutral-700;
+}
+
+.heroImageTag {
+  @apply w-full h-full object-cover;
+}

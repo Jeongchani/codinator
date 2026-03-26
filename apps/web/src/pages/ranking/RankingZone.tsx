@@ -111,6 +111,11 @@ const RankingZone: React.FC = () => {
     }
   };
 
+  const handleMovePage = (path: string) => {
+    setIsMenuOpen(false);
+    navigate(path);
+  };
+
   const toggleBookmark = (e: React.MouseEvent, postId: string) => {
     e.stopPropagation();
 
@@ -148,12 +153,18 @@ const RankingZone: React.FC = () => {
         </div>
 
         <nav className={styles.drawerNav}>
-          <div className={styles.navItem} onClick={() => navigate('/post-upload')}>
+          <div className={styles.navItem} onClick={() => handleMovePage('/my-feeds')}>
+            내 피드
+          </div>
+
+          <div className={styles.navItem} onClick={() => handleMovePage('/post-upload')}>
             게시글 작성
           </div>
-          <div className={styles.navItem} onClick={() => navigate('/evaluationZone')}>
+
+          <div className={styles.navItem} onClick={() => handleMovePage('/evaluationZone')}>
             평가 존
           </div>
+
           <div className={`${styles.navItem} ${styles.logoutBtn}`} onClick={handleLogout}>
             로그아웃
           </div>

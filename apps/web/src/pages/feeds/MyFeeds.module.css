@@ -1,0 +1,136 @@
+.container {
+  @apply w-[375px] h-[812px] mx-auto bg-[#f5f5f5] text-neutral-900 overflow-hidden shadow-sm;
+}
+
+.scrollArea {
+  @apply h-full overflow-y-auto bg-[#f5f5f5] px-4 pb-8;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollArea::-webkit-scrollbar {
+  display: none;
+}
+
+.header {
+  @apply sticky top-0 z-20 bg-[#f5f5f5] flex items-center justify-between pt-4 pb-3;
+}
+
+.backButton {
+  @apply w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center text-black;
+}
+
+.title {
+  @apply text-[18px] font-semibold leading-6 text-neutral-900;
+}
+
+.headerRightSpace {
+  @apply w-9 h-9;
+}
+
+.summarySection {
+  @apply pt-2 pb-4;
+}
+
+.summaryTitle {
+  @apply text-[20px] font-semibold leading-7 text-neutral-900;
+}
+
+.summaryCount {
+  @apply mt-1 text-[12px] leading-5 text-neutral-500;
+}
+
+.summaryCount span {
+  @apply font-semibold text-neutral-900;
+}
+
+.feedGrid {
+  @apply grid grid-cols-2 gap-3;
+}
+
+.card {
+  @apply text-left bg-white rounded-2xl overflow-hidden shadow-[6px_6px_14px_rgba(0,0,0,0.06)];
+}
+
+.cardImageWrap {
+  @apply w-full h-[184px] bg-neutral-200 overflow-hidden;
+}
+
+.cardImage {
+  @apply w-full h-full object-cover;
+}
+
+.cardImageFallback {
+  @apply w-full h-full bg-[#d8d8d8];
+}
+
+.cardBody {
+  @apply px-3 py-3;
+}
+
+.cardContent {
+  @apply text-[12px] leading-[18px] text-neutral-800 line-clamp-2 min-h-[36px];
+}
+
+.cardMetaRow {
+  @apply mt-2 flex items-center justify-between gap-2;
+}
+
+.cardDate {
+  @apply text-[10px] leading-4 text-neutral-500;
+}
+
+.cardLikeWrap {
+  @apply inline-flex items-center gap-1 text-[10px] leading-4 text-neutral-700;
+}
+
+.stateSection {
+  @apply mt-16 px-4 text-center;
+}
+
+.stateTitle {
+  @apply text-[16px] font-semibold leading-6 text-neutral-900;
+}
+
+.stateDescription {
+  @apply mt-2 text-[12px] leading-5 text-neutral-500 whitespace-pre-line;
+}
+
+.cardSkeleton {
+  @apply bg-white rounded-2xl overflow-hidden shadow-[6px_6px_14px_rgba(0,0,0,0.06)];
+}
+
+.cardImageSkeleton {
+  @apply w-full h-[184px] bg-neutral-200 animate-pulse;
+}
+
+.cardTextSkeleton {
+  @apply h-4 mx-3 mt-3 rounded bg-neutral-200 animate-pulse;
+}
+
+.cardSubTextSkeleton {
+  @apply h-3 mx-3 mt-2 mb-3 w-20 rounded bg-neutral-200 animate-pulse;
+}
+.feedSection {
+  @apply mt-6;
+}
+
+.feedSectionHeader {
+  @apply mb-3 flex items-center justify-between;
+}
+
+.feedSectionTitle {
+  @apply text-[16px] font-semibold leading-6 text-neutral-900;
+}
+
+.feedSectionCount {
+  @apply text-[12px] leading-5 text-neutral-500;
+}
+
+.emptySectionBox {
+  @apply rounded-2xl bg-white px-4 py-5 text-center shadow-[6px_6px_14px_rgba(0,0,0,0.06)];
+}
+
+.emptySectionText {
+  @apply text-[12px] leading-5 text-neutral-500;
+}

@@ -1,0 +1,108 @@
+.container {
+  @apply w-[375px] h-[812px] mx-auto bg-[#f5f5f5] overflow-hidden text-neutral-900;
+}
+
+.scrollArea {
+  @apply h-full overflow-y-auto bg-[#f5f5f5];
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollArea::-webkit-scrollbar {
+  display: none;
+}
+
+.imageSection {
+  @apply relative;
+}
+
+.mainImage {
+  @apply relative w-full h-[360px] overflow-hidden bg-[#d1d1d1];
+}
+
+.mainImageTag {
+  @apply absolute inset-0 w-full h-full object-cover;
+}
+
+.backButton {
+  @apply absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white shadow-md
+    flex items-center justify-center text-[16px] font-semibold text-black;
+}
+
+.infoSection {
+  @apply px-4 pt-4;
+}
+
+.title {
+  @apply text-[18px] font-semibold leading-6 text-neutral-900;
+}
+
+.description {
+  @apply mt-1 text-[11px] leading-4 text-neutral-500;
+}
+
+.tagSection {
+  @apply px-4 pt-4;
+}
+
+.tagList {
+  @apply flex flex-wrap gap-2;
+}
+
+.tagButton {
+  @apply h-8 px-3 rounded-full border border-neutral-300 bg-white
+    text-[11px] text-neutral-700 shadow-sm;
+}
+
+.tagSelected {
+  @apply h-8 px-3 rounded-full border border-black bg-white
+    text-[11px] text-black font-medium shadow-sm;
+}
+
+.divider {
+  @apply mx-4 my-4 h-px bg-neutral-300;
+}
+
+.itemSection {
+  @apply px-4;
+}
+
+.sectionTitle {
+  @apply text-[14px] font-semibold text-neutral-900;
+}
+
+.itemGrid {
+  @apply mt-3 grid grid-cols-2 gap-3;
+}
+
+.itemCard {
+  @apply bg-white rounded-2xl overflow-hidden shadow-sm;
+}
+
+.itemImage {
+  @apply w-full h-[96px] bg-[#bfbfbf] overflow-hidden;
+}
+
+.itemImageTag {
+  @apply w-full h-full object-cover;
+}
+
+.itemInfo {
+  @apply px-3 py-3;
+}
+
+.itemBrand {
+  @apply text-[10px] leading-4 text-neutral-800;
+}
+
+.itemName {
+  @apply mt-1 text-[10px] leading-4 text-neutral-500;
+}
+
+.bottomButtonWrap {
+  @apply px-4 pt-6 pb-8;
+}
+
+.completeButton {
+  @apply w-full h-12 rounded-full bg-black text-white text-[14px] font-semibold;
+}
