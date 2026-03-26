@@ -141,7 +141,7 @@ model UserSession {
 model Post {
   id           Int        @id @default(autoincrement())
   authorId     Int        @map("author_id")
-  content      String?    @db.VarChar(500)
+  content      String    @db.VarChar(500)
   status       PostStatus @default(ACTIVE)
   publishedAt  DateTime?  @map("published_at")
   hiddenAt     DateTime?  @map("hidden_at")
