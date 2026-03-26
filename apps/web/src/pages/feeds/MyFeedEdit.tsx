@@ -4,10 +4,13 @@ import styles from "./MyFeedEdit.module.css";
 
 type FeedItem = {
   id: number;
+  postId?: number;
+  authorId?: number;
   imageUrl: string;
   nickname: string;
-  likes: number;
-  dislikes: number;
+  likes?: number;
+  dislikes?: number;
+  content?: string;
 };
 
 type TagItem = {
@@ -58,7 +61,14 @@ export default function MyFeedEdit() {
   };
 
   const handleComplete = () => {
-    navigate("/my-feed-detail", {
+    const resolvedPostId = post?.postId ?? post?.id;
+
+    if (!resolvedPostId) {
+      navigate(-1);
+      return;
+    }
+
+    navigate(`/my-feed-detail/${resolvedPostId}`, {
       state: {
         post,
       },
@@ -90,7 +100,9 @@ export default function MyFeedEdit() {
         </section>
 
         <section className={styles.infoSection}>
-          <h1 className={styles.title}>{post?.nickname ?? "닉네임/ 코드 컨셉"}</h1>
+          <h1 className={styles.title}>
+            {post?.nickname ?? "닉네임/ 코드 컨셉"}
+          </h1>
           <p className={styles.description}>
             코디설명자세히
             <br />

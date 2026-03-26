@@ -1,9 +1,9 @@
 .container {
-  @apply w-[375px] h-[812px] mx-auto bg-[#f5f5f5] text-neutral-900 overflow-hidden shadow-sm;
+  @apply w-[375px] h-[812px] mx-auto bg-[#f3f3f3] overflow-hidden shadow-2xl;
 }
 
 .scrollArea {
-  @apply h-full overflow-y-auto bg-[#f5f5f5] px-4 pb-8;
+  @apply h-full overflow-y-auto px-4 pt-3 pb-6;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -12,125 +12,82 @@
   display: none;
 }
 
-.header {
-  @apply sticky top-0 z-20 bg-[#f5f5f5] flex items-center justify-between pt-4 pb-3;
+.topBar {
+  @apply flex items-center justify-between mb-5;
 }
 
-.backButton {
-  @apply w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center text-black;
+.titlePill {
+  @apply flex-1 h-[56px] rounded-[20px] bg-[#d8d8d8] px-4 flex items-center;
 }
 
-.title {
-  @apply text-[18px] font-semibold leading-6 text-neutral-900;
+.pageTitle {
+  @apply text-[13px] font-bold text-black;
 }
 
-.headerRightSpace {
-  @apply w-9 h-9;
+.uploadButton {
+  @apply ml-3 w-[42px] h-[42px] rounded-full bg-white flex items-center justify-center shadow-md text-black active:scale-95 transition-transform;
+}
+
+.content {
+  @apply pb-6;
 }
 
 .summarySection {
-  @apply pt-2 pb-4;
+  @apply mb-5;
 }
 
 .summaryTitle {
-  @apply text-[20px] font-semibold leading-7 text-neutral-900;
+  @apply text-[16px] font-bold leading-6 text-black;
 }
 
 .summaryCount {
-  @apply mt-1 text-[12px] leading-5 text-neutral-500;
-}
-
-.summaryCount span {
-  @apply font-semibold text-neutral-900;
+  @apply mt-1 text-[11px] text-neutral-500;
 }
 
 .feedGrid {
-  @apply grid grid-cols-2 gap-3;
+  @apply flex flex-col gap-4 items-start;
 }
 
-.card {
-  @apply text-left bg-white rounded-2xl overflow-hidden shadow-[6px_6px_14px_rgba(0,0,0,0.06)];
+.feedCard {
+  @apply w-[164px] rounded-[18px] bg-white overflow-hidden shadow-sm cursor-pointer;
 }
 
-.cardImageWrap {
-  @apply w-full h-[184px] bg-neutral-200 overflow-hidden;
+.imageWrap {
+  @apply relative w-full h-[180px] overflow-hidden bg-neutral-200;
 }
 
-.cardImage {
-  @apply w-full h-full object-cover;
+.feedImage {
+  @apply w-full h-full object-cover block;
 }
 
-.cardImageFallback {
-  @apply w-full h-full bg-[#d8d8d8];
+.placeholder {
+  @apply w-full h-full bg-neutral-300;
 }
 
-.cardBody {
-  @apply px-3 py-3;
+.heartButton {
+  @apply absolute top-2 right-2 w-7 h-7 rounded-full bg-black/10 backdrop-blur-[1px] flex items-center justify-center;
 }
 
-.cardContent {
-  @apply text-[12px] leading-[18px] text-neutral-800 line-clamp-2 min-h-[36px];
-}
-
-.cardMetaRow {
-  @apply mt-2 flex items-center justify-between gap-2;
+.cardInfo {
+  @apply px-3 pt-2 pb-3;
 }
 
 .cardDate {
   @apply text-[10px] leading-4 text-neutral-500;
 }
 
-.cardLikeWrap {
-  @apply inline-flex items-center gap-1 text-[10px] leading-4 text-neutral-700;
+.cardDescription {
+  @apply mt-1 text-[12px] font-semibold leading-[18px] text-black whitespace-pre-line break-keep min-h-[36px];
 }
 
-.stateSection {
-  @apply mt-16 px-4 text-center;
+.cardBottomRow {
+  @apply mt-3 flex items-center justify-end;
 }
 
-.stateTitle {
-  @apply text-[16px] font-semibold leading-6 text-neutral-900;
+.likeCount {
+  @apply inline-flex items-center gap-1 text-[11px] text-neutral-700;
 }
 
-.stateDescription {
-  @apply mt-2 text-[12px] leading-5 text-neutral-500 whitespace-pre-line;
-}
-
-.cardSkeleton {
-  @apply bg-white rounded-2xl overflow-hidden shadow-[6px_6px_14px_rgba(0,0,0,0.06)];
-}
-
-.cardImageSkeleton {
-  @apply w-full h-[184px] bg-neutral-200 animate-pulse;
-}
-
-.cardTextSkeleton {
-  @apply h-4 mx-3 mt-3 rounded bg-neutral-200 animate-pulse;
-}
-
-.cardSubTextSkeleton {
-  @apply h-3 mx-3 mt-2 mb-3 w-20 rounded bg-neutral-200 animate-pulse;
-}
-.feedSection {
-  @apply mt-6;
-}
-
-.feedSectionHeader {
-  @apply mb-3 flex items-center justify-between;
-}
-
-.feedSectionTitle {
-  @apply text-[16px] font-semibold leading-6 text-neutral-900;
-}
-
-.feedSectionCount {
-  @apply text-[12px] leading-5 text-neutral-500;
-}
-
-.emptySectionBox {
-  @apply rounded-2xl bg-white px-4 py-5 text-center shadow-[6px_6px_14px_rgba(0,0,0,0.06)];
-}
-
-.emptySectionText {
-  @apply text-[12px] leading-5 text-neutral-500;
+.emptyText {
+  @apply text-[12px] text-neutral-500 mt-10;
 }

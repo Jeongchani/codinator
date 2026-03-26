@@ -1,9 +1,9 @@
 .container {
-  @apply w-[375px] h-[812px] mx-auto bg-[#f5f5f5] overflow-hidden text-neutral-900;
+  @apply w-[375px] h-[812px] mx-auto bg-[#f5f5f5] text-black overflow-hidden;
 }
 
 .scrollArea {
-  @apply h-full overflow-y-auto bg-[#f5f5f5];
+  @apply h-full overflow-y-auto pb-8;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -13,20 +13,19 @@
 }
 
 .imageSection {
-  @apply relative;
+  @apply w-full;
 }
 
 .mainImage {
-  @apply relative w-full h-[360px] overflow-hidden bg-[#d1d1d1];
+  @apply relative w-full h-[430px] bg-[#cfcfcf];
 }
 
 .mainImageTag {
-  @apply absolute inset-0 w-full h-full object-cover;
+  @apply w-full h-full object-cover block;
 }
 
 .backButton {
-  @apply absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white shadow-md
-    flex items-center justify-center text-[16px] font-semibold text-black;
+  @apply absolute top-4 left-4 z-20 w-9 h-9 rounded-full bg-white/90 text-black flex items-center justify-center shadow-sm active:scale-95 transition-transform;
 }
 
 .infoSection {
@@ -34,15 +33,15 @@
 }
 
 .title {
-  @apply text-[18px] font-semibold leading-6 text-neutral-900;
+  @apply text-[18px] font-semibold leading-6 text-black;
 }
 
 .description {
-  @apply mt-1 text-[11px] leading-4 text-neutral-500;
+  @apply mt-1 text-[12px] leading-5 text-neutral-500 whitespace-pre-line;
 }
 
 .tagSection {
-  @apply px-4 pt-4;
+  @apply px-4 mt-4;
 }
 
 .tagList {
@@ -50,17 +49,15 @@
 }
 
 .tagButton {
-  @apply h-8 px-3 rounded-full border border-neutral-300 bg-white
-    text-[11px] text-neutral-700 shadow-sm;
+  @apply rounded-full px-3 py-1.5 text-[11px] font-medium bg-white text-neutral-700 border border-neutral-200;
 }
 
 .tagSelected {
-  @apply h-8 px-3 rounded-full border border-black bg-white
-    text-[11px] text-black font-medium shadow-sm;
+  @apply rounded-full px-3 py-1.5 text-[11px] font-medium bg-black text-white border border-black;
 }
 
 .divider {
-  @apply mx-4 my-4 h-px bg-neutral-300;
+  @apply mx-4 my-5 h-[1px] bg-neutral-200;
 }
 
 .itemSection {
@@ -68,41 +65,41 @@
 }
 
 .sectionTitle {
-  @apply text-[14px] font-semibold text-neutral-900;
+  @apply text-[13px] font-semibold text-black mb-3;
 }
 
 .itemGrid {
-  @apply mt-3 grid grid-cols-2 gap-3;
+  @apply grid grid-cols-2 gap-3;
 }
 
 .itemCard {
-  @apply bg-white rounded-2xl overflow-hidden shadow-sm;
+  @apply rounded-2xl bg-white p-3 shadow-sm;
 }
 
 .itemImage {
-  @apply w-full h-[96px] bg-[#bfbfbf] overflow-hidden;
+  @apply w-full h-[120px] rounded-xl bg-neutral-200 overflow-hidden;
 }
 
 .itemImageTag {
-  @apply w-full h-full object-cover;
+  @apply w-full h-full object-cover block;
 }
 
 .itemInfo {
-  @apply px-3 py-3;
+  @apply mt-3;
 }
 
 .itemBrand {
-  @apply text-[10px] leading-4 text-neutral-800;
+  @apply text-[11px] text-neutral-500;
 }
 
 .itemName {
-  @apply mt-1 text-[10px] leading-4 text-neutral-500;
+  @apply mt-1 text-[12px] font-medium text-black leading-5;
 }
 
 .bottomButtonWrap {
-  @apply px-4 pt-6 pb-8;
+  @apply px-4 mt-6;
 }
 
 .completeButton {
-  @apply w-full h-12 rounded-full bg-black text-white text-[14px] font-semibold;
+  @apply w-full h-12 rounded-2xl bg-black text-white text-[14px] font-semibold;
 }

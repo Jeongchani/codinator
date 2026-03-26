@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import type {
+  GetFeedPostDetailResponse,
+  GetUserFeedResponse,
+} from "@codinator/contracts";
+import { Heart, Plus } from "lucide-react";
 import {
   clearAuthTokens,
   fetcher,
@@ -8,17 +13,15 @@ import {
 } from "../../lib/api";
 import styles from "./MyFeeds.module.css";
 
-type FeedStatus = "evaluating" | "completed";
+type FeedListItem = GetUserFeedResponse["items"][number];
 
 type FeedCardItem = {
-  id: number;
-  authorId?: number;
+  postId: number;
+  authorId: number;
   imageUrl?: string;
+  createdAt: string;
   content: string;
-  createdAt?: string;
   likeCount: number;
-  dislikeCount: number;
-  status: FeedStatus;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -34,12 +37,6 @@ function toNumber(value: unknown): number | undefined {
   }
 
   return undefined;
-}
-
-function toStringValue(value: unknown): string | undefined {
-  if (typeof value !== "string") return undefined;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function getStoredAccessToken(): string | undefined {
@@ -58,11 +55,17 @@ function decodeJwtPayload(token: string): Record<string, unknown> | undefined {
     if (parts.length < 2) return undefined;
 
     const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+    const padded = base64.padEnd(
+      base64.length + ((4 - (base64.length % 4)) % 4),
+      "="
+    );
+
     const decoded = atob(padded);
     const json = decodeURIComponent(
       Array.from(decoded)
-        .map((char) => `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`)
+        .map(
+          (char) => `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`
+        )
         .join("")
     );
 
@@ -124,282 +127,26 @@ function getCurrentUserId(): number | undefined {
   );
 }
 
-function findFirstArray(value: unknown): unknown[] {
-  if (Array.isArray(value)) return value;
-  if (!isRecord(value)) return [];
-
-  const preferredKeys = [
-    "items",
-    "feeds",
-    "posts",
-    "data",
-    "results",
-    "content",
-    "list",
-  ];
-
-  for (const key of preferredKeys) {
-    const nested = findFirstArray(value[key]);
-    if (nested.length > 0) return nested;
-  }
-
-  for (const nestedValue of Object.values(value)) {
-    const nested = findFirstArray(nestedValue);
-    if (nested.length > 0) return nested;
-  }
-
-  return [];
-}
-
-function extractImageUrl(item: Record<string, unknown>): string | undefined {
-  const direct =
-    toStringValue(item.imageUrl) ??
-    toStringValue(item.thumbnailUrl) ??
-    toStringValue(item.thumbnail) ??
-    toStringValue(item.image);
-
-  if (direct) return resolveAssetUrl(direct);
-
-  const image = item.imageObject;
-  if (isRecord(image)) {
-    const nested =
-      toStringValue(image.imageUrl) ??
-      toStringValue(image.thumbnailUrl) ??
-      toStringValue(image.url);
-
-    if (nested) return resolveAssetUrl(nested);
-  }
-
-  const imageRecord = item.image;
-  if (isRecord(imageRecord)) {
-    const nested =
-      toStringValue(imageRecord.imageUrl) ??
-      toStringValue(imageRecord.thumbnailUrl) ??
-      toStringValue(imageRecord.url);
-
-    if (nested) return resolveAssetUrl(nested);
-  }
-
-  const images = item.images;
-  if (Array.isArray(images) && images.length > 0) {
-    const firstImage = images[0];
-    if (isRecord(firstImage)) {
-      const nested =
-        toStringValue(firstImage.imageUrl) ??
-        toStringValue(firstImage.thumbnailUrl) ??
-        toStringValue(firstImage.url);
-
-      if (nested) return resolveAssetUrl(nested);
-    }
-  }
-
-  return undefined;
-}
-
-function extractAuthorId(
-  wrapper: Record<string, unknown>,
-  postLike: Record<string, unknown>,
-  fallbackUserId?: number
-): number | undefined {
-  const author = postLike.author;
-  if (isRecord(author)) {
-    const authorId = toNumber(author.id);
-    if (authorId !== undefined) return authorId;
-  }
-
-  const user = postLike.user;
-  if (isRecord(user)) {
-    const userId = toNumber(user.id);
-    if (userId !== undefined) return userId;
-  }
-
-  return (
-    toNumber(postLike.authorId) ??
-    toNumber(postLike.userId) ??
-    toNumber(postLike.memberId) ??
-    toNumber(wrapper.authorId) ??
-    toNumber(wrapper.userId) ??
-    toNumber(wrapper.memberId) ??
-    fallbackUserId
-  );
-}
-
-function extractCounts(item: Record<string, unknown>): {
-  likeCount: number;
-  dislikeCount: number;
-} {
-  const voteSummary = item.voteSummary;
-
-  if (isRecord(voteSummary)) {
-    return {
-      likeCount: toNumber(voteSummary.likeCount) ?? 0,
-      dislikeCount: toNumber(voteSummary.dislikeCount) ?? 0,
-    };
-  }
-
-  return {
-    likeCount:
-      toNumber(item.likeCount) ??
-      toNumber(item.likes) ??
-      toNumber(item.heartCount) ??
-      0,
-    dislikeCount:
-      toNumber(item.dislikeCount) ??
-      toNumber(item.dislikes) ??
-      0,
-  };
-}
-
-function normalizeStatusText(value?: string): string {
-  return (value ?? "").trim().toUpperCase().replace(/[\s-]/g, "_");
-}
-
-function extractStatus(
-  wrapper: Record<string, unknown>,
-  postLike: Record<string, unknown>,
-  evaluationLike?: Record<string, unknown>
-): FeedStatus {
-  const rawCandidates = [
-    evaluationLike ? toStringValue(evaluationLike.status) : undefined,
-    toStringValue(wrapper.evaluationStatus),
-    toStringValue(postLike.evaluationStatus),
-    toStringValue(wrapper.postStatus),
-    toStringValue(postLike.postStatus),
-    toStringValue(wrapper.status),
-    toStringValue(postLike.status),
-  ];
-
-  const evaluatingSet = new Set([
-    "OPEN",
-    "EVALUATING",
-    "IN_PROGRESS",
-    "ONGOING",
-    "PENDING",
-    "ACTIVE",
-    "READY_FOR_EVALUATION",
-    "UNDER_REVIEW",
-  ]);
-
-  const completedSet = new Set([
-    "ENDED",
-    "COMPLETED",
-    "FINISHED",
-    "CLOSED",
-    "DONE",
-    "PUBLISHED",
-    "APPROVED",
-  ]);
-
-  for (const raw of rawCandidates) {
-    const normalized = normalizeStatusText(raw);
-    if (!normalized) continue;
-
-    if (evaluatingSet.has(normalized)) return "evaluating";
-    if (completedSet.has(normalized)) return "completed";
-  }
-
-  return "completed";
-}
-
-function normalizeFeedItems(
-  payload: unknown,
-  fallbackUserId?: number
-): FeedCardItem[] {
-  const list = findFirstArray(payload);
-
-  return list.reduce<FeedCardItem[]>((acc, current) => {
-    if (!isRecord(current)) return acc;
-
-    const postLike = isRecord(current.post) ? current.post : current;
-    const evaluationLike = isRecord(current.evaluation) ? current.evaluation : undefined;
-
-    const id =
-      toNumber(postLike.id) ??
-      toNumber(current.postId) ??
-      toNumber(current.id);
-
-    if (id === undefined) return acc;
-
-    const counts = extractCounts(postLike);
-
-    const content =
-      toStringValue(postLike.content) ??
-      toStringValue(postLike.description) ??
-      toStringValue(postLike.caption) ??
-      toStringValue(current.content) ??
-      "피드 설명이 없습니다.";
-
-    const createdAt =
-      toStringValue(postLike.createdAt) ??
-      toStringValue(postLike.updatedAt) ??
-      toStringValue(current.createdAt) ??
-      toStringValue(current.updatedAt);
-
-    acc.push({
-      id,
-      authorId: extractAuthorId(current, postLike, fallbackUserId),
-      imageUrl: extractImageUrl(postLike) ?? extractImageUrl(current),
-      content,
-      createdAt,
-      likeCount: counts.likeCount,
-      dislikeCount: counts.dislikeCount,
-      status: extractStatus(current, postLike, evaluationLike),
-    });
-
-    return acc;
-  }, []);
-}
-
-function formatDate(value?: string): string {
-  if (!value) return "";
-
+function formatShortDate(value: string) {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
+  if (Number.isNaN(date.getTime())) return "-";
 
-  return new Intl.DateTimeFormat("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
+  const year = String(date.getFullYear()).slice(2);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}.${month}.${day}`;
 }
 
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return "내 피드를 불러오지 못했습니다.";
-}
-
-function sortFeeds(items: FeedCardItem[]): FeedCardItem[] {
+function sortByLatest(items: FeedListItem[]) {
   return [...items].sort((a, b) => {
-    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-
-    if (aTime !== bTime) return bTime - aTime;
-    return b.id - a.id;
+    const aTime = new Date(a.createdAt).getTime();
+    const bTime = new Date(b.createdAt).getTime();
+    return bTime - aTime;
   });
 }
 
-function BackIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M15.5 5L8.5 12L15.5 19"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function HeartIcon() {
+function HeartCountIcon() {
   return (
     <svg
       width="13"
@@ -420,247 +167,325 @@ function HeartIcon() {
   );
 }
 
-type FeedSectionProps = {
-  title: string;
-  count: number;
-  items: FeedCardItem[];
-  onOpenDetail: (item: FeedCardItem) => void;
-};
-
-function FeedSection({
-  title,
-  count,
-  items,
-  onOpenDetail,
-}: FeedSectionProps) {
+function BookmarkHeart({ active }: { active: boolean }) {
   return (
-    <section className={styles.feedSection}>
-      <div className={styles.feedSectionHeader}>
-        <h2 className={styles.feedSectionTitle}>{title}</h2>
-        <span className={styles.feedSectionCount}>{count}개</span>
-      </div>
-
-      {items.length === 0 ? (
-        <div className={styles.emptySectionBox}>
-          <p className={styles.emptySectionText}>
-            {title === "평가중"
-              ? "평가중인 피드가 없어요."
-              : "평가가 끝난 피드가 없어요."}
-          </p>
-        </div>
-      ) : (
-        <div className={styles.feedGrid}>
-          {items.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={styles.card}
-              onClick={() => onOpenDetail(item)}
-            >
-              <div className={styles.cardImageWrap}>
-                {item.imageUrl ? (
-                  <img
-                    src={item.imageUrl}
-                    alt={item.content}
-                    className={styles.cardImage}
-                  />
-                ) : (
-                  <div className={styles.cardImageFallback} />
-                )}
-              </div>
-
-              <div className={styles.cardBody}>
-                <p className={styles.cardContent}>{item.content}</p>
-
-                <div className={styles.cardMetaRow}>
-                  <span className={styles.cardDate}>
-                    {formatDate(item.createdAt)}
-                  </span>
-
-                  <span className={styles.cardLikeWrap}>
-                    <HeartIcon />
-                    {item.likeCount}
-                  </span>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.03L12 21.35Z"
+        fill={active ? "#FF3B30" : "rgba(255,255,255,0.88)"}
+      />
+    </svg>
   );
 }
 
 export default function MyFeeds() {
   const navigate = useNavigate();
-  const [feeds, setFeeds] = useState<FeedCardItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>("");
+
+  const [displayUserName, setDisplayUserName] = useState("내");
+  const [items, setItems] = useState<FeedCardItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const [bookmarks, setBookmarks] = useState<Record<string, boolean>>(() => {
+    const saved = localStorage.getItem("codinator_bookmarks");
+    return saved ? (JSON.parse(saved) as Record<string, boolean>) : {};
+  });
 
   const currentUserId = useMemo(() => getCurrentUserId(), []);
 
   useEffect(() => {
-    let isMounted = true;
-
-    const loadMyFeeds = async () => {
-      setLoading(true);
-      setError("");
-
-      const endpointCandidates = [
-        "/users/me/feeds",
-        "/users/me/feed",
-        "/posts/me",
-        "/posts/my",
-        currentUserId ? `/users/${currentUserId}/feeds` : null,
-        currentUserId ? `/users/${currentUserId}/feed` : null,
-        "/posts",
-      ].filter((value): value is string => Boolean(value));
-
-      let lastErrorMessage = "내 피드를 불러오지 못했습니다.";
-      let lastEmptyFeeds: FeedCardItem[] = [];
-
-      for (let index = 0; index < endpointCandidates.length; index += 1) {
-        const endpoint = endpointCandidates[index];
-
-        try {
-          const response = await fetcher<unknown>(endpoint, {
-            headers: getAuthHeaders(),
-          });
-
-          const normalized = normalizeFeedItems(response, currentUserId);
-
-          const myFeedsOnly =
-            currentUserId !== undefined
-              ? normalized.filter((item) => {
-                  if (item.authorId === undefined) return true;
-                  return item.authorId === currentUserId;
-                })
-              : normalized;
-
-          const sorted = sortFeeds(myFeedsOnly);
-
-          if (sorted.length > 0) {
-            if (!isMounted) return;
-            setFeeds(sorted);
-            setLoading(false);
-            return;
-          }
-
-          lastEmptyFeeds = sorted;
-
-          const isLastCandidate = index === endpointCandidates.length - 1;
-          if (isLastCandidate) {
-            if (!isMounted) return;
-            setFeeds(lastEmptyFeeds);
-            setLoading(false);
-            return;
-          }
-        } catch (error: unknown) {
-          const message = getErrorMessage(error);
-          lastErrorMessage = message;
-
-          if (
-            message.includes("Unauthorized") ||
-            message.includes("로그인이 필요합니다")
-          ) {
-            clearAuthTokens();
-            navigate("/login");
-            return;
-          }
-        }
-      }
-
-      if (!isMounted) return;
-      setError(lastErrorMessage);
-      setLoading(false);
+    const syncBookmarks = () => {
+      const saved = localStorage.getItem("codinator_bookmarks");
+      setBookmarks(saved ? (JSON.parse(saved) as Record<string, boolean>) : {});
     };
 
-    void loadMyFeeds();
+    syncBookmarks();
+    window.addEventListener("storage", syncBookmarks);
 
     return () => {
-      isMounted = false;
+      window.removeEventListener("storage", syncBookmarks);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      if (!currentUserId) {
+        setError("로그인 사용자 정보를 찾을 수 없습니다.");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError("");
+        setItems([]);
+
+        const headers = getAuthHeaders();
+
+        let feed: GetUserFeedResponse | null = null;
+        const feedCandidates = [
+          "/users/me/feed",
+          `/users/${currentUserId}/feed`,
+        ];
+
+        for (const endpoint of feedCandidates) {
+          try {
+            feed = await fetcher<GetUserFeedResponse>(endpoint, { headers });
+            break;
+          } catch (err: unknown) {
+            const message =
+              err instanceof Error ? err.message : "피드를 불러오지 못했습니다.";
+
+            if (
+              message.includes("Unauthorized") ||
+              message.includes("로그인이 필요합니다") ||
+              message.includes("인증")
+            ) {
+              clearAuthTokens();
+              navigate("/login", { replace: true });
+              return;
+            }
+          }
+        }
+
+        if (!feed) {
+          throw new Error("내 피드를 불러오지 못했습니다.");
+        }
+
+        if (cancelled) return;
+
+        setDisplayUserName(feed.user.nickname ?? "내");
+
+        const latestItems = sortByLatest(feed.items ?? []);
+        const filledItems: FeedCardItem[] = [];
+
+        for (const item of latestItems) {
+          let content = "";
+          let likeCount = 0;
+
+          const detailCandidates = [
+            `/users/${feed.user.userId}/feed/${item.postId}`,
+            `/users/${currentUserId}/feed/${item.postId}`,
+          ];
+
+          for (const endpoint of detailCandidates) {
+            try {
+              const detail = await fetcher<GetFeedPostDetailResponse>(endpoint, {
+                headers,
+              });
+
+              content = detail.content?.trim() ?? "";
+              likeCount = detail.voteSummary.likeCount ?? 0;
+              break;
+            } catch (detailErr: unknown) {
+              const detailMessage =
+                detailErr instanceof Error
+                  ? detailErr.message
+                  : "게시글 상세를 불러오지 못했습니다.";
+
+              if (
+                detailMessage.includes("Unauthorized") ||
+                detailMessage.includes("로그인이 필요합니다") ||
+                detailMessage.includes("인증")
+              ) {
+                clearAuthTokens();
+                navigate("/login", { replace: true });
+                return;
+              }
+            }
+          }
+
+          filledItems.push({
+            postId: item.postId,
+            authorId: feed.user.userId,
+            imageUrl: resolveAssetUrl(item.thumbnailUrl),
+            createdAt: item.createdAt,
+            content,
+            likeCount,
+          });
+
+          if (!cancelled) {
+            setItems([...filledItems]);
+          }
+        }
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "피드를 불러오지 못했습니다.";
+
+        if (!cancelled) {
+          setError(message);
+        }
+
+        if (
+          message.includes("Unauthorized") ||
+          message.includes("로그인이 필요합니다") ||
+          message.includes("인증")
+        ) {
+          clearAuthTokens();
+          navigate("/login", { replace: true });
+          return;
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
     };
   }, [currentUserId, navigate]);
 
-  const evaluatingFeeds = useMemo(
-    () => feeds.filter((item) => item.status === "evaluating"),
-    [feeds]
-  );
+  const toggleBookmark = (e: React.MouseEvent, postId: string) => {
+    e.stopPropagation();
 
-  const completedFeeds = useMemo(
-    () => feeds.filter((item) => item.status === "completed"),
-    [feeds]
-  );
-
-  const handleOpenDetail = (item: FeedCardItem): void => {
-    const resolvedAuthorId = item.authorId ?? currentUserId;
-    if (!resolvedAuthorId) return;
-
-    navigate(`/users/${resolvedAuthorId}/feed/${item.id}`);
+    setBookmarks((prev) => {
+      const next = { ...prev, [postId]: !prev[postId] };
+      localStorage.setItem("codinator_bookmarks", JSON.stringify(next));
+      return next;
+    });
   };
+
+  const handleOpenDetail = (item: FeedCardItem) => {
+    navigate(`/my-feed-detail/${item.postId}`, {
+      state: {
+        post: {
+          id: item.postId,
+          postId: item.postId,
+          authorId: item.authorId,
+          imageUrl: item.imageUrl,
+          nickname: displayUserName,
+        },
+      },
+    });
+  };
+
+  if (loading && items.length === 0) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.scrollArea}>
+          <div className={styles.topBar}>
+            <div className={styles.titlePill}>
+              <h1 className={styles.pageTitle}>불러오는 중...</h1>
+            </div>
+
+            <button
+              type="button"
+              className={styles.uploadButton}
+              aria-label="게시글 업로드"
+              onClick={() => navigate("/post-upload")}
+            >
+              <Plus size={18} strokeWidth={2.4} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
       <div className={styles.scrollArea}>
-        <header className={styles.header}>
+        <div className={styles.topBar}>
+          <div className={styles.titlePill}>
+            <h1 className={styles.pageTitle}>내 피드 페이지</h1>
+          </div>
+
           <button
             type="button"
-            className={styles.backButton}
-            onClick={() => navigate(-1)}
-            aria-label="뒤로가기"
+            className={styles.uploadButton}
+            aria-label="게시글 업로드"
+            onClick={() => navigate("/post-upload")}
           >
-            <BackIcon />
+            <Plus size={18} strokeWidth={2.4} />
           </button>
+        </div>
 
-          <h1 className={styles.title}>내 피드</h1>
-          <div className={styles.headerRightSpace} />
-        </header>
+        <div className={styles.content}>
+          <section className={styles.summarySection}>
+            <p className={styles.summaryTitle}>내가 올린 피드</p>
+            <p className={styles.summaryCount}>총 {items.length}개</p>
+          </section>
 
-        <section className={styles.summarySection}>
-          <p className={styles.summaryTitle}>내가 올린 코디</p>
-          <p className={styles.summaryCount}>
-            총 <span>{feeds.length}</span>개
-          </p>
-        </section>
+          {error ? <div className={styles.emptyText}>{error}</div> : null}
 
-        {loading ? (
-          <section className={styles.feedGrid}>
-            {Array.from({ length: 6 }).map((_, index) => (
-              <article key={index} className={styles.cardSkeleton}>
-                <div className={styles.cardImageSkeleton} />
-                <div className={styles.cardTextSkeleton} />
-                <div className={styles.cardSubTextSkeleton} />
-              </article>
-            ))}
-          </section>
-        ) : error ? (
-          <section className={styles.stateSection}>
-            <p className={styles.stateTitle}>불러오기에 실패했어요</p>
-            <p className={styles.stateDescription}>{error}</p>
-          </section>
-        ) : feeds.length === 0 ? (
-          <section className={styles.stateSection}>
-            <p className={styles.stateTitle}>아직 올린 피드가 없어요</p>
-            <p className={styles.stateDescription}>
-              첫 코디를 올리면 여기에 내 피드가 보여요.
-            </p>
-          </section>
-        ) : (
-          <>
-            <FeedSection
-              title="평가중"
-              count={evaluatingFeeds.length}
-              items={evaluatingFeeds}
-              onOpenDetail={handleOpenDetail}
-            />
-            <FeedSection
-              title="평가완료"
-              count={completedFeeds.length}
-              items={completedFeeds}
-              onOpenDetail={handleOpenDetail}
-            />
-          </>
-        )}
+          {!error && items.length > 0 ? (
+            <div className={styles.feedGrid}>
+              {items.map((item) => {
+                const postId = String(item.postId);
+
+                return (
+                  <article
+                    key={item.postId}
+                    className={styles.feedCard}
+                    onClick={() => handleOpenDetail(item)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleOpenDetail(item);
+                      }
+                    }}
+                  >
+                    <div className={styles.imageWrap}>
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt={`my-feed-${item.postId}`}
+                          className={styles.feedImage}
+                        />
+                      ) : (
+                        <div className={styles.placeholder} />
+                      )}
+
+                      <button
+                        type="button"
+                        className={styles.heartButton}
+                        onClick={(e) => toggleBookmark(e, postId)}
+                        aria-label="북마크"
+                      >
+                        <BookmarkHeart active={!!bookmarks[postId]} />
+                      </button>
+                    </div>
+
+                    <div className={styles.cardInfo}>
+                      <p className={styles.cardDate}>
+                        {formatShortDate(item.createdAt)}
+                      </p>
+                      <p className={styles.cardDescription}>
+                        {item.content || "설명이 없습니다."}
+                      </p>
+
+                      <div className={styles.cardBottomRow}>
+                        <span className={styles.likeCount}>
+                          <HeartCountIcon />
+                          {item.likeCount}
+                        </span>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : null}
+
+          {!error && !loading && items.length === 0 ? (
+            <div className={styles.emptyText}>공개된 피드 게시글이 없습니다.</div>
+          ) : null}
+        </div>
       </div>
     </div>
   );

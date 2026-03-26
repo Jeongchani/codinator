@@ -180,8 +180,12 @@ const EvaluationZone: React.FC = () => {
     navigate('/rankingzone');
   };
 
-  const navigateToFeedback = (choice: VoteChoice, voteId: number, postId: number) => {
-    navigate(`/evaluation-feedback/${postId}?voteId=${voteId}&voteChoice=${choice}`);
+  const navigateToDetailFeedback = (
+    choice: VoteChoice,
+    voteId: number,
+    postId: number,
+  ) => {
+    navigate(`/evaluation-detail-feedback/${postId}?voteId=${voteId}&voteChoice=${choice}`);
   };
 
   const resetCurrentActionState = () => {
@@ -303,7 +307,7 @@ const EvaluationZone: React.FC = () => {
     if (selectedVote === 'LIKE') {
       if (info.offset.x > maxDrag * 0.72) {
         animate(dragX, maxDrag, { duration: 0.15 }).then(() => {
-          navigateToFeedback('LIKE', createdVoteId, currentPost.postId);
+          navigateToDetailFeedback('LIKE', createdVoteId, currentPost.postId);
         });
       } else {
         animate(dragX, 0, { duration: 0.2 });
@@ -314,7 +318,7 @@ const EvaluationZone: React.FC = () => {
     if (selectedVote === 'DISLIKE') {
       if (info.offset.x < -maxDrag * 0.72) {
         animate(dragX, -maxDrag, { duration: 0.15 }).then(() => {
-          navigateToFeedback('DISLIKE', createdVoteId, currentPost.postId);
+          navigateToDetailFeedback('DISLIKE', createdVoteId, currentPost.postId);
         });
       } else {
         animate(dragX, 0, { duration: 0.2 });
@@ -325,7 +329,7 @@ const EvaluationZone: React.FC = () => {
   const helperMessage = error
     ? error
     : hasCurrentVoteSaved
-      ? '투표가 저장됐어요. 위아래로 넘기면 이 게시물은 사라지고, 원하면 옆으로 드래그해서 구체적인 피드백도 남길 수 있어요.'
+      ? '투표가 저장됐어요. 옆으로 드래그하면 상세보기로 이동하고, 그 안에서 피드백도 남길 수 있어요.'
       : '좋아요 또는 싫어요를 누르면 바로 투표가 저장돼요.';
 
   if (loading) {
@@ -433,7 +437,7 @@ const EvaluationZone: React.FC = () => {
                 isLikeSelected ? styles.dragTrackFromLeft : styles.dragTrackFromRight
               }`}
             >
-              <div className={styles.trackText}>평가하러가기</div>
+              <div className={styles.trackText}>상세보기</div>
 
               {isLikeSelected && (
                 <div className={styles.trackHintRight}>
