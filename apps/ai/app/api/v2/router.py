@@ -1,7 +1,7 @@
 from fastapi import APIRouter
-from app.api.v2.endpoints import health
+from app.api.v2.endpoints import blur_face, health
 
 api_router = APIRouter()
 
-# 헬스체크 엔드포인트 연결
 api_router.include_router(health.router, prefix="/health", tags=["health"])
+api_router.include_router(blur_face.router, prefix="/blur-face", tags=["blur-face"])
