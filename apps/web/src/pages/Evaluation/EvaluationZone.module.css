@@ -1,0 +1,135 @@
+.container {
+  @apply w-[375px] h-[812px] mx-auto relative overflow-hidden bg-neutral-300 shadow-2xl;
+}
+
+.viewport {
+  @apply w-full h-full overflow-y-auto snap-y snap-mandatory;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.slide {
+  @apply relative w-full h-[812px] snap-start;
+}
+
+.imageSection {
+  @apply absolute inset-0 bg-cover bg-center bg-no-repeat;
+}
+
+.topGradient {
+  @apply absolute top-0 left-0 w-full h-28 bg-gradient-to-b from-black/45 to-transparent;
+}
+
+.bottomGradient {
+  @apply absolute bottom-0 left-0 w-full h-40 bg-gradient-to-t from-black/55 to-transparent;
+}
+
+.overlay {
+  @apply absolute inset-0 z-20 pointer-events-none;
+}
+
+.closeButton {
+  @apply absolute top-[66px] right-4 flex items-center justify-center bg-transparent border-0 p-0 cursor-pointer active:scale-95 transition-transform pointer-events-auto;
+}
+
+.title {
+  @apply absolute top-[68px] left-4 text-white text-2xl font-bold leading-8;
+}
+
+.slideIndicator {
+  @apply absolute top-[360px] right-4 flex flex-col gap-2 items-center;
+}
+
+.slideIndicatorActive {
+  @apply w-2 h-7 rounded-full bg-white;
+}
+
+.slideIndicatorDot {
+  @apply w-2 h-2 rounded-full bg-white/35;
+}
+
+.helperText {
+  @apply absolute left-6 right-6 bottom-[132px] text-center text-white text-[14px] leading-[1.6] pointer-events-none;
+}
+
+.bottomActionArea {
+  @apply absolute left-4 right-4 bottom-11 h-16;
+}
+
+.circleButton {
+  @apply absolute top-0 h-16 w-16 rounded-full flex items-center justify-center shadow-[0px_4px_18px_rgba(0,0,0,0.25)] transition-all duration-200 active:scale-95 pointer-events-auto z-20;
+}
+
+.leftButton {
+  @apply left-0;
+}
+
+.rightButton {
+  @apply right-0;
+}
+
+.circleButtonInactive {
+  @apply bg-black/50 backdrop-blur-[10px];
+}
+
+.circleButtonPassive {
+  @apply bg-black/50 backdrop-blur-[10px] opacity-65;
+}
+
+.circleButtonActive {
+  @apply bg-white;
+}
+
+.dragTrack {
+  @apply absolute top-0 h-16 rounded-full bg-black/55 backdrop-blur-[12px] shadow-[0px_4px_18px_rgba(0,0,0,0.25)] overflow-hidden pointer-events-auto;
+}
+
+.dragTrackFromLeft {
+  left: 0;
+  right: 92px;
+}
+
+.dragTrackFromRight {
+  left: 92px;
+  right: 0;
+}
+
+.trackText {
+  @apply absolute inset-0 flex items-center justify-center text-white text-base font-medium whitespace-nowrap;
+}
+
+.trackHintRight {
+  @apply absolute right-5 top-1/2 -translate-y-1/2 flex items-center gap-0;
+}
+
+.trackHintLeft {
+  @apply absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-0;
+}
+
+.dragThumb {
+  @apply absolute top-1 rounded-full bg-white flex items-center justify-center cursor-grab active:cursor-grabbing shadow-md z-10;
+}
+
+.dragThumb:active {
+  cursor: grabbing;
+}
+
+.loadingState {
+  @apply absolute inset-0 bg-neutral-900 flex flex-col items-center justify-center;
+}
+
+.loadingTitle {
+  @apply text-white text-2xl font-bold mb-4;
+}
+
+.emptyState {
+  @apply absolute inset-0 bg-neutral-900;
+}
+
+.statusText {
+  @apply absolute left-6 right-6 top-1/2 -translate-y-1/2 text-center text-white text-[14px] leading-[1.7];
+}

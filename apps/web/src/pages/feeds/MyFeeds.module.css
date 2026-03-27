@@ -1,0 +1,89 @@
+.container {
+  @apply w-[375px] h-[812px] mx-auto bg-[#f3f3f3] overflow-hidden shadow-2xl;
+}
+
+.scrollArea {
+  @apply h-full overflow-y-auto px-4 pt-3 pb-6;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollArea::-webkit-scrollbar {
+  display: none;
+}
+
+.topBar {
+  @apply flex items-center justify-between mb-5;
+}
+
+.titlePill {
+  @apply flex-1 h-[56px] rounded-[20px] bg-[#d8d8d8] px-4 flex items-center;
+}
+
+.pageTitle {
+  @apply text-[13px] font-bold text-black;
+}
+
+.uploadButton {
+  @apply ml-3 w-[42px] h-[42px] rounded-full bg-white flex items-center justify-center shadow-md text-black active:scale-95 transition-transform;
+}
+
+.content {
+  @apply pb-6;
+}
+
+.summarySection {
+  @apply mb-5;
+}
+
+.summaryTitle {
+  @apply text-[16px] font-bold leading-6 text-black;
+}
+
+.summaryCount {
+  @apply mt-1 text-[11px] text-neutral-500;
+}
+
+.feedGrid {
+  @apply flex flex-col gap-4 items-start;
+}
+
+.feedCard {
+  @apply w-[164px] rounded-[18px] bg-white overflow-hidden shadow-sm cursor-pointer;
+}
+
+.imageWrap {
+  @apply relative w-full h-[180px] overflow-hidden bg-neutral-200;
+}
+
+.feedImage {
+  @apply w-full h-full object-cover block;
+}
+
+.placeholder {
+  @apply w-full h-full bg-neutral-300;
+}
+
+.cardInfo {
+  @apply px-3 pt-2 pb-3;
+}
+
+.cardDate {
+  @apply text-[10px] leading-4 text-neutral-500;
+}
+
+.cardDescription {
+  @apply mt-1 text-[12px] font-semibold leading-[18px] text-black whitespace-pre-line break-keep min-h-[36px];
+}
+
+.cardBottomRow {
+  @apply mt-3 flex items-center justify-end;
+}
+
+.likeCount {
+  @apply inline-flex items-center gap-1 text-[11px] text-neutral-700;
+}
+
+.emptyText {
+  @apply text-[12px] text-neutral-500 mt-10;
+}

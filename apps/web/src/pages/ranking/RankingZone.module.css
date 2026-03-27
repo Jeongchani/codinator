@@ -1,0 +1,112 @@
+.container {
+  @apply w-[375px] h-[812px] bg-white mx-auto relative overflow-hidden flex flex-col shadow-2xl;
+}
+
+.contentArea {
+  @apply flex-1 overflow-y-auto pt-14 pb-28;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.contentArea::-webkit-scrollbar {
+  display: none;
+}
+
+.header {
+  @apply px-6 flex justify-between items-center mb-4;
+}
+
+.logo {
+  @apply text-neutral-900 text-xl font-bold;
+}
+
+.menuBtn {
+  @apply p-2 rounded-xl bg-white border border-neutral-100 shadow-sm;
+}
+
+.divider {
+  @apply mx-6 h-[1px] bg-neutral-200 mb-6;
+}
+
+.section {
+  @apply mb-10;
+}
+
+.sectionHeader {
+  @apply flex justify-between items-center mb-4 px-6;
+}
+
+.sectionTitle {
+  @apply text-xl font-bold text-neutral-900 capitalize;
+}
+
+.moreBtn {
+  @apply flex items-center gap-1 text-xs text-neutral-400 cursor-pointer;
+}
+
+/* 가로 스크롤 설정 */
+.horizontalScroll {
+  @apply flex gap-4 overflow-x-auto px-6 pb-2 flex-nowrap;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.horizontalScroll::-webkit-scrollbar {
+  display: none;
+}
+
+.card {
+  @apply relative w-[155px] h-[220px] bg-neutral-300 rounded-3xl overflow-hidden shadow-sm flex-shrink-0 cursor-pointer transition-transform active:scale-95;
+}
+
+.heartIcon {
+  @apply absolute top-3 right-3 z-10 cursor-pointer active:scale-90 transition-transform;
+}
+/* Drawer & Overlay */
+.drawer {
+  @apply fixed top-0 right-0 w-[280px] h-full bg-white z-[200] transition-transform duration-300 translate-x-full shadow-2xl flex flex-col;
+}
+
+.drawerOpen {
+  @apply translate-x-0;
+}
+
+.overlay {
+  @apply fixed inset-0 bg-black/40 z-[150];
+}
+
+.drawerHeader {
+  @apply p-8 flex justify-between items-center border-b;
+}
+
+.profileSection {
+  @apply flex items-center gap-3;
+}
+
+.profileCircle {
+  @apply w-12 h-12 bg-neutral-200 rounded-full;
+}
+
+.profileName {
+  @apply font-bold text-neutral-900;
+}
+
+.closeBtn {
+  @apply text-2xl text-neutral-400 font-light;
+}
+
+.drawerNav {
+  @apply p-4 flex flex-col flex-1;
+}
+
+.navItem {
+  @apply p-4 text-lg font-medium text-neutral-700 rounded-xl hover:bg-neutral-50 cursor-pointer transition-colors;
+}
+
+.logoutBtn {
+  @apply mt-auto text-red-500 hover:bg-red-50 mb-10;
+}
+
+.loadingBox {
+  @apply flex justify-center items-center h-40 text-neutral-400 text-sm font-medium;
+}

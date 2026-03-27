@@ -228,14 +228,18 @@ async function resetSampleData() {
   await prisma.userSession.deleteMany();
 }
 
-function buildImageCreate(url) {
+const SEED_IMAGE_BASE_URL = '/uploads/seeds/posts';
+
+function buildImageCreate(filename) {
+  const url = `${SEED_IMAGE_BASE_URL}/${filename}`;
+
   return {
     originalImageUrl: url,
     processedImageUrl: url,
     thumbnailUrl: null,
-    storageKey: null,
+    storageKey: `seeds/posts/${filename}`,
     blurMethod: BlurMethod.NONE,
-    aiBlurStatus: AiBlurStatus.NONE,
+    aiBlurStatus: AiBlurStatus.DONE,
     sortOrder: 0,
     isPrimary: true,
   };
@@ -244,12 +248,12 @@ function buildImageCreate(url) {
 async function createSamplePosts(userMap, keywordMap, tagMap) {
   const now = new Date();
 
-  const openPost = await prisma.post.create({
+  const openPost1 = await prisma.post.create({
     data: {
       authorId: userMap.alice.id,
       content: '[SEED] 봄 데일리 코디 평가 부탁드립니다.',
       images: {
-        create: buildImageCreate('https://images.example.com/posts/open-post.jpg'),
+        create: buildImageCreate('open-post-1.jpg'),
       },
       postKeywords: {
         create: [
@@ -292,13 +296,61 @@ async function createSamplePosts(userMap, keywordMap, tagMap) {
     },
   });
 
+  const openPost2 = await prisma.post.create({
+    data: {
+      authorId: userMap.charlie.id,
+      content: '[SEED] 캐주얼 코디 평가 부탁드립니다.',
+      images: {
+        create: buildImageCreate('open-post-2.jpg'),
+      },
+      postKeywords: {
+        create: [
+          { keywordId: keywordMap.CAMPUS_LOOK.id, sortOrder: 0 },
+          { keywordId: keywordMap.DAILY_LOOK.id, sortOrder: 1 },
+        ],
+      },
+      outfitItems: {
+        create: [
+          {
+            category: GarmentCategory.TOP,
+            itemName: '그레이 후드집업',
+            brand: 'MUSINSA STANDARD',
+            sortOrder: 0,
+          },
+          {
+            category: GarmentCategory.BOTTOM,
+            itemName: '블랙 와이드 팬츠',
+            brand: '8SECONDS',
+            sortOrder: 1,
+          },
+          {
+            category: GarmentCategory.SHOES,
+            itemName: '러닝화',
+            brand: 'NIKE',
+            sortOrder: 2,
+          },
+        ],
+      },
+      evaluation: {
+        create: {
+          startsAt: now,
+          endsAt: addDays(now, 7),
+          status: EvaluationStatus.OPEN,
+        },
+      },
+    },
+    include: {
+      evaluation: true,
+    },
+  });
+
   const rankedPost1 = await prisma.post.create({
     data: {
       authorId: userMap.bob.id,
       content: '[SEED] 스트릿 코디 랭킹 테스트용 게시글 1',
       publishedAt: subDays(now, 7),
       images: {
-        create: buildImageCreate('https://images.example.com/posts/ranked-post-1.jpg'),
+        create: buildImageCreate('ranked-post-1.jpg'),
       },
       postKeywords: {
         create: [
@@ -349,7 +401,7 @@ async function createSamplePosts(userMap, keywordMap, tagMap) {
       content: '[SEED] 랭킹 테스트용 게시글 2',
       publishedAt: subDays(now, 5),
       images: {
-        create: buildImageCreate('https://images.example.com/posts/ranked-post-2.jpg'),
+        create: buildImageCreate('ranked-post-2.jpg'),
       },
       postKeywords: {
         create: [
@@ -535,7 +587,8 @@ async function createSamplePosts(userMap, keywordMap, tagMap) {
   });
 
   return {
-    openPost,
+    openPost1,
+    openPost2,
     rankedPost1,
     rankedPost2,
   };
