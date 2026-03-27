@@ -177,7 +177,7 @@ const EvaluationZone: React.FC = () => {
   }, [selectedVote, currentIndex, dragX]);
 
   const handleClose = () => {
-    navigate('/rankingzone');
+    navigate('/rankingZone');
   };
 
   const navigateToDetailFeedback = (
@@ -185,7 +185,7 @@ const EvaluationZone: React.FC = () => {
     voteId: number,
     postId: number,
   ) => {
-    navigate(`/evaluation-detail-feedback/${postId}?voteId=${voteId}&voteChoice=${choice}`);
+    navigate(`/evaluationDetailFeedback/${postId}?voteId=${voteId}&voteChoice=${choice}`);
   };
 
   const resetCurrentActionState = () => {

@@ -28,7 +28,7 @@ const Footer: React.FC = () => {
           <span className={`${styles.navText} ${isRankingRoute ? styles.activeText : ''}`}>랭킹</span>
         </div>
 
-        <div className={styles.addBtnWrapper} onClick={() => navigate('/post-upload')}>
+        <div className={styles.addBtnWrapper} onClick={() => navigate('/postUpload')}>
           <div className={styles.addBtnCircle}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <path d="M16 24H8V16H0V8H8V0H16V8H24V16H16V24Z" fill="#111111" />

@@ -355,7 +355,7 @@ export default function MyFeedDetail() {
     : `${formatFullDate(postData?.createdAt)}\n${postData?.content || "설명이 없습니다."}`;
 
   const handleMoveEdit = () => {
-    navigate("/my-feed-edit", {
+    navigate("/myFeedEdit", {
       state: {
         post: {
           id: postData?.postId ?? resolvedPostId,

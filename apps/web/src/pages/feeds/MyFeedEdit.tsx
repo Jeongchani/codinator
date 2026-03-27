@@ -68,7 +68,7 @@ export default function MyFeedEdit() {
       return;
     }
 
-    navigate(`/my-feed-detail/${resolvedPostId}`, {
+    navigate(`/myFeedDetail/${resolvedPostId}`, {
       state: {
         post,
       },

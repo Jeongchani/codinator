@@ -153,11 +153,11 @@ const RankingZone: React.FC = () => {
         </div>
 
         <nav className={styles.drawerNav}>
-          <div className={styles.navItem} onClick={() => handleMovePage('/my-feeds')}>
+          <div className={styles.navItem} onClick={() => handleMovePage('/myFeeds')}>
             내 피드
           </div>
 
-          <div className={styles.navItem} onClick={() => handleMovePage('/post-upload')}>
+          <div className={styles.navItem} onClick={() => handleMovePage('/postUpload')}>
             게시글 작성
           </div>
 
@@ -215,7 +215,7 @@ const RankingZone: React.FC = () => {
                         key={`${section.period}-${post.postId}`}
                         className={styles.card}
                         onClick={() =>
-                          navigate(`/ranking-detail/${post.postId}?period=${section.period}`)
+                          navigate(`/rankingDetail/${post.postId}?period=${section.period}`)
                         }
                         style={{
                           position: 'relative',

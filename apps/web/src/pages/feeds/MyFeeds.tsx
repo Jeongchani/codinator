@@ -312,7 +312,7 @@ export default function MyFeeds() {
   }, [currentUserId, navigate]);
 
   const handleOpenDetail = (item: FeedCardItem) => {
-    navigate(`/my-feed-detail/${item.postId}`, {
+    navigate(`/myFeedDetail/${item.postId}`, {
       state: {
         post: {
           id: item.postId,
@@ -338,7 +338,7 @@ export default function MyFeeds() {
               type="button"
               className={styles.uploadButton}
               aria-label="게시글 업로드"
-              onClick={() => navigate("/post-upload")}
+              onClick={() => navigate("/postUpload")}
             >
               <Plus size={18} strokeWidth={2.4} />
             </button>
@@ -360,7 +360,7 @@ export default function MyFeeds() {
             type="button"
             className={styles.uploadButton}
             aria-label="게시글 업로드"
-            onClick={() => navigate("/post-upload")}
+            onClick={() => navigate("/postUpload")}
           >
             <Plus size={18} strokeWidth={2.4} />
           </button>
