@@ -1,0 +1,85 @@
+.container {
+  @apply w-[375px] h-[812px] mx-auto bg-[#f5f5f5] text-neutral-900 overflow-hidden shadow-sm;
+}
+
+.scrollArea {
+  @apply h-full overflow-y-auto bg-[#f5f5f5];
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollArea::-webkit-scrollbar {
+  display: none;
+}
+
+.topBackground {
+  @apply mx-4 mt-4 rounded-[20px] bg-[#d4d4d4] px-4 py-6;
+}
+
+.header {
+  @apply flex items-center justify-between gap-4;
+}
+
+.pageTitle {
+  @apply text-[17px] leading-6 font-bold text-neutral-900;
+  word-break: keep-all;
+}
+
+.backButton {
+  @apply w-11 h-11 rounded-full bg-white shadow-md
+    flex items-center justify-center shrink-0;
+}
+
+.content {
+  @apply px-4 pt-4 pb-8;
+}
+
+.feedGrid {
+  @apply grid grid-cols-2 gap-x-4 gap-y-5;
+}
+
+.feedCard {
+  @apply overflow-hidden rounded-[16px] bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)] cursor-pointer;
+}
+
+.imageWrap {
+  @apply relative w-full h-[210px] bg-[#bfbfbf] overflow-hidden rounded-t-[16px];
+}
+
+.feedImage {
+  @apply w-full h-full object-cover block;
+}
+
+.placeholder {
+  @apply w-full h-full bg-[#bfbfbf];
+}
+
+.heartIcon {
+  @apply absolute top-2.5 right-2.5 z-10 w-6 h-6
+    border-none bg-transparent p-0
+    flex items-center justify-center cursor-pointer;
+}
+
+.cardInfo {
+  @apply px-3 pt-2 pb-2 bg-white rounded-b-[16px];
+  min-height: 56px;
+}
+
+.cardDate {
+  @apply text-[9px] leading-3 text-neutral-400 font-medium;
+}
+
+.cardDescription {
+  @apply mt-1 text-[10px] leading-[14px] text-neutral-800;
+  min-height: 28px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.emptyText {
+  @apply pt-20 text-center text-sm text-neutral-400;
+}

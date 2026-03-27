@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import styles from './RankingDetail.module.css';
-import { motion, useAnimation, PanInfo } from 'framer-motion';
+import { motion, useAnimation, type PanInfo } from 'framer-motion';
 import {
   clearAuthTokens,
   fetcher,
@@ -10,6 +10,8 @@ import {
 } from '../../lib/api';
 import type { GetRankingPostDetailResponse } from '@codinator/contracts';
 
+type SheetPosition = 'expanded' | 'collapsed' | 'hidden';
+
 const RankingDetail: React.FC = () => {
   const { postId } = useParams();
   const [searchParams] = useSearchParams();
@@ -17,12 +19,13 @@ const RankingDetail: React.FC = () => {
   const controls = useAnimation();
 
   const [postData, setPostData] = useState<GetRankingPostDetailResponse | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [sheetPosition, setSheetPosition] = useState<SheetPosition>('collapsed');
 
-  const COLLAPSED_Y = 740;
   const EXPANDED_Y = 350;
+  const COLLAPSED_Y = 700;
+  const HIDDEN_Y = 860;
 
   const period = searchParams.get('period') === 'MONTHLY' ? 'MONTHLY' : 'WEEKLY';
 
@@ -65,6 +68,7 @@ const RankingDetail: React.FC = () => {
         setPostData(null);
       } finally {
         setLoading(false);
+        setSheetPosition('collapsed');
         controls.start({ y: COLLAPSED_Y });
       }
     };
@@ -77,33 +81,63 @@ const RankingDetail: React.FC = () => {
     }
   }, [postId, period, navigate, controls]);
 
-  const onDragEnd = (_: unknown, info: PanInfo) => {
-    const isDraggingUp = info.offset.y < -50 || info.velocity.y < -500;
-    const isDraggingDown = info.offset.y > 50 || info.velocity.y > 500;
+  const snapTo = (position: SheetPosition) => {
+    setSheetPosition(position);
 
-    if (!isExpanded && isDraggingUp) {
-      expandSheet();
-    } else if (isExpanded && isDraggingDown) {
-      collapseSheet();
-    } else {
-      controls.start({ y: isExpanded ? EXPANDED_Y : COLLAPSED_Y });
-    }
+    const nextY =
+      position === 'expanded'
+        ? EXPANDED_Y
+        : position === 'collapsed'
+          ? COLLAPSED_Y
+          : HIDDEN_Y;
+
+    controls.start({
+      y: nextY,
+      transition: { type: 'spring', stiffness: 300, damping: 30 },
+    });
   };
 
   const expandSheet = () => {
-    setIsExpanded(true);
-    controls.start({
-      y: EXPANDED_Y,
-      transition: { type: 'spring', stiffness: 300, damping: 30 },
-    });
+    snapTo('expanded');
   };
 
   const collapseSheet = () => {
-    setIsExpanded(false);
-    controls.start({
-      y: COLLAPSED_Y,
-      transition: { type: 'spring', stiffness: 300, damping: 30 },
-    });
+    snapTo('collapsed');
+  };
+
+  const hideSheet = () => {
+    snapTo('hidden');
+  };
+
+  const onDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const isDraggingUp = info.offset.y < -50 || info.velocity.y < -500;
+    const isDraggingDown = info.offset.y > 50 || info.velocity.y > 500;
+    const isStrongDraggingDown = info.offset.y > 140 || info.velocity.y > 900;
+
+    if (isDraggingUp) {
+      if (sheetPosition === 'hidden') {
+        collapseSheet();
+      } else {
+        expandSheet();
+      }
+      return;
+    }
+
+    if (isStrongDraggingDown) {
+      hideSheet();
+      return;
+    }
+
+    if (isDraggingDown) {
+      if (sheetPosition === 'expanded') {
+        collapseSheet();
+      } else {
+        hideSheet();
+      }
+      return;
+    }
+
+    snapTo(sheetPosition);
   };
 
   const handleToggleBookmark = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -118,6 +152,15 @@ const RankingDetail: React.FC = () => {
       parsed[String(postId)] = next;
       localStorage.setItem('codinator_bookmarks', JSON.stringify(parsed));
     }
+  };
+
+  const handleGoToUserFeed = () => {
+    if (!postData?.author?.userId) return;
+    navigate(`/user/${postData.author.userId}/feed`);
+  };
+
+  const handleShowHiddenSheet = () => {
+    collapseSheet();
   };
 
   if (loading) return <div className={styles.loading}>데이터 로드 중...</div>;
@@ -139,7 +182,9 @@ const RankingDetail: React.FC = () => {
         <div className={styles.bottomGradient} />
       </div>
 
-      <div className={styles.headerTitle}>{period === 'MONTHLY' ? 'this month' : 'this week'}</div>
+      <div className={styles.headerTitle}>
+        {period === 'MONTHLY' ? 'this month' : 'this week'}
+      </div>
 
       <button onClick={() => navigate(-1)} className={styles.closeBtn}>
         <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
@@ -150,32 +195,48 @@ const RankingDetail: React.FC = () => {
         </svg>
       </button>
 
+      {sheetPosition === 'hidden' && (
+        <button
+          type="button"
+          className={styles.hiddenPeekButton}
+          onClick={handleShowHiddenSheet}
+          aria-label="상세정보 다시 보기"
+        >
+          <div className={styles.hiddenPeekBar} />
+        </button>
+      )}
+
       <motion.div
         className={styles.bottomSheet}
         drag="y"
-        dragConstraints={{ top: EXPANDED_Y, bottom: COLLAPSED_Y }}
+        dragConstraints={{ top: EXPANDED_Y, bottom: HIDDEN_Y }}
         dragElastic={0}
         initial={{ y: COLLAPSED_Y }}
         animate={controls}
         onDragEnd={onDragEnd}
       >
-        <div className={styles.handlerArea} onClick={() => (isExpanded ? collapseSheet() : expandSheet())}>
+        <div
+          className={styles.handlerArea}
+          onClick={() => {
+            if (sheetPosition === 'expanded') {
+              collapseSheet();
+            } else if (sheetPosition === 'hidden') {
+              collapseSheet();
+            } else {
+              expandSheet();
+            }
+          }}
+        >
           <div className={styles.handlerBar} />
         </div>
 
-        <div className={`${styles.sheetContent} ${isExpanded ? styles.scroll : styles.noScroll}`}>
-          <div className={styles.infoRow}>
-            <div>
-              <h2 className={styles.title}>{postData.content}</h2>
-              <button
-                type="button"
-                className={styles.author}
-                onClick={() => navigate(`/user/${postData.author.userId}/feed`)}
-                style={{ background: 'transparent', border: 0, padding: 0, cursor: 'pointer' }}
-              >
-                작성자: {postData.author.nickname}
-              </button>
-            </div>
+        <div
+          className={`${styles.sheetContent} ${
+            sheetPosition === 'expanded' ? styles.scroll : styles.noScroll
+          }`}
+        >
+          <div className={styles.titleRow}>
+            <h2 className={styles.title}>{postData.content}</h2>
 
             <div className={styles.actionGroup}>
               <button
@@ -193,9 +254,24 @@ const RankingDetail: React.FC = () => {
               </button>
 
               <div className={styles.likeBadge}>
-                <span className={styles.likeCount}>{postData.voteSummary.likeCount.toLocaleString()}</span>
+                <span className={styles.likeCount}>
+                  {postData.voteSummary.likeCount.toLocaleString()}
+                </span>
               </div>
             </div>
+          </div>
+
+          <div className={styles.authorRow}>
+            <p className={styles.author}>작성자: {postData.author.nickname}</p>
+
+            <button
+              type="button"
+              className={styles.feedMoveBtn}
+              onClick={handleGoToUserFeed}
+            >
+              <span>피드보러가기</span>
+              <span className={styles.feedMoveIcon}>&gt;&gt;</span>
+            </button>
           </div>
 
           <div className={styles.divider} />
