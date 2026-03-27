@@ -18,7 +18,7 @@ export function buildFeedbackSummary(
   votes: Array<{
     choice: VoteChoice;
     feedback?: {
-      tag: { id: number; code: string; label: string };
+      tag: { id: number; code: string; label: string; voteChoice: VoteChoice };
     } | null;
   }>,
 ): FeedbackTagSummary[] {
@@ -42,7 +42,8 @@ export function buildFeedbackSummary(
       code: vote.feedback.tag.code,
       label: vote.feedback.tag.label,
       count: 1,
-      voteChoice: vote.choice,
+      voteChoice: vote.feedback.tag.voteChoice,
+
     });
   }
 

@@ -1,0 +1,157 @@
+.container {
+  @apply w-[375px] h-[812px] relative bg-white overflow-hidden mx-auto shadow-2xl;
+}
+
+.loading {
+  @apply w-[375px] h-[812px] bg-white flex items-center justify-center mx-auto text-neutral-400;
+}
+
+.imageSection {
+  @apply w-full h-full absolute left-0 top-0 overflow-hidden bg-neutral-400;
+}
+
+.mainImage {
+  @apply w-full h-full bg-cover bg-center;
+}
+
+.topGradient {
+  @apply w-full h-24 absolute top-0 left-0 bg-gradient-to-b from-black/70 to-transparent z-10;
+}
+
+.bottomGradient {
+  @apply w-full h-40 absolute bottom-0 left-0 bg-gradient-to-t from-black/70 to-transparent z-10;
+}
+
+.headerTitle {
+  @apply absolute left-[16px] top-[69px] text-white text-2xl font-bold z-10;
+}
+
+.closeBtn {
+  @apply absolute right-4 top-[68px] z-10 cursor-pointer active:scale-90 transition-transform;
+  background: none;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hiddenPeekButton {
+  @apply absolute left-1/2 bottom-4 z-30 -translate-x-1/2 w-[96px] h-[28px] flex items-center justify-center active:scale-95 transition-transform;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.hiddenPeekBar {
+  @apply w-[40px] h-[4px] bg-neutral-300 rounded-full;
+}
+
+.bottomSheet {
+  @apply absolute left-0 w-full bg-white rounded-t-[32px] shadow-[0px_-8px_20px_rgba(0,0,0,0.2)] z-20;
+  top: 0;
+  height: 812px;
+}
+
+.handlerArea {
+  @apply w-full flex justify-center py-4;
+}
+
+.handlerBar {
+  @apply w-[40px] h-[4px] bg-neutral-300 rounded-full;
+}
+
+.sheetContent {
+  @apply px-5 h-full pb-20;
+}
+
+.scroll {
+  @apply overflow-y-auto;
+}
+
+.noScroll {
+  @apply overflow-hidden;
+}
+
+.titleRow {
+  @apply flex justify-between items-start gap-3 mt-2;
+}
+
+.title {
+  @apply text-xl font-bold text-neutral-900 leading-8 flex-1 min-w-0;
+}
+
+.authorRow {
+  @apply mt-2 w-full flex items-center justify-between gap-3;
+}
+
+.author {
+  @apply text-stone-500 text-sm m-0 flex-1 min-w-0 truncate;
+}
+
+.feedMoveBtn {
+  @apply h-[30px] px-3 rounded-full bg-neutral-800 text-white text-[11px] font-bold shadow-md active:scale-95 transition-transform flex items-center gap-1 whitespace-nowrap shrink-0;
+  border: none;
+}
+
+.feedMoveIcon {
+  @apply text-[13px] font-bold leading-none;
+}
+
+.actionGroup {
+  @apply flex items-center gap-3 shrink-0;
+}
+
+.bookmarkBtn {
+  @apply active:scale-90 transition-transform cursor-pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.likeBadge {
+  @apply bg-black px-4 py-2 rounded-full flex items-center justify-center;
+}
+
+.likeCount {
+  @apply text-white text-xs font-bold;
+}
+
+.divider {
+  @apply w-full h-[1px] bg-neutral-200 my-6;
+}
+
+.subTitle {
+  @apply text-base font-bold text-neutral-900 mb-4;
+}
+
+.itemScroll {
+  @apply flex gap-4 overflow-x-auto pb-4 flex-nowrap;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  touch-action: pan-x;
+}
+
+.itemScroll::-webkit-scrollbar {
+  display: none;
+}
+
+.outfitCard {
+  @apply flex-shrink-0 w-[144px] bg-white rounded-xl shadow-sm border p-2;
+}
+
+.itemImg {
+  @apply w-full h-[100px] bg-neutral-100 rounded-lg mb-2;
+}
+
+.brandName {
+  @apply text-xs font-bold text-neutral-900;
+}
+
+.itemName {
+  @apply text-[10px] text-neutral-500;
+}

@@ -1,0 +1,179 @@
+.container {
+  @apply w-[375px] h-[812px] mx-auto overflow-hidden bg-white shadow-2xl;
+}
+
+.scrollArea {
+  @apply h-full overflow-y-auto bg-white;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollArea::-webkit-scrollbar {
+  display: none;
+}
+
+.heroSection {
+  @apply relative w-full h-[460px] overflow-hidden bg-neutral-200;
+}
+
+.heroImage {
+  @apply w-full h-full object-contain bg-neutral-100;
+}
+
+.heroPlaceholder {
+  @apply flex h-full w-full items-center justify-center bg-neutral-300;
+}
+
+.heroPlaceholderText {
+  @apply text-sm text-neutral-600;
+}
+
+.headerCircleButton {
+  @apply absolute top-7 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+}
+
+.editCircleButton {
+  @apply absolute bottom-4 right-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.contentSection {
+  @apply px-4 pt-4 pb-8;
+}
+
+.titleBlock {
+  @apply mb-3;
+}
+
+.title {
+  @apply text-[22px] font-bold leading-[30px] text-neutral-900;
+}
+
+.description {
+  @apply mt-1 text-[13px] leading-[18px] text-neutral-500;
+}
+
+.divider {
+  @apply my-4 h-px w-full bg-neutral-300;
+}
+
+.keywordSection {
+  @apply w-full;
+}
+
+.keywordHeader {
+  @apply mb-3 flex items-center justify-between;
+}
+
+.keywordGuide {
+  @apply text-[12px] font-medium text-neutral-500;
+}
+
+.keywordGrid {
+  @apply flex flex-wrap gap-x-2 gap-y-2;
+}
+
+.keywordChip {
+  @apply flex min-h-[38px] items-center gap-1.5 rounded-full border border-neutral-300 bg-white py-1.5 pl-2 pr-3 transition;
+}
+
+.keywordChipSelected {
+  @apply border-black bg-black;
+}
+
+.keywordThumb {
+  @apply h-5 w-5 shrink-0 rounded-full bg-neutral-300;
+}
+
+.keywordThumbSelected {
+  @apply bg-white;
+}
+
+.keywordLabel {
+  @apply text-[13px] leading-5 text-black;
+}
+
+.keywordChipSelected .keywordLabel {
+  @apply text-white;
+}
+
+.itemSection {
+  @apply pt-1;
+}
+
+.sectionTitle {
+  @apply mb-4 text-[16px] font-semibold leading-6 text-neutral-900;
+}
+
+.itemGrid {
+  @apply grid grid-cols-2 gap-x-4 gap-y-5;
+}
+
+.itemCard {
+  @apply overflow-hidden rounded-[18px] bg-white;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+.itemImage {
+  @apply h-[110px] w-full object-cover;
+}
+
+.itemImagePlaceholder {
+  @apply h-[110px] w-full bg-neutral-400;
+}
+
+.itemInfo {
+  @apply flex flex-col gap-2 px-3 py-3;
+}
+
+.itemSelect {
+  @apply w-full rounded-md border border-neutral-200 bg-white px-2 py-2 text-[12px] leading-4 text-neutral-900 outline-none;
+}
+
+.itemInput {
+  @apply w-full rounded-md border border-neutral-200 bg-white px-2 py-2 text-[12px] leading-4 text-neutral-900 outline-none placeholder:text-neutral-500;
+}
+
+.submitArea {
+  @apply mt-8 pb-4;
+}
+
+.submitButton {
+  @apply flex h-[46px] w-full items-center justify-center rounded-full bg-black text-[18px] font-semibold text-white;
+}
+.contentInputSection {
+  @apply flex flex-col gap-3;
+}
+
+.contentLabel {
+  @apply text-[15px] font-semibold leading-6 text-neutral-900;
+}
+
+.contentTextarea {
+  @apply min-h-[120px] w-full resize-none rounded-2xl border border-neutral-200 bg-white px-4 py-4 text-[14px] leading-6 text-neutral-900 outline-none placeholder:text-neutral-400;
+}
+
+.textMetaRow {
+  @apply flex items-center justify-between;
+}
+
+.helperText {
+  @apply text-[12px] text-neutral-500;
+}
+
+.lengthText {
+  @apply text-[12px] text-neutral-400;
+}
+
+.statusMessage {
+  @apply mt-4 text-[13px] leading-5 text-neutral-500;
+}
+
+.submitButton {
+  @apply flex h-[46px] w-full items-center justify-center rounded-full bg-black text-[18px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60;
+}
