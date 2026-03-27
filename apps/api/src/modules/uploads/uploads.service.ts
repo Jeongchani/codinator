@@ -1,12 +1,15 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import type { UploadPostImageResponse } from '@codinator/contracts';
-import { promises as fs } from 'fs';
-import { join, extname } from 'path';
 import { randomUUID } from 'crypto';
+import { promises as fs } from 'fs';
+import { extname, join } from 'path';
+import { AiService } from '../ai/ai.service';
 
 @Injectable()
 export class UploadsService {
   private readonly uploadRoot = join(process.cwd(), 'uploads');
+
+  constructor(private readonly aiService: AiService) {}
 
   async savePostImage(file: Express.Multer.File): Promise<UploadPostImageResponse> {
     this.validateImage(file);
@@ -20,27 +23,32 @@ export class UploadsService {
       fs.mkdir(processedDir, { recursive: true }),
     ]);
 
-    const extension = extname(file.originalname) || '.jpg';
-    const filename = `${randomUUID()}${extension}`;
-    const processedFilename = `processed-${filename}`;
-
-    const originalFullPath = join(originalDir, filename);
-    const processedFullPath = join(processedDir, processedFilename);
+    const originalExtension = extname(file.originalname) || '.jpg';
+    const originalFilename = `${randomUUID()}${originalExtension}`;
+    const originalFullPath = join(originalDir, originalFilename);
 
     await fs.writeFile(originalFullPath, file.buffer);
-    await fs.writeFile(processedFullPath, file.buffer);
 
-    const storageKey = `posts/originals/${today}/${filename}`;
-    const originalImageUrl = `/uploads/${storageKey}`;
+    const processed = await this.aiService.blurFace(file);
+    const processedExtension = processed.extension
+      ? `.${processed.extension.replace(/^\./, '')}`
+      : originalExtension;
+    const processedFilename = `processed-${randomUUID()}${processedExtension}`;
+    const processedFullPath = join(processedDir, processedFilename);
+
+    await fs.writeFile(processedFullPath, processed.buffer);
+
+    const originalStorageKey = `posts/originals/${today}/${originalFilename}`;
+    const originalImageUrl = `/uploads/${originalStorageKey}`;
     const processedImageUrl = `/uploads/posts/processed/${today}/${processedFilename}`;
 
     return {
       originalImageUrl,
       processedImageUrl,
       thumbnailUrl: null,
-      storageKey,
-      blurMethod: 'NONE',
-      aiBlurStatus: 'NONE',
+      storageKey: originalStorageKey,
+      blurMethod: processed.blurred ? 'AUTO' : 'NONE',
+      aiBlurStatus: 'DONE',
     };
   }
 

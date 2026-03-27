@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AiModule } from './modules/ai/ai.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EvaluationsModule } from './modules/evaluations/evaluations.module';
 import { FeedsModule } from './modules/feeds/feeds.module';
@@ -16,6 +17,7 @@ import { PrismaModule } from './prisma/prisma.module';
     HealthModule,
     AuthModule,
     KeywordsModule,
+    AiModule,
     PostsModule,
     EvaluationsModule,
     UploadsModule,

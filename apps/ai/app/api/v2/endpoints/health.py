@@ -1,12 +1,18 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter
-from datetime import datetime
+
+from app.core.config import AI_ENV
 
 router = APIRouter()
 
-@router.get("/")
+
+@router.get("")
 def check_health():
     return {
+        "success": True,
         "status": "ok",
         "service": "ai-api",
-        "timestamp": datetime.utcnow().isoformat()
+        "env": AI_ENV,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
