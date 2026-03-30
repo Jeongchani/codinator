@@ -9,4 +9,5 @@ export * from './posts';
 export * from './rankings';
 export * from './tags';
 export * from './uploads';
+export * from './users';
 export * from './votes';
