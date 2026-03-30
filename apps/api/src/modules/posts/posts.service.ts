@@ -8,9 +8,10 @@ import {
 import type {
   CreatePostRequest,
   CreatePostResponse,
+  DeletePostResponse,
   GetPostDetailResponse,
   UpdatePostRequest,
-  UpdatePostResponse
+  UpdatePostResponse,
 } from '@codinator/contracts';
 import {
   AiBlurStatus,
@@ -230,6 +231,30 @@ export class PostsService {
         updatedAt: updatedPost.updatedAt.toISOString(),
       };
     });
+  }
+
+  // ─── 게시글 삭제 (소프트 삭제) ───────────────────────────────────────────────
+
+  async deletePost(userId: number, postId: number): Promise<DeletePostResponse> {
+    const post = await this.prisma.post.findUnique({
+      where: { id: postId },
+      select: { id: true, authorId: true, status: true, deletedAt: true },
+    });
+
+    if (!post || post.status === PostStatus.DELETED || post.deletedAt) {
+      throw new NotFoundException('게시글을 찾을 수 없습니다.');
+    }
+
+    if (post.authorId !== userId) {
+      throw new ForbiddenException('본인 게시글만 삭제할 수 있습니다.');
+    }
+
+    await this.prisma.post.update({
+      where: { id: postId },
+      data: { status: PostStatus.DELETED, deletedAt: new Date() },
+    });
+
+    return { success: true };
   }
 
   async getMyPostDetail(

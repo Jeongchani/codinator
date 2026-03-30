@@ -1,8 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseIntPipe,
   Patch,
@@ -24,6 +27,7 @@ import {
 } from '@nestjs/swagger';
 import type {
   CreatePostResponse,
+  DeletePostResponse,
   GetPostDetailResponse,
   UpdatePostResponse,
 } from '@codinator/contracts';
@@ -221,5 +225,29 @@ export class PostsController {
     );
 
     return this.postsService.updatePost(userId!, postId, body);
+  }
+
+  // ─── DELETE /posts/:postId ────────────────────────────────────────────────────
+
+  @Delete(':postId')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '게시글 삭제 (소프트 삭제)' })
+  @ApiParam({ name: 'postId', type: Number, example: 12, description: '삭제할 게시글 ID' })
+  @ApiOkResponse({
+    description: '게시글 삭제 완료',
+    schema: { example: { success: true } },
+  })
+  @ApiForbiddenResponse({ description: '본인 게시글만 삭제할 수 있습니다.' })
+  @ApiNotFoundResponse({ description: '게시글을 찾을 수 없습니다.' })
+  async deletePost(
+    @Param('postId', ParseIntPipe) postId: number,
+    @Headers('authorization') authorization?: string,
+  ): Promise<DeletePostResponse> {
+    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.postsService.deletePost(userId!, postId);
   }
 }
