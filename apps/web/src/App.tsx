@@ -11,7 +11,7 @@ import MyFeeds from "./pages/feeds/MyFeeds";
 import MyFeedEdit from "./pages/feeds/MyFeedEdit";
 import UserFeeds from "./pages/feeds/UserFeeds";
 import MyFeedDetail from "./pages/feeds/MyFeedDetail";
-import EvaluationDetailFeedback from "./pages/evaluation/EvaluationDetail_Feedback";
+import EvaluationDetailFeedback from "./pages/Evaluation/EvaluationDetail_Feedback";
 
 function AppRoutes() {
   const navigate = useNavigate();
