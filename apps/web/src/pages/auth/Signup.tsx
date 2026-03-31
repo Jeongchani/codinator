@@ -47,6 +47,7 @@ const Signup: React.FC = () => {
       openModal('이메일을 입력해주세요.', false);
       return;
     }
+    //여기
 
     openModal('현재는 중복 확인 전용 API가 없습니다. 회원가입 요청 시 서버에서 중복 여부를 검사합니다.', false);
   };
@@ -56,6 +57,7 @@ const Signup: React.FC = () => {
       openModal('닉네임을 입력해주세요.', false);
       return;
     }
+    //여기
 
     openModal('현재는 중복 확인 전용 API가 없습니다. 회원가입 요청 시 서버에서 중복 여부를 검사합니다.', false);
   };

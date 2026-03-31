@@ -1,10 +1,26 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import type {
   CreatePostRequest,
   CreatePostResponse,
+  DeletePostResponse,
   GetPostDetailResponse,
+  UpdatePostRequest,
+  UpdatePostResponse,
 } from '@codinator/contracts';
-import { AiBlurStatus, BlurMethod, EvaluationStatus, PostStatus } from '@prisma/client';
+import {
+  AiBlurStatus,
+  BlurMethod,
+  EvaluationStatus,
+  GarmentCategory,
+  PostStatus,
+  Prisma,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   buildFeedbackSummary,
@@ -25,7 +41,14 @@ import {
 export class PostsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createPost(authorId: number, body: CreatePostRequest): Promise<CreatePostResponse> {
+  async createPost(
+    authorId: number,
+    body: CreatePostRequest,
+  ): Promise<CreatePostResponse> {
+    if (!body.content || !body.content.trim()) {
+      throw new BadRequestException('게시글 내용(content)은 필수입니다.');
+    }
+
     const now = new Date();
     const endsAt = new Date(now);
     endsAt.setDate(endsAt.getDate() + 7);
@@ -36,11 +59,12 @@ export class PostsService {
     const post = await this.prisma.post.create({
       data: {
         authorId,
-        content: body.content ?? null,
+        content: body.content,
         images: {
           create: {
             originalImageUrl: body.image.originalImageUrl,
-            processedImageUrl: body.image.processedImageUrl ?? body.image.originalImageUrl,
+            processedImageUrl:
+              body.image.processedImageUrl ?? body.image.originalImageUrl,
             storageKey: body.image.storageKey ?? null,
             thumbnailUrl: body.image.thumbnailUrl ?? null,
             blurMethod: body.image.blurMethod ?? BlurMethod.NONE,
@@ -87,7 +111,156 @@ export class PostsService {
     };
   }
 
-  async getMyPostDetail(postId: number, userId: number): Promise<GetPostDetailResponse> {
+  async updatePost(
+    userId: number,
+    postId: number,
+    body: UpdatePostRequest,
+  ): Promise<UpdatePostResponse> {
+    const wantsContentUpdate = body.content !== undefined;
+    const wantsOutfitUpdate = body.outfitItems !== undefined;
+
+    if (!wantsContentUpdate && !wantsOutfitUpdate) {
+      throw new BadRequestException('수정할 내용을 1개 이상 입력해주세요.');
+    }
+
+    const normalizedContent = this.normalizeUpdatableContent(body.content);
+
+    return this.prisma.$transaction(async (tx) => {
+      const post = await tx.post.findUnique({
+        where: { id: postId },
+        include: {
+          evaluation: true,
+          outfitItems: {
+            orderBy: { sortOrder: 'asc' },
+          },
+        },
+      });
+
+      if (!post || post.status === PostStatus.DELETED || post.deletedAt) {
+        throw new NotFoundException('게시글을 찾을 수 없습니다.');
+      }
+
+      if (post.authorId !== userId) {
+        throw new ForbiddenException('본인 게시글만 수정할 수 있습니다.');
+      }
+
+      if (post.status !== PostStatus.ACTIVE) {
+        throw new UnprocessableEntityException(
+          '현재 상태의 게시글은 수정할 수 없습니다.',
+        );
+      }
+
+      if (!post.evaluation) {
+        throw new UnprocessableEntityException(
+          '게시글 평가 상태를 확인할 수 없습니다.',
+        );
+      }
+
+      if (
+        normalizedContent !== undefined &&
+        post.evaluation.status === EvaluationStatus.OPEN
+      ) {
+        throw new BadRequestException(
+          '평가 진행 중에는 본문을 수정할 수 없습니다.',
+        );
+      }
+
+      if (
+        normalizedContent !== undefined &&
+        post.evaluation.status !== EvaluationStatus.ENDED &&
+        post.evaluation.status !== EvaluationStatus.CLOSED
+      ) {
+        throw new UnprocessableEntityException(
+          '현재 평가 상태에서는 본문을 수정할 수 없습니다.',
+        );
+      }
+
+      let nextOutfitItems = this.mapUpdatedOutfitItems(post.outfitItems);
+
+      if (wantsOutfitUpdate) {
+        await tx.postOutfit.deleteMany({
+          where: { postId: post.id },
+        });
+
+        const requestOutfitItems = body.outfitItems ?? [];
+
+        if (requestOutfitItems.length > 0) {
+          await tx.postOutfit.createMany({
+            data: requestOutfitItems.map((item, index) => ({
+              postId: post.id,
+              category: item.category,
+              itemName: item.itemName?.trim() || null,
+              brand: item.brand?.trim() || null,
+              sortOrder: index,
+            })),
+          });
+        }
+
+        nextOutfitItems = requestOutfitItems.map((item, index) => ({
+          category: item.category,
+          itemName: item.itemName?.trim() || null,
+          brand: item.brand?.trim() || null,
+          sortOrder: index,
+        }));
+      }
+
+      const updateData: Prisma.PostUpdateInput = {};
+
+      if (normalizedContent !== undefined) {
+        updateData.content = normalizedContent;
+      }
+
+      if (wantsOutfitUpdate && normalizedContent === undefined) {
+        updateData.updatedAt = new Date();
+      }
+
+      const updatedPost = await tx.post.update({
+        where: { id: post.id },
+        data: updateData,
+        select: {
+          id: true,
+          content: true,
+          updatedAt: true,
+        },
+      });
+
+      return {
+        postId: updatedPost.id,
+        content: updatedPost.content,
+        outfitItems: nextOutfitItems,
+        updatedAt: updatedPost.updatedAt.toISOString(),
+      };
+    });
+  }
+
+  // ─── 게시글 삭제 (소프트 삭제) ───────────────────────────────────────────────
+
+  async deletePost(userId: number, postId: number): Promise<DeletePostResponse> {
+    const post = await this.prisma.post.findUnique({
+      where: { id: postId },
+      select: { id: true, authorId: true, status: true, deletedAt: true },
+    });
+
+    if (!post || post.status === PostStatus.DELETED || post.deletedAt) {
+      throw new NotFoundException('게시글을 찾을 수 없습니다.');
+    }
+
+    if (post.authorId !== userId) {
+      throw new ForbiddenException('본인 게시글만 삭제할 수 있습니다.');
+    }
+
+    await this.prisma.post.update({
+      where: { id: postId },
+      data: { status: PostStatus.DELETED, deletedAt: new Date() },
+    });
+
+    return { success: true };
+  }
+
+  async getMyPostDetail(
+    postId: number,
+    userId: number,
+  ): Promise<GetPostDetailResponse> {
     await syncExpiredEvaluations(this.prisma);
 
     const post = await this.prisma.post.findFirst({
@@ -167,7 +340,9 @@ export class PostsService {
     const normalized = keywordIds.map((value) => Number(value));
 
     if (normalized.some((value) => !Number.isInteger(value) || value <= 0)) {
-      throw new BadRequestException('keywordIds는 양의 정수 배열이어야 합니다.');
+      throw new BadRequestException(
+        'keywordIds는 양의 정수 배열이어야 합니다.',
+      );
     }
 
     const unique = Array.from(new Set(normalized));
@@ -199,5 +374,35 @@ export class PostsService {
     }
 
     return keywordIds;
+  }
+
+  private normalizeUpdatableContent(content?: string): string | undefined {
+    if (content === undefined) {
+      return undefined;
+    }
+
+    const normalized = content.trim();
+
+    if (!normalized) {
+      throw new BadRequestException('content는 빈 문자열일 수 없습니다.');
+    }
+
+    return normalized;
+  }
+
+  private mapUpdatedOutfitItems(
+    items: Array<{
+      category: GarmentCategory;
+      itemName: string | null;
+      brand: string | null;
+      sortOrder: number;
+    }>,
+  ): UpdatePostResponse['outfitItems'] {
+    return items.map((item) => ({
+      category: item.category,
+      itemName: item.itemName ?? null,
+      brand: item.brand ?? null,
+      sortOrder: item.sortOrder,
+    }));
   }
 }

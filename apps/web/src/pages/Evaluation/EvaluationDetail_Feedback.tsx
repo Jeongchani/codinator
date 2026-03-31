@@ -30,9 +30,9 @@ const EvaluationDetailFeedback: React.FC = () => {
 
   const [data, setData] = useState<GetEvaluationPostDetailResponse | null>(null);
   const [keywords, setKeywords] = useState<FeedbackTag[]>([]);
-  const [selectedKeywordId, setSelectedKeywordId] = useState<number | null>(null);
-  const [savedKeywordId, setSavedKeywordId] = useState<number | null>(null);
-  const [savedKeywordLabel, setSavedKeywordLabel] = useState('');
+  const [selectedKeywordIds, setSelectedKeywordIds] = useState<Set<number>>(new Set());
+  const [savedKeywordIds, setSavedKeywordIds] = useState<number[]>([]);
+  const [savedKeywordLabels, setSavedKeywordLabels] = useState<string[]>([]);
 
   const [detailLoading, setDetailLoading] = useState(true);
   const [tagLoading, setTagLoading] = useState(false);
@@ -138,26 +138,28 @@ const EvaluationDetailFeedback: React.FC = () => {
   const topKeywords = useMemo(() => {
     const base = data?.feedbackSummary ?? [];
 
-    if (!savedKeywordLabel) {
+    if (savedKeywordLabels.length === 0) {
       return base.slice(0, 5);
     }
 
-    return base.filter((item) => item.label !== savedKeywordLabel).slice(0, 5);
-  }, [data, savedKeywordLabel]);
+    return base.filter((item) => !savedKeywordLabels.includes(item.label)).slice(0, 5);
+  }, [data, savedKeywordLabels]);
 
-  const selectedKeyword = useMemo(() => {
-    return keywords.find((keyword) => keyword.id === selectedKeywordId) ?? null;
-  }, [keywords, selectedKeywordId]);
+  const selectedKeywordList = useMemo(() => {
+    return keywords.filter((keyword) => selectedKeywordIds.has(keyword.id));
+  }, [keywords, selectedKeywordIds]);
 
-  const currentFeedbackChip = useMemo(() => {
-    const label = savedKeywordLabel || selectedKeyword?.label;
-    if (!label || !voteChoice) {
-      return null;
-    }
+  const currentFeedbackChips = useMemo(() => {
+    if (!voteChoice) return [];
 
     const prefix = voteChoice === 'DISLIKE' ? '👎' : '👍';
-    return `${prefix} ${label}`;
-  }, [savedKeywordLabel, selectedKeyword, voteChoice]);
+    const activeLabels =
+      savedKeywordLabels.length > 0
+        ? savedKeywordLabels
+        : selectedKeywordList.map((k) => k.label);
+
+    return activeLabels.map((label) => `${prefix} ${label}`);
+  }, [savedKeywordLabels, selectedKeywordList, voteChoice]);
 
   const voteChoiceLabel = useMemo(() => {
     if (voteChoice === 'LIKE') return '좋아요';
@@ -167,11 +169,11 @@ const EvaluationDetailFeedback: React.FC = () => {
 
   const voteChoiceGuide = useMemo(() => {
     if (voteChoice === 'LIKE') {
-      return '마음에 든 포인트를 1개 선택해서 추가 피드백을 남겨보세요.';
+      return '마음에 든 포인트를 최대 3개 선택해서 추가 피드백을 남겨보세요.';
     }
 
     if (voteChoice === 'DISLIKE') {
-      return '아쉬웠던 포인트를 1개 선택해서 추가 피드백을 남겨보세요.';
+      return '아쉬웠던 포인트를 최대 3개 선택해서 추가 피드백을 남겨보세요.';
     }
 
     return '상세 정보만 확인할 수 있는 화면입니다.';
@@ -182,14 +184,24 @@ const EvaluationDetailFeedback: React.FC = () => {
   };
 
   const handleKeywordClick = (id: number) => {
-    if (submitting || savedKeywordId !== null) return;
-    setSelectedKeywordId((prev) => (prev === id ? null : id));
+    if (submitting || savedKeywordIds.length > 0) return;
+    setSelectedKeywordIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else if (next.size < 3) {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   const handleSaveFeedback = async () => {
-    if (!postId || !voteId || selectedKeywordId === null || savedKeywordId !== null) {
+    if (!postId || !voteId || selectedKeywordIds.size === 0 || savedKeywordIds.length > 0) {
       return;
     }
+
+    const tagIds = Array.from(selectedKeywordIds);
 
     try {
       setSubmitting(true);
@@ -198,13 +210,15 @@ const EvaluationDetailFeedback: React.FC = () => {
       await fetcher<CreateFeedbackResponse>(`/evaluations/votes/${voteId}/feedback`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ tagIds: [selectedKeywordId] }),
+        body: JSON.stringify({ tagIds }),
       });
 
-      const selected = keywords.find((keyword) => keyword.id === selectedKeywordId) ?? null;
+      const selectedLabels = keywords
+        .filter((keyword) => tagIds.includes(keyword.id))
+        .map((keyword) => keyword.label);
 
-      setSavedKeywordId(selectedKeywordId);
-      setSavedKeywordLabel(selected?.label ?? '');
+      setSavedKeywordIds(tagIds);
+      setSavedKeywordLabels(selectedLabels);
 
       await loadDetail();
     } catch (err) {
@@ -218,11 +232,11 @@ const EvaluationDetailFeedback: React.FC = () => {
   };
 
   const saveButtonDisabled =
-    selectedKeywordId === null || submitting || tagLoading || savedKeywordId !== null;
+    selectedKeywordIds.size === 0 || submitting || tagLoading || savedKeywordIds.length > 0;
 
   const saveButtonText = submitting
     ? '저장 중...'
-    : savedKeywordId !== null
+    : savedKeywordIds.length > 0
       ? '피드백 저장 완료'
       : '피드백 저장';
 
@@ -270,9 +284,9 @@ const EvaluationDetailFeedback: React.FC = () => {
           </div>
 
           <div className={styles.topKeywordRow}>
-            {currentFeedbackChip ? (
-              <span className={styles.topKeywordChip}>{currentFeedbackChip}</span>
-            ) : null}
+            {currentFeedbackChips.map((chip, i) => (
+              <span key={i} className={styles.topKeywordChip}>{chip}</span>
+            ))}
 
             {topKeywords.length > 0 ? (
               topKeywords.map((keyword) => (
@@ -280,7 +294,7 @@ const EvaluationDetailFeedback: React.FC = () => {
                   #{keyword.label}
                 </span>
               ))
-            ) : !currentFeedbackChip ? (
+            ) : currentFeedbackChips.length === 0 ? (
               <span className={styles.topKeywordChip}># 아직 선택된 태그 없음</span>
             ) : null}
           </div>
@@ -320,14 +334,15 @@ const EvaluationDetailFeedback: React.FC = () => {
               ) : keywords.length > 0 ? (
                 <div className={styles.feedbackSelectGrid}>
                   {keywords.map((keyword) => {
-                    const isSelected = selectedKeywordId === keyword.id;
+                    const isSelected = selectedKeywordIds.has(keyword.id);
+                    const isMaxReached = selectedKeywordIds.size >= 3 && !isSelected;
 
                     return (
                       <button
                         key={keyword.id}
                         type="button"
                         onClick={() => handleKeywordClick(keyword.id)}
-                        disabled={savedKeywordId !== null}
+                        disabled={savedKeywordIds.length > 0 || isMaxReached}
                         className={`${styles.selectChip} ${
                           isSelected ? styles.selectChipSelected : ''
                         }`}
@@ -344,12 +359,14 @@ const EvaluationDetailFeedback: React.FC = () => {
               )}
 
 
-              {savedKeywordId !== null ? (
+              {savedKeywordIds.length > 0 ? (
                 <p className={styles.feedbackSavedText}>
                   피드백이 저장됐어요. 아래 종합 수치에서도 바로 확인할 수 있어요.
                 </p>
               ) : (
-                <p className={styles.feedbackHintText}>최대 1개까지만 선택할 수 있어요.</p>
+                <p className={styles.feedbackHintText}>
+                  최대 3개까지 선택할 수 있어요. ({selectedKeywordIds.size}/3)
+                </p>
               )}
 
               {tagError && keywords.length > 0 ? (
