@@ -1,89 +1,177 @@
 .container {
-  @apply w-[375px] min-h-[812px] bg-white mx-auto relative overflow-y-auto pb-10;
+  @apply w-[375px] h-[1180px] mx-auto bg-white relative overflow-hidden px-4;
 }
 
-.headerSection {
-  @apply px-8 pt-16 pb-8;
+.hero {
+  @apply absolute left-4 top-[70px] w-[320px] px-2.5 py-2 flex flex-col items-start gap-[5px];
 }
 
-.mainTitle {
-  @apply text-neutral-900 text-3xl font-bold leading-tight;
+.heroTitle {
+  @apply w-full text-neutral-900 text-4xl font-medium leading-10;
 }
 
-.subTitle {
-  @apply text-neutral-400 text-sm mt-2;
+.heroDesc {
+  @apply w-full text-neutral-900 text-xl font-medium leading-7;
 }
 
-.formContainer {
-  @apply px-8 space-y-5;
+.formBlock {
+  @apply absolute left-4 top-[268px] w-[320px] flex flex-col items-start gap-5;
 }
 
-.fieldGroup {
-  @apply space-y-1.5;
+.field {
+  @apply w-full;
+}
+
+.fieldHeader {
+  @apply w-full flex items-center justify-between;
 }
 
 .label {
-  @apply text-neutral-900 text-sm font-bold;
+  @apply text-neutral-900 text-sm font-medium leading-5;
 }
 
-.emailInputRow {
-  @apply flex gap-2;
+.requiredLabel {
+  @apply inline-flex items-center gap-1 text-neutral-900 text-sm font-medium leading-5;
 }
 
-.flexFill {
-  @apply flex-1;
+.requiredMark {
+  @apply text-red-500 text-sm font-semibold;
 }
 
-.inputWrapper {
-  @apply h-12 bg-neutral-50 rounded-xl px-4 flex items-center border border-neutral-100;
-}
-
-.inputField {
-  @apply w-full bg-transparent outline-none text-neutral-900 text-sm placeholder:text-neutral-300;
-}
-
-/* 🔴 중복 확인 기본 버튼 */
 .checkButton {
-  @apply px-4 h-12 rounded-xl text-xs font-bold transition-all active:scale-95;
+  @apply h-7 px-3 rounded-full border border-neutral-300 text-[12px] font-medium text-neutral-700 bg-white;
 }
 
-.checkButtonDefault {
-  @apply bg-neutral-900 text-white;
+.checkButton:disabled {
+  @apply opacity-50 cursor-not-allowed;
 }
 
-/* 🟢 중복 확인 성공 시 (연두색) */
-.checkButtonDone {
-  @apply bg-green-500 text-white;
+.input {
+  @apply w-full bg-transparent border-0 outline-none p-0 text-neutral-900 text-[17px] font-normal leading-6;
 }
 
-.genderSection {
-  @apply flex gap-8 py-1.5;
+.input::placeholder {
+  @apply text-neutral-300 text-[17px];
 }
 
-.genderOption {
-  @apply flex items-center gap-2 cursor-pointer;
+.line {
+  @apply w-full h-px bg-black mt-1;
+}
+
+.helperText {
+  @apply min-h-[18px] text-[12px] leading-[18px] text-neutral-500 mt-2;
+}
+
+.genderRow {
+  @apply flex items-center gap-5 mt-1;
+}
+
+.genderButton {
+  @apply h-8 inline-flex items-center gap-2 bg-transparent border-0 p-0 cursor-pointer;
+}
+
+.genderCheckSvg {
+  @apply shrink-0;
+  width: 20px;
+  height: 20px;
 }
 
 .genderText {
-  @apply text-neutral-400 text-sm font-medium;
+  @apply text-neutral-400 text-[17px] font-medium leading-5;
 }
 
 .genderTextActive {
-  @apply text-neutral-900 font-bold;
+  @apply text-neutral-900 text-[17px] font-medium leading-5;
 }
 
-.submitButton {
-  @apply w-full h-14 bg-neutral-900 text-white rounded-[100px] text-base font-bold mt-8;
+.phoneRow {
+  @apply w-full flex items-center justify-between mt-1;
 }
 
-.loginPrompt {
-  @apply flex justify-center gap-2 mt-6;
+.phoneInput {
+  @apply h-9 rounded-[10px] border border-neutral-300 bg-white
+    text-center text-[15px] leading-5 font-medium text-neutral-900 outline-none;
+  width: 92px;
 }
 
-.promptTextGray {
-  @apply text-neutral-400 text-sm;
+.phoneInput:first-of-type {
+  width: 88px;
 }
 
-.promptTextBlack {
-  @apply text-neutral-900 text-sm font-bold cursor-pointer underline;
+.phoneDash {
+  @apply w-3 text-center text-neutral-500 text-base font-medium shrink-0;
+}
+
+.primaryButton {
+  @apply absolute left-1/2 -translate-x-1/2 top-[930px]
+    w-[288px] h-14 rounded-[100px] bg-black
+    text-white text-base font-normal leading-5
+    flex items-center justify-center transition;
+}
+
+.buttonDisabled {
+  @apply opacity-40 cursor-not-allowed;
+}
+
+.orWrap {
+  @apply absolute left-4 top-[1011px] w-[343px] flex items-center justify-between;
+}
+
+.orLine {
+  @apply w-[141px] h-px bg-neutral-200;
+}
+
+.orText {
+  @apply text-neutral-400 text-sm font-medium leading-5 tracking-tight;
+}
+
+.socialRow {
+  @apply absolute left-1/2 -translate-x-1/2 top-[1055px] flex items-center gap-5;
+}
+
+.socialButton {
+  @apply w-[42px] h-[42px] rounded-full border border-[#999999] bg-white flex items-center justify-center text-neutral-600;
+}
+
+.socialLogo {
+  width: 20px;
+  height: 20px;
+  display: block;
+  flex-shrink: 0;
+}
+
+.bottomText {
+  @apply absolute left-1/2 -translate-x-1/2 top-[1137px] inline-flex items-center gap-[5px] whitespace-nowrap;
+}
+
+.bottomMuted {
+  @apply text-neutral-400 text-sm font-medium leading-5;
+}
+
+.bottomLink {
+  @apply bg-transparent border-0 p-0 text-neutral-900 text-sm font-medium leading-5 cursor-pointer;
+}
+
+.modalBackdrop {
+  @apply fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4;
+}
+
+.modalCard {
+  @apply w-full max-w-[340px] rounded-2xl bg-white p-6 shadow-xl flex flex-col items-center;
+}
+
+.modalIcon {
+  @apply mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600 text-xl font-bold;
+}
+
+.modalTitle {
+  @apply mb-2 text-center text-lg font-bold text-neutral-900;
+}
+
+.modalMessage {
+  @apply mb-6 text-center text-sm font-medium leading-relaxed text-neutral-500;
+}
+
+.modalButton {
+  @apply w-full rounded-[100px] bg-neutral-900 py-3 text-base font-medium text-white;
 }
