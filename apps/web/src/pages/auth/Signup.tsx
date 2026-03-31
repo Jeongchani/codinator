@@ -9,7 +9,13 @@ type CheckResponse = {
   message?: string;
 };
 
+type SignupCheckRequest = {
+  type: "EMAIL" | "NICKNAME" | "PASSWORD";
+  value: string;
+};
+
 type SignupGender = Gender | "";
+type ModalType = "success" | "error" | "info";
 
 function CheckIcon({ checked }: { checked: boolean }) {
   return (
@@ -50,6 +56,26 @@ function RequiredLabel({ text }: { text: string }) {
       <span className={styles.requiredMark}>*</span>
     </span>
   );
+}
+
+function ModalStatusIcon({ type }: { type: ModalType }) {
+  if (type === "success") {
+    return (
+      <div className={`${styles.modalIcon} ${styles.modalIconSuccess}`}>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M6.5 12.5L10 16L17.5 8.5"
+            stroke="white"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+    );
+  }
+
+  return <div className={`${styles.modalIcon} ${styles.modalIconError}`}>!</div>;
 }
 
 const API_BASE_URL =
@@ -103,14 +129,34 @@ export default function Signup() {
   const [showModal, setShowModal] = useState(false);
   const [modalTitle, setModalTitle] = useState("안내");
   const [modalMessage, setModalMessage] = useState("");
+  const [modalType, setModalType] = useState<ModalType>("info");
+  const [modalAction, setModalAction] = useState<(() => void) | null>(null);
 
-  const openModal = (title: string, message: string) => {
+  const openModal = (
+    title: string,
+    message: string,
+    type: ModalType = "info",
+    action?: () => void
+  ) => {
     setModalTitle(title);
     setModalMessage(message);
+    setModalType(type);
+    setModalAction(() => action ?? null);
     setShowModal(true);
   };
 
-  const closeModal = () => setShowModal(false);
+  const closeModal = () => {
+    setShowModal(false);
+
+    if (modalAction) {
+      const action = modalAction;
+      setModalAction(null);
+      action();
+      return;
+    }
+
+    setModalAction(null);
+  };
 
   const emailRegex = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/, []);
   const birthRegex = useMemo(() => /^\d{8}$/, []);
@@ -124,6 +170,9 @@ export default function Signup() {
   const isBirthValid = birthRegex.test(birth.trim());
   const isGenderValid = gender === "MALE" || gender === "FEMALE";
   const isPhoneValid = phoneRegex.test(phone);
+
+  const isNicknameCheckDone = nicknameChecked && nicknameAvailable === true;
+  const isEmailCheckDone = emailChecked && emailAvailable === true;
 
   const isFormFilled =
     nickname.trim() !== "" &&
@@ -143,10 +192,8 @@ export default function Signup() {
     isBirthValid &&
     isGenderValid &&
     isPhoneValid &&
-    nicknameChecked &&
-    nicknameAvailable === true &&
-    emailChecked &&
-    emailAvailable === true &&
+    isNicknameCheckDone &&
+    isEmailCheckDone &&
     !signupLoading;
 
   const resetNicknameCheck = (value: string) => {
@@ -161,20 +208,28 @@ export default function Signup() {
     setEmailAvailable(null);
   };
 
+  const requestSignupCheck = async (body: SignupCheckRequest): Promise<CheckResponse> => {
+    return apiRequest<CheckResponse>("/auth/signup/check", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  };
+
   const handleCheckNickname = async () => {
     const trimmed = nickname.trim();
 
     if (!trimmed) {
-      openModal("닉네임 확인", "닉네임을 먼저 입력해주세요.");
+      openModal("닉네임 확인", "닉네임을 먼저 입력해주세요.", "error");
       return;
     }
 
     setNicknameCheckLoading(true);
 
     try {
-      const data = await apiRequest<CheckResponse>(
-        `/auth/check-nickname?nickname=${encodeURIComponent(trimmed)}`
-      );
+      const data = await requestSignupCheck({
+        type: "NICKNAME",
+        value: trimmed,
+      });
 
       setNicknameChecked(true);
       setNicknameAvailable(data.available);
@@ -183,11 +238,19 @@ export default function Signup() {
         "닉네임 중복확인",
         data.available
           ? data.message || "사용 가능한 닉네임입니다."
-          : data.message || "이미 사용 중인 닉네임입니다."
+          : data.message || "이미 사용 중인 닉네임입니다.",
+        data.available ? "success" : "error"
       );
     } catch (error) {
       console.error("닉네임 중복체크 오류:", error);
-      openModal("오류", "닉네임 중복확인 요청에 실패했습니다.");
+      setNicknameChecked(false);
+      setNicknameAvailable(null);
+
+      openModal(
+        "오류",
+        error instanceof Error ? error.message : "닉네임 중복확인 요청에 실패했습니다.",
+        "error"
+      );
     } finally {
       setNicknameCheckLoading(false);
     }
@@ -197,21 +260,22 @@ export default function Signup() {
     const trimmed = email.trim();
 
     if (!trimmed) {
-      openModal("아이디 확인", "아이디(이메일)를 먼저 입력해주세요.");
+      openModal("아이디 확인", "아이디(이메일)를 먼저 입력해주세요.", "error");
       return;
     }
 
     if (!isEmailValid) {
-      openModal("아이디 확인", "올바른 이메일 형식을 입력해주세요.");
+      openModal("아이디 확인", "올바른 이메일 형식을 입력해주세요.", "error");
       return;
     }
 
     setEmailCheckLoading(true);
 
     try {
-      const data = await apiRequest<CheckResponse>(
-        `/auth/check-email?email=${encodeURIComponent(trimmed)}`
-      );
+      const data = await requestSignupCheck({
+        type: "EMAIL",
+        value: trimmed,
+      });
 
       setEmailChecked(true);
       setEmailAvailable(data.available);
@@ -220,11 +284,19 @@ export default function Signup() {
         "아이디 중복확인",
         data.available
           ? data.message || "사용 가능한 아이디입니다."
-          : data.message || "이미 사용 중인 아이디입니다."
+          : data.message || "이미 사용 중인 아이디입니다.",
+        data.available ? "success" : "error"
       );
     } catch (error) {
       console.error("이메일 중복체크 오류:", error);
-      openModal("오류", "아이디 중복확인 요청에 실패했습니다.");
+      setEmailChecked(false);
+      setEmailAvailable(null);
+
+      openModal(
+        "오류",
+        error instanceof Error ? error.message : "아이디 중복확인 요청에 실패했습니다.",
+        "error"
+      );
     } finally {
       setEmailCheckLoading(false);
     }
@@ -265,42 +337,46 @@ export default function Signup() {
 
   const validateBeforeSubmit = () => {
     if (!isFormFilled) {
-      openModal("입력 확인", "모든 항목은 필수 입력입니다.");
+      openModal("입력 확인", "모든 항목은 필수 입력입니다.", "error");
       return false;
     }
 
     if (!nicknameChecked || nicknameAvailable !== true) {
-      openModal("닉네임 확인", "닉네임 중복확인을 완료해주세요.");
+      openModal("닉네임 확인", "닉네임 중복확인을 완료해주세요.", "error");
       return false;
     }
 
     if (!emailChecked || emailAvailable !== true) {
-      openModal("아이디 확인", "아이디 중복확인을 완료해주세요.");
+      openModal("아이디 확인", "아이디 중복확인을 완료해주세요.", "error");
       return false;
     }
 
     if (!isEmailValid) {
-      openModal("아이디 확인", "올바른 이메일 형식을 입력해주세요.");
+      openModal("아이디 확인", "올바른 이메일 형식을 입력해주세요.", "error");
       return false;
     }
 
     if (!isPasswordValid) {
-      openModal("비밀번호 확인", "비밀번호는 4자 이상 입력해주세요.");
+      openModal("비밀번호 확인", "비밀번호는 4자 이상 입력해주세요.", "error");
       return false;
     }
 
     if (!isBirthValid) {
-      openModal("생년월일 확인", "생년월일은 8자리 숫자로 입력해주세요. 예: 19900101");
+      openModal(
+        "생년월일 확인",
+        "생년월일은 8자리 숫자로 입력해주세요. 예: 19900101",
+        "error"
+      );
       return false;
     }
 
     if (!isGenderValid) {
-      openModal("성별 확인", "성별을 선택해주세요.");
+      openModal("성별 확인", "성별을 선택해주세요.", "error");
       return false;
     }
 
     if (!isPhoneValid) {
-      openModal("전화번호 확인", "전화번호를 정확히 입력해주세요.");
+      openModal("전화번호 확인", "전화번호를 정확히 입력해주세요.", "error");
       return false;
     }
 
@@ -309,7 +385,6 @@ export default function Signup() {
 
   const handleSignup = async () => {
     if (!validateBeforeSubmit()) return;
-
     if (gender !== "MALE" && gender !== "FEMALE") return;
 
     setSignupLoading(true);
@@ -329,13 +404,16 @@ export default function Signup() {
         body: JSON.stringify(requestBody),
       });
 
-      openModal("회원가입 완료", "회원가입이 완료되었습니다. 로그인 페이지로 이동합니다.");
-      setTimeout(() => {
-        navigate("/login");
-      }, 1200);
+      openModal("회원가입 완료", "회원가입이 완료되었습니다.", "success", () =>
+        navigate("/login")
+      );
     } catch (error) {
       console.error("회원가입 오류:", error);
-      openModal("회원가입 실패", "회원가입 요청에 실패했습니다.");
+      openModal(
+        "회원가입 실패",
+        error instanceof Error ? error.message : "회원가입 요청에 실패했습니다.",
+        "error"
+      );
     } finally {
       setSignupLoading(false);
     }
@@ -360,7 +438,9 @@ export default function Signup() {
             </label>
             <button
               type="button"
-              className={styles.checkButton}
+              className={`${styles.checkButton} ${
+                isNicknameCheckDone ? styles.checkButtonDone : ""
+              }`}
               onClick={handleCheckNickname}
               disabled={nicknameCheckLoading || nickname.trim() === ""}
             >
@@ -390,7 +470,9 @@ export default function Signup() {
             </label>
             <button
               type="button"
-              className={styles.checkButton}
+              className={`${styles.checkButton} ${
+                isEmailCheckDone ? styles.checkButtonDone : ""
+              }`}
               onClick={handleCheckEmail}
               disabled={emailCheckLoading || email.trim() === ""}
             >
@@ -574,7 +656,7 @@ export default function Signup() {
       {showModal && (
         <div className={styles.modalBackdrop}>
           <div className={styles.modalCard}>
-            <div className={styles.modalIcon}>!</div>
+            <ModalStatusIcon type={modalType} />
             <h3 className={styles.modalTitle}>{modalTitle}</h3>
             <p className={styles.modalMessage}>{modalMessage}</p>
             <button type="button" className={styles.modalButton} onClick={closeModal}>
