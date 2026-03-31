@@ -386,7 +386,9 @@ CREATE INDEX "user_reports_status_created_at_idx" ON "user_reports"("status", "c
 CREATE INDEX "user_reports_reviewed_by_id_idx" ON "user_reports"("reviewed_by_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "user_reports_reporter_id_reported_user_id_key" ON "user_reports"("reporter_id", "reported_user_id");
+CREATE INDEX "user_reports_reporter_id_reported_user_id_status_idx" ON "user_reports"("reporter_id", "reported_user_id", "status");
+
+CREATE UNIQUE INDEX "user_reports_pending_unique" ON "user_reports" ("reporter_id", "reported_user_id") WHERE "status" = 'PENDING';
 
 -- CreateIndex
 CREATE UNIQUE INDEX "evaluations_post_id_key" ON "evaluations"("post_id");

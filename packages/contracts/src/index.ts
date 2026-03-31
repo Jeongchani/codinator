@@ -1,4 +1,6 @@
+export * from './admin';
 export * from './auth';
+export * from './bookmarks';
 export * from './common';
 export * from './evaluations';
 export * from './feedback';
@@ -7,6 +9,9 @@ export * from './health';
 export * from './keywords';
 export * from './posts';
 export * from './rankings';
+export * from './reports';
+export * from './search';
 export * from './tags';
 export * from './uploads';
+export * from './users';
 export * from './votes';
