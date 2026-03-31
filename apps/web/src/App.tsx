@@ -11,14 +11,16 @@ import MyFeeds from "./pages/feeds/MyFeeds";
 import MyFeedEdit from "./pages/feeds/MyFeedEdit";
 import UserFeeds from "./pages/feeds/UserFeeds";
 import MyFeedDetail from "./pages/feeds/MyFeedDetail";
-import EvaluationDetailFeedback from "./pages/evaluation/EvaluationDetail_Feedback";
+import EvaluationDetailFeedback from "./pages/Evaluation/EvaluationDetail_Feedback";
+import AuthEntry from "./pages/auth/AuthEntry";
 
 function AppRoutes() {
   const navigate = useNavigate();
 
   return (
     <Routes>
-      <Route path="/" element={<Splash onFinish={() => navigate("/login")} />} />
+      <Route path="/" element={<Splash onFinish={() => navigate("/authEntry")} />} />
+      <Route path="/authEntry" element={<AuthEntry />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
 
