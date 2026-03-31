@@ -148,8 +148,7 @@ export class FeedsService {
         publishedAt: { not: null },
         evaluation: {
           is: {
-            status: EvaluationStatus.ENDED,
-            endsAt: { lte: new Date() },
+            status: { in: [EvaluationStatus.ENDED, EvaluationStatus.CLOSED] },
           },
         },
         rankingDetails: {
@@ -204,8 +203,7 @@ export class FeedsService {
         publishedAt: { not: null },
         evaluation: {
           is: {
-            status: EvaluationStatus.ENDED,
-            endsAt: { lte: new Date() },
+            status: { in: [EvaluationStatus.ENDED, EvaluationStatus.CLOSED] },
           },
         },
         rankingDetails: {

@@ -21,7 +21,14 @@ import {
  *   3. evaluation.status ≠ OPEN
  *      → 평가 중인 게시글은 작성자 익명성 보호를 위해 검색에서 제외
  *      → CLOSED / ENDED 상태는 포함
- *   evaluation이 없는 게시글은 "미발행" 상태로 간주하여 제외 (is: ... 조건이 null을 제외)
+ *   evaluation이 없는 게시글은 "미발행" 상태로 간주하여 제외
+ *
+ * ⚠️ 정책 확인 필요:
+ *   contracts 주석에는 publishedAt IS NOT NULL, RankingDetail READY 조건 언급 있음.
+ *   현재는 보수적으로 최소 조건만 적용(ACTIVE + deletedAt null + not OPEN).
+ *   정책 확정 시 아래 조건 추가 필요:
+ *     publishedAt: { not: null }
+ *     rankingDetails: { some: { ranking: { status: RankingStatus.READY } } }
  */
 function publicPostWhere() {
   return {
@@ -87,7 +94,7 @@ export class SearchService {
   // ─── NICKNAME 검색 ─────────────────────────────────────────────────────────────
   /**
    * 닉네임 부분 일치 검색.
-   * 정렬: id ASC (등록순) — 커서 방향: id > cursor
+   * 정렬: id ASC (등록순) — 커서 방향: id > cursor (ASC 방향)
    */
   private async searchByNickname(
     q: string,
@@ -110,7 +117,10 @@ export class SearchService {
 
     return {
       type: 'NICKNAME',
-      users: pageItems.map((u) => ({ userId: u.id, nickname: u.nickname })),
+      users: pageItems.map<UserSearchItem>((u) => ({
+        userId: u.id,
+        nickname: u.nickname,
+      })),
       posts: [],
       nextCursor: hasMore ? (pageItems[pageItems.length - 1]?.id ?? null) : null,
       hasMore,
@@ -120,8 +130,9 @@ export class SearchService {
   // ─── KEYWORD 검색 ─────────────────────────────────────────────────────────────
   /**
    * 게시글에 달린 키워드의 label이 검색어를 포함하는 게시글 검색.
-   * 정렬: [createdAt DESC, id DESC] — 커서 방향: id < cursor
+   * 정렬: [createdAt DESC, id DESC] — 커서 방향: id < cursor (DESC 방향)
    * OPEN 평가 게시글 제외 (익명성 보호).
+   * 게시글 검색 결과에는 author를 반환하지 않는다 (익명성 정책).
    */
   private async searchByKeyword(
     q: string,
@@ -143,7 +154,6 @@ export class SearchService {
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
       include: {
-        author: { select: { id: true, nickname: true } },
         images: { orderBy: IMAGE_ORDER_BY, take: 1 },
       },
     });
@@ -163,8 +173,9 @@ export class SearchService {
   // ─── POST(본문) 검색 ──────────────────────────────────────────────────────────
   /**
    * 게시글 본문(content) 부분 일치 검색.
-   * 정렬: [createdAt DESC, id DESC] — 커서 방향: id < cursor
+   * 정렬: [createdAt DESC, id DESC] — 커서 방향: id < cursor (DESC 방향)
    * OPEN 평가 게시글 제외 (익명성 보호).
+   * 게시글 검색 결과에는 author를 반환하지 않는다 (익명성 정책).
    */
   private async searchByContent(
     q: string,
@@ -180,7 +191,6 @@ export class SearchService {
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
       include: {
-        author: { select: { id: true, nickname: true } },
         images: { orderBy: IMAGE_ORDER_BY, take: 1 },
       },
     });
@@ -204,15 +214,17 @@ export class SearchService {
    * 정렬 규칙:
    *   - users: id ASC (등록순)
    *   - posts: [createdAt DESC, id DESC] (최신순)
-   *     게시글은 키워드 매칭 + 본문 매칭 결과를 OR 조건으로 단일 쿼리 처리,
+   *     게시글은 키워드 label 매칭 + 본문 매칭 결과를 OR 조건으로 단일 쿼리 처리,
    *     postId 기준 중복 제거 (KEYWORD / POST 동시 매칭 게시글).
    *
    * cursor 미지원: ALL 타입에서는 nextCursor=null, hasMore=false 고정.
    * 각 limit건씩 독립적으로 가져옴.
+   *
+   * 게시글 검색 결과에는 author를 반환하지 않는다 (익명성 정책).
    */
   private async searchAll(q: string, limit: number): Promise<SearchResponse> {
     const [users, posts] = await Promise.all([
-      // 사용자 검색
+      // 사용자 닉네임 검색
       this.prisma.user.findMany({
         where: {
           ...publicUserWhere(),
@@ -243,7 +255,6 @@ export class SearchService {
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: limit,
         include: {
-          author: { select: { id: true, nickname: true } },
           images: { orderBy: IMAGE_ORDER_BY, take: 1 },
         },
       }),
@@ -251,7 +262,10 @@ export class SearchService {
 
     return {
       type: 'ALL',
-      users: users.map((u) => ({ userId: u.id, nickname: u.nickname })),
+      users: users.map<UserSearchItem>((u) => ({
+        userId: u.id,
+        nickname: u.nickname,
+      })),
       posts: posts.map((p) => this.mapPostItem(p)),
       nextCursor: null,
       hasMore: false,
@@ -260,11 +274,14 @@ export class SearchService {
 
   // ─── 공통 헬퍼 ────────────────────────────────────────────────────────────────
 
+  /**
+   * Prisma Post 결과를 PostSearchItem으로 변환.
+   * author는 익명성 정책에 따라 반환하지 않는다.
+   */
   private mapPostItem(post: {
     id: number;
     content: string;
     createdAt: Date;
-    author: { id: number; nickname: string };
     images: Array<{
       thumbnailUrl: string | null;
       processedImageUrl: string | null;
@@ -273,10 +290,6 @@ export class SearchService {
   }): PostSearchItem {
     return {
       postId: post.id,
-      author: {
-        userId: post.author.id,
-        nickname: post.author.nickname,
-      },
       thumbnailUrl: post.images.length > 0 ? pickPostThumbnail(post.images) : null,
       content: post.content,
       createdAt: post.createdAt.toISOString(),

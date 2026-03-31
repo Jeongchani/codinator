@@ -36,13 +36,13 @@ export class AdminController {
     private readonly authTokenService: AuthTokenService,
   ) {}
 
-  // ─── PATCH /admin/reports/:id ─────────────────────────────────────────────────
+  // ─── PATCH /admin/post-reports/:reportId ──────────────────────────────────────
 
-  @Patch('reports/:id')
+  @Patch('post-reports/:reportId')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: '게시글 신고 처리 (ADMIN)' })
-  @ApiParam({ name: 'id', type: Number, example: 3, description: '신고 ID' })
+  @ApiParam({ name: 'reportId', type: Number, example: 3, description: '신고 ID' })
   @ApiBody({ type: ReviewReportDto })
   @ApiOkResponse({
     description: '신고 처리 완료',
@@ -54,7 +54,7 @@ export class AdminController {
   @ApiForbiddenResponse({ description: '관리자 권한 없음' })
   @ApiNotFoundResponse({ description: '신고를 찾을 수 없음' })
   async reviewReport(
-    @Param('id', ParseIntPipe) reportId: number,
+    @Param('reportId', ParseIntPipe) reportId: number,
     @Body() body: ReviewReportDto,
     @Headers('authorization') authorization?: string,
   ): Promise<ReviewReportResponse> {
@@ -71,7 +71,7 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: '유저 신고 처리 (ADMIN)' })
-  @ApiParam({ name: 'id', type: Number, example: 5, description: '유저 신고 ID' })
+  @ApiParam({ name: 'reportId', type: Number, example: 5, description: '유저 신고 ID' })
   @ApiBody({ type: ReviewReportDto })
   @ApiOkResponse({
     description: '유저 신고 처리 완료',
@@ -83,7 +83,7 @@ export class AdminController {
   @ApiForbiddenResponse({ description: '관리자 권한 없음' })
   @ApiNotFoundResponse({ description: '신고를 찾을 수 없음' })
   async reviewUserReport(
-    @Param('id', ParseIntPipe) reportId: number,
+    @Param('reportId', ParseIntPipe) reportId: number,
     @Body() body: ReviewReportDto,
     @Headers('authorization') authorization?: string,
   ): Promise<ReviewReportResponse> {

@@ -1,89 +1,146 @@
-import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import styles from "./MyFeedEdit.module.css";
+import { useCallback, useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import type {
+  GetPostDetailResponse,
+  UpdatePostRequest,
+  UpdatePostResponse,
+} from '@codinator/contracts';
+import { clearAuthTokens, fetcher, getAuthHeaders } from '../../lib/api';
+import styles from './MyFeedEdit.module.css';
 
-type FeedItem = {
-  id: number;
-  postId?: number;
-  authorId?: number;
-  imageUrl: string;
-  nickname: string;
-  likes?: number;
-  dislikes?: number;
-  content?: string;
+type LocationState = {
+  post?: { postId?: number; id?: number };
 };
-
-type TagItem = {
-  id: number;
-  label: string;
-  selected: boolean;
-};
-
-type WearItem = {
-  id: number;
-  brand: string;
-  name: string;
-  imageUrl?: string;
-};
-
-const initialTags: TagItem[] = [
-  { id: 1, label: "스포티", selected: false },
-  { id: 2, label: "심플하다", selected: false },
-  { id: 3, label: "화려하다", selected: false },
-  { id: 4, label: "깔끔하다", selected: true },
-  { id: 5, label: "세련됐다", selected: false },
-  { id: 6, label: "힙하다", selected: true },
-  { id: 7, label: "개성있음", selected: false },
-  { id: 8, label: "트렌디함", selected: false },
-  { id: 9, label: "무난하다", selected: false },
-];
-
-const wearItems: WearItem[] = [
-  { id: 1, brand: "상품 브랜드", name: "상품 이름" },
-  { id: 2, brand: "상품 브랜드", name: "상품 이름" },
-  { id: 3, brand: "상품 브랜드", name: "상품 이름" },
-  { id: 4, brand: "상품 브랜드", name: "상품 이름" },
-];
 
 export default function MyFeedEdit() {
   const navigate = useNavigate();
   const location = useLocation();
-  const post: FeedItem | undefined = location.state?.post;
+  const state = location.state as LocationState | undefined;
 
-  const [tags, setTags] = useState<TagItem[]>(initialTags);
+  const resolvedPostId = state?.post?.postId ?? state?.post?.id ?? null;
 
-  const handleToggleTag = (id: number) => {
-    setTags((prev) =>
-      prev.map((tag) =>
-        tag.id === id ? { ...tag, selected: !tag.selected } : tag
-      )
-    );
-  };
+  const [postData, setPostData] = useState<GetPostDetailResponse | null>(null);
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleComplete = () => {
-    const resolvedPostId = post?.postId ?? post?.id;
+  const handleAuthError = useCallback(
+    (message: string) => {
+      if (
+        message.includes('Unauthorized') ||
+        message.includes('로그인이 필요합니다') ||
+        message.includes('유효하지 않거나 만료된 토큰')
+      ) {
+        clearAuthTokens();
+        navigate('/login');
+      }
+    },
+    [navigate],
+  );
 
+  useEffect(() => {
     if (!resolvedPostId) {
-      navigate(-1);
+      setError('게시글 정보가 없습니다.');
+      setLoading(false);
       return;
     }
 
-    navigate(`/myFeedDetail/${resolvedPostId}`, {
-      state: {
-        post,
-      },
-    });
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError('');
+
+        const data = await fetcher<GetPostDetailResponse>(
+          `/posts/me/${resolvedPostId}`,
+          { headers: getAuthHeaders() },
+        );
+
+        setPostData(data);
+        setContent(data.content ?? '');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '게시글을 불러오지 못했습니다.';
+        setError(message);
+        handleAuthError(message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void load();
+  }, [resolvedPostId, handleAuthError]);
+
+  const handleComplete = async () => {
+    if (!resolvedPostId || saving) return;
+
+    try {
+      setSaving(true);
+      setError('');
+
+      const body: UpdatePostRequest = { content };
+
+      await fetcher<UpdatePostResponse>(`/posts/${resolvedPostId}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(body),
+      });
+
+      navigate(`/myFeedDetail/${resolvedPostId}`, {
+        state: { post: state?.post },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '게시글 수정에 실패했습니다.';
+      setError(message);
+      handleAuthError(message);
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.scrollArea}>
+          <div style={{ padding: '40px 20px', textAlign: 'center', color: '#999' }}>
+            게시글 불러오는 중...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!postData) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.scrollArea}>
+          <div style={{ padding: '40px 20px', textAlign: 'center', color: '#999' }}>
+            {error || '게시글을 불러올 수 없습니다.'}
+          </div>
+          <div className={styles.bottomButtonWrap}>
+            <button type="button" className={styles.completeButton} onClick={() => navigate(-1)}>
+              돌아가기
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const primaryImage =
+    postData.images.find((img) => img.isPrimary)?.processedImageUrl ??
+    postData.images[0]?.processedImageUrl ??
+    postData.images[0]?.originalImageUrl ??
+    null;
 
   return (
     <div className={styles.container}>
       <div className={styles.scrollArea}>
         <section className={styles.imageSection}>
           <div className={styles.mainImage}>
-            {post?.imageUrl && (
+            {primaryImage && (
               <img
-                src={post.imageUrl}
-                alt={post.nickname}
+                src={primaryImage}
+                alt="게시글 이미지"
                 className={styles.mainImageTag}
               />
             )}
@@ -100,65 +157,68 @@ export default function MyFeedEdit() {
         </section>
 
         <section className={styles.infoSection}>
-          <h1 className={styles.title}>
-            {post?.nickname ?? "닉네임/ 코드 컨셉"}
-          </h1>
-          <p className={styles.description}>
-            코디설명자세히
-            <br />
-            최대두줄정도
+          <h1 className={styles.title}>게시글 수정</h1>
+          <textarea
+            className={styles.description}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            maxLength={500}
+            rows={3}
+            placeholder="코디 설명을 입력해주세요 (최대 500자)"
+            style={{ width: '100%', resize: 'none', boxSizing: 'border-box' }}
+          />
+          <p style={{ fontSize: '12px', color: '#999', textAlign: 'right' }}>
+            {content.length}/500
           </p>
         </section>
 
-        <section className={styles.tagSection}>
-          <div className={styles.tagList}>
-            {tags.map((tag) => (
-              <button
-                key={tag.id}
-                type="button"
-                onClick={() => handleToggleTag(tag.id)}
-                className={tag.selected ? styles.tagSelected : styles.tagButton}
-              >
-                {tag.label}
-              </button>
-            ))}
-          </div>
-        </section>
+        {postData.keywords.length > 0 && (
+          <section className={styles.tagSection}>
+            <div className={styles.tagList}>
+              {postData.keywords.map((keyword) => (
+                <span
+                  key={keyword.id}
+                  className={styles.tagSelected}
+                >
+                  {keyword.label}
+                </span>
+              ))}
+            </div>
+          </section>
+        )}
 
         <div className={styles.divider} />
 
-        <section className={styles.itemSection}>
-          <h2 className={styles.sectionTitle}>착용 아이템</h2>
+        {postData.outfitItems.length > 0 && (
+          <section className={styles.itemSection}>
+            <h2 className={styles.sectionTitle}>착용 아이템</h2>
 
-          <div className={styles.itemGrid}>
-            {wearItems.map((item) => (
-              <article key={item.id} className={styles.itemCard}>
-                <div className={styles.itemImage}>
-                  {item.imageUrl ? (
-                    <img
-                      src={item.imageUrl}
-                      alt={item.name}
-                      className={styles.itemImageTag}
-                    />
-                  ) : null}
-                </div>
+            <div className={styles.itemGrid}>
+              {postData.outfitItems.map((item) => (
+                <article key={item.id} className={styles.itemCard}>
+                  <div className={styles.itemImage} />
+                  <div className={styles.itemInfo}>
+                    <p className={styles.itemBrand}>{item.brand ?? item.category}</p>
+                    <p className={styles.itemName}>{item.itemName ?? '아이템명 없음'}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
-                <div className={styles.itemInfo}>
-                  <p className={styles.itemBrand}>{item.brand}</p>
-                  <p className={styles.itemName}>{item.name}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
+        {error ? (
+          <p style={{ color: '#FF3B30', fontSize: '13px', padding: '0 20px' }}>{error}</p>
+        ) : null}
 
         <div className={styles.bottomButtonWrap}>
           <button
             type="button"
             className={styles.completeButton}
             onClick={handleComplete}
+            disabled={saving}
           >
-            게시물 수정 완료
+            {saving ? '저장 중...' : '게시물 수정 완료'}
           </button>
         </div>
       </div>

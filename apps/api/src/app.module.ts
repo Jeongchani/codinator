@@ -10,6 +10,7 @@ import { KeywordsModule } from './modules/keywords/keywords.module';
 import { PostsModule } from './modules/posts/posts.module';
 import { RankingsModule } from './modules/rankings/rankings.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { SearchModule } from './modules/search/search.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { UsersModule } from './modules/users/users.module';
 import { VotesModule } from './modules/votes/votes.module';
@@ -27,6 +28,7 @@ import { PrismaModule } from './prisma/prisma.module';
     PostsModule,
     BookmarksModule,
     ReportsModule,
+    SearchModule,
     EvaluationsModule,
     UploadsModule,
     VotesModule,
