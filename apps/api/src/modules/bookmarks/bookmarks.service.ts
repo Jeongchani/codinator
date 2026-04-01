@@ -4,7 +4,7 @@ import type {
   GetMyBookmarksResponse,
   RemoveBookmarkResponse,
 } from '@codinator/contracts';
-import { PostStatus } from '@prisma/client';
+import { PostStatus, RankingStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { IMAGE_ORDER_BY } from '../posts/common/post-presenter.util';
 
@@ -90,6 +90,24 @@ export class BookmarksService {
               take: 1,
               select: { thumbnailUrl: true },
             },
+            // 평가 상태 포함
+            evaluation: {
+              select: {
+                status: true,
+                endsAt: true,
+              },
+            },
+            // 랭킹 정보: READY 상태의 랭킹 중 가장 높은 순위
+            rankingDetails: {
+              where: {
+                ranking: { status: RankingStatus.READY },
+              },
+              include: {
+                ranking: { select: { period: true } },
+              },
+              orderBy: { rank: 'asc' },
+              take: 1,
+            },
           },
         },
       },
@@ -99,14 +117,23 @@ export class BookmarksService {
     const pageItems = hasMore ? bookmarks.slice(0, limit) : bookmarks;
 
     return {
-      items: pageItems.map((b) => ({
-        bookmarkId: b.id,
-        postId: b.post.id,
-        thumbnailUrl: b.post.images[0]?.thumbnailUrl ?? null,
-        content: b.post.content,
-        postStatus: b.post.status,
-        bookmarkedAt: b.createdAt.toISOString(),
-      })),
+      items: pageItems.map((b) => {
+        const topRank = b.post.rankingDetails[0] ?? null;
+        return {
+          bookmarkId: b.id,
+          postId: b.post.id,
+          thumbnailUrl: b.post.images[0]?.thumbnailUrl ?? null,
+          content: b.post.content,
+          postStatus: b.post.status,
+          evaluationStatus: b.post.evaluation?.status ?? null,
+          evaluationEndsAt: b.post.evaluation?.endsAt.toISOString() ?? null,
+          isRankingPublished: b.post.rankingDetails.length > 0,
+          rankInfo: topRank
+            ? { rank: topRank.rank, period: topRank.ranking.period }
+            : null,
+          bookmarkedAt: b.createdAt.toISOString(),
+        };
+      }),
       nextCursor: hasMore ? (pageItems[pageItems.length - 1]?.id ?? null) : null,
       hasMore,
     };

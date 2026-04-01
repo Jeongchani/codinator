@@ -37,6 +37,8 @@ export class EvaluationsService {
         id: { gt: cursor },
         status: EvaluationStatus.OPEN,
         endsAt: { gt: new Date() },
+        // 이미 투표한 평가는 DB 쿼리 레벨에서 제외 (재노출 방지)
+        votes: { none: { voterId: params.userId } },
         post: {
           authorId: { not: params.userId },
           status: PostStatus.ACTIVE,

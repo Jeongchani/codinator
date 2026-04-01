@@ -65,9 +65,9 @@ export class AdminController {
     return this.adminService.reviewReport(adminId!, reportId, body);
   }
 
-  // ─── PATCH /admin/user-reports/:id ───────────────────────────────────────────
+  // ─── PATCH /admin/user-reports/:reportId ────────────────────────────────────
 
-  @Patch('user-reports/:id')
+  @Patch('user-reports/:reportId')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: '유저 신고 처리 (ADMIN)' })

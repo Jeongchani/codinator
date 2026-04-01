@@ -6,7 +6,7 @@ import {
   RefreshTokenRequest,
   RefreshTokenResponse,
 } from '@codinator/contracts';
-import { Gender } from '@prisma/client';
+import { Gender, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { createHash } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -153,6 +153,10 @@ export class AuthService {
 
     if (!user) {
       throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.');
+    }
+
+    if (user.status === UserStatus.DELETED || user.status === UserStatus.SUSPENDED) {
+      throw new UnauthorizedException('사용할 수 없는 계정입니다. 고객센터에 문의해 주세요.');
     }
 
     const isValid = await bcrypt.compare(dto.password, user.passwordHash);

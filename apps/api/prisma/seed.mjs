@@ -3,6 +3,7 @@ import {
   EvaluationStatus,
   GarmentCategory,
   Gender,
+  UserRole,
   VoteChoice,
   RankingPeriod,
   RankingStatus,
@@ -14,6 +15,16 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 const userSeeds = [
+  {
+    key: 'admin',
+    email: 'admin@codinator.com',
+    nickname: '관리자',
+    password: '1234',
+    gender: Gender.MALE,
+    birthDate: new Date('1990-01-01'),
+    phoneNumber: '01000000000',
+    role: UserRole.ADMIN,
+  },
   {
     key: 'alice',
     email: 'alice@codinator.com',
@@ -150,6 +161,7 @@ async function upsertUsers() {
         gender: seed.gender,
         birthDate: seed.birthDate,
         phoneNumber: seed.phoneNumber,
+        role: seed.role ?? UserRole.USER,
       },
       create: {
         email: seed.email,
@@ -158,6 +170,7 @@ async function upsertUsers() {
         gender: seed.gender,
         birthDate: seed.birthDate,
         phoneNumber: seed.phoneNumber,
+        role: seed.role ?? UserRole.USER,
       },
     });
 

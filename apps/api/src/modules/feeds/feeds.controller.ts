@@ -87,7 +87,11 @@ export class FeedsController {
 
   @Get('me/feed/:postId')
   @ApiBearerAuth()
-  @ApiOperation({ summary: '내 피드 게시글 상세 조회' })
+  @ApiOperation({
+    summary: '내 피드 게시글 상세 조회 (소유자)',
+    description:
+      'V2 정책: 본인 게시글은 OPEN / ENDED / CLOSED 상태 모두 조회 가능하며 랭킹 조건 없음. HIDDEN 게시글도 포함.',
+  })
   async getMyFeedPostDetail(
     @Param('postId', ParseIntPipe) postId: number,
     @Headers('authorization') authorization?: string,
@@ -96,7 +100,8 @@ export class FeedsController {
       required: true,
     });
 
-    return this.feedsService.getFeedPostDetail(userId!, postId, userId!);
+    // 소유자 전용 경로: 평가 상태 / 랭킹 조건 없음
+    return this.feedsService.getMyOwnFeedPostDetail(userId!, postId);
   }
 
   // ─── 타 사용자 피드 (기존 유지) ───────────────────────────────────────────────
