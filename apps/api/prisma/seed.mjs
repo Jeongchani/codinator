@@ -3,6 +3,7 @@ import {
   EvaluationStatus,
   GarmentCategory,
   Gender,
+  UserRole,
   VoteChoice,
   RankingPeriod,
   RankingStatus,
@@ -14,6 +15,16 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 const userSeeds = [
+  {
+    key: 'admin',
+    email: 'admin@codinator.com',
+    nickname: '관리자',
+    password: '1234',
+    gender: Gender.MALE,
+    birthDate: new Date('1990-01-01'),
+    phoneNumber: '01000000000',
+    role: UserRole.ADMIN,
+  },
   {
     key: 'alice',
     email: 'alice@codinator.com',
@@ -104,6 +115,9 @@ const feedbackTagSeeds = [
 ];
 
 const SEED_IMAGE_BASE_URL = '/uploads/seeds/posts';
+const AVAILABLE_OPEN_IMAGE_NAMES = ['open-post-1.jpg', 'open-post-2.jpg'];
+const AVAILABLE_RANKED_IMAGE_NAMES = ['ranked-post-1.jpg', 'ranked-post-2.jpg'];
+
 const ALL_USER_KEYS = ['alice', 'bob', 'charlie', 'diana'];
 
 const OPEN_POST_SEEDS = [
@@ -527,7 +541,7 @@ const PROFILE_CONFIG = {
   perfect: {
     choices: [VoteChoice.LIKE, VoteChoice.LIKE, VoteChoice.LIKE],
     tagCodes: ['POS_FIT_GOOD', 'POS_POINT_GOOD', 'POS_POINT_GOOD'],
-    score: 1.0,
+    score: 3,
     likeCount: 3,
     dislikeCount: 0,
     totalCount: 3,
@@ -536,7 +550,7 @@ const PROFILE_CONFIG = {
   good: {
     choices: [VoteChoice.LIKE, VoteChoice.LIKE, VoteChoice.DISLIKE],
     tagCodes: ['POS_FIT_GOOD', 'POS_POINT_GOOD', 'NEG_COLOR_BAD'],
-    score: 0.6667,
+    score: 2,
     likeCount: 2,
     dislikeCount: 1,
     totalCount: 3,
@@ -545,7 +559,7 @@ const PROFILE_CONFIG = {
   weak: {
     choices: [VoteChoice.LIKE, VoteChoice.DISLIKE, VoteChoice.DISLIKE],
     tagCodes: ['POS_POINT_GOOD', 'NEG_SIZE_BAD', 'NEG_MATCHING_BAD'],
-    score: 0.3333,
+    score: 1,
     likeCount: 1,
     dislikeCount: 2,
     totalCount: 3,
@@ -593,14 +607,31 @@ function minDate(left, right) {
   return left.getTime() <= right.getTime() ? left : right;
 }
 
+function resolveSeedImageName(filename) {
+  const openMatch = filename.match(/^open-post-(\d+)\.jpg$/);
+  if (openMatch) {
+    const index = (Number(openMatch[1]) - 1) % AVAILABLE_OPEN_IMAGE_NAMES.length;
+    return AVAILABLE_OPEN_IMAGE_NAMES[index];
+  }
+
+  const rankedMatch = filename.match(/^ranked-post-(\d+)\.jpg$/);
+  if (rankedMatch) {
+    const index = (Number(rankedMatch[1]) - 1) % AVAILABLE_RANKED_IMAGE_NAMES.length;
+    return AVAILABLE_RANKED_IMAGE_NAMES[index];
+  }
+
+  return filename;
+}
+
 function buildImageCreate(filename) {
-  const url = `${SEED_IMAGE_BASE_URL}/${filename}`;
+  const resolvedFilename = resolveSeedImageName(filename);
+  const url = `${SEED_IMAGE_BASE_URL}/${resolvedFilename}`;
 
   return {
     originalImageUrl: url,
     processedImageUrl: url,
     thumbnailUrl: null,
-    storageKey: `seeds/posts/${filename}`,
+    storageKey: `seeds/posts/${resolvedFilename}`,
     blurMethod: BlurMethod.NONE,
     aiBlurStatus: AiBlurStatus.DONE,
     sortOrder: 0,
@@ -647,6 +678,7 @@ async function upsertUsers() {
         gender: seed.gender,
         birthDate: seed.birthDate,
         phoneNumber: seed.phoneNumber,
+        role: seed.role ?? UserRole.USER,
       },
       create: {
         email: seed.email,
@@ -655,6 +687,7 @@ async function upsertUsers() {
         gender: seed.gender,
         birthDate: seed.birthDate,
         phoneNumber: seed.phoneNumber,
+        role: seed.role ?? UserRole.USER,
       },
     });
 
