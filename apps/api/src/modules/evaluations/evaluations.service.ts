@@ -54,6 +54,14 @@ export class EvaluationsService {
               orderBy: IMAGE_ORDER_BY,
               take: 1,
             },
+            postKeywords: {
+              orderBy: POST_KEYWORD_ORDER_BY,
+              include: {
+                keyword: {
+                  select: { id: true, code: true, label: true },
+                },
+              },
+            },
           },
         },
         votes: {
@@ -71,6 +79,12 @@ export class EvaluationsService {
         evaluationId: evaluation.id,
         postId: evaluation.postId,
         thumbnailUrl: pickPostThumbnail(evaluation.post.images),
+        content: evaluation.post.content,
+        keywords: evaluation.post.postKeywords.map((pk) => ({
+          id: pk.keyword.id,
+          code: pk.keyword.code,
+          label: pk.keyword.label,
+        })),
         endsAt: evaluation.endsAt.toISOString(),
         hasVoted: evaluation.votes.length > 0,
       })),
