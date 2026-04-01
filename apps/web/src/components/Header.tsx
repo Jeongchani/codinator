@@ -1,17 +1,31 @@
-import React from 'react';
+import { Menu } from "lucide-react";
+import styles from "./Header.module.css";
 
 type HeaderProps = {
   title?: string;
-  rightSlot?: React.ReactNode;
+  onMenuClick?: () => void;
 };
 
-const Header: React.FC<HeaderProps> = ({ title = 'C:dinator', rightSlot }) => {
+export default function Header({
+  title = "C:Dinator",
+  onMenuClick,
+}: HeaderProps) {
   return (
-    <header className="flex items-center justify-between px-5 py-4">
-      <h1 className="text-lg font-semibold text-neutral-900">{title}</h1>
-      <div>{rightSlot}</div>
+    <header className={styles.header}>
+      <div className={styles.inner}>
+        <div className={styles.leftSpace} />
+
+        <h1 className={styles.title}>{title}</h1>
+
+        <button
+          type="button"
+          className={styles.menuButton}
+          onClick={onMenuClick}
+          aria-label="메뉴 열기"
+        >
+          <Menu size={25} strokeWidth={2.2} />
+        </button>
+      </div>
     </header>
   );
-};
-
-export default Header;
+}
