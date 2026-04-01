@@ -21,6 +21,7 @@ const RankingDetail: React.FC = () => {
   const [postData, setPostData] = useState<GetRankingPostDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [bookmarkLoading, setBookmarkLoading] = useState(false);
   const [sheetPosition, setSheetPosition] = useState<SheetPosition>('collapsed');
 
   const EXPANDED_Y = 350;
@@ -32,13 +33,8 @@ const RankingDetail: React.FC = () => {
   useEffect(() => {
     if (!postId) return;
 
-    const saved = localStorage.getItem('codinator_bookmarks');
-    if (saved) {
-      const parsed = JSON.parse(saved) as Record<string, boolean>;
-      setIsBookmarked(!!parsed[String(postId)]);
-    } else {
-      setIsBookmarked(false);
-    }
+    // 북마크 상태는 게시글 상세 로드 후 postData.isBookmarked 로 반영됨
+    // (별도 API 조회 불필요)
   }, [postId]);
 
   useEffect(() => {
@@ -140,17 +136,32 @@ const RankingDetail: React.FC = () => {
     snapTo(sheetPosition);
   };
 
-  const handleToggleBookmark = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleToggleBookmark = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
+    if (!postId || bookmarkLoading) return;
 
     const next = !isBookmarked;
     setIsBookmarked(next);
+    setBookmarkLoading(true);
 
-    if (postId) {
-      const saved = localStorage.getItem('codinator_bookmarks');
-      const parsed = saved ? (JSON.parse(saved) as Record<string, boolean>) : {};
-      parsed[String(postId)] = next;
-      localStorage.setItem('codinator_bookmarks', JSON.stringify(parsed));
+    try {
+      if (next) {
+        await fetcher<{ bookmarkId: number }>(`/posts/${postId}/bookmarks`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+        });
+      } else {
+        await fetcher<void>(`/posts/${postId}/bookmarks`, {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        });
+      }
+    } catch (err) {
+      // 실패 시 롤백
+      setIsBookmarked(!next);
+      console.error('북마크 처리 실패:', err);
+    } finally {
+      setBookmarkLoading(false);
     }
   };
 
