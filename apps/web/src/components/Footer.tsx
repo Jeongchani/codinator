@@ -10,18 +10,22 @@ type FooterItem = {
 };
 
 const footerItems: FooterItem[] = [
-  { key: "ranking", label: "랭킹존", path: "/rankingzone", icon: Crown },
-  { key: "bookmark", label: "북마크", path: "/bookmark", icon: Bookmark },
+  { key: "ranking", label: "랭킹존", path: "/rankingZone", icon: Crown },
+  { key: "bookmark", label: "북마크", path: "/bookMark", icon: Bookmark },
   { key: "write", label: "글 작성", path: "/postUpload", icon: SquarePen },
-  { key: "evaluation", label: "평가존", path: "/evaluationzone", icon: Vote },
+  { key: "evaluation", label: "평가존", path: "/evaluationZone", icon: Vote },
 ];
 
 export default function Footer() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const normalizePath = (path: string) => {
+    return path.replace(/\/+$/, "") || "/";
+  };
+
   const getIsActive = (path: string) => {
-    return location.pathname === path;
+    return normalizePath(location.pathname) === normalizePath(path);
   };
 
   return (
