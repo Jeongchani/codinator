@@ -186,6 +186,74 @@ export class FeedsService {
     };
   }
 
+  // ─── 내 피드 게시글 상세 (소유자 전용) ──────────────────────────────────────────
+  /**
+   * GET /users/me/feed/:postId  — 소유자 전용
+   * V2 정책: OPEN / ENDED / CLOSED 상태 모두 조회 가능, 랭킹 조건 없음.
+   * HIDDEN 게시글(작성자 직접 숨김)도 포함.
+   */
+  async getMyOwnFeedPostDetail(
+    userId: number,
+    postId: number,
+  ): Promise<GetFeedPostDetailResponse> {
+    await syncExpiredEvaluations(this.prisma);
+    await syncCurrentRankings(this.prisma);
+
+    const post = await this.prisma.post.findFirst({
+      where: {
+        id: postId,
+        authorId: userId,
+        status: { not: PostStatus.DELETED },
+        deletedAt: null,
+        // 평가 상태 / 랭킹 조건 없음 — OPEN / ENDED / CLOSED 모두 허용
+      },
+      include: {
+        author: {
+          select: { id: true, nickname: true },
+        },
+        images: { orderBy: IMAGE_ORDER_BY },
+        outfitItems: { orderBy: OUTFIT_ORDER_BY },
+        postKeywords: {
+          orderBy: POST_KEYWORD_ORDER_BY,
+          include: { keyword: true },
+        },
+        evaluation: {
+          include: {
+            votes: {
+              include: {
+                feedbacks: { include: { tag: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!post || !post.evaluation) {
+      throw new NotFoundException('게시글을 찾을 수 없습니다.');
+    }
+
+    return {
+      postId: post.id,
+      author: { userId: post.author.id, nickname: post.author.nickname },
+      content: post.content,
+      status: post.status,
+      createdAt: post.createdAt.toISOString(),
+      images: mapPostImages(post.images),
+      keywords: mapPostKeywords(post.postKeywords),
+      outfitItems: mapOutfitItems(post.outfitItems),
+      evaluation: {
+        id: post.evaluation.id,
+        status: post.evaluation.status,
+        endsAt: post.evaluation.endsAt.toISOString(),
+      },
+      ...buildMyVoteContext(post.evaluation.votes, userId),
+      voteSummary: buildVoteSummary(post.evaluation.votes),
+      feedbackSummary: buildFeedbackSummary(post.evaluation.votes),
+      rankingPeriods: await this.rankingsService.getVisibleRankingPeriods(post.id),
+    };
+  }
+
   async getFeedPostDetail(
     targetUserId: number,
     postId: number,

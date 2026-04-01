@@ -5,7 +5,7 @@ import type {
   SearchType,
   UserSearchItem,
 } from '@codinator/contracts';
-import { EvaluationStatus, PostStatus, UserStatus } from '@prisma/client';
+import { EvaluationStatus, PostStatus, RankingStatus, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   IMAGE_ORDER_BY,
@@ -13,22 +13,13 @@ import {
 } from '../posts/common/post-presenter.util';
 
 /**
- * 공개 가능 게시글 Where 조건
+ * 공개 가능 게시글 Where 조건 (V2 확정)
  *
  * 검색 결과에 포함되려면:
- *   1. Post.status = ACTIVE   (HIDDEN / DELETED 제외)
+ *   1. Post.status = ACTIVE       (HIDDEN / DELETED 제외 — 작성자 숨김/관리자 숨김 게시글 제외)
  *   2. Post.deletedAt IS NULL
- *   3. evaluation.status ≠ OPEN
- *      → 평가 중인 게시글은 작성자 익명성 보호를 위해 검색에서 제외
- *      → CLOSED / ENDED 상태는 포함
- *   evaluation이 없는 게시글은 "미발행" 상태로 간주하여 제외
- *
- * ⚠️ 정책 확인 필요:
- *   contracts 주석에는 publishedAt IS NOT NULL, RankingDetail READY 조건 언급 있음.
- *   현재는 보수적으로 최소 조건만 적용(ACTIVE + deletedAt null + not OPEN).
- *   정책 확정 시 아래 조건 추가 필요:
- *     publishedAt: { not: null }
- *     rankingDetails: { some: { ranking: { status: RankingStatus.READY } } }
+ *   3. evaluation.status = ENDED  (OPEN 평가중 제외 — 익명성 보호, CLOSED 제외 — 숨긴 게시글)
+ *   4. rankingDetails 에 READY 상태 랭킹이 1건 이상 존재 (랭킹 미등재 게시글 제외)
  */
 function publicPostWhere() {
   return {
@@ -36,7 +27,12 @@ function publicPostWhere() {
     deletedAt: null,
     evaluation: {
       is: {
-        status: { not: EvaluationStatus.OPEN },
+        status: EvaluationStatus.ENDED,
+      },
+    },
+    rankingDetails: {
+      some: {
+        ranking: { status: RankingStatus.READY },
       },
     },
   } as const;

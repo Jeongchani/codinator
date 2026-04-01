@@ -10,6 +10,7 @@ import type {
   CreatePostResponse,
   DeletePostResponse,
   GetPostDetailResponse,
+  HidePostResponse,
   UpdatePostRequest,
   UpdatePostResponse,
 } from '@codinator/contracts';
@@ -257,6 +258,53 @@ export class PostsService {
     return { success: true };
   }
 
+  // ─── 게시글 숨기기 (작성자) ──────────────────────────────────────────────────────
+  /**
+   * PATCH /posts/:postId/hide
+   * V2 정책: 작성자가 직접 게시글을 숨긴다.
+   *   - post.status → HIDDEN (공개 피드/검색에서 제외)
+   *   - evaluation.status → CLOSED (평가존 재노출 방지)
+   * 이미 숨겨진 게시글은 400 반환.
+   */
+  async hidePost(userId: number, postId: number): Promise<HidePostResponse> {
+    return this.prisma.$transaction(async (tx) => {
+      const post = await tx.post.findUnique({
+        where: { id: postId },
+        include: {
+          evaluation: { select: { id: true, status: true } },
+        },
+      });
+
+      if (!post || post.status === PostStatus.DELETED || post.deletedAt) {
+        throw new NotFoundException('게시글을 찾을 수 없습니다.');
+      }
+
+      if (post.authorId !== userId) {
+        throw new ForbiddenException('본인 게시글만 숨길 수 있습니다.');
+      }
+
+      if (post.status === PostStatus.HIDDEN) {
+        throw new BadRequestException('이미 숨긴 게시글입니다.');
+      }
+
+      // post 상태를 HIDDEN 으로 변경
+      await tx.post.update({
+        where: { id: postId },
+        data: { status: PostStatus.HIDDEN, hiddenAt: new Date() },
+      });
+
+      // evaluation 상태를 CLOSED 로 변경 (아직 CLOSED 가 아닌 경우)
+      if (post.evaluation && post.evaluation.status !== EvaluationStatus.CLOSED) {
+        await tx.evaluation.update({
+          where: { id: post.evaluation.id },
+          data: { status: EvaluationStatus.CLOSED },
+        });
+      }
+
+      return { postId, hidden: true };
+    });
+  }
+
   async getMyPostDetail(
     postId: number,
     userId: number,
@@ -267,7 +315,8 @@ export class PostsService {
       where: {
         id: postId,
         authorId: userId,
-        status: PostStatus.ACTIVE,
+        // 소유자는 HIDDEN 게시글도 조회 가능 (DELETED만 제외)
+        status: { not: PostStatus.DELETED },
         deletedAt: null,
       },
       include: {
