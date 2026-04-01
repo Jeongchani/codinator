@@ -58,7 +58,7 @@ export class CreatePostOutfitItemDto {
 
 export class CreatePostDto {
   @ApiPropertyOptional({ example: '봄 코디 평가 부탁드립니다.', description: '게시글 본문' })
-  content?: string | null;
+  content: string;
 
   @ApiProperty({ type: CreatePostImageDto, description: 'V2 이미지 구조 1장' })
   image: CreatePostImageDto;
