@@ -259,7 +259,7 @@ export default function RankingZone() {
   return (
     <div className={styles.container}>
       {/* 추가된 부분: 기존 topBarArea 제거하고 실제 Header 연결 */}
-      <Header onMenuClick={handleMenuClick} />
+      <Header />
 
       <div className={styles.contentArea}>
         <div className={styles.searchBox}>

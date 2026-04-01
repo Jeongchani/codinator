@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Crown, Bookmark, SquarePen, Vote } from "lucide-react";
+import { Trophy, Bookmark, SquarePen, ClipboardCheck } from "lucide-react";
 import styles from "./Footer.module.css";
 
 type FooterItem = {
@@ -10,10 +10,10 @@ type FooterItem = {
 };
 
 const footerItems: FooterItem[] = [
-  { key: "ranking", label: "랭킹존", path: "/rankingZone", icon: Crown },
+  { key: "ranking", label: "랭킹존", path: "/rankingZone", icon: Trophy },
   { key: "bookmark", label: "북마크", path: "/bookMark", icon: Bookmark },
   { key: "write", label: "글 작성", path: "/postUpload", icon: SquarePen },
-  { key: "evaluation", label: "평가존", path: "/evaluationZone", icon: Vote },
+  { key: "evaluation", label: "평가존", path: "/evaluationZone", icon: ClipboardCheck },
 ];
 
 export default function Footer() {
