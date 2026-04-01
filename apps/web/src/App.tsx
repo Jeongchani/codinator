@@ -5,14 +5,15 @@ import Upload from "./pages/post/Upload";
 import RankingDetail from "./pages/ranking/RankingDetail";
 import RankingZone from "./pages/ranking/RankingZone";
 import Splash from "./pages/splash/Splash";
-import EvaluationZone from "./pages/Evaluation/EvaluationZone";
 import UserFeedDetail from "./pages/feeds/UserFeedDetail";
 import MyFeeds from "./pages/feeds/MyFeeds";
 import MyFeedEdit from "./pages/feeds/MyFeedEdit";
 import UserFeeds from "./pages/feeds/UserFeeds";
 import MyFeedDetail from "./pages/feeds/MyFeedDetail";
-import EvaluationDetailFeedback from "./pages/Evaluation/EvaluationDetail_Feedback";
 import AuthEntry from "./pages/auth/AuthEntry";
+import FooterTestPage from "./FooterTestPage";
+import EvaluationZone from "./pages/evaluation/EvaluationZone";
+import EvaluationDetailFeedback from "./pages/evaluation/EvaluationDetail_Feedback";
 
 function AppRoutes() {
   const navigate = useNavigate();
@@ -37,6 +38,7 @@ function AppRoutes() {
       <Route path="/myFeeds" element={<MyFeeds />} />
       <Route path="/myFeedDetail/:postId" element={<MyFeedDetail />} />
       <Route path="/myFeedEdit" element={<MyFeedEdit />} />
+      <Route path="/footer-test" element={<FooterTestPage />} />
     </Routes>
   );
 }

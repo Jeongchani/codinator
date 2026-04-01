@@ -1,12 +1,5 @@
 .container {
-  /* 수정: Header + contentArea 세로 배치를 위해 flex flex-col 추가 */
   @apply w-[375px] h-[812px] bg-white mx-auto overflow-hidden relative flex flex-col;
-}
-
-/* 수정: 기존 topBarArea는 Header 컴포넌트를 직접 쓰면 필요 없음 */
-/* 필요 없으면 삭제해도 됨 */
-.topBarArea {
-  @apply w-[375px] h-[93px] shrink-0;
 }
 
 .contentArea {
@@ -62,10 +55,9 @@
   background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(0, 0, 0, 0.08) 100%);
 }
 
-/* 수정: 북마크가 이미지 위에서도 잘 보이도록 배경을 네모 박스 느낌으로 변경 */
 .bookmarkButton {
   @apply absolute top-[8px] right-[8px] z-10 flex items-center justify-center
-    w-5 h-5 rounded-full bg-black/45 border border-white/15;
+    w-7 h-7 rounded-[8px] bg-black/45 border border-white/15;
 }
 
 .bookmarkDefault {
@@ -99,19 +91,10 @@
   @apply text-[10px] leading-[10px] text-black font-medium;
 }
 
-.cardWrap {
-  @apply w-[126px] shrink-0 flex flex-col cursor-pointer;
-}
-
-.cardImage {
-  @apply w-full h-full object-cover block;
-}
-
 .cardImageFallback {
   @apply w-full h-full flex items-center justify-center text-[12px] text-neutral-400 bg-[#f3f3f3];
 }
 
-/* 추가: Header 클릭 후 나중에 SideMenu.tsx 연결할 임시 오버레이 */
 .sideMenuOverlay {
   @apply absolute inset-0 z-[60] bg-black/30 flex justify-end;
 }
@@ -126,9 +109,6 @@
 
 .sideMenuCloseButton {
   @apply mt-auto h-11 rounded-xl bg-black text-white text-sm font-medium;
-}
-.messageBox {
-  @apply w-full min-h-[200px] flex items-center justify-center text-sm text-neutral-500;
 }
 
 .footerWrap {

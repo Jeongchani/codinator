@@ -1,0 +1,79 @@
+.footer {
+  @apply w-[320px] h-[40px] px-5 py-[4px] rounded-[999px]
+    flex items-center justify-center relative;
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.inner {
+  @apply w-full h-full flex items-center justify-between;
+}
+
+.menuButton {
+  @apply relative w-[50px] h-full flex flex-col items-center justify-center
+    bg-transparent border-0 p-0 cursor-pointer overflow-hidden;
+  transition:
+    transform 0.16s ease,
+    color 0.2s ease;
+}
+
+.menuButton:active {
+  transform: scale(0.94);
+}
+
+.activeBg {
+  @apply absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2
+    rounded-full opacity-0;
+  width: 44px;
+  height: 32px;
+  background: rgba(230, 230, 230, 0.78);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.05);
+  transform: translate(-50%, -50%) scale(0.82);
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease,
+    background 0.22s ease;
+  z-index: 0;
+}
+
+.menuButtonActive .activeBg {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.icon {
+  @apply text-neutral-700 shrink-0 relative z-[1];
+  width: 16px;
+  height: 16px;
+  transition:
+    transform 0.2s ease,
+    color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.iconActive {
+  @apply text-black;
+  transform: translateY(-1px);
+}
+
+.label {
+  @apply mt-[1px] text-[9px] leading-[10px] font-medium text-black text-center break-keep relative z-[1];
+  opacity: 0.8;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease,
+    color 0.2s ease;
+}
+
+.labelActive {
+  @apply text-black;
+  opacity: 1;
+  transform: translateY(-1px);
+}
