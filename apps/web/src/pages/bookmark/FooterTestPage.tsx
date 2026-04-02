@@ -1,6 +1,6 @@
 import { Search, Bookmark, ThumbsUp, ThumbsDown } from "lucide-react";
-import Header from "../../web/src/components/Header";
-import Footer from "../../web/src/components/Footer";
+import Header from "../../components/Header";
+import Footer from "../../components/Footer";
 import styles from "./FooterTestPage.module.css";
 import { useState } from "react";
 
