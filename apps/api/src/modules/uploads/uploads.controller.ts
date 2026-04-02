@@ -88,10 +88,19 @@ export class UploadsController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: '수동 블러 이미지 적용',
-    description:
-      'AI 자동 블러가 실패(aiBlurStatus=FAILED)한 게시글 이미지에 대해 ' +
-      '사용자가 직접 블러 처리한 이미지를 업로드하여 processedImageUrl을 교체합니다. ' +
-      'blurMethod가 MANUAL로 변경됩니다.',
+    description: [
+      '작성자가 직접 블러 처리한 이미지를 업로드하여 processedImageUrl을 교체합니다.',
+      '',
+      '**허용 조건 (아래 셋 중 하나):**',
+      '- ① `aiBlurStatus=FAILED` + `blurMethod=NONE` — AI 블러 실패, 미처리 상태',
+      '- ② `aiBlurStatus=DONE` + `blurMethod=AUTO` — AI 성공이지만 결과 부정확 → 작성자 override',
+      '- ③ `blurMethod=MANUAL` — 이미 수동 처리됨 → 재처리(덮어쓰기)',
+      '',
+      '**처리 결과:**',
+      '- `processedImageUrl` → 새 수동 블러 이미지 URL로 갱신',
+      '- `blurMethod` → `MANUAL`로 변경',
+      '- `aiBlurStatus` → **변경하지 않음** (AI 처리 기록 보존)',
+    ].join('\n'),
   })
   @ApiParam({ name: 'postId', type: Number, example: 12, description: '게시글 ID' })
   @ApiConsumes('multipart/form-data')
@@ -123,7 +132,9 @@ export class UploadsController {
   @ApiForbiddenResponse({ description: '본인 게시글에만 적용 가능' })
   @ApiNotFoundResponse({ description: '게시글 또는 이미지를 찾을 수 없음' })
   @ApiUnprocessableEntityResponse({
-    description: 'AI 블러가 실패하지 않은 이미지 (aiBlurStatus ≠ FAILED)',
+    description:
+      '수동 블러 적용 불가 상태 — 허용: FAILED+NONE / DONE+AUTO / MANUAL 재처리. ' +
+      '예: PENDING, PROCESSING, DONE+NONE 등은 거부됨',
   })
   @UseInterceptors(FileInterceptor('file'))
   async applyManualBlur(

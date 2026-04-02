@@ -8,10 +8,13 @@ import {
 import type {
   ChangePostStatusRequest,
   ChangePostStatusResponse,
+  ListPostReportsResponse,
+  ListUserReportsResponse,
   ReviewReportRequest,
   ReviewReportResponse,
 } from '@codinator/contracts';
 import { PostStatus, ReportStatus, UserRole } from '@prisma/client';
+import type { ListReportsQueryDto } from './dto/list-reports-query.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -181,6 +184,142 @@ export class AdminService {
       hiddenAt: updated.hiddenAt ? updated.hiddenAt.toISOString() : null,
       hiddenReason: updated.hiddenReason ?? null,
       updatedAt: updated.updatedAt.toISOString(),
+    };
+  }
+
+  // ─── 게시글 신고 목록 조회 (GET /admin/post-reports) ─────────────────────────
+
+  async getPostReports(
+    adminId: number,
+    query: ListReportsQueryDto,
+  ): Promise<ListPostReportsResponse> {
+    await this.assertAdmin(adminId);
+
+    const limit = Math.min(query.limit ?? 20, 100);
+    const cursor = query.cursor;
+    const statusFilter = query.status as ReportStatus | undefined;
+
+    const where = {
+      ...(statusFilter ? { status: statusFilter } : {}),
+      ...(cursor ? { id: { lt: cursor } } : {}),
+    };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.report.findMany({
+        where,
+        orderBy: { id: 'desc' },
+        take: limit + 1,
+        select: {
+          id: true,
+          postId: true,
+          title: true,
+          reason: true,
+          description: true,
+          status: true,
+          reviewedAt: true,
+          createdAt: true,
+          reporter: { select: { id: true, nickname: true } },
+          post: {
+            select: {
+              images: {
+                where: { isPrimary: true },
+                select: { thumbnailUrl: true },
+                take: 1,
+              },
+            },
+          },
+          reviewedBy: { select: { nickname: true } },
+        },
+      }),
+      this.prisma.report.count({
+        where: statusFilter ? { status: statusFilter } : {},
+      }),
+    ]);
+
+    const hasNext = items.length > limit;
+    if (hasNext) items.pop();
+
+    return {
+      items: items.map((r) => ({
+        reportId: r.id,
+        postId: r.postId,
+        postThumbnailUrl: r.post.images[0]?.thumbnailUrl ?? null,
+        reporterId: r.reporter.id,
+        reporterNickname: r.reporter.nickname,
+        title: r.title,
+        reason: r.reason as 'SPAM' | 'ABUSE' | 'INAPPROPRIATE' | 'ETC',
+        description: r.description ?? null,
+        status: r.status as 'PENDING' | 'RESOLVED' | 'REJECTED',
+        reviewedAt: r.reviewedAt ? r.reviewedAt.toISOString() : null,
+        reviewedByNickname: r.reviewedBy?.nickname ?? null,
+        createdAt: r.createdAt.toISOString(),
+      })),
+      nextCursor: hasNext ? items[items.length - 1].id : null,
+      total,
+    };
+  }
+
+  // ─── 사용자 신고 목록 조회 (GET /admin/user-reports) ─────────────────────────
+
+  async getUserReports(
+    adminId: number,
+    query: ListReportsQueryDto,
+  ): Promise<ListUserReportsResponse> {
+    await this.assertAdmin(adminId);
+
+    const limit = Math.min(query.limit ?? 20, 100);
+    const cursor = query.cursor;
+    const statusFilter = query.status as ReportStatus | undefined;
+
+    const where = {
+      ...(statusFilter ? { status: statusFilter } : {}),
+      ...(cursor ? { id: { lt: cursor } } : {}),
+    };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.userReport.findMany({
+        where,
+        orderBy: { id: 'desc' },
+        take: limit + 1,
+        select: {
+          id: true,
+          reportedUserId: true,
+          title: true,
+          reason: true,
+          description: true,
+          status: true,
+          reviewedAt: true,
+          createdAt: true,
+          reporter: { select: { id: true, nickname: true } },
+          reportedUser: { select: { nickname: true } },
+          reviewedBy: { select: { nickname: true } },
+        },
+      }),
+      this.prisma.userReport.count({
+        where: statusFilter ? { status: statusFilter } : {},
+      }),
+    ]);
+
+    const hasNext = items.length > limit;
+    if (hasNext) items.pop();
+
+    return {
+      items: items.map((r) => ({
+        reportId: r.id,
+        reportedUserId: r.reportedUserId,
+        reportedUserNickname: r.reportedUser.nickname,
+        reporterId: r.reporter.id,
+        reporterNickname: r.reporter.nickname,
+        title: r.title,
+        reason: r.reason as 'SPAM' | 'ABUSE' | 'INAPPROPRIATE' | 'ETC',
+        description: r.description ?? null,
+        status: r.status as 'PENDING' | 'RESOLVED' | 'REJECTED',
+        reviewedAt: r.reviewedAt ? r.reviewedAt.toISOString() : null,
+        reviewedByNickname: r.reviewedBy?.nickname ?? null,
+        createdAt: r.createdAt.toISOString(),
+      })),
+      nextCursor: hasNext ? items[items.length - 1].id : null,
+      total,
     };
   }
 
