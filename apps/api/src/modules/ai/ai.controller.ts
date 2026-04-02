@@ -17,6 +17,9 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { AiService } from './ai.service';
+import { AnalyzeImageResponseDto } from './dto/analyze-image-response.dto';
+
+const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
 
 @ApiTags('ai')
 @Controller('ai')
@@ -48,8 +51,6 @@ export class AiController {
         fileSize: 10 * 1024 * 1024,
       },
       fileFilter: (req, file, cb) => {
-        const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
-
         if (!allowedMimeTypes.includes(file.mimetype)) {
           return cb(
             new BadRequestException('jpg, jpeg, png, webp 파일만 업로드 가능합니다.'),
@@ -78,5 +79,54 @@ export class AiController {
     response.setHeader('X-AI-Height', String(result.height));
 
     return result.buffer;
+  }
+
+  @Post('analyze-image')
+  @ApiOperation({
+    summary: 'AI 이미지 분석 프록시',
+    description:
+      '현재는 DB/API 연동 준비를 위한 scaffold 응답을 반환합니다. 이후 parser / embedding / caption 실제 모델로 교체할 수 있습니다.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        image: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+      required: ['image'],
+    },
+  })
+  @ApiOkResponse({
+    description: 'AI 이미지 분석 결과 JSON',
+    type: AnalyzeImageResponseDto,
+  })
+  @UseInterceptors(
+    FileInterceptor('image', {
+      storage: memoryStorage(),
+      limits: {
+        fileSize: 10 * 1024 * 1024,
+      },
+      fileFilter: (req, file, cb) => {
+        if (!allowedMimeTypes.includes(file.mimetype)) {
+          return cb(
+            new BadRequestException('jpg, jpeg, png, webp 파일만 업로드 가능합니다.'),
+            false,
+          );
+        }
+
+        cb(null, true);
+      },
+    }),
+  )
+  async analyzeImage(@UploadedFile() image: Express.Multer.File) {
+    if (!image) {
+      throw new BadRequestException('이미지 파일이 필요합니다.');
+    }
+
+    return this.aiService.analyzeImage(image);
   }
 }
