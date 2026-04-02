@@ -1,0 +1,129 @@
+.container {
+  @apply w-[375px] h-[812px] mx-auto bg-white relative overflow-hidden;
+}
+
+.deleteMode {
+  @apply z-20;
+}
+
+.header {
+  @apply absolute top-0 left-0 w-full bg-white z-10;
+}
+
+.headerInner {
+  @apply relative h-[112px] px-4 flex items-end justify-between pb-[14px];
+}
+
+.headerLeftGroup {
+  @apply flex items-end gap-2;
+}
+
+.title {
+  @apply absolute left-1/2 -translate-x-1/2 bottom-[14px] text-[28px] leading-7 font-semibold text-black;
+}
+
+.headerIconButton {
+  @apply w-9 h-9 rounded-full flex items-center justify-center bg-transparent text-black border-0 p-0 self-end mb-[-2px];
+}
+
+.headerIconButtonFilled {
+  @apply w-9 h-9 rounded-full flex items-center justify-center bg-[#f2f2f2] text-black border-0 p-0 self-end mb-[-2px];
+}
+
+.deleteButtonRed {
+  @apply w-9 h-9 rounded-full flex items-center justify-center border-0 p-0 self-end mb-[-2px] text-white;
+  background: #ef4444;
+}
+
+.deleteButtonRed:disabled {
+  @apply opacity-40;
+}
+
+.cancelButton {
+  @apply h-9 flex items-center justify-center bg-transparent border-0 p-0 text-[14px] leading-4 font-medium text-black self-end mb-[-1px];
+}
+
+.selectAllWrap {
+  @apply h-9 flex flex-col items-center justify-center gap-[2px] bg-transparent border-0 p-0 self-end mb-[-1px];
+}
+
+.selectCircle {
+  @apply w-5 h-5 rounded-full border border-black bg-white shrink-0 flex items-center justify-center text-black;
+}
+
+.selectCircleActive {
+  @apply bg-black text-white border-black;
+}
+
+.selectAllText {
+  @apply text-[10px] leading-3 font-medium text-black;
+}
+
+.tabSection {
+  @apply absolute top-[120px] left-1/2 -translate-x-1/2 w-[190px] z-10;
+}
+
+.tabRow {
+  @apply relative flex items-center justify-between;
+}
+
+.tabButton {
+  @apply relative h-9 min-w-[82px] bg-transparent border-0 flex items-center justify-center p-0;
+}
+
+.tabText {
+  @apply relative inline-block text-[18px] leading-6 font-medium text-black;
+}
+
+.tabTextActive {
+  @apply font-medium;
+}
+
+.tabIndicator {
+  @apply absolute bottom-[2px] left-0 h-[2px] bg-black rounded-full;
+  transition:
+    transform 280ms ease,
+    width 280ms ease;
+  will-change: transform, width;
+}
+
+.contentArea {
+  @apply absolute left-0 top-[178px] w-full h-[590px] overflow-y-auto px-4;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.contentArea::-webkit-scrollbar {
+  display: none;
+}
+
+.cardGrid {
+  @apply grid grid-cols-3 gap-x-[6px] gap-y-[6px];
+}
+
+.card {
+  @apply relative w-full aspect-[109/152] rounded-[8px] overflow-hidden bg-[#dddddd] border-0 p-0 touch-none select-none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.cardSelected {
+  @apply bg-[#8d8d8d];
+}
+
+.cardSelected::after {
+  content: '';
+  @apply absolute inset-0 bg-black/15;
+}
+
+.selectionDot {
+  @apply absolute left-[8px] top-[8px] z-10 w-5 h-5 rounded-full bg-[#6f6f6f] flex items-center justify-center text-transparent;
+}
+
+.selectionDotSelected {
+  @apply bg-black text-white;
+}
+
+.emptyState {
+  @apply w-full h-full flex items-center justify-center text-sm text-neutral-500;
+}

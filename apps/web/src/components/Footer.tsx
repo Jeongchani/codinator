@@ -21,7 +21,7 @@ const footerItems: FooterItem[] = [
   { key: "evaluation", label: "평가존", path: "/evaluationZone", icon: ClipboardCheck },
   { key: "write", label: "글작성", path: "/postUpload", icon: SquarePen },
   { key: "myfeeds", label: "내피드", path: "/myFeeds", icon: Images },
-  { key: "bookmark", label: "북마크", path: "/bookMark", icon: Bookmark }
+  { key: "bookmark", label: "북마크", path: "/bookmarkPage", icon: Bookmark }
 ];
 
 export default function Footer() {
