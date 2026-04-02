@@ -1,5 +1,5 @@
 .footer {
-  @apply w-[320px] h-[40px] px-5 py-[4px] rounded-[999px]
+  @apply w-[350px] h-[50px] px-3 rounded-[999px]
     flex items-center justify-center relative;
   background: rgba(255, 255, 255, 0.42);
   border: 1px solid rgba(255, 255, 255, 0.35);
@@ -11,51 +11,73 @@
 }
 
 .inner {
-  @apply w-full h-full flex items-center justify-between;
+  @apply relative w-full h-full flex items-center justify-between;
+}
+
+.activePill {
+  @apply absolute left-0 top-0 h-full rounded-[999px];
+  opacity: 0;
+  z-index: 0;
+  will-change: transform, width;
+  transition:
+    transform 1s cubic-bezier(0.22, 1, 0.36, 1),
+    width 1s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.2s ease;
+}
+
+.activePill::before {
+  content: '';
+  @apply absolute inset-0 rounded-[999px];
+  background: #f0eee9;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 2px 8px rgba(0, 0, 0, 0.05);
+  transform: scaleX(1);
+  transition: transform 0.12s ease-out;
+}
+
+.activePillReady {
+  opacity: 1;
+}
+
+.activePillInstant {
+  transition: none;
+}
+
+.activePillInstant::before {
+  transition: none;
+}
+
+.activePillMovingRight::before {
+  transform-origin: left center;
+  transform: scaleX(1.24);
+}
+
+.activePillMovingLeft::before {
+  transform-origin: right center;
+  transform: scaleX(1.24);
 }
 
 .menuButton {
-  @apply relative w-[50px] h-full flex flex-col items-center justify-center
+  @apply relative h-full flex-1 flex flex-col items-center justify-center
     bg-transparent border-0 p-0 cursor-pointer overflow-hidden;
-  transition:
-    transform 0.16s ease,
-    color 0.2s ease;
+  gap: 2px;
+  z-index: 1;
+  transition: transform 0.16s ease;
 }
 
 .menuButton:active {
-  transform: scale(0.94);
-}
-
-.activeBg {
-  @apply absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2
-    rounded-full opacity-0;
-  width: 44px;
-  height: 32px;
-  background: rgba(230, 230, 230, 0.78);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    0 2px 8px rgba(0, 0, 0, 0.05);
-  transform: translate(-50%, -50%) scale(0.82);
-  transition:
-    opacity 0.22s ease,
-    transform 0.22s ease,
-    background 0.22s ease;
-  z-index: 0;
-}
-
-.menuButtonActive .activeBg {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
+  transform: scale(0.96);
 }
 
 .icon {
-  @apply text-neutral-700 shrink-0 relative z-[1];
-  width: 16px;
-  height: 16px;
+  @apply text-neutral-700 shrink-0 relative;
+  width: 20px;
+  height: 20px;
   transition:
-    transform 0.2s ease,
-    color 0.2s ease,
-    opacity 0.2s ease;
+    transform 0.22s ease,
+    color 0.22s ease,
+    opacity 0.22s ease;
 }
 
 .iconActive {
@@ -64,12 +86,13 @@
 }
 
 .label {
-  @apply mt-[1px] text-[9px] leading-[10px] font-medium text-black text-center break-keep relative z-[1];
+  @apply text-[10px] font-medium text-black text-center break-keep relative;
+  line-height: 1;
   opacity: 0.8;
   transition:
-    transform 0.2s ease,
-    opacity 0.2s ease,
-    color 0.2s ease;
+    transform 0.22s ease,
+    opacity 0.22s ease,
+    color 0.22s ease;
 }
 
 .labelActive {
