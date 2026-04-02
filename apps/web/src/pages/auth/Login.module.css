@@ -1,74 +1,126 @@
-/* src/pages/auth/Login.module.css */
-
 .container {
-  @apply w-[375px] h-[812px] relative bg-white overflow-hidden mx-auto shadow-2xl;
+  @apply w-[375px] h-[812px] mx-auto bg-white relative overflow-hidden px-4;
 }
 
-/* 상단 환영 문구 섹션 (MemberGuest와 통일) */
-.headerSection {
-  @apply w-[343px] p-2.5 absolute left-4 top-[93px] flex flex-col justify-center items-start gap-[5px];
+.hero {
+  @apply absolute left-4 top-[70px] w-[320px] px-2.5 py-2 flex flex-col items-start gap-[5px];
 }
 
-.mainTitle {
-  @apply self-stretch text-neutral-900 text-4xl font-bold font-sans leading-10;
+.heroTitle {
+  @apply w-full text-neutral-900 text-4xl font-medium leading-10;
 }
 
-.subTitle {
-  @apply self-stretch text-neutral-900 text-xl font-medium font-sans leading-7;
+.heroDesc {
+  @apply w-full text-neutral-900 text-xl font-medium leading-7;
 }
 
-/* 이메일/비밀번호 입력 섹션 */
-.inputSection {
-  @apply w-[343px] absolute left-4 top-[277px];
+.formBlock {
+  @apply absolute left-4 top-[268px] w-[320px] flex flex-col items-start gap-3.5;
 }
 
-.inputGroup {
-  @apply relative h-12;
+.label {
+  @apply w-full text-neutral-900 text-sm font-medium leading-5;
 }
 
-.inputBg {
-  @apply w-[343px] h-12 absolute bg-slate-50 rounded-[20px];
+.input {
+  @apply w-full bg-transparent border-0 outline-none p-0 text-neutral-900 text-xl font-normal leading-6;
 }
 
-.inputField {
-  @apply w-[310px] h-12 absolute left-4 bg-transparent border-none outline-none text-neutral-900 text-xl font-normal leading-6 placeholder:text-neutral-400 flex items-center;
+.input::placeholder {
+  @apply text-neutral-400;
 }
 
-/* 체크박스 및 비밀번호 찾기 */
-.optionSection {
-  @apply w-[343px] absolute left-4 top-[452px] flex justify-between items-center px-1;
+.line {
+  @apply w-full h-px bg-black;
 }
 
-.checkboxWrapper {
-  @apply flex justify-start items-center gap-2 cursor-pointer;
+.optionRow {
+  @apply absolute left-4 top-[457px] w-[320px] flex items-center justify-between;
+}
+
+.keepLoginButton {
+  @apply flex items-center gap-2.5 bg-transparent border-0 p-0 cursor-pointer;
+}
+
+.checkboxSvg {
+  @apply shrink-0;
 }
 
 .optionText {
-  @apply text-neutral-900 text-sm font-medium font-sans leading-5;
+  @apply text-neutral-900 text-sm font-medium leading-5;
 }
 
-/* 버튼 그룹 */
-.buttonGroup {
-  @apply w-72 h-32 absolute left-10 top-[527px] flex flex-col justify-between items-center;
+.linkButton {
+  @apply bg-transparent border-0 p-0 text-neutral-900 text-sm font-medium leading-5 cursor-pointer;
 }
 
 .primaryButton {
-  @apply w-full h-14 bg-neutral-900 rounded-[100px] flex justify-center items-center text-white text-base font-normal transition-transform active:scale-95;
+  @apply absolute left-1/2 -translate-x-1/2 top-[527px] w-[288px] h-14 rounded-[100px] bg-black text-white text-base font-normal leading-5 flex items-center justify-center transition;
 }
 
-.secondaryButton {
-  @apply w-full h-14 bg-white rounded-[100px] border border-zinc-300 flex justify-center items-center text-neutral-900 text-base font-normal transition-transform active:scale-95;
+.buttonDisabled {
+  @apply opacity-70;
 }
 
-/* 최하단 안내 섹션 */
-.footerSection {
-  @apply absolute left-0 w-full top-[735px] flex justify-center items-center gap-[5px];
+.orWrap {
+  @apply absolute left-4 top-[608px] w-[343px] flex items-center justify-between;
 }
 
-.footerTextGray {
+.orLine {
+  @apply w-[141px] h-px bg-neutral-200;
+}
+
+.orText {
+  @apply text-neutral-400 text-sm font-medium leading-5 tracking-tight;
+}
+
+.socialRow {
+  @apply absolute left-1/2 -translate-x-1/2 top-[652px] flex items-center gap-5;
+}
+
+.socialButton {
+  @apply w-[42px] h-[42px] rounded-full border border-[#999999] bg-white flex items-center justify-center text-neutral-600;
+}
+
+.socialLogo {
+  width: 20px;
+  height: 20px;
+  display: block;
+  flex-shrink: 0;
+}
+
+.bottomText {
+  @apply absolute left-1/2 -translate-x-1/2 top-[734px] inline-flex items-center gap-[5px] whitespace-nowrap;
+}
+
+.bottomMuted {
   @apply text-neutral-400 text-sm font-medium leading-5;
 }
 
-.footerTextBlack {
-  @apply text-neutral-900 text-sm font-medium leading-5 cursor-pointer hover:underline;
+.bottomLink {
+  @apply bg-transparent border-0 p-0 text-neutral-900 text-sm font-medium leading-5 cursor-pointer;
+}
+
+.modalBackdrop {
+  @apply absolute inset-0 z-50 flex items-center justify-center bg-black/40 px-4;
+}
+
+.modalCard {
+  @apply w-full max-w-[340px] rounded-2xl bg-white p-6 shadow-xl flex flex-col items-center;
+}
+
+.modalIcon {
+  @apply mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600 text-xl font-bold;
+}
+
+.modalTitle {
+  @apply mb-2 text-center text-lg font-bold text-neutral-900;
+}
+
+.modalMessage {
+  @apply mb-6 text-center text-sm font-medium leading-relaxed text-neutral-500;
+}
+
+.modalButton {
+  @apply w-full rounded-[100px] bg-neutral-900 py-3 text-base font-medium text-white;
 }

@@ -1,48 +1,162 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import styles from './RankingZone.module.css';
-import Footer from '../../components/Footer';
-import {
-  clearAuthTokens,
-  fetcher,
-  getAuthHeaders,
-  getRefreshToken,
-  resolveAssetUrl,
-} from '../../lib/api';
-import type { GetRankingsResponse, LogoutResponse, RankingItem } from '@codinator/contracts';
+import React, { useEffect, useMemo, useState } from "react";
+import { Bookmark, Search, ThumbsDown, ThumbsUp } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import styles from "./RankingZone.module.css";
+import { fetcher, getAuthHeaders, resolveAssetUrl } from "../../lib/api";
+import type { GetRankingsResponse, RankingItem } from "@codinator/contracts";
+import Header from "../../components/Header";
+import Footer from "../../components/Footer";
 
-type RankingSection = {
-  id: string;
+type RankingCardItem = {
+  id: number;
   title: string;
-  period: 'WEEKLY' | 'MONTHLY';
-  items: RankingItem[];
+  likeCount: number;
+  dislikeCount: number;
+  bookmarked?: boolean;
+  imageUrl?: string;
+  postId?: number;
+  period?: "WEEKLY" | "MONTHLY";
 };
 
-const RankingZone: React.FC = () => {
+type RankingSectionData = {
+  id: string;
+  title: string;
+  items: RankingCardItem[];
+};
+
+type RankingCardProps = {
+  item: RankingCardItem;
+  onCardClick: (item: RankingCardItem) => void;
+  onToggleBookmark: (
+    e: React.MouseEvent<HTMLButtonElement>,
+    postId: string
+  ) => void;
+};
+
+function RankingCard({
+  item,
+  onCardClick,
+  onToggleBookmark,
+}: RankingCardProps) {
+  return (
+    <article className={styles.card} onClick={() => onCardClick(item)}>
+      <div className={styles.thumbnail}>
+        {item.imageUrl ? (
+          <img
+            src={item.imageUrl}
+            alt={`ranking-${item.id}`}
+            className={styles.cardImage}
+          />
+        ) : (
+          <div className={styles.cardImageFallback}>이미지 없음</div>
+        )}
+
+        <div className={styles.thumbnailGradient} />
+
+        <button
+          type="button"
+          className={styles.bookmarkButton}
+          aria-label="북마크"
+          onClick={(e) => onToggleBookmark(e, String(item.postId ?? item.id))}
+        >
+          <Bookmark
+            size={12}
+            strokeWidth={2.2}
+            className={
+              item.bookmarked ? styles.bookmarkFilled : styles.bookmarkDefault
+            }
+            fill={item.bookmarked ? "currentColor" : "none"}
+          />
+        </button>
+      </div>
+
+      <p className={styles.cardTitle}>
+        {item.title.split("\n").map((line, index, arr) => (
+          <React.Fragment key={`${item.id}-${index}`}>
+            {line}
+            {index < arr.length - 1 && <br />}
+          </React.Fragment>
+        ))}
+      </p>
+
+      <div className={styles.statsRow}>
+        <div className={styles.statItem}>
+          <ThumbsUp size={13} strokeWidth={2} className={styles.statIcon} />
+          <span className={styles.statText}>
+            {String(item.likeCount).padStart(3, "0")}
+          </span>
+        </div>
+
+        <div className={styles.statItem}>
+          <ThumbsDown size={13} strokeWidth={2} className={styles.statIcon} />
+          <span className={styles.statText}>
+            {String(item.dislikeCount).padStart(3, "0")}
+          </span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+type RankingSectionProps = {
+  title: string;
+  items: RankingCardItem[];
+  onCardClick: (item: RankingCardItem) => void;
+  onToggleBookmark: (
+    e: React.MouseEvent<HTMLButtonElement>,
+    postId: string
+  ) => void;
+};
+
+function RankingSection({
+  title,
+  items,
+  onCardClick,
+  onToggleBookmark,
+}: RankingSectionProps) {
+  return (
+    <section className={styles.section}>
+      <h2 className={styles.sectionTitle}>{title}</h2>
+
+      <div className={styles.horizontalScroll}>
+        {items.map((item) => (
+          <RankingCard
+            key={item.id}
+            item={item}
+            onCardClick={onCardClick}
+            onToggleBookmark={onToggleBookmark}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export default function RankingZone() {
   const navigate = useNavigate();
 
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [weeklyRankings, setWeeklyRankings] = useState<RankingItem[]>([]);
   const [monthlyRankings, setMonthlyRankings] = useState<RankingItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const [bookmarks, setBookmarks] = useState<Record<string, boolean>>(() => {
-    const saved = localStorage.getItem('codinator_bookmarks');
+    const saved = localStorage.getItem("codinator_bookmarks");
     return saved ? (JSON.parse(saved) as Record<string, boolean>) : {};
   });
 
+  // 추가된 부분: 사이드메뉴 열림 상태
+  const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
+
   useEffect(() => {
     const syncBookmarks = () => {
-      const saved = localStorage.getItem('codinator_bookmarks');
+      const saved = localStorage.getItem("codinator_bookmarks");
       setBookmarks(saved ? (JSON.parse(saved) as Record<string, boolean>) : {});
     };
 
-    syncBookmarks();
-    window.addEventListener('storage', syncBookmarks);
-
+    window.addEventListener("storage", syncBookmarks);
     return () => {
-      window.removeEventListener('storage', syncBookmarks);
+      window.removeEventListener("storage", syncBookmarks);
     };
   }, []);
 
@@ -50,13 +164,13 @@ const RankingZone: React.FC = () => {
     const loadRankings = async () => {
       try {
         setLoading(true);
-        setError('');
+        setError("");
 
         const [weeklyData, monthlyData] = await Promise.all([
-          fetcher<GetRankingsResponse>('/rankings?period=WEEKLY', {
+          fetcher<GetRankingsResponse>("/rankings?period=WEEKLY", {
             headers: getAuthHeaders(),
           }),
-          fetcher<GetRankingsResponse>('/rankings?period=MONTHLY', {
+          fetcher<GetRankingsResponse>("/rankings?period=MONTHLY", {
             headers: getAuthHeaders(),
           }),
         ]);
@@ -64,22 +178,14 @@ const RankingZone: React.FC = () => {
         setWeeklyRankings(weeklyData.items ?? []);
         setMonthlyRankings(monthlyData.items ?? []);
       } catch (err) {
-        console.error('랭킹 불러오기 실패:', err);
+        console.error("랭킹 불러오기 실패:", err);
 
         const message =
-          err instanceof Error ? err.message : '랭킹 데이터를 불러오지 못했습니다.';
+          err instanceof Error
+            ? err.message
+            : "랭킹 데이터를 불러오지 못했습니다.";
+
         setError(message);
-
-        if (
-          message.includes('Unauthorized') ||
-          message.includes('유효하지 않거나 만료된 토큰') ||
-          message.includes('로그인이 필요합니다')
-        ) {
-          clearAuthTokens();
-          navigate('/login');
-          return;
-        }
-
         setWeeklyRankings([]);
         setMonthlyRankings([]);
       } finally {
@@ -88,213 +194,122 @@ const RankingZone: React.FC = () => {
     };
 
     void loadRankings();
-  }, [navigate]);
+  }, []);
 
-  const handleLogout = async () => {
-    if (!window.confirm('로그아웃 하시겠습니까?')) return;
-
-    try {
-      const refreshToken = getRefreshToken();
-
-      if (refreshToken) {
-        await fetcher<LogoutResponse>('/auth/logout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken }),
-        });
-      }
-    } catch (err) {
-      console.error('로그아웃 요청 실패:', err);
-    } finally {
-      clearAuthTokens();
-      navigate('/login');
-    }
-  };
-
-  const handleMovePage = (path: string) => {
-    setIsMenuOpen(false);
-    navigate(path);
-  };
-
-  const toggleBookmark = (e: React.MouseEvent, postId: string) => {
+  const toggleBookmark = (
+    e: React.MouseEvent<HTMLButtonElement>,
+    postId: string
+  ) => {
+    e.preventDefault();
     e.stopPropagation();
 
     setBookmarks((prev) => {
       const next = { ...prev, [postId]: !prev[postId] };
-      localStorage.setItem('codinator_bookmarks', JSON.stringify(next));
+      localStorage.setItem("codinator_bookmarks", JSON.stringify(next));
       return next;
     });
   };
 
-  const sections: RankingSection[] = useMemo(
+  const handleCardClick = (item: RankingCardItem) => {
+    if (!item.postId || !item.period) return;
+    navigate(`/rankingDetail/${item.postId}?period=${item.period}`);
+  };
+
+  // 추가된 부분: 헤더 햄버거 버튼 클릭 시 나중에 SideMenu.tsx 연결할 함수
+  const handleMenuClick = () => {
+    setIsSideMenuOpen((prev) => !prev);
+  };
+
+  const convertRankingItem = (
+    post: RankingItem,
+    period: "WEEKLY" | "MONTHLY"
+  ): RankingCardItem => {
+    const postId = String(post.postId);
+
+    return {
+      id: post.postId,
+      title: "게시글 컨셉 글\n최대 두줄 혹은 닉네임?",
+      likeCount: post.likeCount ?? 0,
+      dislikeCount: post.dislikeCount ?? 0,
+      bookmarked: !!bookmarks[postId],
+      imageUrl: resolveAssetUrl(post.thumbnailUrl),
+      postId: post.postId,
+      period,
+    };
+  };
+
+  const sections: RankingSectionData[] = useMemo(
     () => [
-      { id: 'week', title: 'This Week', period: 'WEEKLY', items: weeklyRankings },
-      { id: 'month', title: 'This Month', period: 'MONTHLY', items: monthlyRankings },
+      {
+        id: "week",
+        title: "This Week",
+        items: weeklyRankings.map((post) => convertRankingItem(post, "WEEKLY")),
+      },
+      {
+        id: "month",
+        title: "This Month",
+        items: monthlyRankings.map((post) =>
+          convertRankingItem(post, "MONTHLY")
+        ),
+      },
     ],
-    [weeklyRankings, monthlyRankings],
+    [weeklyRankings, monthlyRankings, bookmarks]
   );
 
   return (
     <div className={styles.container}>
-      <div className={`${styles.drawer} ${isMenuOpen ? styles.drawerOpen : ''}`}>
-        <div className={styles.drawerHeader}>
-          <div className={styles.profileSection}>
-            <div className={styles.profileCircle} />
-            <span className={styles.profileName}>내 프로필</span>
-          </div>
-
-          <button
-            type="button"
-            className={styles.closeBtn}
-            onClick={() => setIsMenuOpen(false)}
-          >
-            ✕
-          </button>
-        </div>
-
-        <nav className={styles.drawerNav}>
-          <div className={styles.navItem} onClick={() => handleMovePage('/myFeeds')}>
-            내 피드
-          </div>
-
-          <div className={styles.navItem} onClick={() => handleMovePage('/postUpload')}>
-            게시글 작성
-          </div>
-
-          <div className={styles.navItem} onClick={() => handleMovePage('/evaluationZone')}>
-            평가 존
-          </div>
-
-          <div className={`${styles.navItem} ${styles.logoutBtn}`} onClick={handleLogout}>
-            로그아웃
-          </div>
-        </nav>
-      </div>
-
-      {isMenuOpen && <div className={styles.overlay} onClick={() => setIsMenuOpen(false)} />}
+      {/* 추가된 부분: 기존 topBarArea 제거하고 실제 Header 연결 */}
+      <Header />
 
       <div className={styles.contentArea}>
-        <header className={styles.header}>
-          <div className={styles.logo}>C:dinator</div>
-
-          <button
-            type="button"
-            className={styles.menuBtn}
-            onClick={() => setIsMenuOpen(true)}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M4 6H20" stroke="black" strokeWidth="2" strokeLinecap="round" />
-              <path d="M4 12H20" stroke="black" strokeWidth="2" strokeLinecap="round" />
-              <path d="M4 18H20" stroke="black" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </button>
-        </header>
-
-        <div className={styles.divider} />
+        <div className={styles.searchBox}>
+          <Search size={18} strokeWidth={2} className={styles.searchIcon} />
+          <span className={styles.searchText}>검색하기</span>
+        </div>
 
         {loading ? (
-          <div className={styles.loadingBox}>데이터 불러오는 중...</div>
+          <div className={styles.messageBox}>데이터 불러오는 중...</div>
         ) : error ? (
-          <div className={styles.loadingBox}>{error}</div>
+          <div className={styles.messageBox}>{error}</div>
         ) : (
-          sections.map((section) => (
-            <section key={section.id} className={styles.section}>
-              <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>{section.title}</h2>
-              </div>
-
-              <div className={styles.horizontalScroll}>
-                {section.items.length > 0 ? (
-                  section.items.map((post) => {
-                    const postId = String(post.postId);
-                    const isBookmarked = !!bookmarks[postId];
-                    const imageUrl = resolveAssetUrl(post.thumbnailUrl);
-
-                    return (
-                      <div
-                        key={`${section.period}-${post.postId}`}
-                        className={styles.card}
-                        onClick={() =>
-                          navigate(`/rankingDetail/${post.postId}?period=${section.period}`)
-                        }
-                        style={{
-                          position: 'relative',
-                          overflow: 'hidden',
-                          borderRadius: '24px',
-                          cursor: 'pointer',
-                          backgroundColor: '#f4f4f4',
-                        }}
-                      >
-                        {imageUrl ? (
-                          <img
-                            src={imageUrl}
-                            alt={`ranking-${post.rank}`}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                              display: 'block',
-                            }}
-                          />
-                        ) : (
-                          <div
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: '#999',
-                              fontSize: '12px',
-                              background: '#f3f3f3',
-                            }}
-                          >
-                            이미지 없음
-                          </div>
-                        )}
-
-                        <button
-                          type="button"
-                          className={styles.heartIcon}
-                          onClick={(e) => toggleBookmark(e, postId)}
-                          aria-label="북마크"
-                          style={{
-                            position: 'absolute',
-                            top: '10px',
-                            right: '10px',
-                            width: '24px',
-                            height: '24px',
-                            border: 'none',
-                            background: 'transparent',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            padding: 0,
-                          }}
-                        >
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                            <path
-                              d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.03L12 21.35Z"
-                              fill={isBookmarked ? '#FF3B30' : '#D1D5DB'}
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className={styles.loadingBox}>표시할 랭킹이 없습니다.</div>
-                )}
-              </div>
-            </section>
-          ))
+          <>
+            <RankingSection
+              title="This Week"
+              items={sections[0].items}
+              onCardClick={handleCardClick}
+              onToggleBookmark={toggleBookmark}
+            />
+            <RankingSection
+              title="This Month"
+              items={sections[1].items}
+              onCardClick={handleCardClick}
+              onToggleBookmark={toggleBookmark}
+            />
+          </>
         )}
       </div>
 
-      <Footer />
+      {/* 추가된 부분: 나중에 SideMenu.tsx 자리 */}
+      {isSideMenuOpen && (
+        <div className={styles.sideMenuOverlay} onClick={handleMenuClick}>
+          <div
+            className={styles.sideMenuDummy}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.sideMenuTitle}>SideMenu 연결 예정</div>
+            <button
+              type="button"
+              className={styles.sideMenuCloseButton}
+              onClick={handleMenuClick}
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
+      <div className={styles.footerWrap}>
+        <Footer />
+      </div>
     </div>
   );
-};
-
-export default RankingZone;
+}

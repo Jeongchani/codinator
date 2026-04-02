@@ -1,0 +1,23 @@
+.header {
+  @apply w-[375px] h-[93px] bg-white shrink-0;
+}
+
+.inner {
+  @apply relative w-full h-full flex justify-between px-5;
+}
+
+.leftSpace {
+  @apply w-6 h-6 shrink-0;
+}
+
+.title {
+  @apply absolute left-1/2 -translate-x-1/2 text-[18px] leading-[22px] font-bold text-black;
+  top: 59px;
+  transform: translateX(-50%) translateY(-50%);
+}
+
+.menuButton {
+  @apply absolute right-5 w-6 h-6 shrink-0 flex items-center justify-center text-[#7a7a7a] bg-transparent p-0;
+  top: 59px;
+  transform: translateY(-50%);
+}
