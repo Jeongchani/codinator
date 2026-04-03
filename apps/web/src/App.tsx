@@ -14,7 +14,7 @@ import AuthEntry from "./pages/auth/AuthEntry";
 import EvaluationZone from "./pages/evaluation/EvaluationZone";
 import EvaluationDetailFeedback from "./pages/evaluation/EvaluationDetail_Feedback";
 import AppLayout from "./AppLayout";
-import FooterTestPage from "./pages/bookmark/FooterTestPage";
+import TestPage from "./TestPage";
 
 function AppRoutes() {
   const navigate = useNavigate();
@@ -30,18 +30,18 @@ function AppRoutes() {
       <Route path="/postUpload" element={<Upload />} />
       <Route path="/rankingDetail/:postId" element={<RankingDetail />} />
       <Route path="/myFeedEdit" element={<MyFeedEdit />} />
+      <Route path="/user/:userId/feed/:postId" element={<UserFeedDetail />} />
+      <Route path="/test" element={<TestPage />} />
 
       <Route element={<AppLayout />}>
         <Route path="/rankingZone" element={<RankingZone />} />
 
 
         <Route path="/user/:userId/feed" element={<UserFeeds />} />
-        <Route path="/user/:userId/feed/:postId" element={<UserFeedDetail />} />
 
         <Route path="/myFeeds" element={<MyFeeds />} />
         <Route path="/myFeedDetail/:postId" element={<MyFeedDetail />} />
 
-        <Route path="/bookMark" element={<FooterTestPage />} />
       </Route>
     </Routes>
   );
