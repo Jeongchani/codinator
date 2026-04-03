@@ -11,22 +11,19 @@ import MyFeeds from "./pages/feeds/MyFeeds";
 import UserFeeds from "./pages/feeds/UserFeeds";
 import MyFeedDetail from "./pages/feeds/MyFeedDetail";
 import AuthEntry from "./pages/auth/AuthEntry";
-import EvaluationZone from "./pages/evaluation/EvaluationZone";
-import EvaluationDetailFeedback from "./pages/evaluation/EvaluationDetail_Feedback";
 import AppLayout from "./AppLayout";
 import FooterTestPage from "./pages/bookmark/FooterTestPage";
-
+import TestPage from "./TestPage";
 function AppRoutes() {
   const navigate = useNavigate();
 
   return (
     <Routes>
+      <Route path="/test" element={<TestPage />} />
       <Route path="/" element={<Splash onFinish={() => navigate("/authEntry")} />} />
       <Route path="/authEntry" element={<AuthEntry />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
-      <Route path="/evaluationZone" element={<EvaluationZone />} />
-      <Route path="/evaluationDetailFeedback/:postId" element={<EvaluationDetailFeedback />} />
       <Route path="/postUpload" element={<Upload />} />
       <Route path="/rankingDetail/:postId" element={<RankingDetail />} />
       <Route path="/myFeedEdit" element={<MyFeedEdit />} />

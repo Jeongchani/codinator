@@ -1,22 +1,4 @@
-// //{
-//   "compilerOptions": {
-//     "module": "CommonJS",
-//     "declaration": true,
-//     "removeComments": true,
-//     "emitDecoratorMetadata": true,
-//     "experimentalDecorators": true,
-//     "allowSyntheticDefaultImports": true,
-//     "target": "ES2021",
-//     "sourceRoot": "./src",
-//     "rootDir": "./src",
-//     "outDir": "./dist",
-//     "baseUrl": "./",
-//     "ignoreDeprecations": "5.0",
-//     "skipLibCheck": true
-//   },
-//   "include": ["src/**/*"],
-//   "exclude": ["node_modules", "dist"]
-// // }//
+
 {
   "compilerOptions": {
     "module": "CommonJS",
