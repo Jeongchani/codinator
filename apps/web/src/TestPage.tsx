@@ -5,6 +5,23 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 
+/**
+ * 개발환경 권장 설정 (vite.config.ts)
+ * ------------------------------------------------------------
+ * server: {
+ *   proxy: {
+ *     '/api': 'http://localhost:3000',
+ *     '/uploads': 'http://localhost:3000',
+ *   }
+ * }
+ *
+ * 이유:
+ * - 수동 블러 캔버스 편집기는 원본 이미지를 canvas에 그린 뒤 export(toDataURL / toBlob) 해야 한다.
+ * - 이때 cross-origin 원본 URL(http://localhost:3000/uploads/...)이 직접 들어오면
+ *   canvas가 tainted 되어 미리보기 생성이 실패할 수 있다.
+ * - 따라서 '/uploads/...' 를 same-origin(proxy) 경로로 사용하는 것이 가장 안정적이다.
+ */
+
 // ─── API 헬퍼 ─────────────────────────────────────────────────────────────────
 
 const BASE = '/api/v2';
@@ -530,7 +547,7 @@ function S_MyFeed() {
     <>
       <div style={C.info('green')}>
         💡 <strong>게시글 수정 위치 제안:</strong> 실제 서비스에서는 <code>MyFeedDetail</code> 페이지 내부에
-        "수정" 버튼을 배치하는 것이 자연스럽습니다.
+        수정 버튼을 배치하는 것이 자연스럽습니다.
       </div>
       <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
         {tabs.map((t) => (
@@ -802,9 +819,29 @@ type InteractionState =
 type PostFlowStep = 'idle' | 'blur_decision' | 'manual_editor' | 'creating' | 'done';
 type BlurChoice   = 'auto' | 'manual';
 
-const ASSET    = 'http://localhost:3000';
-const assetUrl = (url: string | null) =>
-  url ? (url.startsWith('/') ? `${ASSET}${url}` : url) : null;
+// 중요:
+// - 수동 블러 편집기(canvas export)는 same-origin 이미지여야 안정적으로 동작한다.
+// - 개발환경에서는 vite.config.ts에서 '/uploads'를 http://localhost:3000 으로 proxy 하도록 권장한다.
+// - 백엔드가 절대 URL(http://localhost:3000/uploads/...)을 내려주더라도,
+//   아래 helper가 '/uploads/...' 상대 경로로 바꿔 same-origin(proxy) 경로를 우선 사용한다.
+const assetUrl = (url: string | null) => {
+  if (!url) return null;
+  if (url.startsWith('blob:') || url.startsWith('data:')) return url;
+
+  // 상대 경로면 그대로 사용 (/uploads/...)
+  if (url.startsWith('/')) return url;
+
+  // 절대 경로면 same-origin proxy 경로로 최대한 변환
+  try {
+    const parsed = new URL(url);
+    if (parsed.pathname.startsWith('/uploads/')) {
+      return `${parsed.pathname}${parsed.search}`;
+    }
+    return url;
+  } catch {
+    return url;
+  }
+};
 
 /** 에디터 내 이미지 표시 너비 (px) — 고정값 */
 const EDITOR_IMG_W = 460;
@@ -899,8 +936,9 @@ function ManualBlurEditor({
   onCancel: () => void;
 }) {
   // 원본 이미지를 blob URL로 로드 (CORS/캔버스 오염 방지)
-  const [blobUrl, setBlobUrl]   = useState<string | null>(null);
-  const [imgLoaded, setImgLoaded] = useState(false);
+  const [blobUrl, setBlobUrl]       = useState<string | null>(null);
+  const [imgLoaded, setImgLoaded]   = useState(false);
+  const [imageLoadError, setImageLoadError] = useState('');
 
   // 블러 박스 목록 (display 좌표)
   const [regions, setRegions]     = useState<BlurRegion[]>([
@@ -918,20 +956,45 @@ function ManualBlurEditor({
   const nextId       = useRef(2);
   const interaction  = useRef<InteractionState>({ type: 'none' });
 
-  // 이미지 fetch → blob URL (same-origin으로 canvas 오염 없음)
+  // 이미지 fetch → blob URL
+  // 해결 포인트:
+  // 1) fetch(...Authorization...) 제거
+  // 2) catch => setBlobUrl(originalImageUrl) fallback 제거
+  // 3) 가능하면 /uploads를 Vite proxy로 same-origin 처리
+  //
+  // 이렇게 해야 cross-origin 원본 URL fallback으로 인해
+  // canvas가 tainted 되는 문제를 막을 수 있다.
   useEffect(() => {
     let objUrl: string | null = null;
-    fetch(originalImageUrl, { headers: { Authorization: `Bearer ${tok()}` } })
-      .then((r) => r.blob())
+    let cancelled = false;
+
+    setBlobUrl(null);
+    setImgLoaded(false);
+    setImageLoadError('');
+
+    fetch(originalImageUrl)
+      .then((r) => {
+        if (!r.ok) throw new Error(`이미지 로드 실패: ${r.status}`);
+        return r.blob();
+      })
       .then((blob) => {
+        if (cancelled) return;
         objUrl = URL.createObjectURL(blob);
         setBlobUrl(objUrl);
       })
-      .catch(() => {
-        // 인증 불필요 경로면 직접 사용
-        setBlobUrl(originalImageUrl);
+      .catch((err) => {
+        if (cancelled) return;
+        console.error(err);
+        setBlobUrl(null);
+        setImageLoadError(
+          '원본 이미지를 same-origin blob으로 불러오지 못했습니다. /uploads 프록시 또는 정적 파일 CORS 설정을 확인하세요.'
+        );
       });
-    return () => { if (objUrl) URL.revokeObjectURL(objUrl); };
+
+    return () => {
+      cancelled = true;
+      if (objUrl) URL.revokeObjectURL(objUrl);
+    };
   }, [originalImageUrl]);
 
   // window 레벨 mousemove / mouseup (컨테이너 밖으로 나가도 동작)
@@ -1104,18 +1167,26 @@ function ManualBlurEditor({
           🗑 선택 박스 삭제
         </button>
         <button
-          style={{ ...C.btn('#805ad5'), opacity: (regions.length === 0 || generating) ? 0.4 : 1 }}
+          style={{ ...C.btn('#805ad5'), opacity: (regions.length === 0 || generating || !imgLoaded || !blobUrl) ? 0.4 : 1 }}
           onClick={generatePreview}
-          disabled={regions.length === 0 || generating || !imgLoaded}
+          disabled={regions.length === 0 || generating || !imgLoaded || !blobUrl}
         >
           {generating ? '⏳ 생성 중...' : '👁 미리보기 생성'}
         </button>
       </div>
 
       {/* 이미지 에디터 영역 */}
-      {!blobUrl && (
+      {!blobUrl && !imageLoadError && (
         <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a0aec0', fontSize: 13 }}>
           ⏳ 이미지 로딩 중...
+        </div>
+      )}
+
+      {imageLoadError && (
+        <div style={{ ...C.info('red'), marginTop: 10 }}>
+          {imageLoadError}
+          <br />
+          개발환경에서는 <code>/uploads</code> 를 <code>http://localhost:3000</code> 으로 프록시하는 것을 권장합니다.
         </div>
       )}
       {blobUrl && (
@@ -1517,10 +1588,8 @@ function S_PostUpload() {
       {step === 'manual_editor' && uploadedImg && (
         <ManualBlurEditor
           originalImageUrl={
-            // 원본 이미지 URL (ASSET prefix 포함)
-            uploadedImg.originalImageUrl.startsWith('/')
-              ? `${ASSET}${uploadedImg.originalImageUrl}`
-              : uploadedImg.originalImageUrl
+            // 원본 이미지는 assetUrl helper를 통해 same-origin(proxy) 경로 우선 사용
+            assetUrl(uploadedImg.originalImageUrl) ?? uploadedImg.originalImageUrl
           }
           onApprove={onManualApprove}
           onCancel={() => setStep('blur_decision')}
@@ -2031,3 +2100,4 @@ export default function TestPage() {
     </div>
   );
 }
+
