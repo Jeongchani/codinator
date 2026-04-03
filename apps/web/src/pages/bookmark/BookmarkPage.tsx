@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { ArrowLeft, Check, Trash2 } from "lucide-react";
+import { ChevronLeft, Check, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import styles from "./BookmarkPage.module.css";
 
@@ -61,9 +61,9 @@ function getItemsByTab(items: BookmarkItem[], tab: TabType) {
 export default function BookmarkPage() {
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState<TabType>("ongoing");
-  const [displayTab, setDisplayTab] = useState<TabType>("ongoing");
-  const [prevTab, setPrevTab] = useState<TabType>("ongoing");
+  const [activeTab, setActiveTab] = useState<TabType>("all");
+  const [displayTab, setDisplayTab] = useState<TabType>("all");
+  const [prevTab, setPrevTab] = useState<TabType>("all");
   const [incomingTab, setIncomingTab] = useState<TabType | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [slideDirection, setSlideDirection] = useState<SlideDirection>("right");
@@ -446,7 +446,7 @@ export default function BookmarkPage() {
             onClick={deleteMode ? handleCancelDeleteMode : () => navigate(-1)}
             aria-label="뒤로가기"
           >
-            <ArrowLeft size={24} strokeWidth={2.2} />
+            <ChevronLeft size={24} strokeWidth={2.2} />
           </button>
 
           <h1 className={styles.title}>북마크</h1>
