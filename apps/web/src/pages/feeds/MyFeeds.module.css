@@ -260,3 +260,8 @@
 .modalActionButton {
   @apply flex-1 h-12 rounded-[999px] bg-black text-[15px] font-medium text-white border-0;
 }
+.hiddenBadge {
+  @apply absolute top-[8px] right-[8px] z-10 w-5 h-5 rounded-full flex items-center justify-center text-white;
+  background: rgba(17, 17, 17, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}

@@ -130,8 +130,9 @@ export default function MyFeeds() {
   const touchStartRef = useRef<Point | null>(null);
   const touchCurrentRef = useRef<Point | null>(null);
   const initialSelectedIdsRef = useRef<number[]>([]);
-  const skipClickRef = useRef(false);
   const animationTimerRef = useRef<number | null>(null);
+  const touchDraggedRef = useRef(false);
+  const ignoreNextClickRef = useRef(false);
 
   const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({
     left: 0,
@@ -153,6 +154,17 @@ export default function MyFeeds() {
   const activeItemsForSelection = useMemo(() => {
     return getItemsByTab(items, activeTab);
   }, [activeTab, items]);
+
+  const selectedItems = useMemo(() => {
+    return items.filter((item) => selectedIds.includes(item.postId));
+  }, [items, selectedIds]);
+
+  const allSelectedAreHidden = useMemo(() => {
+    return (
+      selectedItems.length > 0 &&
+      selectedItems.every((item) => item.postStatus === "HIDDEN")
+    );
+  }, [selectedItems]);
 
   const moveToLogin = useCallback(() => {
     clearAuthTokens();
@@ -251,9 +263,19 @@ export default function MyFeeds() {
   }, [showOptionMenu]);
 
   useEffect(() => {
-    const visibleIds = new Set(activeItemsForSelection.map((item) => item.postId));
+    const visibleIds = new Set(
+      activeItemsForSelection.map((item) => item.postId)
+    );
     setSelectedIds((prev) => prev.filter((id) => visibleIds.has(id)));
   }, [activeItemsForSelection]);
+
+  const toggleSelectedId = useCallback((postId: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(postId)
+        ? prev.filter((itemId) => itemId !== postId)
+        : [...prev, postId]
+    );
+  }, []);
 
   const getPointInContainer = useCallback((clientX: number, clientY: number) => {
     const container = containerRef.current;
@@ -266,14 +288,17 @@ export default function MyFeeds() {
     };
   }, []);
 
-  const getSelectionRect = useCallback((start: Point, current: Point): SelectionRect => {
-    return {
-      left: Math.min(start.x, current.x),
-      top: Math.min(start.y, current.y),
-      right: Math.max(start.x, current.x),
-      bottom: Math.max(start.y, current.y),
-    };
-  }, []);
+  const getSelectionRect = useCallback(
+    (start: Point, current: Point): SelectionRect => {
+      return {
+        left: Math.min(start.x, current.x),
+        top: Math.min(start.y, current.y),
+        right: Math.max(start.x, current.x),
+        bottom: Math.max(start.y, current.y),
+      };
+    },
+    []
+  );
 
   const isIntersecting = useCallback((selection: SelectionRect, card: DOMRect) => {
     const container = containerRef.current;
@@ -323,6 +348,7 @@ export default function MyFeeds() {
     setIsTouchDragging(false);
     touchStartRef.current = null;
     touchCurrentRef.current = null;
+    touchDraggedRef.current = false;
   }, []);
 
   const enterMode = (mode: Exclude<ActionMode, null>) => {
@@ -371,6 +397,13 @@ export default function MyFeeds() {
   const handleApplyAction = async () => {
     if (selectedIds.length === 0 || actionSubmitting) return;
 
+    if (isHideMode && allSelectedAreHidden) {
+      window.alert(
+        "현재 백엔드에는 숨김 취소 API가 아직 없습니다. 프론트에서는 hidden 표시와 선택까지는 가능하지만 실제 취소는 백엔드 추가가 필요합니다."
+      );
+      return;
+    }
+
     setActionSubmitting(true);
 
     try {
@@ -400,8 +433,8 @@ export default function MyFeeds() {
           failed.reason instanceof Error
             ? failed.reason.message
             : isDeleteMode
-              ? "게시글 삭제에 실패했습니다."
-              : "게시글 숨기기에 실패했습니다.";
+            ? "게시글 삭제에 실패했습니다."
+            : "게시글 숨기기에 실패했습니다.";
 
         if (isAuthError(message)) {
           moveToLogin();
@@ -418,7 +451,11 @@ export default function MyFeeds() {
     }
   };
 
-  const startTouchDrag = (clientX: number, clientY: number, startItemId?: number) => {
+  const startTouchDrag = (
+    clientX: number,
+    clientY: number,
+    startItemId?: number
+  ) => {
     if (!isSelectionMode) return;
 
     const startPoint = getPointInContainer(clientX, clientY);
@@ -426,7 +463,8 @@ export default function MyFeeds() {
     touchStartRef.current = startPoint;
     touchCurrentRef.current = startPoint;
     initialSelectedIdsRef.current = [...selectedIds];
-    skipClickRef.current = false;
+    touchDraggedRef.current = false;
+    ignoreNextClickRef.current = false;
 
     const nextMode: TouchDragMode =
       startItemId && selectedIds.includes(startItemId) ? "deselect" : "select";
@@ -448,15 +486,23 @@ export default function MyFeeds() {
     const dy = Math.abs(currentPoint.y - start.y);
 
     if (dx > 4 || dy > 4) {
-      skipClickRef.current = true;
+      touchDraggedRef.current = true;
     }
 
     applyTouchDragSelection();
   };
 
-  const endTouchDrag = () => {
+  const endTouchDrag = (tappedItemId?: number) => {
     if (!isSelectionMode) return;
-    applyTouchDragSelection();
+
+    if (touchDraggedRef.current) {
+      applyTouchDragSelection();
+      ignoreNextClickRef.current = true;
+    } else if (tappedItemId !== undefined) {
+      toggleSelectedId(tappedItemId);
+      ignoreNextClickRef.current = true;
+    }
+
     resetTouchDragging();
   };
 
@@ -508,21 +554,23 @@ export default function MyFeeds() {
     moveTouchDrag(touch.clientX, touch.clientY);
   };
 
-  const handleCardTouchEnd = (e: React.TouchEvent<HTMLButtonElement>) => {
+  const handleCardTouchEnd = (
+    e: React.TouchEvent<HTMLButtonElement>,
+    itemId: number
+  ) => {
     if (!isSelectionMode) return;
     e.stopPropagation();
-    endTouchDrag();
+    endTouchDrag(itemId);
   };
 
   const handleCardClick = (item: MyFeedItem) => {
     if (isSelectionMode) {
-      if (skipClickRef.current) return;
+      if (ignoreNextClickRef.current) {
+        ignoreNextClickRef.current = false;
+        return;
+      }
 
-      setSelectedIds((prev) =>
-        prev.includes(item.postId)
-          ? prev.filter((itemId) => itemId !== item.postId)
-          : [...prev, item.postId]
-      );
+      toggleSelectedId(item.postId);
       return;
     }
 
@@ -540,7 +588,11 @@ export default function MyFeeds() {
     });
   };
 
-  const renderGrid = (gridItems: MyFeedItem[], paneKey: string, extraClassName?: string) => {
+  const renderGrid = (
+    gridItems: MyFeedItem[],
+    paneKey: string,
+    extraClassName?: string
+  ) => {
     return (
       <div className={`${styles.gridPane} ${extraClassName ?? ""}`} key={paneKey}>
         {loading && gridItems.length === 0 ? (
@@ -554,6 +606,7 @@ export default function MyFeeds() {
             {gridItems.map((item) => {
               const isSelected = selectedIds.includes(item.postId);
               const imageUrl = resolveAssetUrl(item.thumbnailUrl);
+              const isHiddenItem = item.postStatus === "HIDDEN";
 
               return (
                 <button
@@ -562,11 +615,12 @@ export default function MyFeeds() {
                     cardRefs.current[item.postId] = el;
                   }}
                   type="button"
-                  className={`${styles.card} ${isSelectionMode && isSelected ? styles.cardSelected : ""
-                    }`}
+                  className={`${styles.card} ${
+                    isSelectionMode && isSelected ? styles.cardSelected : ""
+                  }`}
                   onTouchStart={(e) => handleCardTouchStart(e, item.postId)}
                   onTouchMove={handleCardTouchMove}
-                  onTouchEnd={handleCardTouchEnd}
+                  onTouchEnd={(e) => handleCardTouchEnd(e, item.postId)}
                   onClick={() => handleCardClick(item)}
                   aria-label={item.content ?? `나의 피드 ${item.postId}`}
                 >
@@ -599,10 +653,17 @@ export default function MyFeeds() {
                     </div>
                   )}
 
+                  {isHiddenItem && (
+                    <span className={styles.hiddenBadge} aria-label="숨김 처리됨">
+                      <EyeOff size={12} strokeWidth={2.2} />
+                    </span>
+                  )}
+
                   {isSelectionMode && (
                     <span
-                      className={`${styles.selectionDot} ${isSelected ? styles.selectionDotSelected : ""
-                        }`}
+                      className={`${styles.selectionDot} ${
+                        isSelected ? styles.selectionDotSelected : ""
+                      }`}
                     >
                       {isSelected && <Check size={12} strokeWidth={3} />}
                     </span>
@@ -621,19 +682,27 @@ export default function MyFeeds() {
 
   const confirmTitle = isDeleteMode
     ? "선택한 피드를 삭제할까요?"
+    : allSelectedAreHidden
+    ? "선택한 피드의 숨김을 취소할까요?"
     : "선택한 피드를 숨길까요?";
 
   const confirmDesc = isDeleteMode
     ? `선택한 ${selectedIds.length}개의 게시글이 삭제됩니다.`
+    : allSelectedAreHidden
+    ? `선택한 ${selectedIds.length}개의 hidden 게시글을 다시 공개 상태로 되돌리려면 백엔드 API가 필요합니다.`
     : `선택한 ${selectedIds.length}개의 게시글이 숨김 처리됩니다.`;
 
   const confirmActionLabel = actionSubmitting
     ? isDeleteMode
       ? "삭제 중..."
+      : allSelectedAreHidden
+      ? "처리 중..."
       : "숨기는 중..."
     : isDeleteMode
-      ? "삭제"
-      : "숨기기";
+    ? "삭제"
+    : allSelectedAreHidden
+    ? "숨김 취소"
+    : "숨기기";
 
   return (
     <div
@@ -726,7 +795,7 @@ export default function MyFeeds() {
                   >
                     <span className={styles.optionMenuItemInner}>
                       <Eye size={18} strokeWidth={2.1} />
-                      <span className={styles.optionMenuLabel}>숨기기</span>
+                      <span className={styles.optionMenuLabel}>숨기기 / 취소</span>
                     </span>
                   </button>
                 </div>
@@ -745,8 +814,9 @@ export default function MyFeeds() {
           >
             <span
               ref={allTextRef}
-              className={`${styles.tabText} ${activeTab === "all" ? styles.tabTextActive : ""
-                }`}
+              className={`${styles.tabText} ${
+                activeTab === "all" ? styles.tabTextActive : ""
+              }`}
             >
               전체
             </span>
@@ -759,8 +829,9 @@ export default function MyFeeds() {
           >
             <span
               ref={ongoingTextRef}
-              className={`${styles.tabText} ${activeTab === "ongoing" ? styles.tabTextActive : ""
-                }`}
+              className={`${styles.tabText} ${
+                activeTab === "ongoing" ? styles.tabTextActive : ""
+              }`}
             >
               평가 중
             </span>
@@ -773,8 +844,9 @@ export default function MyFeeds() {
           >
             <span
               ref={doneTextRef}
-              className={`${styles.tabText} ${activeTab === "done" ? styles.tabTextActive : ""
-                }`}
+              className={`${styles.tabText} ${
+                activeTab === "done" ? styles.tabTextActive : ""
+              }`}
             >
               평가 완료
             </span>
@@ -791,8 +863,9 @@ export default function MyFeeds() {
       </div>
 
       <main
-        className={`${styles.contentArea} ${isSelectionMode ? styles.contentAreaSelectionMode : ""
-          }`}
+        className={`${styles.contentArea} ${
+          isSelectionMode ? styles.contentAreaSelectionMode : ""
+        }`}
         onTouchStart={handleContentTouchStart}
         onTouchMove={handleContentTouchMove}
         onTouchEnd={handleContentTouchEnd}
