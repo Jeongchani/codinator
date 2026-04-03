@@ -1,10 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  ChevronLeft,
+  Check,
+  Eye,
+  EyeOff,
+  MoreVertical,
+  Trash2,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import type {
-  GetFeedPostDetailResponse,
-  GetUserFeedResponse,
-} from "@codinator/contracts";
-import { Plus } from "lucide-react";
+import type { GetMyFeedResponse } from "@codinator/contracts";
 import {
   clearAuthTokens,
   fetcher,
@@ -13,422 +24,905 @@ import {
 } from "../../lib/api";
 import styles from "./MyFeeds.module.css";
 
-type FeedListItem = GetUserFeedResponse["items"][number];
+type TabType = "all" | "ongoing" | "done";
+type ActionMode = "delete" | "hide" | null;
+type SlideDirection = "left" | "right";
+type TouchDragMode = "select" | "deselect";
 
-type FeedCardItem = {
-  postId: number;
-  authorId: number;
-  imageUrl?: string;
-  createdAt: string;
-  content: string;
-  likeCount: number;
+type Point = {
+  x: number;
+  y: number;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
+type SelectionRect = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+};
 
-function toNumber(value: unknown): number | undefined {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
+type IndicatorStyle = {
+  left: number;
+  width: number;
+};
 
-  if (typeof value === "string") {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
+type MyFeedItem = GetMyFeedResponse["items"][number];
 
-  return undefined;
-}
+const TAB_ORDER: TabType[] = ["all", "ongoing", "done"];
 
-function getStoredAccessToken(): string | undefined {
-  if (typeof window === "undefined") return undefined;
-
+const isAuthError = (message: string) => {
   return (
-    window.localStorage.getItem("accessToken") ??
-    window.localStorage.getItem("token") ??
-    undefined
+    message.includes("Unauthorized") ||
+    message.includes("로그인이 필요합니다") ||
+    message.includes("401")
   );
-}
+};
 
-function decodeJwtPayload(token: string): Record<string, unknown> | undefined {
-  try {
-    const parts = token.split(".");
-    if (parts.length < 2) return undefined;
-
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(
-      base64.length + ((4 - (base64.length % 4)) % 4),
-      "="
-    );
-
-    const decoded = atob(padded);
-    const json = decodeURIComponent(
-      Array.from(decoded)
-        .map(
-          (char) => `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`
-        )
-        .join("")
-    );
-
-    const parsed: unknown = JSON.parse(json);
-    return isRecord(parsed) ? parsed : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function getStoredUserId(): number | undefined {
-  if (typeof window === "undefined") return undefined;
-
-  const candidateKeys = ["id", "userId", "memberId"];
-
-  for (const key of candidateKeys) {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) continue;
-
-    const direct = toNumber(raw);
-    if (direct !== undefined) return direct;
-
-    try {
-      const parsed: unknown = JSON.parse(raw);
-      const parsedNumber = toNumber(parsed);
-      if (parsedNumber !== undefined) return parsedNumber;
-
-      if (isRecord(parsed)) {
-        const nested =
-          toNumber(parsed.id) ??
-          toNumber(parsed.userId) ??
-          toNumber(parsed.memberId);
-
-        if (nested !== undefined) return nested;
-      }
-    } catch {
-      continue;
-    }
+const getItemsByTab = (items: MyFeedItem[], tab: TabType) => {
+  if (tab === "all") {
+    return items;
   }
 
-  return undefined;
-}
+  if (tab === "ongoing") {
+    return items.filter((item) => item.evaluation?.status === "OPEN");
+  }
 
-function getCurrentUserId(): number | undefined {
-  const fromStorage = getStoredUserId();
-  if (fromStorage !== undefined) return fromStorage;
-
-  const token = getStoredAccessToken();
-  if (!token) return undefined;
-
-  const payload = decodeJwtPayload(token);
-  if (!payload) return undefined;
-
-  return (
-    toNumber(payload.userId) ??
-    toNumber(payload.memberId) ??
-    toNumber(payload.id) ??
-    toNumber(payload.sub)
-  );
-}
-
-function formatShortDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-
-  const year = String(date.getFullYear()).slice(2);
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}.${month}.${day}`;
-}
-
-function sortByLatest(items: FeedListItem[]) {
-  return [...items].sort((a, b) => {
-    const aTime = new Date(a.createdAt).getTime();
-    const bTime = new Date(b.createdAt).getTime();
-    return bTime - aTime;
+  return items.filter((item) => {
+    const evaluationStatus = item.evaluation?.status;
+    return evaluationStatus === "ENDED" || evaluationStatus === "CLOSED";
   });
-}
+};
 
-function HeartCountIcon() {
-  return (
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M12.001 20.727L10.552 19.409C5.4 14.737 2 11.654 2 7.875C2 4.792 4.42 2.375 7.5 2.375C9.24 2.375 10.91 3.184 12.001 4.454C13.092 3.184 14.762 2.375 16.502 2.375C19.582 2.375 22.002 4.792 22.002 7.875C22.002 11.654 18.602 14.737 13.45 19.418L12.001 20.727Z"
-        stroke="currentColor"
-        strokeWidth="1.9"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+async function loadAllMyFeedItems(): Promise<MyFeedItem[]> {
+  const headers = getAuthHeaders();
+  const allItems: MyFeedItem[] = [];
+  let cursor: number | null = null;
+  let hasMore = true;
+
+  while (hasMore) {
+    const query = cursor ? `?cursor=${cursor}` : "";
+    const endpoint = `/users/me/feed${query}`;
+
+    const data: GetMyFeedResponse = await fetcher(endpoint, {
+      headers,
+    });
+
+    allItems.push(...(data.items ?? []));
+    cursor = data.nextCursor ?? null;
+    hasMore = Boolean(data.hasMore && cursor);
+  }
+
+  return allItems;
 }
 
 export default function MyFeeds() {
   const navigate = useNavigate();
 
-  const [displayUserName, setDisplayUserName] = useState("내");
-  const [items, setItems] = useState<FeedCardItem[]>([]);
+  const [items, setItems] = useState<MyFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const currentUserId = useMemo(() => getCurrentUserId(), []);
+  const [activeTab, setActiveTab] = useState<TabType>("all");
+  const [displayTab, setDisplayTab] = useState<TabType>("all");
+  const [prevTab, setPrevTab] = useState<TabType>("all");
+  const [incomingTab, setIncomingTab] = useState<TabType | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [slideDirection, setSlideDirection] = useState<SlideDirection>("right");
 
-  useEffect(() => {
-    let cancelled = false;
+  const [actionMode, setActionMode] = useState<ActionMode>(null);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [showActionConfirm, setShowActionConfirm] = useState(false);
+  const [showOptionMenu, setShowOptionMenu] = useState(false);
+  const [actionSubmitting, setActionSubmitting] = useState(false);
 
-    const load = async () => {
-      if (!currentUserId) {
-        setError("로그인 사용자 정보를 찾을 수 없습니다.");
-        setLoading(false);
+  const [isTouchDragging, setIsTouchDragging] = useState(false);
+  const [touchDragMode, setTouchDragMode] = useState<TouchDragMode>("select");
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const tabRowRef = useRef<HTMLDivElement | null>(null);
+  const optionMenuRef = useRef<HTMLDivElement | null>(null);
+  const cardRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+
+  const allTextRef = useRef<HTMLSpanElement | null>(null);
+  const ongoingTextRef = useRef<HTMLSpanElement | null>(null);
+  const doneTextRef = useRef<HTMLSpanElement | null>(null);
+
+  const touchStartRef = useRef<Point | null>(null);
+  const touchCurrentRef = useRef<Point | null>(null);
+  const initialSelectedIdsRef = useRef<number[]>([]);
+  const animationTimerRef = useRef<number | null>(null);
+  const touchDraggedRef = useRef(false);
+  const ignoreNextClickRef = useRef(false);
+
+  const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({
+    left: 0,
+    width: 0,
+  });
+
+  const isSelectionMode = actionMode !== null;
+  const isDeleteMode = actionMode === "delete";
+  const isHideMode = actionMode === "hide";
+
+  const displayedItems = useMemo(() => {
+    return getItemsByTab(items, displayTab);
+  }, [displayTab, items]);
+
+  const previousItems = useMemo(() => {
+    return getItemsByTab(items, prevTab);
+  }, [items, prevTab]);
+
+  const activeItemsForSelection = useMemo(() => {
+    return getItemsByTab(items, activeTab);
+  }, [activeTab, items]);
+
+  const selectedItems = useMemo(() => {
+    return items.filter((item) => selectedIds.includes(item.postId));
+  }, [items, selectedIds]);
+
+  const allSelectedAreHidden = useMemo(() => {
+    return (
+      selectedItems.length > 0 &&
+      selectedItems.every((item) => item.postStatus === "HIDDEN")
+    );
+  }, [selectedItems]);
+
+  const moveToLogin = useCallback(() => {
+    clearAuthTokens();
+    navigate("/login", { replace: true });
+  }, [navigate]);
+
+  const refreshFeed = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const loadedItems = await loadAllMyFeedItems();
+      setItems(loadedItems);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "나의 피드를 불러오지 못했습니다.";
+
+      if (isAuthError(message)) {
+        moveToLogin();
         return;
       }
 
-      try {
-        setLoading(true);
-        setError("");
-        setItems([]);
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [moveToLogin]);
 
-        const headers = getAuthHeaders();
+  useEffect(() => {
+    void refreshFeed();
+  }, [refreshFeed]);
 
-        let feed: GetUserFeedResponse | null = null;
-        const feedCandidates = [
-          "/users/me/feed",
-          `/users/${currentUserId}/feed`,
-        ];
+  const getTabTextRef = useCallback((tab: TabType) => {
+    if (tab === "all") return allTextRef.current;
+    if (tab === "ongoing") return ongoingTextRef.current;
+    return doneTextRef.current;
+  }, []);
 
-        for (const endpoint of feedCandidates) {
-          try {
-            feed = await fetcher<GetUserFeedResponse>(endpoint, { headers });
-            break;
-          } catch (err: unknown) {
-            const message =
-              err instanceof Error ? err.message : "피드를 불러오지 못했습니다.";
+  const updateIndicator = useCallback(() => {
+    const rowEl = tabRowRef.current;
+    const targetEl = getTabTextRef(activeTab);
 
-            if (
-              message.includes("Unauthorized") ||
-              message.includes("로그인이 필요합니다") ||
-              message.includes("인증")
-            ) {
-              clearAuthTokens();
-              navigate("/login", { replace: true });
-              return;
-            }
-          }
-        }
+    if (!rowEl || !targetEl) return;
 
-        if (!feed) {
-          throw new Error("내 피드를 불러오지 못했습니다.");
-        }
+    const rowRect = rowEl.getBoundingClientRect();
+    const targetRect = targetEl.getBoundingClientRect();
 
-        if (cancelled) return;
+    setIndicatorStyle({
+      left: targetRect.left - rowRect.left,
+      width: targetRect.width,
+    });
+  }, [activeTab, getTabTextRef]);
 
-        setDisplayUserName(feed.user.nickname ?? "내");
+  useLayoutEffect(() => {
+    updateIndicator();
+  }, [updateIndicator]);
 
-        const latestItems = sortByLatest(feed.items ?? []);
-        const filledItems: FeedCardItem[] = [];
+  useEffect(() => {
+    const handleResize = () => updateIndicator();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [updateIndicator]);
 
-        for (const item of latestItems) {
-          let content = "";
-          let likeCount = 0;
+  useEffect(() => {
+    if (!isAnimating || !incomingTab) return;
 
-          const detailCandidates = [
-            `/users/${feed.user.userId}/feed/${item.postId}`,
-            `/users/${currentUserId}/feed/${item.postId}`,
-          ];
+    if (animationTimerRef.current) {
+      window.clearTimeout(animationTimerRef.current);
+    }
 
-          for (const endpoint of detailCandidates) {
-            try {
-              const detail = await fetcher<GetFeedPostDetailResponse>(endpoint, {
-                headers,
-              });
+    animationTimerRef.current = window.setTimeout(() => {
+      setDisplayTab(incomingTab);
+      setIncomingTab(null);
+      setIsAnimating(false);
+    }, 320);
 
-              content = detail.content?.trim() ?? "";
-              likeCount = detail.voteSummary.likeCount ?? 0;
-              break;
-            } catch (detailErr: unknown) {
-              const detailMessage =
-                detailErr instanceof Error
-                  ? detailErr.message
-                  : "게시글 상세를 불러오지 못했습니다.";
+    return () => {
+      if (animationTimerRef.current) {
+        window.clearTimeout(animationTimerRef.current);
+      }
+    };
+  }, [incomingTab, isAnimating]);
 
-              if (
-                detailMessage.includes("Unauthorized") ||
-                detailMessage.includes("로그인이 필요합니다") ||
-                detailMessage.includes("인증")
-              ) {
-                clearAuthTokens();
-                navigate("/login", { replace: true });
-                return;
-              }
-            }
-          }
+  useEffect(() => {
+    if (!showOptionMenu) return;
 
-          filledItems.push({
-            postId: item.postId,
-            authorId: feed.user.userId,
-            imageUrl: resolveAssetUrl(item.thumbnailUrl),
-            createdAt: item.createdAt,
-            content,
-            likeCount,
-          });
-
-          if (!cancelled) {
-            setItems([...filledItems]);
-          }
-        }
-      } catch (err: unknown) {
-        const message =
-          err instanceof Error ? err.message : "피드를 불러오지 못했습니다.";
-
-        if (!cancelled) {
-          setError(message);
-        }
-
-        if (
-          message.includes("Unauthorized") ||
-          message.includes("로그인이 필요합니다") ||
-          message.includes("인증")
-        ) {
-          clearAuthTokens();
-          navigate("/login", { replace: true });
-          return;
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!optionMenuRef.current) return;
+      if (!optionMenuRef.current.contains(e.target as Node)) {
+        setShowOptionMenu(false);
       }
     };
 
-    void load();
+    window.addEventListener("mousedown", handleClickOutside);
+    return () => window.removeEventListener("mousedown", handleClickOutside);
+  }, [showOptionMenu]);
 
-    return () => {
-      cancelled = true;
+  useEffect(() => {
+    const visibleIds = new Set(
+      activeItemsForSelection.map((item) => item.postId)
+    );
+    setSelectedIds((prev) => prev.filter((id) => visibleIds.has(id)));
+  }, [activeItemsForSelection]);
+
+  const toggleSelectedId = useCallback((postId: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(postId)
+        ? prev.filter((itemId) => itemId !== postId)
+        : [...prev, postId]
+    );
+  }, []);
+
+  const getPointInContainer = useCallback((clientX: number, clientY: number) => {
+    const container = containerRef.current;
+    if (!container) return { x: clientX, y: clientY };
+
+    const rect = container.getBoundingClientRect();
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
     };
-  }, [currentUserId, navigate]);
+  }, []);
 
-  const handleOpenDetail = (item: FeedCardItem) => {
+  const getSelectionRect = useCallback(
+    (start: Point, current: Point): SelectionRect => {
+      return {
+        left: Math.min(start.x, current.x),
+        top: Math.min(start.y, current.y),
+        right: Math.max(start.x, current.x),
+        bottom: Math.max(start.y, current.y),
+      };
+    },
+    []
+  );
+
+  const isIntersecting = useCallback((selection: SelectionRect, card: DOMRect) => {
+    const container = containerRef.current;
+    if (!container) return false;
+
+    const containerRect = container.getBoundingClientRect();
+
+    const left = card.left - containerRect.left;
+    const top = card.top - containerRect.top;
+    const right = left + card.width;
+    const bottom = top + card.height;
+
+    return !(
+      selection.right < left ||
+      selection.left > right ||
+      selection.bottom < top ||
+      selection.top > bottom
+    );
+  }, []);
+
+  const applyTouchDragSelection = useCallback(() => {
+    const start = touchStartRef.current;
+    const current = touchCurrentRef.current;
+    if (!start || !current) return;
+
+    const rect = getSelectionRect(start, current);
+    const touchedIds = activeItemsForSelection
+      .filter((item) => {
+        const el = cardRefs.current[item.postId];
+        if (!el) return false;
+        return isIntersecting(rect, el.getBoundingClientRect());
+      })
+      .map((item) => item.postId);
+
+    const baseSet = new Set(initialSelectedIdsRef.current);
+
+    if (touchDragMode === "select") {
+      touchedIds.forEach((id) => baseSet.add(id));
+    } else {
+      touchedIds.forEach((id) => baseSet.delete(id));
+    }
+
+    setSelectedIds(Array.from(baseSet));
+  }, [activeItemsForSelection, getSelectionRect, isIntersecting, touchDragMode]);
+
+  const resetTouchDragging = useCallback(() => {
+    setIsTouchDragging(false);
+    touchStartRef.current = null;
+    touchCurrentRef.current = null;
+    touchDraggedRef.current = false;
+  }, []);
+
+  const enterMode = (mode: Exclude<ActionMode, null>) => {
+    setActionMode(mode);
+    setSelectedIds([]);
+    setShowActionConfirm(false);
+    setShowOptionMenu(false);
+    resetTouchDragging();
+  };
+
+  const exitSelectionMode = () => {
+    setActionMode(null);
+    setSelectedIds([]);
+    setShowActionConfirm(false);
+    setShowOptionMenu(false);
+    resetTouchDragging();
+  };
+
+  const handleTabChange = (tab: TabType) => {
+    if (tab === activeTab) return;
+
+    const currentIndex = TAB_ORDER.indexOf(activeTab);
+    const nextIndex = TAB_ORDER.indexOf(tab);
+    const direction: SlideDirection = nextIndex > currentIndex ? "right" : "left";
+
+    setSlideDirection(direction);
+    setPrevTab(displayTab);
+    setIncomingTab(tab);
+    setIsAnimating(true);
+    setActiveTab(tab);
+    setSelectedIds([]);
+    setShowActionConfirm(false);
+    resetTouchDragging();
+  };
+
+  const handleActionConfirmOpen = () => {
+    if (selectedIds.length === 0 || actionSubmitting) return;
+    setShowActionConfirm(true);
+  };
+
+  const handleActionConfirmClose = () => {
+    if (actionSubmitting) return;
+    setShowActionConfirm(false);
+  };
+
+  const handleApplyAction = async () => {
+    if (selectedIds.length === 0 || actionSubmitting) return;
+
+    if (isHideMode && allSelectedAreHidden) {
+      window.alert(
+        "현재 백엔드에는 숨김 취소 API가 아직 없습니다. 프론트에서는 hidden 표시와 선택까지는 가능하지만 실제 취소는 백엔드 추가가 필요합니다."
+      );
+      return;
+    }
+
+    setActionSubmitting(true);
+
+    try {
+      const headers = getAuthHeaders();
+      const results = await Promise.allSettled(
+        selectedIds.map((postId) => {
+          if (isDeleteMode) {
+            return fetcher(`/posts/${postId}`, {
+              method: "DELETE",
+              headers,
+            });
+          }
+
+          return fetcher(`/posts/${postId}/hide`, {
+            method: "PATCH",
+            headers,
+          });
+        })
+      );
+
+      const failed = results.find(
+        (result): result is PromiseRejectedResult => result.status === "rejected"
+      );
+
+      if (failed) {
+        const message =
+          failed.reason instanceof Error
+            ? failed.reason.message
+            : isDeleteMode
+            ? "게시글 삭제에 실패했습니다."
+            : "게시글 숨기기에 실패했습니다.";
+
+        if (isAuthError(message)) {
+          moveToLogin();
+          return;
+        }
+
+        window.alert(message);
+      }
+
+      await refreshFeed();
+      exitSelectionMode();
+    } finally {
+      setActionSubmitting(false);
+    }
+  };
+
+  const startTouchDrag = (
+    clientX: number,
+    clientY: number,
+    startItemId?: number
+  ) => {
+    if (!isSelectionMode) return;
+
+    const startPoint = getPointInContainer(clientX, clientY);
+
+    touchStartRef.current = startPoint;
+    touchCurrentRef.current = startPoint;
+    initialSelectedIdsRef.current = [...selectedIds];
+    touchDraggedRef.current = false;
+    ignoreNextClickRef.current = false;
+
+    const nextMode: TouchDragMode =
+      startItemId && selectedIds.includes(startItemId) ? "deselect" : "select";
+
+    setTouchDragMode(nextMode);
+    setIsTouchDragging(true);
+  };
+
+  const moveTouchDrag = (clientX: number, clientY: number) => {
+    if (!isSelectionMode || !isTouchDragging) return;
+
+    const currentPoint = getPointInContainer(clientX, clientY);
+    touchCurrentRef.current = currentPoint;
+
+    const start = touchStartRef.current;
+    if (!start) return;
+
+    const dx = Math.abs(currentPoint.x - start.x);
+    const dy = Math.abs(currentPoint.y - start.y);
+
+    if (dx > 4 || dy > 4) {
+      touchDraggedRef.current = true;
+    }
+
+    applyTouchDragSelection();
+  };
+
+  const endTouchDrag = (tappedItemId?: number) => {
+    if (!isSelectionMode) return;
+
+    if (touchDraggedRef.current) {
+      applyTouchDragSelection();
+      ignoreNextClickRef.current = true;
+    } else if (tappedItemId !== undefined) {
+      toggleSelectedId(tappedItemId);
+      ignoreNextClickRef.current = true;
+    }
+
+    resetTouchDragging();
+  };
+
+  const handleContentTouchStart = (e: React.TouchEvent<HTMLElement>) => {
+    if (!isSelectionMode) return;
+
+    const target = e.target as HTMLElement;
+    if (target.closest("button")) return;
+
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    startTouchDrag(touch.clientX, touch.clientY);
+  };
+
+  const handleContentTouchMove = (e: React.TouchEvent<HTMLElement>) => {
+    if (!isSelectionMode || !isTouchDragging) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    e.preventDefault();
+    moveTouchDrag(touch.clientX, touch.clientY);
+  };
+
+  const handleContentTouchEnd = () => {
+    if (!isSelectionMode) return;
+    endTouchDrag();
+  };
+
+  const handleCardTouchStart = (
+    e: React.TouchEvent<HTMLButtonElement>,
+    itemId: number
+  ) => {
+    if (!isSelectionMode) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    e.stopPropagation();
+    startTouchDrag(touch.clientX, touch.clientY, itemId);
+  };
+
+  const handleCardTouchMove = (e: React.TouchEvent<HTMLButtonElement>) => {
+    if (!isSelectionMode || !isTouchDragging) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    moveTouchDrag(touch.clientX, touch.clientY);
+  };
+
+  const handleCardTouchEnd = (
+    e: React.TouchEvent<HTMLButtonElement>,
+    itemId: number
+  ) => {
+    if (!isSelectionMode) return;
+    e.stopPropagation();
+    endTouchDrag(itemId);
+  };
+
+  const handleCardClick = (item: MyFeedItem) => {
+    if (isSelectionMode) {
+      if (ignoreNextClickRef.current) {
+        ignoreNextClickRef.current = false;
+        return;
+      }
+
+      toggleSelectedId(item.postId);
+      return;
+    }
+
     navigate(`/myFeedDetail/${item.postId}`, {
       state: {
         post: {
           id: item.postId,
           postId: item.postId,
-          authorId: item.authorId,
-          imageUrl: item.imageUrl,
-          nickname: displayUserName,
+          imageUrl: resolveAssetUrl(item.thumbnailUrl),
+          createdAt: item.createdAt,
+          content: item.content ?? "",
+          nickname: "나의 피드",
         },
       },
     });
   };
 
-  if (loading && items.length === 0) {
+  const renderGrid = (
+    gridItems: MyFeedItem[],
+    paneKey: string,
+    extraClassName?: string
+  ) => {
     return (
-      <div className={styles.container}>
-        <div className={styles.scrollArea}>
-          <div className={styles.topBar}>
-            <div className={styles.titlePill}>
-              <h1 className={styles.pageTitle}>불러오는 중...</h1>
-            </div>
+      <div className={`${styles.gridPane} ${extraClassName ?? ""}`} key={paneKey}>
+        {loading && gridItems.length === 0 ? (
+          <div className={styles.emptyState}>불러오는 중...</div>
+        ) : error ? (
+          <div className={styles.emptyState}>{error}</div>
+        ) : gridItems.length === 0 ? (
+          <div className={styles.emptyState}>나의 피드가 없습니다.</div>
+        ) : (
+          <div className={styles.cardGrid}>
+            {gridItems.map((item) => {
+              const isSelected = selectedIds.includes(item.postId);
+              const imageUrl = resolveAssetUrl(item.thumbnailUrl);
+              const isHiddenItem = item.postStatus === "HIDDEN";
 
-            <button
-              type="button"
-              className={styles.uploadButton}
-              aria-label="게시글 업로드"
-              onClick={() => navigate("/postUpload")}
-            >
-              <Plus size={18} strokeWidth={2.4} />
-            </button>
+              return (
+                <button
+                  key={item.postId}
+                  ref={(el) => {
+                    cardRefs.current[item.postId] = el;
+                  }}
+                  type="button"
+                  className={`${styles.card} ${
+                    isSelectionMode && isSelected ? styles.cardSelected : ""
+                  }`}
+                  onTouchStart={(e) => handleCardTouchStart(e, item.postId)}
+                  onTouchMove={handleCardTouchMove}
+                  onTouchEnd={(e) => handleCardTouchEnd(e, item.postId)}
+                  onClick={() => handleCardClick(item)}
+                  aria-label={item.content ?? `나의 피드 ${item.postId}`}
+                >
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={`my-feed-${item.postId}`}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#999999",
+                        fontSize: "12px",
+                        background: "#f3f3f3",
+                      }}
+                    >
+                      이미지 없음
+                    </div>
+                  )}
+
+                  {isHiddenItem && (
+                    <span className={styles.hiddenBadge} aria-label="숨김 처리됨">
+                      <EyeOff size={12} strokeWidth={2.2} />
+                    </span>
+                  )}
+
+                  {isSelectionMode && (
+                    <span
+                      className={`${styles.selectionDot} ${
+                        isSelected ? styles.selectionDotSelected : ""
+                      }`}
+                    >
+                      {isSelected && <Check size={12} strokeWidth={3} />}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
-        </div>
+        )}
       </div>
     );
-  }
+  };
+
+  const nextPaneEnterClass =
+    slideDirection === "right" ? styles.enterFromRight : styles.enterFromLeft;
+
+  const confirmTitle = isDeleteMode
+    ? "선택한 피드를 삭제할까요?"
+    : allSelectedAreHidden
+    ? "선택한 피드의 숨김을 취소할까요?"
+    : "선택한 피드를 숨길까요?";
+
+  const confirmDesc = isDeleteMode
+    ? `선택한 ${selectedIds.length}개의 게시글이 삭제됩니다.`
+    : allSelectedAreHidden
+    ? `선택한 ${selectedIds.length}개의 hidden 게시글을 다시 공개 상태로 되돌리려면 백엔드 API가 필요합니다.`
+    : `선택한 ${selectedIds.length}개의 게시글이 숨김 처리됩니다.`;
+
+  const confirmActionLabel = actionSubmitting
+    ? isDeleteMode
+      ? "삭제 중..."
+      : allSelectedAreHidden
+      ? "처리 중..."
+      : "숨기는 중..."
+    : isDeleteMode
+    ? "삭제"
+    : allSelectedAreHidden
+    ? "숨김 취소"
+    : "숨기기";
 
   return (
-    <div className={styles.container}>
-      <div className={styles.scrollArea}>
-        <div className={styles.topBar}>
-          <div className={styles.titlePill}>
-            <h1 className={styles.pageTitle}>내 피드 페이지</h1>
-          </div>
+    <div
+      ref={containerRef}
+      className={`${styles.container} ${isSelectionMode ? styles.selectionMode : ""}`}
+    >
+      <header className={styles.header}>
+        <div className={styles.headerInner}>
+          <button
+            type="button"
+            className={styles.headerIconButton}
+            onClick={isSelectionMode ? exitSelectionMode : () => navigate(-1)}
+            aria-label="뒤로가기"
+          >
+            <ChevronLeft size={24} strokeWidth={2.2} />
+          </button>
+
+          <h1 className={styles.title}>나의 피드</h1>
+
+          {isDeleteMode ? (
+            <button
+              type="button"
+              className={styles.deleteButtonRed}
+              onClick={handleActionConfirmOpen}
+              aria-label="선택 삭제"
+              disabled={selectedIds.length === 0 || actionSubmitting}
+            >
+              <Trash2 size={16} strokeWidth={2.3} />
+            </button>
+          ) : isHideMode ? (
+            <button
+              type="button"
+              className={styles.hideButtonDark}
+              onClick={handleActionConfirmOpen}
+              aria-label="선택 숨기기"
+              disabled={selectedIds.length === 0 || actionSubmitting}
+            >
+              <EyeOff size={16} strokeWidth={2.3} />
+            </button>
+          ) : (
+            <div ref={optionMenuRef} className={styles.optionMenuWrap}>
+              <button
+                type="button"
+                className={styles.headerIconButtonFilled}
+                onClick={() => setShowOptionMenu((prev) => !prev)}
+                aria-label="옵션 열기"
+              >
+                <MoreVertical size={16} strokeWidth={2.3} />
+              </button>
+
+              {showOptionMenu && (
+                <div className={styles.optionMenu}>
+                  <button
+                    type="button"
+                    className={styles.optionMenuItem}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      enterMode("delete");
+                    }}
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      enterMode("delete");
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      enterMode("delete");
+                    }}
+                  >
+                    <span className={styles.optionMenuItemInner}>
+                      <Trash2 size={18} strokeWidth={2.1} />
+                      <span className={styles.optionMenuLabel}>삭제</span>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={styles.optionMenuItem}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      enterMode("hide");
+                    }}
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      enterMode("hide");
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      enterMode("hide");
+                    }}
+                  >
+                    <span className={styles.optionMenuItemInner}>
+                      <Eye size={18} strokeWidth={2.1} />
+                      <span className={styles.optionMenuLabel}>숨기기 / 취소</span>
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </header>
+
+      <div className={styles.tabSection}>
+        <div ref={tabRowRef} className={styles.tabRow}>
+          <button
+            type="button"
+            className={styles.tabButton}
+            onClick={() => handleTabChange("all")}
+          >
+            <span
+              ref={allTextRef}
+              className={`${styles.tabText} ${
+                activeTab === "all" ? styles.tabTextActive : ""
+              }`}
+            >
+              전체
+            </span>
+          </button>
 
           <button
             type="button"
-            className={styles.uploadButton}
-            aria-label="게시글 업로드"
-            onClick={() => navigate("/postUpload")}
+            className={styles.tabButton}
+            onClick={() => handleTabChange("ongoing")}
           >
-            <Plus size={18} strokeWidth={2.4} />
+            <span
+              ref={ongoingTextRef}
+              className={`${styles.tabText} ${
+                activeTab === "ongoing" ? styles.tabTextActive : ""
+              }`}
+            >
+              평가 중
+            </span>
           </button>
-        </div>
 
-        <div className={styles.content}>
-          <section className={styles.summarySection}>
-            <p className={styles.summaryTitle}>내가 올린 피드</p>
-            <p className={styles.summaryCount}>총 {items.length}개</p>
-          </section>
+          <button
+            type="button"
+            className={styles.tabButton}
+            onClick={() => handleTabChange("done")}
+          >
+            <span
+              ref={doneTextRef}
+              className={`${styles.tabText} ${
+                activeTab === "done" ? styles.tabTextActive : ""
+              }`}
+            >
+              평가 완료
+            </span>
+          </button>
 
-          {error ? <div className={styles.emptyText}>{error}</div> : null}
-
-          {!error && items.length > 0 ? (
-            <div className={styles.feedGrid}>
-              {items.map((item) => {
-                return (
-                  <article
-                    key={item.postId}
-                    className={styles.feedCard}
-                    onClick={() => handleOpenDetail(item)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleOpenDetail(item);
-                      }
-                    }}
-                  >
-                    <div className={styles.imageWrap}>
-                      {item.imageUrl ? (
-                        <img
-                          src={item.imageUrl}
-                          alt={`my-feed-${item.postId}`}
-                          className={styles.feedImage}
-                        />
-                      ) : (
-                        <div className={styles.placeholder} />
-                      )}
-                    </div>
-
-                    <div className={styles.cardInfo}>
-                      <p className={styles.cardDate}>
-                        {formatShortDate(item.createdAt)}
-                      </p>
-                      <p className={styles.cardDescription}>
-                        {item.content || "설명이 없습니다."}
-                      </p>
-
-                      <div className={styles.cardBottomRow}>
-                        <span className={styles.likeCount}>
-                          <HeartCountIcon />
-                          {item.likeCount}
-                        </span>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          ) : null}
-
-          {!error && !loading && items.length === 0 ? (
-            <div className={styles.emptyText}>공개된 피드 게시글이 없습니다.</div>
-          ) : null}
+          <span
+            className={styles.tabIndicator}
+            style={{
+              width: `${indicatorStyle.width}px`,
+              transform: `translateX(${indicatorStyle.left}px)`,
+            }}
+          />
         </div>
       </div>
+
+      <main
+        className={`${styles.contentArea} ${
+          isSelectionMode ? styles.contentAreaSelectionMode : ""
+        }`}
+        onTouchStart={handleContentTouchStart}
+        onTouchMove={handleContentTouchMove}
+        onTouchEnd={handleContentTouchEnd}
+      >
+        <div className={styles.slideViewport}>
+          {isAnimating && incomingTab ? (
+            <>
+              {renderGrid(
+                previousItems,
+                `prev-${prevTab}`,
+                `${styles.animatedPane} ${styles.fadePane}`
+              )}
+              {renderGrid(
+                getItemsByTab(items, incomingTab),
+                `next-${incomingTab}`,
+                `${styles.animatedPane} ${nextPaneEnterClass}`
+              )}
+            </>
+          ) : (
+            renderGrid(displayedItems, `current-${displayTab}`, styles.staticPane)
+          )}
+        </div>
+      </main>
+
+      {showActionConfirm && (
+        <div className={styles.modalOverlay} onClick={handleActionConfirmClose}>
+          <div
+            className={styles.modalCard}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={isDeleteMode ? "나의 피드 삭제 확인" : "나의 피드 숨기기 확인"}
+          >
+            <p className={styles.modalTitle}>{confirmTitle}</p>
+            <p className={styles.modalDesc}>{confirmDesc}</p>
+
+            <div className={styles.modalActions}>
+              <button
+                type="button"
+                className={styles.modalCancelButton}
+                onClick={handleActionConfirmClose}
+                disabled={actionSubmitting}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className={styles.modalActionButton}
+                onClick={handleApplyAction}
+                disabled={actionSubmitting}
+              >
+                {confirmActionLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -30,14 +30,11 @@ function AppRoutes() {
       <Route path="/postUpload" element={<Upload />} />
       <Route path="/rankingDetail/:postId" element={<RankingDetail />} />
       <Route path="/myFeedEdit" element={<MyFeedEdit />} />
+      <Route path="/user/:userId/feed/:postId" element={<UserFeedDetail />} />
 
       <Route element={<AppLayout />}>
         <Route path="/rankingZone" element={<RankingZone />} />
-
-
         <Route path="/user/:userId/feed" element={<UserFeeds />} />
-        <Route path="/user/:userId/feed/:postId" element={<UserFeedDetail />} />
-
         <Route path="/myFeeds" element={<MyFeeds />} />
         <Route path="/myFeedDetail/:postId" element={<MyFeedDetail />} />
         <Route path="/bookmarkPage" element={<BookmarkPage />} />
