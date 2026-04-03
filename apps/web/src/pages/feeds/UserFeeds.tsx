@@ -1,10 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Bookmark, ChevronLeft } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import type {
-  GetFeedPostDetailResponse,
-  GetUserFeedResponse,
-} from "@codinator/contracts";
+import type { GetMyBookmarksResponse, GetUserFeedResponse } from "@codinator/contracts";
 import {
   clearAuthTokens,
   fetcher,
@@ -17,9 +14,17 @@ type FeedListItem = GetUserFeedResponse["items"][number];
 
 type FeedCardItem = {
   postId: number;
-  imageUrl?: string;
+  imageUrl: string;
   createdAt: string;
-  content: string;
+  rankingPeriods: string[];
+};
+
+const isAuthError = (message: string) => {
+  return (
+    message.includes("Unauthorized") ||
+    message.includes("로그인이 필요합니다") ||
+    message.includes("401")
+  );
 };
 
 function sortByLatest(items: FeedListItem[]) {
@@ -36,27 +41,41 @@ export default function UserFeed() {
 
   const [displayUserName, setDisplayUserName] = useState("닉네임");
   const [items, setItems] = useState<FeedCardItem[]>([]);
+  const [bookmarks, setBookmarks] = useState<Record<number, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [bookmarkLoadingIds, setBookmarkLoadingIds] = useState<number[]>([]);
   const [error, setError] = useState("");
 
-  const [bookmarks, setBookmarks] = useState<Record<string, boolean>>(() => {
-    const saved = localStorage.getItem("codinator_bookmarks");
-    return saved ? (JSON.parse(saved) as Record<string, boolean>) : {};
-  });
+  const moveToLogin = useCallback(() => {
+    clearAuthTokens();
+    navigate("/login", { replace: true });
+  }, [navigate]);
+
+  const loadBookmarks = useCallback(async () => {
+    try {
+      const data = await fetcher<GetMyBookmarksResponse>("/users/me/bookmarks", {
+        headers: getAuthHeaders(),
+      });
+
+      const nextMap = data.items.reduce<Record<number, boolean>>((acc, item) => {
+        acc[item.postId] = true;
+        return acc;
+      }, {});
+
+      setBookmarks(nextMap);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "북마크 정보를 불러오지 못했습니다.";
+
+      if (isAuthError(message)) {
+        moveToLogin();
+      }
+    }
+  }, [moveToLogin]);
 
   useEffect(() => {
-    const syncBookmarks = () => {
-      const saved = localStorage.getItem("codinator_bookmarks");
-      setBookmarks(saved ? (JSON.parse(saved) as Record<string, boolean>) : {});
-    };
-
-    syncBookmarks();
-    window.addEventListener("storage", syncBookmarks);
-
-    return () => {
-      window.removeEventListener("storage", syncBookmarks);
-    };
-  }, []);
+    void loadBookmarks();
+  }, [loadBookmarks]);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,10 +92,8 @@ export default function UserFeed() {
         setError("");
         setItems([]);
 
-        const headers = getAuthHeaders();
-
         const feed = await fetcher<GetUserFeedResponse>(`/users/${userId}/feed`, {
-          headers,
+          headers: getAuthHeaders(),
         });
 
         if (cancelled) return;
@@ -84,58 +101,25 @@ export default function UserFeed() {
         setDisplayUserName(feed.user?.nickname ?? "닉네임");
 
         const latestItems = sortByLatest(feed.items ?? []);
+        const mappedItems: FeedCardItem[] = latestItems.map((item) => ({
+          postId: item.postId,
+          imageUrl: resolveAssetUrl(item.thumbnailUrl),
+          createdAt: item.createdAt,
+          rankingPeriods: item.rankingPeriods ?? [],
+        }));
 
-        const detailResults = await Promise.all(
-          latestItems.map(async (item) => {
-            try {
-              const detail = await fetcher<GetFeedPostDetailResponse>(
-                `/users/${userId}/feed/${item.postId}`,
-                { headers }
-              );
-
-              return {
-                postId: item.postId,
-                imageUrl: resolveAssetUrl(item.thumbnailUrl),
-                createdAt: item.createdAt,
-                content: detail.content?.trim() ?? "",
-              } satisfies FeedCardItem;
-            } catch (detailErr) {
-              const detailMessage =
-                detailErr instanceof Error
-                  ? detailErr.message
-                  : "게시글 상세를 불러오지 못했습니다.";
-
-              if (
-                detailMessage.includes("Unauthorized") ||
-                detailMessage.includes("로그인이 필요합니다")
-              ) {
-                throw detailErr;
-              }
-
-              return {
-                postId: item.postId,
-                imageUrl: resolveAssetUrl(item.thumbnailUrl),
-                createdAt: item.createdAt,
-                content: "",
-              } satisfies FeedCardItem;
-            }
-          })
-        );
-
-        if (cancelled) return;
-        setItems(detailResults);
+        setItems(mappedItems);
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "피드를 불러오지 못했습니다.";
-        setError(message);
 
-        if (
-          message.includes("Unauthorized") ||
-          message.includes("로그인이 필요합니다")
-        ) {
-          clearAuthTokens();
-          navigate("/login");
+        if (isAuthError(message)) {
+          moveToLogin();
           return;
+        }
+
+        if (!cancelled) {
+          setError(message);
         }
       } finally {
         if (!cancelled) {
@@ -149,35 +133,61 @@ export default function UserFeed() {
     return () => {
       cancelled = true;
     };
-  }, [navigate, userId]);
+  }, [moveToLogin, userId]);
 
   const handleBack = () => {
     navigate(-1);
   };
 
-  const toggleBookmark = (
+  const toggleBookmark = async (
     e: React.MouseEvent<HTMLButtonElement>,
-    postId: string
+    postId: number
   ) => {
     e.preventDefault();
     e.stopPropagation();
 
-    setBookmarks((prev) => {
-      const next = { ...prev, [postId]: !prev[postId] };
-      localStorage.setItem("codinator_bookmarks", JSON.stringify(next));
-      return next;
-    });
+    if (bookmarkLoadingIds.includes(postId)) {
+      return;
+    }
+
+    const isBookmarked = Boolean(bookmarks[postId]);
+
+    setBookmarkLoadingIds((prev) => [...prev, postId]);
+
+    try {
+      await fetcher(`/posts/${postId}/bookmarks`, {
+        method: isBookmarked ? "DELETE" : "POST",
+        headers: getAuthHeaders(),
+      });
+
+      setBookmarks((prev) => ({
+        ...prev,
+        [postId]: !isBookmarked,
+      }));
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "북마크 처리에 실패했습니다.";
+
+      if (isAuthError(message)) {
+        moveToLogin();
+        return;
+      }
+
+      window.alert(message);
+    } finally {
+      setBookmarkLoadingIds((prev) => prev.filter((id) => id !== postId));
+    }
   };
 
   const handleClickCard = (item: FeedCardItem) => {
     navigate(`/user/${userId}/feed/${item.postId}`, {
       state: {
+        userId: Number(userId),
         post: {
           postId: item.postId,
           authorId: Number(userId),
           imageUrl: item.imageUrl,
           createdAt: item.createdAt,
-          content: item.content,
           nickname: displayUserName,
         },
       },
@@ -219,7 +229,8 @@ export default function UserFeed() {
         {!error && items.length > 0 ? (
           <div className={styles.feedGrid}>
             {items.map((item) => {
-              const postId = String(item.postId);
+              const isBookmarked = Boolean(bookmarks[item.postId]);
+              const isBookmarkLoading = bookmarkLoadingIds.includes(item.postId);
 
               return (
                 <article
@@ -251,18 +262,19 @@ export default function UserFeed() {
                     <button
                       type="button"
                       className={styles.bookmarkButton}
-                      aria-label="북마크"
-                      onClick={(e) => toggleBookmark(e, postId)}
+                      aria-label={isBookmarked ? "북마크 해제" : "북마크 추가"}
+                      onClick={(e) => toggleBookmark(e, item.postId)}
+                      disabled={isBookmarkLoading}
                     >
                       <Bookmark
                         size={12}
                         strokeWidth={2.2}
                         className={
-                          bookmarks[postId]
+                          isBookmarked
                             ? styles.bookmarkFilled
                             : styles.bookmarkDefault
                         }
-                        fill={bookmarks[postId] ? "currentColor" : "none"}
+                        fill={isBookmarked ? "currentColor" : "none"}
                       />
                     </button>
                   </div>

@@ -1,7 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { LoginResponse } from "@codinator/contracts";
-import { fetcher, saveAuthTokens } from "../../lib/api";
+import {
+  clearAuthTokens,
+  fetcher,
+  saveAuthTokens,
+  saveCurrentUser,
+} from "../../lib/api";
 import styles from "./Login.module.css";
 import { KakaoIcon, NaverIcon, GoogleIcon } from "../../components/icons/social";
 
@@ -47,7 +52,10 @@ const Login: React.FC = () => {
   const closeModal = () => setShowModal(false);
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
       openModal("입력 확인", "이메일과 비밀번호를 모두 입력해주세요.");
       return;
     }
@@ -59,12 +67,14 @@ const Login: React.FC = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: email.trim(),
-          password: password.trim(),
+          email: trimmedEmail,
+          password: trimmedPassword,
         }),
       });
 
+      clearAuthTokens();
       saveAuthTokens(data.accessToken, data.refreshToken);
+      saveCurrentUser(data.user);
 
       if (isKeepLoggedIn) {
         localStorage.setItem("keepLoggedIn", "true");
@@ -72,10 +82,14 @@ const Login: React.FC = () => {
         localStorage.removeItem("keepLoggedIn");
       }
 
-      navigate("/rankingZone");
+      navigate("/rankingZone", { replace: true });
     } catch (err) {
       console.error("로그인 에러:", err);
-      openModal("로그인 실패", "이메일 또는 비밀번호가 일치하지 않습니다.");
+      const message =
+        err instanceof Error
+          ? err.message
+          : "로그인 요청에 실패했습니다. 다시 시도해주세요.";
+      openModal("로그인 실패", message);
     } finally {
       setLoading(false);
     }
@@ -104,6 +118,11 @@ const Login: React.FC = () => {
           placeholder="이메일을 입력하세요"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              handleLogin();
+            }
+          }}
         />
         <div className={styles.line} />
 
@@ -115,7 +134,9 @@ const Login: React.FC = () => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") handleLogin();
+            if (e.key === "Enter") {
+              handleLogin();
+            }
           }}
         />
         <div className={styles.line} />

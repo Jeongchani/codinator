@@ -15,34 +15,19 @@ import {
   Trash2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import type { GetMyFeedResponse } from "@codinator/contracts";
+import {
+  clearAuthTokens,
+  fetcher,
+  getAuthHeaders,
+  resolveAssetUrl,
+} from "../../lib/api";
 import styles from "./MyFeeds.module.css";
 
 type TabType = "all" | "ongoing" | "done";
 type ActionMode = "delete" | "hide" | null;
-
-type MyFeedItem = {
-  id: number;
-  title: string;
-  imageUrl?: string;
-  status: Exclude<TabType, "all">;
-};
-
-const MOCK_ITEMS: MyFeedItem[] = [
-  { id: 1, title: "나의 피드 1", status: "ongoing" },
-  { id: 2, title: "나의 피드 2", status: "ongoing" },
-  { id: 3, title: "나의 피드 3", status: "ongoing" },
-  { id: 4, title: "나의 피드 4", status: "ongoing" },
-  { id: 5, title: "나의 피드 5", status: "done" },
-  { id: 6, title: "나의 피드 6", status: "done" },
-  { id: 7, title: "나의 피드 7", status: "done" },
-  { id: 8, title: "나의 피드 8", status: "ongoing" },
-  { id: 9, title: "나의 피드 9", status: "done" },
-];
-
-type IndicatorStyle = {
-  left: number;
-  width: number;
-};
+type SlideDirection = "left" | "right";
+type TouchDragMode = "select" | "deselect";
 
 type Point = {
   x: number;
@@ -56,18 +41,66 @@ type SelectionRect = {
   bottom: number;
 };
 
-type TouchDragMode = "select" | "deselect";
-type SlideDirection = "left" | "right";
+type IndicatorStyle = {
+  left: number;
+  width: number;
+};
+
+type MyFeedItem = GetMyFeedResponse["items"][number];
 
 const TAB_ORDER: TabType[] = ["all", "ongoing", "done"];
 
-function getItemsByTab(items: MyFeedItem[], tab: TabType) {
-  if (tab === "all") return items;
-  return items.filter((item) => item.status === tab);
+const isAuthError = (message: string) => {
+  return (
+    message.includes("Unauthorized") ||
+    message.includes("로그인이 필요합니다") ||
+    message.includes("401")
+  );
+};
+
+const getItemsByTab = (items: MyFeedItem[], tab: TabType) => {
+  if (tab === "all") {
+    return items;
+  }
+
+  if (tab === "ongoing") {
+    return items.filter((item) => item.evaluation?.status === "OPEN");
+  }
+
+  return items.filter((item) => {
+    const evaluationStatus = item.evaluation?.status;
+    return evaluationStatus === "ENDED" || evaluationStatus === "CLOSED";
+  });
+};
+
+async function loadAllMyFeedItems(): Promise<MyFeedItem[]> {
+  const headers = getAuthHeaders();
+  const allItems: MyFeedItem[] = [];
+  let cursor: number | null = null;
+  let hasMore = true;
+
+  while (hasMore) {
+    const query = cursor ? `?cursor=${cursor}` : "";
+    const endpoint = `/users/me/feed${query}`;
+
+    const data: GetMyFeedResponse = await fetcher(endpoint, {
+      headers,
+    });
+
+    allItems.push(...(data.items ?? []));
+    cursor = data.nextCursor ?? null;
+    hasMore = Boolean(data.hasMore && cursor);
+  }
+
+  return allItems;
 }
 
 export default function MyFeeds() {
   const navigate = useNavigate();
+
+  const [items, setItems] = useState<MyFeedItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [displayTab, setDisplayTab] = useState<TabType>("all");
@@ -80,6 +113,7 @@ export default function MyFeeds() {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [showActionConfirm, setShowActionConfirm] = useState(false);
   const [showOptionMenu, setShowOptionMenu] = useState(false);
+  const [actionSubmitting, setActionSubmitting] = useState(false);
 
   const [isTouchDragging, setIsTouchDragging] = useState(false);
   const [touchDragMode, setTouchDragMode] = useState<TouchDragMode>("select");
@@ -109,16 +143,47 @@ export default function MyFeeds() {
   const isHideMode = actionMode === "hide";
 
   const displayedItems = useMemo(() => {
-    return getItemsByTab(MOCK_ITEMS, displayTab);
-  }, [displayTab]);
+    return getItemsByTab(items, displayTab);
+  }, [displayTab, items]);
 
   const previousItems = useMemo(() => {
-    return getItemsByTab(MOCK_ITEMS, prevTab);
-  }, [prevTab]);
+    return getItemsByTab(items, prevTab);
+  }, [items, prevTab]);
 
   const activeItemsForSelection = useMemo(() => {
-    return getItemsByTab(MOCK_ITEMS, activeTab);
-  }, [activeTab]);
+    return getItemsByTab(items, activeTab);
+  }, [activeTab, items]);
+
+  const moveToLogin = useCallback(() => {
+    clearAuthTokens();
+    navigate("/login", { replace: true });
+  }, [navigate]);
+
+  const refreshFeed = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const loadedItems = await loadAllMyFeedItems();
+      setItems(loadedItems);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "나의 피드를 불러오지 못했습니다.";
+
+      if (isAuthError(message)) {
+        moveToLogin();
+        return;
+      }
+
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [moveToLogin]);
+
+  useEffect(() => {
+    void refreshFeed();
+  }, [refreshFeed]);
 
   const getTabTextRef = useCallback((tab: TabType) => {
     if (tab === "all") return allTextRef.current;
@@ -169,7 +234,7 @@ export default function MyFeeds() {
         window.clearTimeout(animationTimerRef.current);
       }
     };
-  }, [isAnimating, incomingTab]);
+  }, [incomingTab, isAnimating]);
 
   useEffect(() => {
     if (!showOptionMenu) return;
@@ -184,6 +249,11 @@ export default function MyFeeds() {
     window.addEventListener("mousedown", handleClickOutside);
     return () => window.removeEventListener("mousedown", handleClickOutside);
   }, [showOptionMenu]);
+
+  useEffect(() => {
+    const visibleIds = new Set(activeItemsForSelection.map((item) => item.postId));
+    setSelectedIds((prev) => prev.filter((id) => visibleIds.has(id)));
+  }, [activeItemsForSelection]);
 
   const getPointInContainer = useCallback((clientX: number, clientY: number) => {
     const container = containerRef.current;
@@ -232,11 +302,11 @@ export default function MyFeeds() {
     const rect = getSelectionRect(start, current);
     const touchedIds = activeItemsForSelection
       .filter((item) => {
-        const el = cardRefs.current[item.id];
+        const el = cardRefs.current[item.postId];
         if (!el) return false;
         return isIntersecting(rect, el.getBoundingClientRect());
       })
-      .map((item) => item.id);
+      .map((item) => item.postId);
 
     const baseSet = new Set(initialSelectedIdsRef.current);
 
@@ -283,34 +353,69 @@ export default function MyFeeds() {
     setIncomingTab(tab);
     setIsAnimating(true);
     setActiveTab(tab);
-
     setSelectedIds([]);
     setShowActionConfirm(false);
     resetTouchDragging();
   };
 
   const handleActionConfirmOpen = () => {
-    if (selectedIds.length === 0) return;
+    if (selectedIds.length === 0 || actionSubmitting) return;
     setShowActionConfirm(true);
   };
 
   const handleActionConfirmClose = () => {
+    if (actionSubmitting) return;
     setShowActionConfirm(false);
   };
 
-  const handleApplyAction = () => {
-    if (isDeleteMode) {
-      console.log("삭제할 나의 피드 id:", selectedIds);
-    }
+  const handleApplyAction = async () => {
+    if (selectedIds.length === 0 || actionSubmitting) return;
 
-    if (isHideMode) {
-      console.log("숨길 나의 피드 id:", selectedIds);
-    }
+    setActionSubmitting(true);
 
-    setSelectedIds([]);
-    setShowActionConfirm(false);
-    setActionMode(null);
-    resetTouchDragging();
+    try {
+      const headers = getAuthHeaders();
+      const results = await Promise.allSettled(
+        selectedIds.map((postId) => {
+          if (isDeleteMode) {
+            return fetcher(`/posts/${postId}`, {
+              method: "DELETE",
+              headers,
+            });
+          }
+
+          return fetcher(`/posts/${postId}/hide`, {
+            method: "PATCH",
+            headers,
+          });
+        })
+      );
+
+      const failed = results.find(
+        (result): result is PromiseRejectedResult => result.status === "rejected"
+      );
+
+      if (failed) {
+        const message =
+          failed.reason instanceof Error
+            ? failed.reason.message
+            : isDeleteMode
+              ? "게시글 삭제에 실패했습니다."
+              : "게시글 숨기기에 실패했습니다.";
+
+        if (isAuthError(message)) {
+          moveToLogin();
+          return;
+        }
+
+        window.alert(message);
+      }
+
+      await refreshFeed();
+      exitSelectionMode();
+    } finally {
+      setActionSubmitting(false);
+    }
   };
 
   const startTouchDrag = (clientX: number, clientY: number, startItemId?: number) => {
@@ -351,23 +456,23 @@ export default function MyFeeds() {
 
   const endTouchDrag = () => {
     if (!isSelectionMode) return;
-
+    applyTouchDragSelection();
     resetTouchDragging();
-
-    window.setTimeout(() => {
-      skipClickRef.current = false;
-    }, 0);
   };
 
-  const handleContentTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+  const handleContentTouchStart = (e: React.TouchEvent<HTMLElement>) => {
     if (!isSelectionMode) return;
+
+    const target = e.target as HTMLElement;
+    if (target.closest("button")) return;
+
     const touch = e.touches[0];
     if (!touch) return;
 
     startTouchDrag(touch.clientX, touch.clientY);
   };
 
-  const handleContentTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+  const handleContentTouchMove = (e: React.TouchEvent<HTMLElement>) => {
     if (!isSelectionMode || !isTouchDragging) return;
     const touch = e.touches[0];
     if (!touch) return;
@@ -377,6 +482,7 @@ export default function MyFeeds() {
   };
 
   const handleContentTouchEnd = () => {
+    if (!isSelectionMode) return;
     endTouchDrag();
   };
 
@@ -408,48 +514,95 @@ export default function MyFeeds() {
     endTouchDrag();
   };
 
-  const handleCardClick = (id: number) => {
-    if (!isSelectionMode) return;
-    if (skipClickRef.current) return;
+  const handleCardClick = (item: MyFeedItem) => {
+    if (isSelectionMode) {
+      if (skipClickRef.current) return;
 
-    setSelectedIds((prev) =>
-      prev.includes(id)
-        ? prev.filter((itemId) => itemId !== id)
-        : [...prev, id]
-    );
+      setSelectedIds((prev) =>
+        prev.includes(item.postId)
+          ? prev.filter((itemId) => itemId !== item.postId)
+          : [...prev, item.postId]
+      );
+      return;
+    }
+
+    navigate(`/myFeedDetail/${item.postId}`, {
+      state: {
+        post: {
+          id: item.postId,
+          postId: item.postId,
+          imageUrl: resolveAssetUrl(item.thumbnailUrl),
+          createdAt: item.createdAt,
+          content: item.content ?? "",
+          nickname: "나의 피드",
+        },
+      },
+    });
   };
 
-  const renderGrid = (items: MyFeedItem[], paneKey: string, extraClassName?: string) => {
+  const renderGrid = (gridItems: MyFeedItem[], paneKey: string, extraClassName?: string) => {
     return (
       <div className={`${styles.gridPane} ${extraClassName ?? ""}`} key={paneKey}>
-        {items.length === 0 ? (
+        {loading && gridItems.length === 0 ? (
+          <div className={styles.emptyState}>불러오는 중...</div>
+        ) : error ? (
+          <div className={styles.emptyState}>{error}</div>
+        ) : gridItems.length === 0 ? (
           <div className={styles.emptyState}>나의 피드가 없습니다.</div>
         ) : (
           <div className={styles.cardGrid}>
-            {items.map((item) => {
-              const isSelected = selectedIds.includes(item.id);
+            {gridItems.map((item) => {
+              const isSelected = selectedIds.includes(item.postId);
+              const imageUrl = resolveAssetUrl(item.thumbnailUrl);
 
               return (
                 <button
-                  key={item.id}
+                  key={item.postId}
                   ref={(el) => {
-                    cardRefs.current[item.id] = el;
+                    cardRefs.current[item.postId] = el;
                   }}
                   type="button"
-                  className={`${styles.card} ${
-                    isSelectionMode && isSelected ? styles.cardSelected : ""
-                  }`}
-                  onTouchStart={(e) => handleCardTouchStart(e, item.id)}
+                  className={`${styles.card} ${isSelectionMode && isSelected ? styles.cardSelected : ""
+                    }`}
+                  onTouchStart={(e) => handleCardTouchStart(e, item.postId)}
                   onTouchMove={handleCardTouchMove}
                   onTouchEnd={handleCardTouchEnd}
-                  onClick={() => handleCardClick(item.id)}
-                  aria-label={item.title}
+                  onClick={() => handleCardClick(item)}
+                  aria-label={item.content ?? `나의 피드 ${item.postId}`}
                 >
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={`my-feed-${item.postId}`}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#999999",
+                        fontSize: "12px",
+                        background: "#f3f3f3",
+                      }}
+                    >
+                      이미지 없음
+                    </div>
+                  )}
+
                   {isSelectionMode && (
                     <span
-                      className={`${styles.selectionDot} ${
-                        isSelected ? styles.selectionDotSelected : ""
-                      }`}
+                      className={`${styles.selectionDot} ${isSelected ? styles.selectionDotSelected : ""
+                        }`}
                     >
                       {isSelected && <Check size={12} strokeWidth={3} />}
                     </span>
@@ -474,7 +627,13 @@ export default function MyFeeds() {
     ? `선택한 ${selectedIds.length}개의 게시글이 삭제됩니다.`
     : `선택한 ${selectedIds.length}개의 게시글이 숨김 처리됩니다.`;
 
-  const confirmActionLabel = isDeleteMode ? "삭제" : "숨기기";
+  const confirmActionLabel = actionSubmitting
+    ? isDeleteMode
+      ? "삭제 중..."
+      : "숨기는 중..."
+    : isDeleteMode
+      ? "삭제"
+      : "숨기기";
 
   return (
     <div
@@ -500,7 +659,7 @@ export default function MyFeeds() {
               className={styles.deleteButtonRed}
               onClick={handleActionConfirmOpen}
               aria-label="선택 삭제"
-              disabled={selectedIds.length === 0}
+              disabled={selectedIds.length === 0 || actionSubmitting}
             >
               <Trash2 size={16} strokeWidth={2.3} />
             </button>
@@ -510,7 +669,7 @@ export default function MyFeeds() {
               className={styles.hideButtonDark}
               onClick={handleActionConfirmOpen}
               aria-label="선택 숨기기"
-              disabled={selectedIds.length === 0}
+              disabled={selectedIds.length === 0 || actionSubmitting}
             >
               <EyeOff size={16} strokeWidth={2.3} />
             </button>
@@ -586,9 +745,8 @@ export default function MyFeeds() {
           >
             <span
               ref={allTextRef}
-              className={`${styles.tabText} ${
-                activeTab === "all" ? styles.tabTextActive : ""
-              }`}
+              className={`${styles.tabText} ${activeTab === "all" ? styles.tabTextActive : ""
+                }`}
             >
               전체
             </span>
@@ -601,9 +759,8 @@ export default function MyFeeds() {
           >
             <span
               ref={ongoingTextRef}
-              className={`${styles.tabText} ${
-                activeTab === "ongoing" ? styles.tabTextActive : ""
-              }`}
+              className={`${styles.tabText} ${activeTab === "ongoing" ? styles.tabTextActive : ""
+                }`}
             >
               평가 중
             </span>
@@ -616,9 +773,8 @@ export default function MyFeeds() {
           >
             <span
               ref={doneTextRef}
-              className={`${styles.tabText} ${
-                activeTab === "done" ? styles.tabTextActive : ""
-              }`}
+              className={`${styles.tabText} ${activeTab === "done" ? styles.tabTextActive : ""
+                }`}
             >
               평가 완료
             </span>
@@ -635,9 +791,8 @@ export default function MyFeeds() {
       </div>
 
       <main
-        className={`${styles.contentArea} ${
-          isSelectionMode ? styles.contentAreaSelectionMode : ""
-        }`}
+        className={`${styles.contentArea} ${isSelectionMode ? styles.contentAreaSelectionMode : ""
+          }`}
         onTouchStart={handleContentTouchStart}
         onTouchMove={handleContentTouchMove}
         onTouchEnd={handleContentTouchEnd}
@@ -651,7 +806,7 @@ export default function MyFeeds() {
                 `${styles.animatedPane} ${styles.fadePane}`
               )}
               {renderGrid(
-                getItemsByTab(MOCK_ITEMS, incomingTab),
+                getItemsByTab(items, incomingTab),
                 `next-${incomingTab}`,
                 `${styles.animatedPane} ${nextPaneEnterClass}`
               )}
@@ -679,6 +834,7 @@ export default function MyFeeds() {
                 type="button"
                 className={styles.modalCancelButton}
                 onClick={handleActionConfirmClose}
+                disabled={actionSubmitting}
               >
                 취소
               </button>
@@ -686,6 +842,7 @@ export default function MyFeeds() {
                 type="button"
                 className={styles.modalActionButton}
                 onClick={handleApplyAction}
+                disabled={actionSubmitting}
               >
                 {confirmActionLabel}
               </button>

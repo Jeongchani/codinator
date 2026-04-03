@@ -35,7 +35,7 @@
 }
 
 .requiredMark {
-  @apply text-red-500 text-sm font-semibold;
+  display: none;
 }
 
 .checkButton {
@@ -56,6 +56,10 @@
 
 .line {
   @apply w-full h-px bg-black mt-1;
+}
+
+.genderField .line {
+  display: none;
 }
 
 .helperText {
@@ -161,7 +165,9 @@
 }
 
 .modalIcon {
-  @apply mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600 text-xl font-bold;
+  @apply mx-auto mb-4 flex items-center justify-center rounded-full;
+  width: 52px;
+  height: 52px;
 }
 
 .modalTitle {
@@ -175,17 +181,9 @@
 .modalButton {
   @apply w-full rounded-[100px] bg-neutral-900 py-3 text-base font-medium text-white;
 }
-.checkButtonDone {
-  @apply bg-black text-white border-black;
-}
-.checkButtonDone {
-  @apply bg-black text-white border-black;
-}
 
-.modalIcon {
-  @apply mx-auto mb-4 flex items-center justify-center rounded-full;
-  width: 52px;
-  height: 52px;
+.checkButtonDone {
+  @apply bg-black text-white border-black;
 }
 
 .modalIconSuccess {
