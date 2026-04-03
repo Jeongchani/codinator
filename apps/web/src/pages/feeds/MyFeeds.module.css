@@ -43,14 +43,14 @@
   @apply opacity-40;
 }
 
-.hideButtonDark {
+.actionButtonDark {
   @apply absolute right-5 w-6 h-6 rounded-full flex items-center justify-center border-0 p-0 text-white;
   top: 59px;
   transform: translateY(-50%);
   background: #111111;
 }
 
-.hideButtonDark:disabled {
+.actionButtonDark:disabled {
   @apply opacity-40;
 }
 
@@ -62,7 +62,7 @@
 }
 
 .optionMenu {
-  @apply absolute right-0 top-[32px] min-w-[136px] rounded-[16px] bg-white shadow-xl border border-[#ececec];
+  @apply absolute right-0 top-[32px] min-w-[164px] rounded-[16px] bg-white shadow-xl border border-[#ececec];
   overflow: hidden;
   padding: 6px 0;
   z-index: 70;
@@ -103,7 +103,7 @@
 }
 
 .tabRow {
-  @apply relative flex items-center gap-6;
+  @apply relative flex items-center gap-5;
 }
 
 .tabButton {
@@ -260,8 +260,12 @@
 .modalActionButton {
   @apply flex-1 h-12 rounded-[999px] bg-black text-[15px] font-medium text-white border-0;
 }
+
 .hiddenBadge {
   @apply absolute top-[8px] right-[8px] z-10 w-5 h-5 rounded-full flex items-center justify-center text-white;
   background: rgba(17, 17, 17, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.modalDeleteButton {
+  background: #ef4444;
 }

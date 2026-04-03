@@ -589,6 +589,20 @@ export default function BookmarkPage() {
           <button
             type="button"
             className={styles.tabButton}
+            onClick={() => handleTabChange("done")}
+          >
+            <span
+              ref={doneTextRef}
+              className={`${styles.tabText} ${
+                activeTab === "done" ? styles.tabTextActive : ""
+              }`}
+            >
+              평가 완료
+            </span>
+          </button>
+          <button
+            type="button"
+            className={styles.tabButton}
             onClick={() => handleTabChange("ongoing")}
           >
             <span
@@ -601,20 +615,6 @@ export default function BookmarkPage() {
             </span>
           </button>
 
-          <button
-            type="button"
-            className={styles.tabButton}
-            onClick={() => handleTabChange("done")}
-          >
-            <span
-              ref={doneTextRef}
-              className={`${styles.tabText} ${
-                activeTab === "done" ? styles.tabTextActive : ""
-              }`}
-            >
-              평가 완료
-            </span>
-          </button>
 
           <span
             className={styles.tabIndicator}

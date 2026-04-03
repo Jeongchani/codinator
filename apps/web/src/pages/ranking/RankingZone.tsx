@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bookmark, Search, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import styles from "./RankingZone.module.css";
@@ -41,6 +41,7 @@ type RankingCardProps = {
     postId: number
   ) => void;
   isBookmarkLoading: boolean;
+  isBookmarkPressed: boolean;
 };
 
 function RankingCard({
@@ -48,10 +49,18 @@ function RankingCard({
   onCardClick,
   onToggleBookmark,
   isBookmarkLoading,
+  isBookmarkPressed,
 }: RankingCardProps) {
   return (
-    <article className={styles.card} onClick={() => onCardClick(item)}>
-      <div className={styles.thumbnail}>
+    <article
+      className={`${styles.card} ${isBookmarkPressed ? styles.cardPressed : ""}`}
+      onClick={() => onCardClick(item)}
+    >
+      <div
+        className={`${styles.thumbnail} ${
+          isBookmarkPressed ? styles.thumbnailPressed : ""
+        }`}
+      >
         {item.imageUrl ? (
           <img
             src={item.imageUrl}
@@ -66,7 +75,9 @@ function RankingCard({
 
         <button
           type="button"
-          className={styles.bookmarkButton}
+          className={`${styles.bookmarkButton} ${
+            isBookmarkPressed ? styles.bookmarkButtonPressed : ""
+          }`}
           aria-label={item.bookmarked ? "북마크 해제" : "북마크 추가"}
           onClick={(e) => onToggleBookmark(e, item.postId ?? item.id)}
           disabled={isBookmarkLoading}
@@ -114,6 +125,7 @@ type RankingSectionProps = {
   title: string;
   items: RankingCardItem[];
   bookmarkLoadingIds: number[];
+  bookmarkPressedIds: number[];
   onCardClick: (item: RankingCardItem) => void;
   onToggleBookmark: (
     e: React.MouseEvent<HTMLButtonElement>,
@@ -125,6 +137,7 @@ function RankingSection({
   title,
   items,
   bookmarkLoadingIds,
+  bookmarkPressedIds,
   onCardClick,
   onToggleBookmark,
 }: RankingSectionProps) {
@@ -133,15 +146,20 @@ function RankingSection({
       <h2 className={styles.sectionTitle}>{title}</h2>
 
       <div className={styles.horizontalScroll}>
-        {items.map((item) => (
-          <RankingCard
-            key={item.id}
-            item={item}
-            onCardClick={onCardClick}
-            onToggleBookmark={onToggleBookmark}
-            isBookmarkLoading={bookmarkLoadingIds.includes(item.postId ?? item.id)}
-          />
-        ))}
+        {items.map((item) => {
+          const targetId = item.postId ?? item.id;
+
+          return (
+            <RankingCard
+              key={item.id}
+              item={item}
+              onCardClick={onCardClick}
+              onToggleBookmark={onToggleBookmark}
+              isBookmarkLoading={bookmarkLoadingIds.includes(targetId)}
+              isBookmarkPressed={bookmarkPressedIds.includes(targetId)}
+            />
+          );
+        })}
       </div>
     </section>
   );
@@ -156,6 +174,9 @@ export default function RankingZone() {
   const [error, setError] = useState("");
   const [bookmarks, setBookmarks] = useState<Record<number, boolean>>({});
   const [bookmarkLoadingIds, setBookmarkLoadingIds] = useState<number[]>([]);
+  const [bookmarkPressedIds, setBookmarkPressedIds] = useState<number[]>([]);
+
+  const bookmarkAnimTimeoutMap = useRef<Record<number, number>>({});
 
   const moveToLogin = useCallback(() => {
     clearAuthTokens();
@@ -247,6 +268,31 @@ export default function RankingZone() {
     };
   }, [moveToLogin]);
 
+  useEffect(() => {
+    return () => {
+      Object.values(bookmarkAnimTimeoutMap.current).forEach((timeoutId) => {
+        window.clearTimeout(timeoutId);
+      });
+    };
+  }, []);
+
+  const triggerBookmarkPress = (postId: number) => {
+    const prevTimeout = bookmarkAnimTimeoutMap.current[postId];
+    if (prevTimeout) {
+      window.clearTimeout(prevTimeout);
+    }
+
+    setBookmarkPressedIds((prev) => {
+      if (prev.includes(postId)) return prev;
+      return [...prev, postId];
+    });
+
+    bookmarkAnimTimeoutMap.current[postId] = window.setTimeout(() => {
+      setBookmarkPressedIds((prev) => prev.filter((id) => id !== postId));
+      delete bookmarkAnimTimeoutMap.current[postId];
+    }, 240);
+  };
+
   const toggleBookmark = async (
     e: React.MouseEvent<HTMLButtonElement>,
     postId: number
@@ -257,6 +303,8 @@ export default function RankingZone() {
     if (bookmarkLoadingIds.includes(postId)) {
       return;
     }
+
+    triggerBookmarkPress(postId);
 
     const isBookmarked = Boolean(bookmarks[postId]);
 
@@ -351,6 +399,7 @@ export default function RankingZone() {
               title="This Week"
               items={sections[0].items}
               bookmarkLoadingIds={bookmarkLoadingIds}
+              bookmarkPressedIds={bookmarkPressedIds}
               onCardClick={handleCardClick}
               onToggleBookmark={toggleBookmark}
             />
@@ -358,6 +407,7 @@ export default function RankingZone() {
               title="This Month"
               items={sections[1].items}
               bookmarkLoadingIds={bookmarkLoadingIds}
+              bookmarkPressedIds={bookmarkPressedIds}
               onCardClick={handleCardClick}
               onToggleBookmark={toggleBookmark}
             />
