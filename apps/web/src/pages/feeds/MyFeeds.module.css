@@ -1,89 +1,262 @@
 .container {
-  @apply w-[375px] h-[812px] mx-auto bg-[#f3f3f3] overflow-hidden shadow-2xl;
+  @apply w-[375px] h-[812px] mx-auto bg-white relative overflow-hidden;
 }
 
-.scrollArea {
-  @apply h-full overflow-y-auto px-4 pt-3 pb-6;
+.selectionMode {
+  @apply z-20;
+}
+
+.header {
+  @apply absolute top-0 left-0 w-full bg-white;
+  z-index: 40;
+  height: 93px;
+}
+
+.headerInner {
+  @apply relative w-full h-full px-5;
+}
+
+.title {
+  @apply absolute left-1/2 text-[18px] leading-[22px] font-bold text-black;
+  top: 59px;
+  transform: translateX(-50%) translateY(-50%);
+}
+
+.headerIconButton {
+  @apply absolute left-5 w-6 h-6 flex items-center justify-center bg-transparent text-black border-0 p-0;
+  top: 59px;
+  transform: translateY(-50%);
+}
+
+.headerIconButtonFilled {
+  @apply w-6 h-6 flex items-center justify-center text-black border-0 p-0 bg-transparent;
+}
+
+.deleteButtonRed {
+  @apply absolute right-5 w-6 h-6 rounded-full flex items-center justify-center border-0 p-0 text-white;
+  top: 59px;
+  transform: translateY(-50%);
+  background: #ef4444;
+}
+
+.deleteButtonRed:disabled {
+  @apply opacity-40;
+}
+
+.hideButtonDark {
+  @apply absolute right-5 w-6 h-6 rounded-full flex items-center justify-center border-0 p-0 text-white;
+  top: 59px;
+  transform: translateY(-50%);
+  background: #111111;
+}
+
+.hideButtonDark:disabled {
+  @apply opacity-40;
+}
+
+.optionMenuWrap {
+  @apply absolute right-5;
+  top: 59px;
+  transform: translateY(-50%);
+  z-index: 60;
+}
+
+.optionMenu {
+  @apply absolute right-0 top-[32px] min-w-[136px] rounded-[16px] bg-white shadow-xl border border-[#ececec];
+  overflow: hidden;
+  padding: 6px 0;
+  z-index: 70;
+  pointer-events: auto;
+}
+
+.optionMenuItem {
+  @apply block w-full border-0 bg-transparent p-0 m-0 text-left;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  pointer-events: auto;
+}
+
+.optionMenuItem:hover {
+  background: #f3f3f3;
+}
+
+.optionMenuItem:active {
+  background: #e5e5e5;
+}
+
+.optionMenuItemInner {
+  @apply w-full h-[48px] px-4 flex items-center justify-start gap-3;
+  pointer-events: none;
+}
+
+.optionMenuLabel {
+  @apply text-[16px] leading-5 text-black;
+  pointer-events: none;
+}
+
+.tabSection {
+  @apply absolute left-0 w-full px-4;
+  top: 108px;
+  z-index: 20;
+}
+
+.tabRow {
+  @apply relative flex items-center gap-6;
+}
+
+.tabButton {
+  @apply relative h-11 bg-transparent border-0 flex items-center justify-center p-0;
+}
+
+.tabText {
+  @apply relative inline-block text-[16px] leading-[20px] font-medium text-[#7a7a7a];
+}
+
+.tabTextActive {
+  @apply text-black font-bold;
+}
+
+.tabIndicator {
+  @apply absolute bottom-[4px] left-0 h-[2px] bg-black rounded-full;
+  transition:
+    transform 280ms ease,
+    width 280ms ease;
+  will-change: transform, width;
+}
+
+.contentArea {
+  @apply absolute left-0 w-full overflow-y-auto px-4 z-10;
+  top: 166px;
+  height: 582px;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-.scrollArea::-webkit-scrollbar {
+.contentAreaSelectionMode {
+  touch-action: none;
+}
+
+.contentArea::-webkit-scrollbar {
   display: none;
 }
 
-.topBar {
-  @apply flex items-center justify-between mb-5;
+.slideViewport {
+  @apply relative w-full min-h-full;
 }
 
-.titlePill {
-  @apply flex-1 h-[56px] rounded-[20px] bg-[#d8d8d8] px-4 flex items-center;
+.gridPane {
+  @apply w-full;
 }
 
-.pageTitle {
-  @apply text-[13px] font-bold text-black;
+.staticPane {
+  @apply relative;
 }
 
-.uploadButton {
-  @apply ml-3 w-[42px] h-[42px] rounded-full bg-white flex items-center justify-center shadow-md text-black active:scale-95 transition-transform;
+.animatedPane {
+  @apply absolute left-0 top-0 w-full;
 }
 
-.content {
-  @apply pb-6;
+.fadePane {
+  animation: fadePane 180ms ease forwards;
 }
 
-.summarySection {
-  @apply mb-5;
+.enterFromRight {
+  animation: enterFromRight 320ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-.summaryTitle {
-  @apply text-[16px] font-bold leading-6 text-black;
+.enterFromLeft {
+  animation: enterFromLeft 320ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-.summaryCount {
-  @apply mt-1 text-[11px] text-neutral-500;
+@keyframes enterFromRight {
+  from {
+    opacity: 0.72;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
-.feedGrid {
-  @apply flex flex-col gap-4 items-start;
+@keyframes enterFromLeft {
+  from {
+    opacity: 0.72;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
-.feedCard {
-  @apply w-[164px] rounded-[18px] bg-white overflow-hidden shadow-sm cursor-pointer;
+@keyframes fadePane {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 
-.imageWrap {
-  @apply relative w-full h-[180px] overflow-hidden bg-neutral-200;
+.cardGrid {
+  @apply grid grid-cols-3 gap-x-[6px] gap-y-[6px] pb-8;
 }
 
-.feedImage {
-  @apply w-full h-full object-cover block;
+.card {
+  @apply relative w-full aspect-[109/152] rounded-[8px] overflow-hidden bg-[#dddddd] border-0 p-0 select-none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
-.placeholder {
-  @apply w-full h-full bg-neutral-300;
+.cardSelected {
+  @apply bg-[#8d8d8d];
 }
 
-.cardInfo {
-  @apply px-3 pt-2 pb-3;
+.cardSelected::after {
+  content: '';
+  @apply absolute inset-0 bg-black/15;
 }
 
-.cardDate {
-  @apply text-[10px] leading-4 text-neutral-500;
+.selectionDot {
+  @apply absolute left-[8px] top-[8px] z-10 w-5 h-5 rounded-full bg-[#6f6f6f] flex items-center justify-center text-transparent;
 }
 
-.cardDescription {
-  @apply mt-1 text-[12px] font-semibold leading-[18px] text-black whitespace-pre-line break-keep min-h-[36px];
+.selectionDotSelected {
+  @apply bg-black text-white;
 }
 
-.cardBottomRow {
-  @apply mt-3 flex items-center justify-end;
+.emptyState {
+  @apply w-full h-full flex items-center justify-center text-sm text-neutral-500 pt-20;
 }
 
-.likeCount {
-  @apply inline-flex items-center gap-1 text-[11px] text-neutral-700;
+.modalOverlay {
+  @apply absolute inset-0 z-40 flex items-center justify-center bg-black/35 px-6;
 }
 
-.emptyText {
-  @apply text-[12px] text-neutral-500 mt-10;
+.modalCard {
+  @apply w-full rounded-[24px] bg-white px-5 pt-6 pb-5 shadow-xl;
+}
+
+.modalTitle {
+  @apply text-[18px] leading-6 font-semibold text-black text-center;
+}
+
+.modalDesc {
+  @apply mt-2 text-[14px] leading-5 text-neutral-500 text-center;
+}
+
+.modalActions {
+  @apply mt-6 flex items-center gap-3;
+}
+
+.modalCancelButton {
+  @apply flex-1 h-12 rounded-[999px] bg-[#f3f3f3] text-[15px] font-medium text-black border-0;
+}
+
+.modalActionButton {
+  @apply flex-1 h-12 rounded-[999px] bg-black text-[15px] font-medium text-white border-0;
 }
