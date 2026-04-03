@@ -115,8 +115,6 @@ const feedbackTagSeeds = [
 ];
 
 const SEED_IMAGE_BASE_URL = '/uploads/seeds/posts';
-const AVAILABLE_OPEN_IMAGE_NAMES = ['open-post-1.jpg', 'open-post-2.jpg'];
-const AVAILABLE_RANKED_IMAGE_NAMES = ['ranked-post-1.jpg', 'ranked-post-2.jpg'];
 
 const ALL_USER_KEYS = ['alice', 'bob', 'charlie', 'diana'];
 
@@ -607,31 +605,14 @@ function minDate(left, right) {
   return left.getTime() <= right.getTime() ? left : right;
 }
 
-function resolveSeedImageName(filename) {
-  const openMatch = filename.match(/^open-post-(\d+)\.jpg$/);
-  if (openMatch) {
-    const index = (Number(openMatch[1]) - 1) % AVAILABLE_OPEN_IMAGE_NAMES.length;
-    return AVAILABLE_OPEN_IMAGE_NAMES[index];
-  }
-
-  const rankedMatch = filename.match(/^ranked-post-(\d+)\.jpg$/);
-  if (rankedMatch) {
-    const index = (Number(rankedMatch[1]) - 1) % AVAILABLE_RANKED_IMAGE_NAMES.length;
-    return AVAILABLE_RANKED_IMAGE_NAMES[index];
-  }
-
-  return filename;
-}
-
 function buildImageCreate(filename) {
-  const resolvedFilename = resolveSeedImageName(filename);
-  const url = `${SEED_IMAGE_BASE_URL}/${resolvedFilename}`;
+  const url = `${SEED_IMAGE_BASE_URL}/${filename}`;
 
   return {
     originalImageUrl: url,
     processedImageUrl: url,
-    thumbnailUrl: null,
-    storageKey: `seeds/posts/${resolvedFilename}`,
+    thumbnailUrl: url,
+    storageKey: `seeds/posts/${filename}`,
     blurMethod: BlurMethod.NONE,
     aiBlurStatus: AiBlurStatus.DONE,
     sortOrder: 0,
