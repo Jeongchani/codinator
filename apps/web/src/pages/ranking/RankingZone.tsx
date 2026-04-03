@@ -1,8 +1,17 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Bookmark, Search, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import styles from "./RankingZone.module.css";
-import { fetcher, getAuthHeaders, resolveAssetUrl } from "../../lib/api";
+import {
+  clearAuthTokens,
+  fetcher,
+  getAuthHeaders,
+  resolveAssetUrl,
+  fetchMyBookmarkMap,
+  isAuthError,
+  subscribeBookmarkUpdated,
+  togglePostBookmark,
+} from "../../lib/api";
 import type { GetRankingsResponse, RankingItem } from "@codinator/contracts";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
@@ -29,14 +38,16 @@ type RankingCardProps = {
   onCardClick: (item: RankingCardItem) => void;
   onToggleBookmark: (
     e: React.MouseEvent<HTMLButtonElement>,
-    postId: string
+    postId: number
   ) => void;
+  isBookmarkLoading: boolean;
 };
 
 function RankingCard({
   item,
   onCardClick,
   onToggleBookmark,
+  isBookmarkLoading,
 }: RankingCardProps) {
   return (
     <article className={styles.card} onClick={() => onCardClick(item)}>
@@ -56,8 +67,9 @@ function RankingCard({
         <button
           type="button"
           className={styles.bookmarkButton}
-          aria-label="북마크"
-          onClick={(e) => onToggleBookmark(e, String(item.postId ?? item.id))}
+          aria-label={item.bookmarked ? "북마크 해제" : "북마크 추가"}
+          onClick={(e) => onToggleBookmark(e, item.postId ?? item.id)}
+          disabled={isBookmarkLoading}
         >
           <Bookmark
             size={12}
@@ -101,16 +113,18 @@ function RankingCard({
 type RankingSectionProps = {
   title: string;
   items: RankingCardItem[];
+  bookmarkLoadingIds: number[];
   onCardClick: (item: RankingCardItem) => void;
   onToggleBookmark: (
     e: React.MouseEvent<HTMLButtonElement>,
-    postId: string
+    postId: number
   ) => void;
 };
 
 function RankingSection({
   title,
   items,
+  bookmarkLoadingIds,
   onCardClick,
   onToggleBookmark,
 }: RankingSectionProps) {
@@ -125,6 +139,7 @@ function RankingSection({
             item={item}
             onCardClick={onCardClick}
             onToggleBookmark={onToggleBookmark}
+            isBookmarkLoading={bookmarkLoadingIds.includes(item.postId ?? item.id)}
           />
         ))}
       </div>
@@ -139,28 +154,51 @@ export default function RankingZone() {
   const [monthlyRankings, setMonthlyRankings] = useState<RankingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [bookmarks, setBookmarks] = useState<Record<number, boolean>>({});
+  const [bookmarkLoadingIds, setBookmarkLoadingIds] = useState<number[]>([]);
 
-  const [bookmarks, setBookmarks] = useState<Record<string, boolean>>(() => {
-    const saved = localStorage.getItem("codinator_bookmarks");
-    return saved ? (JSON.parse(saved) as Record<string, boolean>) : {};
-  });
+  const moveToLogin = useCallback(() => {
+    clearAuthTokens();
+    navigate("/login", { replace: true });
+  }, [navigate]);
 
-  // 추가된 부분: 사이드메뉴 열림 상태
-  const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
+  const loadBookmarks = useCallback(async () => {
+    try {
+      const nextMap = await fetchMyBookmarkMap();
+      setBookmarks(nextMap);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "북마크 정보를 불러오지 못했습니다.";
+
+      if (isAuthError(message)) {
+        moveToLogin();
+      }
+    }
+  }, [moveToLogin]);
 
   useEffect(() => {
-    const syncBookmarks = () => {
-      const saved = localStorage.getItem("codinator_bookmarks");
-      setBookmarks(saved ? (JSON.parse(saved) as Record<string, boolean>) : {});
-    };
-
-    window.addEventListener("storage", syncBookmarks);
-    return () => {
-      window.removeEventListener("storage", syncBookmarks);
-    };
-  }, []);
+    void loadBookmarks();
+  }, [loadBookmarks]);
 
   useEffect(() => {
+    const unsubscribe = subscribeBookmarkUpdated((detail) => {
+      if (!detail) {
+        void loadBookmarks();
+        return;
+      }
+
+      setBookmarks((prev) => ({
+        ...prev,
+        [detail.postId]: detail.bookmarked,
+      }));
+    });
+
+    return unsubscribe;
+  }, [loadBookmarks]);
+
+  useEffect(() => {
+    let cancelled = false;
+
     const loadRankings = async () => {
       try {
         setLoading(true);
@@ -175,39 +213,83 @@ export default function RankingZone() {
           }),
         ]);
 
+        if (cancelled) return;
+
         setWeeklyRankings(weeklyData.items ?? []);
         setMonthlyRankings(monthlyData.items ?? []);
       } catch (err) {
-        console.error("랭킹 불러오기 실패:", err);
-
         const message =
           err instanceof Error
             ? err.message
             : "랭킹 데이터를 불러오지 못했습니다.";
 
-        setError(message);
-        setWeeklyRankings([]);
-        setMonthlyRankings([]);
+        if (isAuthError(message)) {
+          moveToLogin();
+          return;
+        }
+
+        if (!cancelled) {
+          setError(message);
+          setWeeklyRankings([]);
+          setMonthlyRankings([]);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     void loadRankings();
-  }, []);
 
-  const toggleBookmark = (
+    return () => {
+      cancelled = true;
+    };
+  }, [moveToLogin]);
+
+  const toggleBookmark = async (
     e: React.MouseEvent<HTMLButtonElement>,
-    postId: string
+    postId: number
   ) => {
     e.preventDefault();
     e.stopPropagation();
 
-    setBookmarks((prev) => {
-      const next = { ...prev, [postId]: !prev[postId] };
-      localStorage.setItem("codinator_bookmarks", JSON.stringify(next));
-      return next;
-    });
+    if (bookmarkLoadingIds.includes(postId)) {
+      return;
+    }
+
+    const isBookmarked = Boolean(bookmarks[postId]);
+
+    setBookmarkLoadingIds((prev) => [...prev, postId]);
+    setBookmarks((prev) => ({
+      ...prev,
+      [postId]: !isBookmarked,
+    }));
+
+    try {
+      const nextValue = await togglePostBookmark(postId, isBookmarked);
+      setBookmarks((prev) => ({
+        ...prev,
+        [postId]: nextValue,
+      }));
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "북마크 처리에 실패했습니다.";
+
+      setBookmarks((prev) => ({
+        ...prev,
+        [postId]: isBookmarked,
+      }));
+
+      if (isAuthError(message)) {
+        moveToLogin();
+        return;
+      }
+
+      window.alert(message);
+    } finally {
+      setBookmarkLoadingIds((prev) => prev.filter((id) => id !== postId));
+    }
   };
 
   const handleCardClick = (item: RankingCardItem) => {
@@ -215,23 +297,16 @@ export default function RankingZone() {
     navigate(`/rankingDetail/${item.postId}?period=${item.period}`);
   };
 
-  // 추가된 부분: 헤더 햄버거 버튼 클릭 시 나중에 SideMenu.tsx 연결할 함수
-  const handleMenuClick = () => {
-    setIsSideMenuOpen((prev) => !prev);
-  };
-
   const convertRankingItem = (
     post: RankingItem,
     period: "WEEKLY" | "MONTHLY"
   ): RankingCardItem => {
-    const postId = String(post.postId);
-
     return {
       id: post.postId,
       title: "게시글 컨셉 글\n최대 두줄 혹은 닉네임?",
       likeCount: post.likeCount ?? 0,
       dislikeCount: post.dislikeCount ?? 0,
-      bookmarked: !!bookmarks[postId],
+      bookmarked: Boolean(bookmarks[post.postId]),
       imageUrl: resolveAssetUrl(post.thumbnailUrl),
       postId: post.postId,
       period,
@@ -258,7 +333,6 @@ export default function RankingZone() {
 
   return (
     <div className={styles.container}>
-      {/* 추가된 부분: 기존 topBarArea 제거하고 실제 Header 연결 */}
       <Header />
 
       <div className={styles.contentArea}>
@@ -276,12 +350,14 @@ export default function RankingZone() {
             <RankingSection
               title="This Week"
               items={sections[0].items}
+              bookmarkLoadingIds={bookmarkLoadingIds}
               onCardClick={handleCardClick}
               onToggleBookmark={toggleBookmark}
             />
             <RankingSection
               title="This Month"
               items={sections[1].items}
+              bookmarkLoadingIds={bookmarkLoadingIds}
               onCardClick={handleCardClick}
               onToggleBookmark={toggleBookmark}
             />
@@ -289,24 +365,6 @@ export default function RankingZone() {
         )}
       </div>
 
-      {/* 추가된 부분: 나중에 SideMenu.tsx 자리 */}
-      {isSideMenuOpen && (
-        <div className={styles.sideMenuOverlay} onClick={handleMenuClick}>
-          <div
-            className={styles.sideMenuDummy}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className={styles.sideMenuTitle}>SideMenu 연결 예정</div>
-            <button
-              type="button"
-              className={styles.sideMenuCloseButton}
-              onClick={handleMenuClick}
-            >
-              닫기
-            </button>
-          </div>
-        </div>
-      )}
       <div className={styles.footerWrap}>
         <Footer />
       </div>

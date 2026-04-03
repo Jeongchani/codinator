@@ -8,28 +8,23 @@ import {
 } from "react";
 import { ChevronLeft, Check, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { clearAuthTokens, 
+  resolveAssetUrl,
+  fetchAllMyBookmarks,
+  isAuthError,
+  setPostBookmark,
+} from "../../lib/api";
 import styles from "./BookmarkPage.module.css";
 
 type TabType = "all" | "ongoing" | "done";
 
 type BookmarkItem = {
   id: number;
+  postId: number;
   title: string;
   imageUrl?: string;
   status: Exclude<TabType, "all">;
 };
-
-const MOCK_ITEMS: BookmarkItem[] = [
-  { id: 1, title: "북마크 1", status: "ongoing" },
-  { id: 2, title: "북마크 2", status: "ongoing" },
-  { id: 3, title: "북마크 3", status: "ongoing" },
-  { id: 4, title: "북마크 4", status: "ongoing" },
-  { id: 5, title: "북마크 5", status: "done" },
-  { id: 6, title: "북마크 6", status: "done" },
-  { id: 7, title: "북마크 7", status: "done" },
-  { id: 8, title: "북마크 8", status: "ongoing" },
-  { id: 9, title: "북마크 9", status: "done" },
-];
 
 type IndicatorStyle = {
   left: number;
@@ -58,6 +53,16 @@ function getItemsByTab(items: BookmarkItem[], tab: TabType) {
   return items.filter((item) => item.status === tab);
 }
 
+function mapBookmarkItems(rawItems: Awaited<ReturnType<typeof fetchAllMyBookmarks>>): BookmarkItem[] {
+  return rawItems.map((item) => ({
+    id: item.postId,
+    postId: item.postId,
+    title: item.content?.trim() || `북마크 ${item.postId}`,
+    imageUrl: item.thumbnailUrl ? resolveAssetUrl(item.thumbnailUrl) : undefined,
+    status: item.evaluationStatus === "OPEN" ? "ongoing" : "done",
+  }));
+}
+
 export default function BookmarkPage() {
   const navigate = useNavigate();
 
@@ -68,9 +73,14 @@ export default function BookmarkPage() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [slideDirection, setSlideDirection] = useState<SlideDirection>("right");
 
+  const [items, setItems] = useState<BookmarkItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
   const [deleteMode, setDeleteMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const [isTouchDragging, setIsTouchDragging] = useState(false);
   const [touchDragMode, setTouchDragMode] = useState<TouchDragMode>("select");
@@ -95,12 +105,48 @@ export default function BookmarkPage() {
   });
 
   const displayedItems = useMemo(() => {
-    return getItemsByTab(MOCK_ITEMS, displayTab);
-  }, [displayTab]);
+    return getItemsByTab(items, displayTab);
+  }, [items, displayTab]);
 
   const previousItems = useMemo(() => {
-    return getItemsByTab(MOCK_ITEMS, prevTab);
-  }, [prevTab]);
+    return getItemsByTab(items, prevTab);
+  }, [items, prevTab]);
+
+  const activeItemsForSelection = useMemo(() => {
+    return getItemsByTab(items, activeTab);
+  }, [items, activeTab]);
+
+  const loadBookmarks = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const data = await fetchAllMyBookmarks();
+      setItems(mapBookmarkItems(data));
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "북마크 목록을 불러오지 못했습니다.";
+
+      if (isAuthError(message)) {
+        clearAuthTokens();
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      setError(message);
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    void loadBookmarks();
+  }, [loadBookmarks]);
+
+  useEffect(() => {
+    setSelectedIds((prev) => prev.filter((id) => items.some((item) => item.id === id)));
+  }, [items]);
 
   const getTabTextRef = useCallback((tab: TabType) => {
     if (tab === "all") return allTextRef.current;
@@ -192,10 +238,6 @@ export default function BookmarkPage() {
     );
   }, []);
 
-  const activeItemsForSelection = useMemo(() => {
-    return getItemsByTab(MOCK_ITEMS, activeTab);
-  }, [activeTab]);
-
   const applyTouchDragSelection = useCallback(() => {
     const start = touchStartRef.current;
     const current = touchCurrentRef.current;
@@ -260,21 +302,58 @@ export default function BookmarkPage() {
   };
 
   const handleDeleteConfirmOpen = () => {
-    if (selectedIds.length === 0) return;
+    if (selectedIds.length === 0 || deleteLoading) return;
     setShowDeleteConfirm(true);
   };
 
   const handleDeleteConfirmClose = () => {
+    if (deleteLoading) return;
     setShowDeleteConfirm(false);
   };
 
-  const handleDeleteSelected = () => {
-    console.log("삭제할 북마크 id:", selectedIds);
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0 || deleteLoading) return;
+
+    setDeleteLoading(true);
+
+    const results = await Promise.allSettled(
+      selectedIds.map((postId) => setPostBookmark(postId, false))
+    );
+
+    const failedMessages = results
+      .filter(
+        (result): result is PromiseRejectedResult => result.status === "rejected"
+      )
+      .map((result) =>
+        result.reason instanceof Error
+          ? result.reason.message
+          : "북마크 삭제에 실패했습니다."
+      );
+
+    const authFailed = failedMessages.some((message) => isAuthError(message));
+
+    if (authFailed) {
+      setDeleteLoading(false);
+      clearAuthTokens();
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    const succeededIds = selectedIds.filter((_, index) => results[index]?.status === "fulfilled");
+
+    if (succeededIds.length > 0) {
+      setItems((prev) => prev.filter((item) => !succeededIds.includes(item.postId)));
+    }
+
+    if (failedMessages.length > 0) {
+      window.alert(failedMessages[0]);
+    }
 
     setSelectedIds([]);
     setShowDeleteConfirm(false);
     setDeleteMode(false);
     resetTouchDragging();
+    setDeleteLoading(false);
   };
 
   const startTouchDrag = (clientX: number, clientY: number, startItemId?: number) => {
@@ -383,14 +462,18 @@ export default function BookmarkPage() {
     );
   };
 
-  const renderGrid = (items: BookmarkItem[], paneKey: string, extraClassName?: string) => {
+  const renderGrid = (paneItems: BookmarkItem[], paneKey: string, extraClassName?: string) => {
     return (
       <div className={`${styles.gridPane} ${extraClassName ?? ""}`} key={paneKey}>
-        {items.length === 0 ? (
+        {loading ? (
+          <div className={styles.emptyState}>불러오는 중...</div>
+        ) : error ? (
+          <div className={styles.emptyState}>{error}</div>
+        ) : paneItems.length === 0 ? (
           <div className={styles.emptyState}>북마크한 게시글이 없습니다.</div>
         ) : (
           <div className={styles.cardGrid}>
-            {items.map((item) => {
+            {paneItems.map((item) => {
               const isSelected = selectedIds.includes(item.id);
 
               return (
@@ -409,6 +492,20 @@ export default function BookmarkPage() {
                   onClick={() => handleCardClick(item.id)}
                   aria-label={item.title}
                 >
+                  {item.imageUrl ? (
+                    <img
+                      src={item.imageUrl}
+                      alt={item.title}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  ) : null}
+
                   {deleteMode && (
                     <span
                       className={`${styles.selectionDot} ${
@@ -429,9 +526,6 @@ export default function BookmarkPage() {
 
   const nextPaneEnterClass =
     slideDirection === "right" ? styles.enterFromRight : styles.enterFromLeft;
-
-  const currentPaneExitClass =
-    slideDirection === "right" ? styles.exitToLeft : styles.exitToRight;
 
   return (
     <div
@@ -457,7 +551,7 @@ export default function BookmarkPage() {
               className={styles.deleteButtonRed}
               onClick={handleDeleteConfirmOpen}
               aria-label="선택 삭제"
-              disabled={selectedIds.length === 0}
+              disabled={selectedIds.length === 0 || deleteLoading}
             >
               <Trash2 size={16} strokeWidth={2.3} />
             </button>
@@ -467,6 +561,7 @@ export default function BookmarkPage() {
               className={styles.headerIconButtonFilled}
               onClick={handleEnterDeleteMode}
               aria-label="삭제 모드"
+              disabled={loading}
             >
               <Trash2 size={16} strokeWidth={2.3} />
             </button>
@@ -548,7 +643,7 @@ export default function BookmarkPage() {
                 `${styles.animatedPane} ${styles.fadePane}`
               )}
               {renderGrid(
-                getItemsByTab(MOCK_ITEMS, incomingTab),
+                getItemsByTab(items, incomingTab),
                 `next-${incomingTab}`,
                 `${styles.animatedPane} ${nextPaneEnterClass}`
               )}
@@ -578,13 +673,17 @@ export default function BookmarkPage() {
                 type="button"
                 className={styles.modalCancelButton}
                 onClick={handleDeleteConfirmClose}
+                disabled={deleteLoading}
               >
                 취소
               </button>
               <button
                 type="button"
                 className={styles.modalDeleteButton}
-                onClick={handleDeleteSelected}
+                onClick={() => {
+                  void handleDeleteSelected();
+                }}
+                disabled={deleteLoading}
               >
                 삭제
               </button>

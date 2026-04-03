@@ -1,12 +1,16 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Bookmark, ChevronLeft } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import type { GetMyBookmarksResponse, GetUserFeedResponse } from "@codinator/contracts";
+import type { GetUserFeedResponse } from "@codinator/contracts";
 import {
   clearAuthTokens,
   fetcher,
   getAuthHeaders,
   resolveAssetUrl,
+  fetchMyBookmarkMap,
+  isAuthError,
+  subscribeBookmarkUpdated,
+  togglePostBookmark,
 } from "../../lib/api";
 import styles from "./UserFeeds.module.css";
 
@@ -17,14 +21,6 @@ type FeedCardItem = {
   imageUrl: string;
   createdAt: string;
   rankingPeriods: string[];
-};
-
-const isAuthError = (message: string) => {
-  return (
-    message.includes("Unauthorized") ||
-    message.includes("로그인이 필요합니다") ||
-    message.includes("401")
-  );
 };
 
 function sortByLatest(items: FeedListItem[]) {
@@ -53,15 +49,7 @@ export default function UserFeed() {
 
   const loadBookmarks = useCallback(async () => {
     try {
-      const data = await fetcher<GetMyBookmarksResponse>("/users/me/bookmarks", {
-        headers: getAuthHeaders(),
-      });
-
-      const nextMap = data.items.reduce<Record<number, boolean>>((acc, item) => {
-        acc[item.postId] = true;
-        return acc;
-      }, {});
-
+      const nextMap = await fetchMyBookmarkMap();
       setBookmarks(nextMap);
     } catch (err) {
       const message =
@@ -75,6 +63,22 @@ export default function UserFeed() {
 
   useEffect(() => {
     void loadBookmarks();
+  }, [loadBookmarks]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeBookmarkUpdated((detail) => {
+      if (!detail) {
+        void loadBookmarks();
+        return;
+      }
+
+      setBookmarks((prev) => ({
+        ...prev,
+        [detail.postId]: detail.bookmarked,
+      }));
+    });
+
+    return unsubscribe;
   }, [loadBookmarks]);
 
   useEffect(() => {
@@ -153,20 +157,25 @@ export default function UserFeed() {
     const isBookmarked = Boolean(bookmarks[postId]);
 
     setBookmarkLoadingIds((prev) => [...prev, postId]);
+    setBookmarks((prev) => ({
+      ...prev,
+      [postId]: !isBookmarked,
+    }));
 
     try {
-      await fetcher(`/posts/${postId}/bookmarks`, {
-        method: isBookmarked ? "DELETE" : "POST",
-        headers: getAuthHeaders(),
-      });
-
+      const nextValue = await togglePostBookmark(postId, isBookmarked);
       setBookmarks((prev) => ({
         ...prev,
-        [postId]: !isBookmarked,
+        [postId]: nextValue,
       }));
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "북마크 처리에 실패했습니다.";
+
+      setBookmarks((prev) => ({
+        ...prev,
+        [postId]: isBookmarked,
+      }));
 
       if (isAuthError(message)) {
         moveToLogin();

@@ -1,20 +1,36 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v2';
-export const ASSET_BASE_URL = import.meta.env.VITE_ASSET_BASE_URL || '';
-export const API_ORIGIN = import.meta.env.VITE_API_ORIGIN || 'http://localhost:3000';
+import type {
+  AddBookmarkResponse,
+  BookmarkListItem,
+  GetMyBookmarksResponse,
+  RemoveBookmarkResponse,
+} from "@codinator/contracts";
 
-export const ACCESS_TOKEN_KEY = 'accessToken';
-export const LEGACY_ACCESS_TOKEN_KEY = 'token';
-export const REFRESH_TOKEN_KEY = 'refreshToken';
-export const USER_ID_KEY = 'userId';
-export const USER_NICKNAME_KEY = 'nickname';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v2";
+export const ASSET_BASE_URL = import.meta.env.VITE_ASSET_BASE_URL || "";
+export const API_ORIGIN = import.meta.env.VITE_API_ORIGIN || "http://localhost:3000";
+
+export const ACCESS_TOKEN_KEY = "accessToken";
+export const LEGACY_ACCESS_TOKEN_KEY = "token";
+export const REFRESH_TOKEN_KEY = "refreshToken";
+export const USER_ID_KEY = "userId";
+export const USER_NICKNAME_KEY = "nickname";
+
+export const BOOKMARKS_UPDATED_EVENT = "codinator:bookmarks-updated";
+
+export type BookmarkMap = Record<number, boolean>;
+
+export type BookmarkUpdatedDetail = {
+  postId: number;
+  bookmarked: boolean;
+};
 
 export type UploadedPostImageResponse = {
   originalImageUrl: string;
   processedImageUrl: string;
   storageKey?: string | null;
   thumbnailUrl?: string | null;
-  blurMethod: 'NONE' | 'AUTO' | 'MANUAL';
-  aiBlurStatus: 'NONE' | 'PENDING' | 'PROCESSING' | 'DONE' | 'FAILED';
+  blurMethod: "NONE" | "AUTO" | "MANUAL";
+  aiBlurStatus: "NONE" | "PENDING" | "PROCESSING" | "DONE" | "FAILED";
 };
 
 type PostImageLike = {
@@ -30,7 +46,7 @@ type PostWithImages = {
 };
 
 const trimTrailingSlash = (value: string): string => {
-  return value.endsWith('/') ? value.slice(0, -1) : value;
+  return value.endsWith("/") ? value.slice(0, -1) : value;
 };
 
 const resolveApiServerOrigin = (): string => {
@@ -88,11 +104,11 @@ export const getAuthHeaders = (): HeadersInit => {
 
   return accessToken
     ? {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       }
     : {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       };
 };
 
@@ -108,20 +124,20 @@ export const getAuthOnlyHeaders = (): HeadersInit => {
 
 export const resolveAssetUrl = (url?: string | null): string => {
   if (!url) {
-    return '';
+    return "";
   }
 
-  if (/^https?:\/\//.test(url) || url.startsWith('data:') || url.startsWith('blob:')) {
+  if (/^https?:\/\//.test(url) || url.startsWith("data:") || url.startsWith("blob:")) {
     return url;
   }
 
   const apiServerOrigin = resolveApiServerOrigin();
 
-  if (url.startsWith('/uploads/')) {
+  if (url.startsWith("/uploads/")) {
     return `${apiServerOrigin}${url}`;
   }
 
-  if (url.startsWith('/')) {
+  if (url.startsWith("/")) {
     if (ASSET_BASE_URL) {
       return `${trimTrailingSlash(ASSET_BASE_URL)}${url}`;
     }
@@ -149,13 +165,13 @@ const pickPrimaryImage = (post?: PostWithImages | null): PostImageLike | null =>
 
 export const getPrimaryPostImageUrl = (post?: PostWithImages | null): string => {
   const image = pickPrimaryImage(post);
-  return resolveAssetUrl(image?.processedImageUrl ?? image?.originalImageUrl ?? image?.thumbnailUrl ?? '');
+  return resolveAssetUrl(image?.processedImageUrl ?? image?.originalImageUrl ?? image?.thumbnailUrl ?? "");
 };
 
 const extractErrorMessage = async (response: Response): Promise<string> => {
-  const contentType = response.headers.get('content-type') ?? '';
+  const contentType = response.headers.get("content-type") ?? "";
 
-  if (contentType.includes('application/json')) {
+  if (contentType.includes("application/json")) {
     const payload = (await response.json()) as {
       message?: string | string[];
       error?: string;
@@ -163,20 +179,20 @@ const extractErrorMessage = async (response: Response): Promise<string> => {
     };
 
     if (Array.isArray(payload.message)) {
-      return payload.message.join(', ');
+      return payload.message.join(", ");
     }
 
-    if (typeof payload.message === 'string' && payload.message.trim()) {
+    if (typeof payload.message === "string" && payload.message.trim()) {
       return payload.message;
     }
 
-    if (typeof payload.error === 'string' && payload.error.trim()) {
+    if (typeof payload.error === "string" && payload.error.trim()) {
       return payload.error;
     }
   }
 
   const message = await response.text();
-  return message || 'API 호출 에러';
+  return message || "API 호출 에러";
 };
 
 export const fetcher = async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
@@ -191,10 +207,10 @@ export const fetcher = async <T>(endpoint: string, options?: RequestInit): Promi
 
 export const uploadPostImage = async (file: File): Promise<UploadedPostImageResponse> => {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append("file", file);
 
   const response = await fetch(`${API_BASE_URL}/uploads/post-image`, {
-    method: 'POST',
+    method: "POST",
     headers: getAuthOnlyHeaders(),
     body: formData,
   });
@@ -204,4 +220,125 @@ export const uploadPostImage = async (file: File): Promise<UploadedPostImageResp
   }
 
   return response.json() as Promise<UploadedPostImageResponse>;
+};
+
+export const isAuthError = (message: string): boolean => {
+  return (
+    message.includes("Unauthorized") ||
+    message.includes("로그인이 필요합니다") ||
+    message.includes("401")
+  );
+};
+
+export const buildBookmarkMap = (items: BookmarkListItem[]): BookmarkMap => {
+  return items.reduce<BookmarkMap>((acc, item) => {
+    acc[item.postId] = true;
+    return acc;
+  }, {});
+};
+
+export const emitBookmarkUpdated = (detail?: BookmarkUpdatedDetail) => {
+  if (typeof window === "undefined") return;
+
+  window.dispatchEvent(
+    new CustomEvent<BookmarkUpdatedDetail | undefined>(BOOKMARKS_UPDATED_EVENT, {
+      detail,
+    })
+  );
+};
+
+export const subscribeBookmarkUpdated = (
+  listener: (detail?: BookmarkUpdatedDetail) => void
+) => {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+
+  const handler = (event: Event) => {
+    const customEvent = event as CustomEvent<BookmarkUpdatedDetail | undefined>;
+    listener(customEvent.detail);
+  };
+
+  window.addEventListener(BOOKMARKS_UPDATED_EVENT, handler as EventListener);
+
+  return () => {
+    window.removeEventListener(BOOKMARKS_UPDATED_EVENT, handler as EventListener);
+  };
+};
+
+export const fetchMyBookmarksPage = async (
+  cursor?: number
+): Promise<GetMyBookmarksResponse> => {
+  const query = cursor ? `?cursor=${cursor}` : "";
+
+  return fetcher<GetMyBookmarksResponse>(`/users/me/bookmarks${query}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const fetchAllMyBookmarks = async (): Promise<BookmarkListItem[]> => {
+  const items: BookmarkListItem[] = [];
+  let cursor: number | undefined;
+  let guard = 0;
+
+  while (guard < 20) {
+    const page = await fetchMyBookmarksPage(cursor);
+    items.push(...(page.items ?? []));
+
+    if (!page.hasMore || !page.nextCursor) {
+      break;
+    }
+
+    cursor = page.nextCursor;
+    guard += 1;
+  }
+
+  return items;
+};
+
+export const fetchMyBookmarkMap = async (): Promise<BookmarkMap> => {
+  const items = await fetchAllMyBookmarks();
+  return buildBookmarkMap(items);
+};
+
+export const setPostBookmark = async (
+  postId: number,
+  shouldBookmark: boolean
+): Promise<boolean> => {
+  try {
+    if (shouldBookmark) {
+      await fetcher<AddBookmarkResponse>(`/posts/${postId}/bookmarks`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+    } else {
+      await fetcher<RemoveBookmarkResponse>(`/posts/${postId}/bookmarks`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+    }
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "북마크 처리에 실패했습니다.";
+
+    if (
+      !shouldBookmark &&
+      (message.includes("북마크를 찾을 수 없습니다") || message.includes("404"))
+    ) {
+      emitBookmarkUpdated({ postId, bookmarked: false });
+      return false;
+    }
+
+    throw err;
+  }
+
+  emitBookmarkUpdated({ postId, bookmarked: shouldBookmark });
+  return shouldBookmark;
+};
+
+export const togglePostBookmark = async (
+  postId: number,
+  isBookmarked: boolean
+): Promise<boolean> => {
+  return setPostBookmark(postId, !isBookmarked);
 };

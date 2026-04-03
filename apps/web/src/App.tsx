@@ -15,6 +15,7 @@ import EvaluationZone from "./pages/evaluation/EvaluationZone";
 import EvaluationDetailFeedback from "./pages/evaluation/EvaluationDetail_Feedback";
 import AppLayout from "./AppLayout";
 import BookmarkPage from "./pages/bookmark/BookmarkPage";
+import TestPage from "./TestPage";
 
 function AppRoutes() {
   const navigate = useNavigate();
@@ -31,6 +32,8 @@ function AppRoutes() {
       <Route path="/rankingDetail/:postId" element={<RankingDetail />} />
       <Route path="/myFeedEdit" element={<MyFeedEdit />} />
       <Route path="/user/:userId/feed/:postId" element={<UserFeedDetail />} />
+      
+      <Route path="/test" element={<TestPage />} />
 
       <Route element={<AppLayout />}>
         <Route path="/rankingZone" element={<RankingZone />} />

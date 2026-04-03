@@ -1,13 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { GetFeedPostDetailResponse } from "@codinator/contracts";
-import { ChevronLeft, ChevronRight, ThumbsDown, ThumbsUp } from "lucide-react";
+import {
+  Bookmark,
+  ChevronLeft,
+  ChevronRight,
+  ThumbsDown,
+  ThumbsUp,
+} from "lucide-react";
 import {
   clearAuthTokens,
   fetcher,
   getAuthHeaders,
   getPrimaryPostImageUrl,
   resolveAssetUrl,
+  fetchMyBookmarkMap,
+  isAuthError,
+  subscribeBookmarkUpdated,
+  togglePostBookmark,
 } from "../../lib/api";
 import styles from "./UserFeedDetail.module.css";
 
@@ -214,25 +224,25 @@ function extractWearItems(post: GetFeedPostDetailResponse): WearItem[] {
 export default function UserFeedDetail() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { postId } = useParams();
+  const { postId, userId } = useParams();
 
   const locationState = location.state as LocationState | undefined;
   const previewPost = locationState?.post;
 
-  const resolvedPostId =
-    toSafeNumber(postId) ??
-    previewPost?.postId ??
-    previewPost?.id;
+  const resolvedPostId = toSafeNumber(postId) ?? previewPost?.postId ?? previewPost?.id;
 
   const currentUserId = useMemo(() => getCurrentUserId(), []);
   const resolvedAuthorId =
     previewPost?.authorId ??
     locationState?.userId ??
+    toSafeNumber(userId) ??
     currentUserId;
 
   const [postData, setPostData] = useState<GetFeedPostDetailResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [bookmarkLoading, setBookmarkLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -252,21 +262,22 @@ export default function UserFeedDetail() {
           ? `/users/${resolvedAuthorId}/feed/${resolvedPostId}`
           : `/users/me/feed/${resolvedPostId}`;
 
-        const detail = await fetcher<GetFeedPostDetailResponse>(endpoint, {
-          headers: getAuthHeaders(),
-        });
+        const [detail, bookmarkMap] = await Promise.all([
+          fetcher<GetFeedPostDetailResponse>(endpoint, {
+            headers: getAuthHeaders(),
+          }),
+          fetchMyBookmarkMap(),
+        ]);
 
         if (cancelled) return;
+
         setPostData(detail);
+        setIsBookmarked(Boolean(bookmarkMap[resolvedPostId]));
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : "피드 상세를 불러오지 못했습니다.";
 
-        if (
-          message.includes("Unauthorized") ||
-          message.includes("로그인이 필요합니다") ||
-          message.includes("401")
-        ) {
+        if (isAuthError(message)) {
           clearAuthTokens();
           navigate("/login", { replace: true });
           return;
@@ -288,6 +299,45 @@ export default function UserFeedDetail() {
       cancelled = true;
     };
   }, [navigate, resolvedAuthorId, resolvedPostId]);
+
+  useEffect(() => {
+    if (!resolvedPostId) return;
+
+    const unsubscribe = subscribeBookmarkUpdated((detail) => {
+      if (!detail || detail.postId !== resolvedPostId) return;
+      setIsBookmarked(detail.bookmarked);
+    });
+
+    return unsubscribe;
+  }, [resolvedPostId]);
+
+  const handleToggleBookmark = async () => {
+    if (!resolvedPostId || bookmarkLoading) return;
+
+    const previous = isBookmarked;
+    setBookmarkLoading(true);
+    setIsBookmarked(!previous);
+
+    try {
+      const nextValue = await togglePostBookmark(resolvedPostId, previous);
+      setIsBookmarked(nextValue);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "북마크 처리에 실패했습니다.";
+
+      setIsBookmarked(previous);
+
+      if (isAuthError(message)) {
+        clearAuthTokens();
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      window.alert(message);
+    } finally {
+      setBookmarkLoading(false);
+    }
+  };
 
   const likeCount = postData?.voteSummary.likeCount ?? 0;
   const dislikeCount = postData?.voteSummary.dislikeCount ?? 0;
@@ -320,10 +370,7 @@ export default function UserFeedDetail() {
     ? resolveAssetUrl(previewPost.imageUrl)
     : undefined;
 
-  const titleText =
-    postData?.author.nickname ??
-    previewPost?.nickname ??
-    "피드 상세";
+  const titleText = postData?.author.nickname ?? previewPost?.nickname ?? "피드 상세";
 
   const descriptionText = loading
     ? "불러오는 중..."
@@ -360,6 +407,23 @@ export default function UserFeedDetail() {
             <h1 className={styles.title}>{titleText}</h1>
             <p className={styles.description}>{descriptionText}</p>
           </div>
+
+          <button
+            type="button"
+            className={styles.bookmarkButton}
+            aria-label={isBookmarked ? "북마크 해제" : "북마크 추가"}
+            onClick={handleToggleBookmark}
+            disabled={bookmarkLoading || !resolvedPostId}
+          >
+            <Bookmark
+              size={16}
+              strokeWidth={2.2}
+              className={
+                isBookmarked ? styles.bookmarkFilled : styles.bookmarkDefault
+              }
+              fill={isBookmarked ? "currentColor" : "none"}
+            />
+          </button>
         </section>
 
         <section className={styles.keywordSection}>
