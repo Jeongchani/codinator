@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Gender, SignupRequest, SignupResponse } from "@codinator/contracts";
+import { fetcher } from "../../lib/api";
 import styles from "./Signup.module.css";
 import { KakaoIcon, NaverIcon, GoogleIcon } from "../../components/icons/social";
 
@@ -76,28 +77,6 @@ function ModalStatusIcon({ type }: { type: ModalType }) {
   }
 
   return <div className={`${styles.modalIcon} ${styles.modalIconError}`}>!</div>;
-}
-
-const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || "/api/v2";
-
-async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
-
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
-
-  if (!response.ok) {
-    throw new Error(data?.message || `HTTP ${response.status}`);
-  }
-
-  return data as T;
 }
 
 export default function Signup() {
@@ -209,8 +188,9 @@ export default function Signup() {
   };
 
   const requestSignupCheck = async (body: SignupCheckRequest): Promise<CheckResponse> => {
-    return apiRequest<CheckResponse>("/auth/signup/check", {
+    return fetcher<CheckResponse>("/auth/signup/check", {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
   };
@@ -399,8 +379,9 @@ export default function Signup() {
         phoneNumber: `${phone1}${phone2}${phone3}`,
       };
 
-      await apiRequest<SignupResponse>("/auth/signup", {
+      await fetcher<SignupResponse>("/auth/signup", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
 
@@ -534,7 +515,7 @@ export default function Signup() {
           </p>
         </div>
 
-        <div className={styles.field}>
+        <div className={`${styles.field} ${styles.genderField}`}>
           <label className={styles.label}>
             <RequiredLabel text="성별" />
           </label>
