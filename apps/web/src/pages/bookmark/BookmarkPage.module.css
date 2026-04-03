@@ -7,31 +7,37 @@
 }
 
 .header {
-  @apply absolute top-0 left-0 w-full bg-white z-10;
+  @apply absolute top-0 left-0 w-full bg-white z-20;
+  height: 93px;
 }
 
 .headerInner {
-  @apply relative h-[112px] px-4 flex items-end justify-between pb-[14px];
-}
-
-.headerLeftGroup {
-  @apply flex items-end gap-2;
+  @apply relative w-full h-full px-5;
 }
 
 .title {
-  @apply absolute left-1/2 -translate-x-1/2 bottom-[14px] text-[28px] leading-7 font-semibold text-black;
+  @apply absolute left-1/2 text-[18px] leading-[22px] font-bold text-black;
+  top: 59px;
+  transform: translateX(-50%) translateY(-50%);
 }
 
 .headerIconButton {
-  @apply w-9 h-9 rounded-full flex items-center justify-center bg-transparent text-black border-0 p-0 self-end mb-[-2px];
+  @apply absolute left-5 w-6 h-6 flex items-center justify-center bg-transparent text-black border-0 p-0;
+  top: 59px;
+  transform: translateY(-50%);
 }
 
 .headerIconButtonFilled {
-  @apply w-9 h-9 rounded-full flex items-center justify-center bg-[#f2f2f2] text-black border-0 p-0 self-end mb-[-2px];
+  @apply absolute right-5 w-6 h-6 rounded-full flex items-center justify-center text-black border-0 p-0;
+  top: 59px;
+  transform: translateY(-50%);
+  background: #f2f2f2;
 }
 
 .deleteButtonRed {
-  @apply w-9 h-9 rounded-full flex items-center justify-center border-0 p-0 self-end mb-[-2px] text-white;
+  @apply absolute right-5 w-6 h-6 rounded-full flex items-center justify-center border-0 p-0 text-white;
+  top: 59px;
+  transform: translateY(-50%);
   background: #ef4444;
 }
 
@@ -39,48 +45,29 @@
   @apply opacity-40;
 }
 
-.cancelButton {
-  @apply h-9 flex items-center justify-center bg-transparent border-0 p-0 text-[14px] leading-4 font-medium text-black self-end mb-[-1px];
-}
-
-.selectAllWrap {
-  @apply h-9 flex flex-col items-center justify-center gap-[2px] bg-transparent border-0 p-0 self-end mb-[-1px];
-}
-
-.selectCircle {
-  @apply w-5 h-5 rounded-full border border-black bg-white shrink-0 flex items-center justify-center text-black;
-}
-
-.selectCircleActive {
-  @apply bg-black text-white border-black;
-}
-
-.selectAllText {
-  @apply text-[10px] leading-3 font-medium text-black;
-}
-
 .tabSection {
-  @apply absolute top-[120px] left-1/2 -translate-x-1/2 w-[190px] z-10;
+  @apply absolute left-0 w-full z-20 px-4;
+  top: 108px;
 }
 
 .tabRow {
-  @apply relative flex items-center justify-between;
+  @apply relative flex items-center gap-6;
 }
 
 .tabButton {
-  @apply relative h-9 min-w-[82px] bg-transparent border-0 flex items-center justify-center p-0;
+  @apply relative h-11 bg-transparent border-0 flex items-center justify-center p-0;
 }
 
 .tabText {
-  @apply relative inline-block text-[18px] leading-6 font-medium text-black;
+  @apply relative inline-block text-[16px] leading-[20px] font-medium text-[#7a7a7a];
 }
 
 .tabTextActive {
-  @apply font-medium;
+  @apply text-black font-bold;
 }
 
 .tabIndicator {
-  @apply absolute bottom-[2px] left-0 h-[2px] bg-black rounded-full;
+  @apply absolute bottom-[4px] left-0 h-[2px] bg-black rounded-full;
   transition:
     transform 280ms ease,
     width 280ms ease;
@@ -88,23 +75,89 @@
 }
 
 .contentArea {
-  @apply absolute left-0 top-[178px] w-full h-[590px] overflow-y-auto px-4;
+  @apply absolute left-0 w-full overflow-y-auto px-4 z-10;
+  top: 166px;
+  height: 582px;
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+.contentAreaDeleteMode {
+  touch-action: none;
 }
 
 .contentArea::-webkit-scrollbar {
   display: none;
 }
 
+.slideViewport {
+  @apply relative w-full min-h-full;
+}
+
+.gridPane {
+  @apply w-full;
+}
+
+.staticPane {
+  @apply relative;
+}
+
+.animatedPane {
+  @apply absolute left-0 top-0 w-full;
+}
+
+.fadePane {
+  animation: fadePane 180ms ease forwards;
+}
+
+.enterFromRight {
+  animation: enterFromRight 320ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.enterFromLeft {
+  animation: enterFromLeft 320ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes enterFromRight {
+  from {
+    opacity: 0.72;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes enterFromLeft {
+  from {
+    opacity: 0.72;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadePane {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 .cardGrid {
-  @apply grid grid-cols-3 gap-x-[6px] gap-y-[6px];
+  @apply grid grid-cols-3 gap-x-[6px] gap-y-[6px] pb-8;
 }
 
 .card {
-  @apply relative w-full aspect-[109/152] rounded-[8px] overflow-hidden bg-[#dddddd] border-0 p-0 touch-none select-none;
+  @apply relative w-full aspect-[109/152] rounded-[8px] overflow-hidden bg-[#dddddd] border-0 p-0 select-none;
   -webkit-user-select: none;
   user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .cardSelected {
@@ -125,5 +178,33 @@
 }
 
 .emptyState {
-  @apply w-full h-full flex items-center justify-center text-sm text-neutral-500;
+  @apply w-full h-full flex items-center justify-center text-sm text-neutral-500 pt-20;
+}
+
+.modalOverlay {
+  @apply absolute inset-0 z-40 flex items-center justify-center bg-black/35 px-6;
+}
+
+.modalCard {
+  @apply w-full rounded-[24px] bg-white px-5 pt-6 pb-5 shadow-xl;
+}
+
+.modalTitle {
+  @apply text-[18px] leading-6 font-semibold text-black text-center;
+}
+
+.modalDesc {
+  @apply mt-2 text-[14px] leading-5 text-neutral-500 text-center;
+}
+
+.modalActions {
+  @apply mt-6 flex items-center gap-3;
+}
+
+.modalCancelButton {
+  @apply flex-1 h-12 rounded-[999px] bg-[#f3f3f3] text-[15px] font-medium text-black border-0;
+}
+
+.modalDeleteButton {
+  @apply flex-1 h-12 rounded-[999px] bg-[#ef4444] text-[15px] font-medium text-white border-0;
 }
