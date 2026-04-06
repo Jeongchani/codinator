@@ -14,6 +14,8 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+const DEV_SEED_NOW = new Date('2026-04-06T12:00:00+09:00');
+
 const userSeeds = [
   {
     key: 'admin',
@@ -383,30 +385,6 @@ const WEEKLY_RANKING_SEEDS = [
       { category: GarmentCategory.TOP, itemName: '블랙 터틀넥', brand: 'COS' },
       { category: GarmentCategory.BOTTOM, itemName: '울 슬랙스', brand: 'MUSINSA STANDARD' },
       { category: GarmentCategory.SHOES, itemName: '첼시부츠', brand: 'ZARA' },
-    ],
-    profile: 'good',
-  },
-  {
-    imageName: 'ranked-post-11.jpg',
-    authorKey: 'alice',
-    content: '[SEED] 데님 자켓 활용한 캐주얼 코디입니다. 색조합이 무난한지 궁금합니다.',
-    keywordCodes: ['CAMPUS_LOOK', 'DAILY_LOOK'],
-    outfitItems: [
-      { category: GarmentCategory.OUTER, itemName: '데님 자켓', brand: 'LEVI’S' },
-      { category: GarmentCategory.TOP, itemName: '화이트 반팔', brand: 'UNIQLO' },
-      { category: GarmentCategory.BOTTOM, itemName: '차콜 팬츠', brand: '8SECONDS' },
-    ],
-    profile: 'good',
-  },
-  {
-    imageName: 'ranked-post-12.jpg',
-    authorKey: 'charlie',
-    content: '[SEED] 셔츠와 블루종으로 깔끔하게 정리한 코디입니다. 핏 위주로 봐주세요.',
-    keywordCodes: ['BOYFRIEND_LOOK', 'DAILY_LOOK'],
-    outfitItems: [
-      { category: GarmentCategory.OUTER, itemName: '라이트 블루종', brand: 'ZARA' },
-      { category: GarmentCategory.TOP, itemName: '화이트 셔츠', brand: 'UNIQLO' },
-      { category: GarmentCategory.BOTTOM, itemName: '베이지 팬츠', brand: 'COS' },
     ],
     profile: 'good',
   },
@@ -837,7 +815,7 @@ async function seedVotesAndFeedback(post, seed, now, userMap, tagMap) {
 }
 
 async function createSamplePosts(userMap, keywordMap, tagMap) {
-  const now = new Date();
+  const now = DEV_SEED_NOW;
 
   const weeklyRankingStart = startOfWeek(now);
   const weeklyRankingEnd = endOfWeek(now);

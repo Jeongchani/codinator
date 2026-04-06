@@ -1,39 +1,47 @@
+.footerWrap {
+  @apply fixed left-1/2 -translate-x-1/2 z-50;
+  bottom: 16px;
+  width: 350px;
+  pointer-events: none;
+  background: transparent;
+}
+
 .footer {
-  @apply w-[350px] h-[50px] px-3 rounded-[999px]
-    flex items-center justify-center relative;
-  background: rgba(255, 255, 255, 0.42);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  @apply w-full h-[50px] rounded-[999px] relative flex items-center justify-center overflow-hidden;
+  pointer-events: auto;
+  isolation: isolate;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   box-shadow:
-    0 4px 10px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    0 2px 5px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 .inner {
   @apply relative w-full h-full flex items-center justify-between;
+  padding: 0 2px;
 }
 
 .activePill {
-  @apply absolute left-0 top-0 h-full rounded-[999px];
+  @apply absolute;
+  left: 0;
+  top: 4px;
+  height: calc(100% - 8px);
+  border-radius: 999px;
+  background: #111111;
   opacity: 0;
   z-index: 0;
-  will-change: transform, width;
   transition:
-    transform 1s cubic-bezier(0.22, 1, 0.36, 1),
-    width 1s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.2s ease;
+    transform 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.16s ease;
 }
 
 .activePill::before {
-  content: '';
-  @apply absolute inset-0 rounded-[999px];
-  background: #f0eee9;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    0 2px 8px rgba(0, 0, 0, 0.05);
-  transform: scaleX(1);
-  transition: transform 0.12s ease-out;
+  content: none;
 }
 
 .activePillReady {
@@ -42,20 +50,6 @@
 
 .activePillInstant {
   transition: none;
-}
-
-.activePillInstant::before {
-  transition: none;
-}
-
-.activePillMovingRight::before {
-  transform-origin: left center;
-  transform: scaleX(1.24);
-}
-
-.activePillMovingLeft::before {
-  transform-origin: right center;
-  transform: scaleX(1.24);
 }
 
 .menuButton {
@@ -70,19 +64,23 @@
   transform: scale(0.96);
 }
 
+.menuButtonActive {
+  z-index: 2;
+}
+
 .icon {
   @apply text-neutral-700 shrink-0 relative;
   width: 20px;
   height: 20px;
   transition:
-    transform 0.22s ease,
-    color 0.22s ease,
-    opacity 0.22s ease;
+    transform 0.2s ease,
+    color 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .iconActive {
-  @apply text-black;
-  transform: translateY(-1px);
+  color: #ffffff;
+  transform: translateY(0);
 }
 
 .label {
@@ -90,13 +88,13 @@
   line-height: 1;
   opacity: 0.8;
   transition:
-    transform 0.22s ease,
-    opacity 0.22s ease,
-    color 0.22s ease;
+    transform 0.2s ease,
+    opacity 0.2s ease,
+    color 0.2s ease;
 }
 
 .labelActive {
-  @apply text-black;
+  color: #ffffff;
   opacity: 1;
-  transform: translateY(-1px);
+  transform: translateY(0);
 }
