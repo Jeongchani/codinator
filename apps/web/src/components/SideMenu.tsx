@@ -75,8 +75,19 @@ export default function SideMenu({
 
         <div className={styles.mainOptions}>
           <MenuItem
+            icon={<ClipboardCheck size={20} strokeWidth={2.2} />}
+            label="평가존"
+            onClick={() => handleMove("/evaluationzone")}
+          />
+
+          <MenuItem
+            icon={<Trophy size={20} strokeWidth={2.2} />}
+            label="랭킹존"
+            onClick={() => handleMove("/rankingzone")}
+          />
+          <MenuItem
             icon={<Images size={20} strokeWidth={2.2} />}
-            label="마이 피드"
+            label="내 피드"
             onClick={() => handleMove("/myfeeds")}
           />
 
@@ -86,34 +97,23 @@ export default function SideMenu({
             onClick={() => handleMove("/bookmark")}
           />
 
-          <MenuItem
-            icon={<Trophy size={20} strokeWidth={2.2} />}
-            label="랭킹존"
-            onClick={() => handleMove("/rankingzone")}
-          />
 
-          <MenuItem
-            icon={<ClipboardCheck size={20} strokeWidth={2.2} />}
-            label="평가존"
-            onClick={() => handleMove("/evaluationzone")}
-          />
 
-          <MenuItem
-            icon={<User size={20} strokeWidth={2.2} />}
-            label="마이 페이지"
-            onClick={() => handleMove("/mypage")}
-          />
         </div>
 
         <div className={styles.otherTitle}>OTHER</div>
 
         <div className={styles.otherOptions}>
           <MenuItem
+            icon={<User size={20} strokeWidth={2.2} />}
+            label="마이 페이지"
+            onClick={() => handleMove("/mypage")}
+          />
+          <MenuItem
             icon={<Settings size={20} strokeWidth={2.2} />}
             label="설정"
             onClick={() => handleMove("/settings")}
           />
-
           <MenuItem
             icon={<LogOut size={20} strokeWidth={2.2} />}
             label="로그아웃"

@@ -14,8 +14,9 @@ import AuthEntry from "./pages/auth/AuthEntry";
 import EvaluationZone from "./pages/evaluation/EvaluationZone";
 import EvaluationDetailFeedback from "./pages/evaluation/EvaluationDetail_Feedback";
 import AppLayout from "./AppLayout";
-import BookmarkPage from "./pages/bookmark/BookmarkPage";
 import TestPage from "./TestPage";
+import Bookmark from "./pages/bookmark/Bookmark";
+import MyPage from "./pages/auth/MyPage";
 
 function AppRoutes() {
   const navigate = useNavigate();
@@ -32,6 +33,7 @@ function AppRoutes() {
       <Route path="/rankingDetail/:postId" element={<RankingDetail />} />
       <Route path="/myFeedEdit" element={<MyFeedEdit />} />
       <Route path="/user/:userId/feed/:postId" element={<UserFeedDetail />} />
+      <Route path="/myPage" element={<MyPage />} />
       
       <Route path="/test" element={<TestPage />} />
 
@@ -40,7 +42,8 @@ function AppRoutes() {
         <Route path="/user/:userId/feed" element={<UserFeeds />} />
         <Route path="/myFeeds" element={<MyFeeds />} />
         <Route path="/myFeedDetail/:postId" element={<MyFeedDetail />} />
-        <Route path="/bookmarkPage" element={<BookmarkPage />} />
+        <Route path="/bookmark" element={<Bookmark />} />
+
 
       </Route>
     </Routes>

@@ -2021,6 +2021,83 @@ function S_Evaluation() {
   );
 }
 
+// ─── SECTION: 랭킹존 ──────────────────────────────────────────────────────────
+
+function S_Rankings() {
+  const [tab, setTab]       = useState<'list' | 'detail'>('list');
+  const [period, setPeriod] = useState<'WEEKLY' | 'MONTHLY'>('WEEKLY');
+  const [postId, setPostId] = useState('');
+  const [res, setRes]       = useState('');
+
+  const tabs = [
+    { key: 'list'   as const, label: '🏆 랭킹 목록' },
+    { key: 'detail' as const, label: '🔍 게시글 상세' },
+  ];
+
+  return (
+    <>
+      {/* 탭 */}
+      <div style={{ marginBottom: 16 }}>
+        {tabs.map((t) => (
+          <button key={t.key} style={C.tab(tab === t.key, '#d69e2e')} onClick={() => { setTab(t.key); setRes(''); }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* period 공통 선택 */}
+      <div style={{ ...C.card, paddingBottom: 10 }}>
+        <SelectField
+          label="랭킹 기간 (period)"
+          value={period}
+          onChange={(v) => setPeriod(v as 'WEEKLY' | 'MONTHLY')}
+          options={[
+            { value: 'WEEKLY',  label: 'WEEKLY — 주간 랭킹' },
+            { value: 'MONTHLY', label: 'MONTHLY — 월간 랭킹' },
+          ]}
+        />
+      </div>
+
+      {/* 랭킹 목록 */}
+      {tab === 'list' && (
+        <div style={C.card}>
+          <h3 style={C.h3}>🏆 랭킹 목록</h3>
+          <div style={C.info('blue')}>
+            현재 기간 기준 READY 상태 랭킹을 반환합니다.
+            랭킹이 아직 집계되지 않은 경우 items: [] 로 반환됩니다.
+          </div>
+          <button
+            style={C.btn('#d69e2e')}
+            onClick={() => run(() => api('GET', `/rankings?period=${period}`), setRes)}
+          >
+            GET /rankings?period={period}
+          </button>
+          <Result data={res} />
+        </div>
+      )}
+
+      {/* 랭킹 게시글 상세 */}
+      {tab === 'detail' && (
+        <div style={C.card}>
+          <h3 style={C.h3}>🔍 랭킹 게시글 상세</h3>
+          <div style={C.info('yellow')}>
+            랭킹에 등재된 게시글만 조회 가능합니다.
+            작성자 정보(author)가 포함됩니다.
+          </div>
+          <Field label="게시글 ID (postId)" value={postId} onChange={setPostId} placeholder="ex) 13" />
+          <button
+            style={C.btn('#d69e2e')}
+            onClick={() => run(() => api('GET', `/rankings/posts/${postId}?period=${period}`), setRes)}
+          >
+            GET /rankings/posts/:postId?period={period}
+          </button>
+          <Result data={res} />
+        </div>
+      )}
+    </>
+  );
+}
+
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 
 const SECTIONS = [
@@ -2033,6 +2110,7 @@ const SECTIONS = [
   { key: 'search',     label: '🔍 검색',              component: S_Search },
   { key: 'upload',     label: '📝 게시글 작성',       component: S_PostUpload },
   { key: 'evaluation', label: '🎯 평가존',            component: S_Evaluation },
+  { key: 'rankings',   label: '🏆 랭킹존',            component: S_Rankings },
   { key: 'reports',    label: '🚨 신고',              component: S_Reports },
 ];
 
@@ -2100,4 +2178,3 @@ export default function TestPage() {
     </div>
   );
 }
-

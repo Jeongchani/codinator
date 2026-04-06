@@ -21,7 +21,7 @@ const footerItems: FooterItem[] = [
   { key: "evaluation", label: "평가존", path: "/evaluationZone", icon: ClipboardCheck },
   { key: "write", label: "글작성", path: "/postUpload", icon: SquarePen },
   { key: "myfeeds", label: "내피드", path: "/myFeeds", icon: Images },
-  { key: "bookmark", label: "북마크", path: "/bookmarkPage", icon: Bookmark },
+  { key: "bookmark", label: "북마크", path: "/bookmark", icon: Bookmark },
 ];
 
 export default function Footer() {
@@ -49,15 +49,41 @@ export default function Footer() {
     [location.pathname, normalizePath]
   );
 
+  const hideIndicator = useCallback((resetPosition = false) => {
+    const pillEl = activePillRef.current;
+    if (!pillEl) return;
+
+    pillEl.classList.remove(
+      styles.activePillReady,
+      styles.activePillMovingLeft,
+      styles.activePillMovingRight
+    );
+
+    if (resetPosition) {
+      pillEl.classList.add(styles.activePillInstant);
+      pillEl.style.width = "0px";
+      pillEl.style.transform = "translateX(0px)";
+      prevXRef.current = null;
+      initializedRef.current = false;
+    }
+  }, []);
+
   const updateIndicator = useCallback(() => {
     const pillEl = activePillRef.current;
     if (!pillEl) return;
 
     const activeItem = footerItems.find((item) => getIsActive(item.path));
-    if (!activeItem) return;
+
+    if (!activeItem) {
+      hideIndicator(true);
+      return;
+    }
 
     const activeButton = buttonRefs.current[activeItem.key];
-    if (!activeButton) return;
+    if (!activeButton) {
+      hideIndicator(true);
+      return;
+    }
 
     const PILL_INSET_X = 3;
 
@@ -65,12 +91,7 @@ export default function Footer() {
     const rawWidth = activeButton.offsetWidth;
 
     const nextX = Math.round(rawX + PILL_INSET_X);
-    const nextWidth = Math.max(
-      0,
-      Math.round(rawWidth - PILL_INSET_X * 2)
-    );
-
-
+    const nextWidth = Math.max(0, Math.round(rawWidth - PILL_INSET_X * 2));
 
     const prevX = prevXRef.current;
 
@@ -106,7 +127,7 @@ export default function Footer() {
     pillEl.style.width = `${nextWidth}px`;
     pillEl.style.transform = `translateX(${nextX}px)`;
     pillEl.classList.add(styles.activePillReady);
-    
+
     moveTimerRef.current = window.setTimeout(() => {
       pillEl.classList.remove(
         styles.activePillMovingLeft,
@@ -115,7 +136,7 @@ export default function Footer() {
     }, 120);
 
     prevXRef.current = nextX;
-  }, [getIsActive]);
+  }, [getIsActive, hideIndicator]);
 
   useEffect(() => {
     const raf = window.requestAnimationFrame(() => {
