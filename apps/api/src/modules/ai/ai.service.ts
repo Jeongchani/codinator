@@ -81,7 +81,7 @@ export class AiService {
   private readonly aiServerBaseUrl =
     process.env.AI_SERVER_BASE_URL || 'http://127.0.0.1:8000/api/v2';
 
-  private readonly aiTimeoutMs = Number(process.env.AI_SERVER_TIMEOUT_MS || 60000);
+  private readonly aiTimeoutMs = Number(process.env.AI_SERVER_TIMEOUT_MS || 15000);
 
   async blurFace(image: Express.Multer.File): Promise<FaceBlurResult> {
     const formData = new FormData();
