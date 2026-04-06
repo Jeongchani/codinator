@@ -91,7 +91,7 @@ export class BookmarksService {
               select: {
                 thumbnailUrl: true,
                 processedImageUrl: true,
-                originalImageUrl: true,
+                // originalImageUrl 는 블러 처리 전 원본 — 외부 노출 금지, select 제외
               },
             },
             // 평가 상태 포함
@@ -126,8 +126,6 @@ export class BookmarksService {
         return {
           bookmarkId: b.id,
           postId: b.post.id,
-          // pickPostThumbnail: thumbnailUrl → processedImageUrl → originalImageUrl 순 fallback
-          // 이미지가 없는 경우(posts 이미지 없는 seed)에는 null 반환
           thumbnailUrl: b.post.images.length > 0 ? pickPostThumbnail(b.post.images) : null,
           content: b.post.content,
           postStatus: b.post.status,
