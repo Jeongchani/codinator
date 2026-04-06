@@ -4,3 +4,11 @@ opencv-python-headless
 python-multipart
 python-dotenv
 numpy
+torch
+pillow
+huggingface-hub
+transformers>=4.40.0
+fashn-human-parser
+sentencepiece
+safetensors
+accelerate

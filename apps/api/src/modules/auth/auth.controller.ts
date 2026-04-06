@@ -17,41 +17,6 @@ import {
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('signup/check')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: '회원가입 입력값 사용 가능 여부 확인' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        type: {
-          type: 'string',
-          enum: ['EMAIL', 'NICKNAME', 'PASSWORD'],
-          example: 'EMAIL',
-        },
-        value: {
-          type: 'string',
-          example: 'test@example.com',
-        },
-      },
-      required: ['type', 'value'],
-    },
-  })
-  @ApiOkResponse({
-    schema: {
-      type: 'object',
-      properties: {
-        available: { type: 'boolean', example: true },
-        message: { type: 'string', example: '사용 가능한 이메일입니다.' },
-      },
-    },
-  })
-  async checkSignupAvailability(
-    @Body() dto: { type: 'EMAIL' | 'NICKNAME' | 'PASSWORD'; value: string },
-  ): Promise<{ available: boolean; message: string }> {
-    return this.authService.checkSignupAvailability(dto);
-  }
-
   @Post('signup')
   @ApiOperation({ summary: '회원가입' })
   @ApiBody({ type: SignupRequestDto })
