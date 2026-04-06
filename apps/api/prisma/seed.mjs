@@ -607,8 +607,6 @@ function minDate(left, right) {
   return left.getTime() <= right.getTime() ? left : right;
 }
 
-function buildImageCreate(filename) {
-  const url = `${SEED_IMAGE_BASE_URL}/${filename}`;
 function resolveSeedImageName(filename) {
   const openMatch = filename.match(/^open-post-(\d+)\.jpg$/);
   if (openMatch) {

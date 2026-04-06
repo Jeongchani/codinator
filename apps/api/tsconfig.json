@@ -8,7 +8,9 @@
     "allowSyntheticDefaultImports": true,
     "target": "ES2021",
     "outDir": "./dist",
+    "rootDir": "./src",
     "baseUrl": "./",
+    "ignoreDeprecations": "6.0",
     "skipLibCheck": true
   }
 }
