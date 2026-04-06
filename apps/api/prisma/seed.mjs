@@ -630,7 +630,7 @@ function buildImageCreate(filename) {
   return {
     originalImageUrl: url,
     processedImageUrl: url,
-    thumbnailUrl: null,
+    thumbnailUrl: url,
     storageKey: `seeds/posts/${resolvedFilename}`,
     blurMethod: BlurMethod.NONE,
     aiBlurStatus: AiBlurStatus.DONE,
