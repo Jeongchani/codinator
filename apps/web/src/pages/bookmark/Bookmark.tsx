@@ -8,15 +8,33 @@ import {
 } from "react";
 import { ChevronLeft, Check, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { clearAuthTokens, 
-  resolveAssetUrl,
-  fetchAllMyBookmarks,
-  isAuthError,
-  setPostBookmark,
-} from "../../lib/api";
-import styles from "./BookmarkPage.module.css";
+import { clearAuthTokens, isAuthError } from "../../lib/api";
+import styles from "./Bookmark.module.css";
 
 type TabType = "all" | "ongoing" | "done";
+
+type BookmarkApiItem = {
+  postId?: number;
+  content?: string | null;
+  thumbnailUrl?: string | null;
+  evaluationStatus?: string | null;
+  post?: {
+    id?: number;
+    postId?: number;
+    content?: string | null;
+    thumbnailUrl?: string | null;
+    evaluationStatus?: string | null;
+    status?: string | null;
+  };
+};
+
+type BookmarkListResponse =
+  | BookmarkApiItem[]
+  | {
+      items?: BookmarkApiItem[];
+      bookmarks?: BookmarkApiItem[];
+      data?: BookmarkApiItem[];
+    };
 
 type BookmarkItem = {
   id: number;
@@ -47,23 +65,124 @@ type TouchDragMode = "select" | "deselect";
 type SlideDirection = "left" | "right";
 
 const TAB_ORDER: TabType[] = ["all", "ongoing", "done"];
+const BASE = "/api/v2";
+
+const tok = () => localStorage.getItem("accessToken") ?? "";
+
+async function api<T>(
+  method: string,
+  path: string,
+  body?: unknown
+): Promise<T> {
+  const headers: HeadersInit = {
+    Authorization: `Bearer ${tok()}`,
+  };
+
+  if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const res = await fetch(`${BASE}${path}`, {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+
+  const text = await res.text();
+
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = text;
+  }
+
+  if (!res.ok) {
+    const raw = data as Record<string, unknown> | null;
+    const message =
+      raw && typeof raw === "object" && "message" in raw
+        ? Array.isArray(raw.message)
+          ? (raw.message as string[]).join(", ")
+          : String(raw.message)
+        : text;
+
+    throw new Error(`[${res.status}] ${message}`);
+  }
+
+  return data as T;
+}
+
+const assetUrl = (url: string | null | undefined) => {
+  if (!url) return null;
+  if (url.startsWith("blob:") || url.startsWith("data:")) return url;
+
+  if (url.startsWith("/")) return url;
+
+  try {
+    const parsed = new URL(url);
+    if (parsed.pathname.startsWith("/uploads/")) {
+      return `${parsed.pathname}${parsed.search}`;
+    }
+    return url;
+  } catch {
+    return url;
+  }
+};
+
+function normalizeBookmarkItems(data: BookmarkListResponse): BookmarkApiItem[] {
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.items)) return data.items;
+  if (data && Array.isArray(data.bookmarks)) return data.bookmarks;
+  if (data && Array.isArray(data.data)) return data.data;
+  return [];
+}
+
+async function fetchMyBookmarks(): Promise<BookmarkApiItem[]> {
+  const data = await api<BookmarkListResponse>("GET", "/users/me/bookmarks");
+  return normalizeBookmarkItems(data);
+}
+
+async function setBookmark(postId: number, shouldBookmark: boolean) {
+  return api(
+    shouldBookmark ? "POST" : "DELETE",
+    `/posts/${postId}/bookmarks`
+  );
+}
 
 function getItemsByTab(items: BookmarkItem[], tab: TabType) {
   if (tab === "all") return items;
   return items.filter((item) => item.status === tab);
 }
 
-function mapBookmarkItems(rawItems: Awaited<ReturnType<typeof fetchAllMyBookmarks>>): BookmarkItem[] {
-  return rawItems.map((item) => ({
-    id: item.postId,
-    postId: item.postId,
-    title: item.content?.trim() || `북마크 ${item.postId}`,
-    imageUrl: item.thumbnailUrl ? resolveAssetUrl(item.thumbnailUrl) : undefined,
-    status: item.evaluationStatus === "OPEN" ? "ongoing" : "done",
-  }));
+function mapBookmarkItems(rawItems: BookmarkApiItem[]): BookmarkItem[] {
+  return rawItems
+    .map((item): BookmarkItem | null => {
+      const postId = item.postId ?? item.post?.id ?? item.post?.postId;
+      if (postId == null) return null;
+
+      const content = item.content ?? item.post?.content ?? null;
+      const thumbnailUrl = item.thumbnailUrl ?? item.post?.thumbnailUrl ?? null;
+      const evaluationStatus =
+        item.evaluationStatus ??
+        item.post?.evaluationStatus ??
+        item.post?.status ??
+        null;
+
+      const status: BookmarkItem["status"] =
+        evaluationStatus === "OPEN" ? "ongoing" : "done";
+
+      return {
+        id: postId,
+        postId,
+        title: content?.trim() || `북마크 ${postId}`,
+        imageUrl: assetUrl(thumbnailUrl) ?? undefined,
+        status,
+      };
+    })
+    .filter((item): item is BookmarkItem => item !== null);
 }
 
-export default function BookmarkPage() {
+export default function Bookmark() {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<TabType>("all");
@@ -71,7 +190,8 @@ export default function BookmarkPage() {
   const [prevTab, setPrevTab] = useState<TabType>("all");
   const [incomingTab, setIncomingTab] = useState<TabType | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [slideDirection, setSlideDirection] = useState<SlideDirection>("right");
+  const [slideDirection, setSlideDirection] =
+    useState<SlideDirection>("right");
 
   const [items, setItems] = useState<BookmarkItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,7 +203,8 @@ export default function BookmarkPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const [isTouchDragging, setIsTouchDragging] = useState(false);
-  const [touchDragMode, setTouchDragMode] = useState<TouchDragMode>("select");
+  const [touchDragMode, setTouchDragMode] =
+    useState<TouchDragMode>("select");
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const tabRowRef = useRef<HTMLDivElement | null>(null);
@@ -121,7 +242,7 @@ export default function BookmarkPage() {
       setLoading(true);
       setError("");
 
-      const data = await fetchAllMyBookmarks();
+      const data = await fetchMyBookmarks();
       setItems(mapBookmarkItems(data));
     } catch (err) {
       const message =
@@ -145,7 +266,9 @@ export default function BookmarkPage() {
   }, [loadBookmarks]);
 
   useEffect(() => {
-    setSelectedIds((prev) => prev.filter((id) => items.some((item) => item.id === id)));
+    setSelectedIds((prev) =>
+      prev.filter((id) => items.some((item) => item.id === id))
+    );
   }, [items]);
 
   const getTabTextRef = useCallback((tab: TabType) => {
@@ -317,7 +440,7 @@ export default function BookmarkPage() {
     setDeleteLoading(true);
 
     const results = await Promise.allSettled(
-      selectedIds.map((postId) => setPostBookmark(postId, false))
+      selectedIds.map((postId) => setBookmark(postId, false))
     );
 
     const failedMessages = results
@@ -339,10 +462,14 @@ export default function BookmarkPage() {
       return;
     }
 
-    const succeededIds = selectedIds.filter((_, index) => results[index]?.status === "fulfilled");
+    const succeededIds = selectedIds.filter(
+      (_, index) => results[index]?.status === "fulfilled"
+    );
 
     if (succeededIds.length > 0) {
-      setItems((prev) => prev.filter((item) => !succeededIds.includes(item.postId)));
+      setItems((prev) =>
+        prev.filter((item) => !succeededIds.includes(item.postId))
+      );
     }
 
     if (failedMessages.length > 0) {
@@ -462,7 +589,11 @@ export default function BookmarkPage() {
     );
   };
 
-  const renderGrid = (paneItems: BookmarkItem[], paneKey: string, extraClassName?: string) => {
+  const renderGrid = (
+    paneItems: BookmarkItem[],
+    paneKey: string,
+    extraClassName?: string
+  ) => {
     return (
       <div className={`${styles.gridPane} ${extraClassName ?? ""}`} key={paneKey}>
         {loading ? (
@@ -600,6 +731,7 @@ export default function BookmarkPage() {
               평가 완료
             </span>
           </button>
+
           <button
             type="button"
             className={styles.tabButton}
@@ -614,7 +746,6 @@ export default function BookmarkPage() {
               평가 중
             </span>
           </button>
-
 
           <span
             className={styles.tabIndicator}

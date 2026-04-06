@@ -1,5 +1,5 @@
 .wrapper {
-  @apply fixed inset-0 z-[9999];
+  @apply fixed top-0 left-1/2 -translate-x-1/2 w-[375px] h-[812px] z-[9999] overflow-hidden;
   transition: opacity 0.28s ease;
 }
 
@@ -20,27 +20,23 @@
 }
 
 .panel {
-  @apply absolute right-0 top-0 w-[293px] h-[812px] bg-white;
-  transition:
-    transform 0.32s ease,
-    opacity 0.32s ease;
-  will-change: transform, opacity;
+  @apply absolute right-0 top-0 w-[293px] h-full bg-white;
+  transition: transform 0.32s ease;
+  will-change: transform;
 }
 
 .panelOpen {
   transform: translateX(0);
-  opacity: 1;
 }
 
 .panelClosed {
   transform: translateX(100%);
-  opacity: 1;
 }
 
 .closeButton {
-  @apply absolute right-4 top-[62px] w-[25px] h-[25px]
-    flex items-center justify-center
-    text-neutral-500 bg-transparent p-0 border-0;
+  @apply absolute right-5 top-[59px] -translate-y-1/2
+    w-6 h-6 flex items-center justify-center
+    text-[#7a7a7a] bg-transparent p-0 border-0;
 }
 
 .mainOptions {
