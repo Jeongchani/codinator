@@ -607,6 +607,8 @@ function minDate(left, right) {
   return left.getTime() <= right.getTime() ? left : right;
 }
 
+function buildImageCreate(filename) {
+  const url = `${SEED_IMAGE_BASE_URL}/${filename}`;
 function resolveSeedImageName(filename) {
   const openMatch = filename.match(/^open-post-(\d+)\.jpg$/);
   if (openMatch) {
@@ -630,8 +632,8 @@ function buildImageCreate(filename) {
   return {
     originalImageUrl: url,
     processedImageUrl: url,
-    thumbnailUrl: null,
-    storageKey: `seeds/posts/${resolvedFilename}`,
+    thumbnailUrl: url,
+    storageKey: `seeds/posts/${filename}`,
     blurMethod: BlurMethod.NONE,
     aiBlurStatus: AiBlurStatus.DONE,
     sortOrder: 0,
