@@ -24,8 +24,8 @@ import {
 } from "../../lib/api";
 import styles from "./MyFeeds.module.css";
 
-type TabType = "all" | "ongoing" | "done";
-type ActionMode = "delete" | "hide" | null;
+type TabType = "all" | "ongoing" | "done" | "hidden";
+type ActionMode = "delete" | "hide" | "unhide" | null;
 type SlideDirection = "left" | "right";
 type TouchDragMode = "select" | "deselect";
 
@@ -48,7 +48,7 @@ type IndicatorStyle = {
 
 type MyFeedItem = GetMyFeedResponse["items"][number];
 
-const TAB_ORDER: TabType[] = ["all", "ongoing", "done"];
+const TAB_ORDER: TabType[] = ["all", "ongoing", "done", "hidden"];
 
 const isAuthError = (message: string) => {
   return (
@@ -58,19 +58,35 @@ const isAuthError = (message: string) => {
   );
 };
 
+const isHiddenPost = (item: MyFeedItem) => item.postStatus === "HIDDEN";
+
 const getItemsByTab = (items: MyFeedItem[], tab: TabType) => {
+  if (tab === "hidden") {
+    return items.filter(isHiddenPost);
+  }
+
+  const visibleItems = items.filter((item) => !isHiddenPost(item));
+
   if (tab === "all") {
-    return items;
+    return visibleItems;
   }
 
   if (tab === "ongoing") {
-    return items.filter((item) => item.evaluation?.status === "OPEN");
+    return visibleItems.filter((item) => item.evaluation?.status === "OPEN");
   }
 
-  return items.filter((item) => {
+  return visibleItems.filter((item) => {
     const evaluationStatus = item.evaluation?.status;
     return evaluationStatus === "ENDED" || evaluationStatus === "CLOSED";
   });
+};
+
+const getEmptyMessageByTab = (tab: TabType) => {
+  if (tab === "hidden") {
+    return "숨김된 피드가 없습니다.";
+  }
+
+  return "나의 피드가 없습니다.";
 };
 
 async function loadAllMyFeedItems(): Promise<MyFeedItem[]> {
@@ -126,6 +142,7 @@ export default function MyFeeds() {
   const allTextRef = useRef<HTMLSpanElement | null>(null);
   const ongoingTextRef = useRef<HTMLSpanElement | null>(null);
   const doneTextRef = useRef<HTMLSpanElement | null>(null);
+  const hiddenTextRef = useRef<HTMLSpanElement | null>(null);
 
   const touchStartRef = useRef<Point | null>(null);
   const touchCurrentRef = useRef<Point | null>(null);
@@ -142,6 +159,7 @@ export default function MyFeeds() {
   const isSelectionMode = actionMode !== null;
   const isDeleteMode = actionMode === "delete";
   const isHideMode = actionMode === "hide";
+  const isUnhideMode = actionMode === "unhide";
 
   const displayedItems = useMemo(() => {
     return getItemsByTab(items, displayTab);
@@ -154,17 +172,6 @@ export default function MyFeeds() {
   const activeItemsForSelection = useMemo(() => {
     return getItemsByTab(items, activeTab);
   }, [activeTab, items]);
-
-  const selectedItems = useMemo(() => {
-    return items.filter((item) => selectedIds.includes(item.postId));
-  }, [items, selectedIds]);
-
-  const allSelectedAreHidden = useMemo(() => {
-    return (
-      selectedItems.length > 0 &&
-      selectedItems.every((item) => item.postStatus === "HIDDEN")
-    );
-  }, [selectedItems]);
 
   const moveToLogin = useCallback(() => {
     clearAuthTokens();
@@ -200,7 +207,8 @@ export default function MyFeeds() {
   const getTabTextRef = useCallback((tab: TabType) => {
     if (tab === "all") return allTextRef.current;
     if (tab === "ongoing") return ongoingTextRef.current;
-    return doneTextRef.current;
+    if (tab === "done") return doneTextRef.current;
+    return hiddenTextRef.current;
   }, []);
 
   const updateIndicator = useCallback(() => {
@@ -266,6 +274,7 @@ export default function MyFeeds() {
     const visibleIds = new Set(
       activeItemsForSelection.map((item) => item.postId)
     );
+
     setSelectedIds((prev) => prev.filter((id) => visibleIds.has(id)));
   }, [activeItemsForSelection]);
 
@@ -351,14 +360,6 @@ export default function MyFeeds() {
     touchDraggedRef.current = false;
   }, []);
 
-  const enterMode = (mode: Exclude<ActionMode, null>) => {
-    setActionMode(mode);
-    setSelectedIds([]);
-    setShowActionConfirm(false);
-    setShowOptionMenu(false);
-    resetTouchDragging();
-  };
-
   const exitSelectionMode = () => {
     setActionMode(null);
     setSelectedIds([]);
@@ -367,21 +368,41 @@ export default function MyFeeds() {
     resetTouchDragging();
   };
 
-  const handleTabChange = (tab: TabType) => {
-    if (tab === activeTab) return;
+  const changeTab = useCallback(
+    (tab: TabType) => {
+      if (tab === activeTab) return;
 
-    const currentIndex = TAB_ORDER.indexOf(activeTab);
-    const nextIndex = TAB_ORDER.indexOf(tab);
-    const direction: SlideDirection = nextIndex > currentIndex ? "right" : "left";
+      const currentIndex = TAB_ORDER.indexOf(activeTab);
+      const nextIndex = TAB_ORDER.indexOf(tab);
+      const direction: SlideDirection =
+        nextIndex > currentIndex ? "right" : "left";
 
-    setSlideDirection(direction);
-    setPrevTab(displayTab);
-    setIncomingTab(tab);
-    setIsAnimating(true);
-    setActiveTab(tab);
+      setSlideDirection(direction);
+      setPrevTab(displayTab);
+      setIncomingTab(tab);
+      setIsAnimating(true);
+      setActiveTab(tab);
+      setSelectedIds([]);
+      setShowActionConfirm(false);
+      resetTouchDragging();
+    },
+    [activeTab, displayTab, resetTouchDragging]
+  );
+
+  const enterMode = (mode: Exclude<ActionMode, null>, targetTab?: TabType) => {
+    setActionMode(mode);
     setSelectedIds([]);
     setShowActionConfirm(false);
+    setShowOptionMenu(false);
     resetTouchDragging();
+
+    if (targetTab) {
+      changeTab(targetTab);
+    }
+  };
+
+  const handleTabChange = (tab: TabType) => {
+    changeTab(tab);
   };
 
   const handleActionConfirmOpen = () => {
@@ -397,13 +418,6 @@ export default function MyFeeds() {
   const handleApplyAction = async () => {
     if (selectedIds.length === 0 || actionSubmitting) return;
 
-    if (isHideMode && allSelectedAreHidden) {
-      window.alert(
-        "현재 백엔드에는 숨김 취소 API가 아직 없습니다. 프론트에서는 hidden 표시와 선택까지는 가능하지만 실제 취소는 백엔드 추가가 필요합니다."
-      );
-      return;
-    }
-
     setActionSubmitting(true);
 
     try {
@@ -417,7 +431,14 @@ export default function MyFeeds() {
             });
           }
 
-          return fetcher(`/posts/${postId}/hide`, {
+          if (isHideMode) {
+            return fetcher(`/posts/${postId}/hide`, {
+              method: "PATCH",
+              headers,
+            });
+          }
+
+          return fetcher(`/posts/${postId}/unhide`, {
             method: "PATCH",
             headers,
           });
@@ -434,7 +455,9 @@ export default function MyFeeds() {
             ? failed.reason.message
             : isDeleteMode
             ? "게시글 삭제에 실패했습니다."
-            : "게시글 숨기기에 실패했습니다.";
+            : isHideMode
+            ? "게시글 숨기기에 실패했습니다."
+            : "게시글 숨기기 취소에 실패했습니다.";
 
         if (isAuthError(message)) {
           moveToLogin();
@@ -591,6 +614,7 @@ export default function MyFeeds() {
   const renderGrid = (
     gridItems: MyFeedItem[],
     paneKey: string,
+    tab: TabType,
     extraClassName?: string
   ) => {
     return (
@@ -600,14 +624,12 @@ export default function MyFeeds() {
         ) : error ? (
           <div className={styles.emptyState}>{error}</div>
         ) : gridItems.length === 0 ? (
-          <div className={styles.emptyState}>나의 피드가 없습니다.</div>
+          <div className={styles.emptyState}>{getEmptyMessageByTab(tab)}</div>
         ) : (
           <div className={styles.cardGrid}>
             {gridItems.map((item) => {
               const isSelected = selectedIds.includes(item.postId);
               const imageUrl = resolveAssetUrl(item.thumbnailUrl);
-              const isHiddenItem = item.postStatus === "HIDDEN";
-
               return (
                 <button
                   key={item.postId}
@@ -653,12 +675,6 @@ export default function MyFeeds() {
                     </div>
                   )}
 
-                  {isHiddenItem && (
-                    <span className={styles.hiddenBadge} aria-label="숨김 처리됨">
-                      <EyeOff size={12} strokeWidth={2.2} />
-                    </span>
-                  )}
-
                   {isSelectionMode && (
                     <span
                       className={`${styles.selectionDot} ${
@@ -682,27 +698,27 @@ export default function MyFeeds() {
 
   const confirmTitle = isDeleteMode
     ? "선택한 피드를 삭제할까요?"
-    : allSelectedAreHidden
-    ? "선택한 피드의 숨김을 취소할까요?"
-    : "선택한 피드를 숨길까요?";
+    : isHideMode
+    ? "선택한 피드를 숨길까요?"
+    : "선택한 피드의 숨김을 취소할까요?";
 
   const confirmDesc = isDeleteMode
     ? `선택한 ${selectedIds.length}개의 게시글이 삭제됩니다.`
-    : allSelectedAreHidden
-    ? `선택한 ${selectedIds.length}개의 hidden 게시글을 다시 공개 상태로 되돌리려면 백엔드 API가 필요합니다.`
-    : `선택한 ${selectedIds.length}개의 게시글이 숨김 처리됩니다.`;
+    : isHideMode
+    ? `선택한 ${selectedIds.length}개의 게시글이 숨김 처리되고 숨김 탭으로 이동됩니다.`
+    : `선택한 ${selectedIds.length}개의 게시글이 다시 일반 탭에서 보이게 됩니다.`;
 
   const confirmActionLabel = actionSubmitting
     ? isDeleteMode
       ? "삭제 중..."
-      : allSelectedAreHidden
-      ? "처리 중..."
-      : "숨기는 중..."
+      : isHideMode
+      ? "숨기는 중..."
+      : "취소 중..."
     : isDeleteMode
     ? "삭제"
-    : allSelectedAreHidden
-    ? "숨김 취소"
-    : "숨기기";
+    : isHideMode
+    ? "숨기기"
+    : "숨기기 취소";
 
   return (
     <div
@@ -735,12 +751,22 @@ export default function MyFeeds() {
           ) : isHideMode ? (
             <button
               type="button"
-              className={styles.hideButtonDark}
+              className={styles.actionButtonDark}
               onClick={handleActionConfirmOpen}
               aria-label="선택 숨기기"
               disabled={selectedIds.length === 0 || actionSubmitting}
             >
               <EyeOff size={16} strokeWidth={2.3} />
+            </button>
+          ) : isUnhideMode ? (
+            <button
+              type="button"
+              className={styles.actionButtonDark}
+              onClick={handleActionConfirmOpen}
+              aria-label="선택 숨기기 취소"
+              disabled={selectedIds.length === 0 || actionSubmitting}
+            >
+              <Eye size={16} strokeWidth={2.3} />
             </button>
           ) : (
             <div ref={optionMenuRef} className={styles.optionMenuWrap}>
@@ -782,20 +808,42 @@ export default function MyFeeds() {
                     className={styles.optionMenuItem}
                     onMouseDown={(e) => {
                       e.preventDefault();
-                      enterMode("hide");
+                      enterMode("hide", activeTab === "hidden" ? "all" : undefined);
                     }}
                     onTouchStart={(e) => {
                       e.preventDefault();
-                      enterMode("hide");
+                      enterMode("hide", activeTab === "hidden" ? "all" : undefined);
                     }}
                     onClick={(e) => {
                       e.preventDefault();
-                      enterMode("hide");
+                      enterMode("hide", activeTab === "hidden" ? "all" : undefined);
+                    }}
+                  >
+                    <span className={styles.optionMenuItemInner}>
+                      <EyeOff size={18} strokeWidth={2.1} />
+                      <span className={styles.optionMenuLabel}>숨기기</span>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={styles.optionMenuItem}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      enterMode("unhide", "hidden");
+                    }}
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      enterMode("unhide", "hidden");
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      enterMode("unhide", "hidden");
                     }}
                   >
                     <span className={styles.optionMenuItemInner}>
                       <Eye size={18} strokeWidth={2.1} />
-                      <span className={styles.optionMenuLabel}>숨기기 / 취소</span>
+                      <span className={styles.optionMenuLabel}>숨기기 취소</span>
                     </span>
                   </button>
                 </div>
@@ -825,6 +873,20 @@ export default function MyFeeds() {
           <button
             type="button"
             className={styles.tabButton}
+            onClick={() => handleTabChange("done")}
+          >
+            <span
+              ref={doneTextRef}
+              className={`${styles.tabText} ${
+                activeTab === "done" ? styles.tabTextActive : ""
+              }`}
+            >
+              평가 완료
+            </span>
+          </button>
+          <button
+            type="button"
+            className={styles.tabButton}
             onClick={() => handleTabChange("ongoing")}
           >
             <span
@@ -837,18 +899,19 @@ export default function MyFeeds() {
             </span>
           </button>
 
+
           <button
             type="button"
             className={styles.tabButton}
-            onClick={() => handleTabChange("done")}
+            onClick={() => handleTabChange("hidden")}
           >
             <span
-              ref={doneTextRef}
+              ref={hiddenTextRef}
               className={`${styles.tabText} ${
-                activeTab === "done" ? styles.tabTextActive : ""
+                activeTab === "hidden" ? styles.tabTextActive : ""
               }`}
             >
-              평가 완료
+              숨김
             </span>
           </button>
 
@@ -876,16 +939,23 @@ export default function MyFeeds() {
               {renderGrid(
                 previousItems,
                 `prev-${prevTab}`,
+                prevTab,
                 `${styles.animatedPane} ${styles.fadePane}`
               )}
               {renderGrid(
                 getItemsByTab(items, incomingTab),
                 `next-${incomingTab}`,
+                incomingTab,
                 `${styles.animatedPane} ${nextPaneEnterClass}`
               )}
             </>
           ) : (
-            renderGrid(displayedItems, `current-${displayTab}`, styles.staticPane)
+            renderGrid(
+              displayedItems,
+              `current-${displayTab}`,
+              displayTab,
+              styles.staticPane
+            )
           )}
         </div>
       </main>
@@ -897,7 +967,13 @@ export default function MyFeeds() {
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
-            aria-label={isDeleteMode ? "나의 피드 삭제 확인" : "나의 피드 숨기기 확인"}
+            aria-label={
+              isDeleteMode
+                ? "나의 피드 삭제 확인"
+                : isHideMode
+                ? "나의 피드 숨기기 확인"
+                : "나의 피드 숨기기 취소 확인"
+            }
           >
             <p className={styles.modalTitle}>{confirmTitle}</p>
             <p className={styles.modalDesc}>{confirmDesc}</p>
@@ -913,7 +989,9 @@ export default function MyFeeds() {
               </button>
               <button
                 type="button"
-                className={styles.modalActionButton}
+                className={`${styles.modalActionButton} ${
+                  isDeleteMode ? styles.modalDeleteButton : ""
+                }`}
                 onClick={handleApplyAction}
                 disabled={actionSubmitting}
               >

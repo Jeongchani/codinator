@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Menu } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Menu, Search } from "lucide-react";
 import SideMenu from "../components/SideMenu";
 import styles from "./Header.module.css";
 
@@ -11,6 +12,7 @@ export default function Header({
   title = "C:Dinator",
 }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   const handleOpenMenu = () => {
     setMenuOpen(true);
@@ -20,11 +22,22 @@ export default function Header({
     setMenuOpen(false);
   };
 
+  const handleOpenSearch = () => {
+    navigate("/search");
+  };
+
   return (
     <>
       <header className={styles.header}>
         <div className={styles.inner}>
-          <div className={styles.leftSpace} />
+          <button
+            type="button"
+            className={styles.searchButton}
+            onClick={handleOpenSearch}
+            aria-label="검색 열기"
+          >
+            <Search size={23} strokeWidth={2.2} />
+          </button>
 
           <h1 className={styles.title}>{title}</h1>
 

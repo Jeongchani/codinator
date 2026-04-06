@@ -2,13 +2,12 @@
   @apply w-[375px] h-[812px] mx-auto bg-white relative overflow-hidden;
 }
 
-.selectionMode {
+.deleteMode {
   @apply z-20;
 }
 
 .header {
-  @apply absolute top-0 left-0 w-full bg-white;
-  z-index: 40;
+  @apply absolute top-0 left-0 w-full bg-white z-20;
   height: 93px;
 }
 
@@ -29,7 +28,10 @@
 }
 
 .headerIconButtonFilled {
-  @apply w-6 h-6 flex items-center justify-center text-black border-0 p-0 bg-transparent;
+  @apply absolute right-5 w-6 h-6 rounded-full flex items-center justify-center text-black border-0 p-0;
+  top: 59px;
+  transform: translateY(-50%);
+  background: #f2f2f2;
 }
 
 .deleteButtonRed {
@@ -43,67 +45,13 @@
   @apply opacity-40;
 }
 
-.actionButtonDark {
-  @apply absolute right-5 w-6 h-6 rounded-full flex items-center justify-center border-0 p-0 text-white;
-  top: 59px;
-  transform: translateY(-50%);
-  background: #111111;
-}
-
-.actionButtonDark:disabled {
-  @apply opacity-40;
-}
-
-.optionMenuWrap {
-  @apply absolute right-5;
-  top: 59px;
-  transform: translateY(-50%);
-  z-index: 60;
-}
-
-.optionMenu {
-  @apply absolute right-0 top-[32px] min-w-[164px] rounded-[16px] bg-white shadow-xl border border-[#ececec];
-  overflow: hidden;
-  padding: 6px 0;
-  z-index: 70;
-  pointer-events: auto;
-}
-
-.optionMenuItem {
-  @apply block w-full border-0 bg-transparent p-0 m-0 text-left;
-  appearance: none;
-  -webkit-appearance: none;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  pointer-events: auto;
-}
-
-.optionMenuItem:hover {
-  background: #f3f3f3;
-}
-
-.optionMenuItem:active {
-  background: #e5e5e5;
-}
-
-.optionMenuItemInner {
-  @apply w-full h-[48px] px-4 flex items-center justify-start gap-3;
-  pointer-events: none;
-}
-
-.optionMenuLabel {
-  @apply text-[16px] leading-5 text-black;
-  pointer-events: none;
-}
-
 .tabSection {
-  @apply absolute left-0 w-full px-4;
+  @apply absolute left-0 w-full z-20 px-4;
   top: 108px;
-  z-index: 20;
 }
 
 .tabRow {
-  @apply relative flex items-center gap-5;
+  @apply relative flex items-center gap-6;
 }
 
 .tabButton {
@@ -134,7 +82,7 @@
   scrollbar-width: none;
 }
 
-.contentAreaSelectionMode {
+.contentAreaDeleteMode {
   touch-action: none;
 }
 
@@ -257,15 +205,6 @@
   @apply flex-1 h-12 rounded-[999px] bg-[#f3f3f3] text-[15px] font-medium text-black border-0;
 }
 
-.modalActionButton {
-  @apply flex-1 h-12 rounded-[999px] bg-black text-[15px] font-medium text-white border-0;
-}
-
-.hiddenBadge {
-  @apply absolute top-[8px] right-[8px] z-10 w-5 h-5 rounded-full flex items-center justify-center text-white;
-  background: rgba(17, 17, 17, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-}
 .modalDeleteButton {
-  background: #ef4444;
+  @apply flex-1 h-12 rounded-[999px] bg-[#ef4444] text-[15px] font-medium text-white border-0;
 }

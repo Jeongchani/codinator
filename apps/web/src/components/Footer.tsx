@@ -21,7 +21,7 @@ const footerItems: FooterItem[] = [
   { key: "evaluation", label: "평가존", path: "/evaluationZone", icon: ClipboardCheck },
   { key: "write", label: "글작성", path: "/postUpload", icon: SquarePen },
   { key: "myfeeds", label: "내피드", path: "/myFeeds", icon: Images },
-  { key: "bookmark", label: "북마크", path: "/bookMark", icon: Bookmark }
+  { key: "bookmark", label: "북마크", path: "/bookmarkPage", icon: Bookmark },
 ];
 
 export default function Footer() {
@@ -34,6 +34,7 @@ export default function Footer() {
   const prevXRef = useRef<number | null>(null);
   const initializedRef = useRef(false);
   const moveTimerRef = useRef<number | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   const normalizePath = useCallback((path: string) => {
     return path.replace(/\/+$/, "") || "/";
@@ -49,10 +50,8 @@ export default function Footer() {
   );
 
   const updateIndicator = useCallback(() => {
-    const innerEl = innerRef.current;
     const pillEl = activePillRef.current;
-
-    if (!innerEl || !pillEl) return;
+    if (!pillEl) return;
 
     const activeItem = footerItems.find((item) => getIsActive(item.path));
     if (!activeItem) return;
@@ -60,11 +59,19 @@ export default function Footer() {
     const activeButton = buttonRefs.current[activeItem.key];
     if (!activeButton) return;
 
-    const buttonRect = activeButton.getBoundingClientRect();
-    const innerRect = innerEl.getBoundingClientRect();
+    const PILL_INSET_X = 3;
 
-    const nextX = buttonRect.left - innerRect.left;
-    const nextWidth = buttonRect.width;
+    const rawX = activeButton.offsetLeft;
+    const rawWidth = activeButton.offsetWidth;
+
+    const nextX = Math.round(rawX + PILL_INSET_X);
+    const nextWidth = Math.max(
+      0,
+      Math.round(rawWidth - PILL_INSET_X * 2)
+    );
+
+
+
     const prevX = prevXRef.current;
 
     pillEl.classList.remove(
@@ -99,7 +106,7 @@ export default function Footer() {
     pillEl.style.width = `${nextWidth}px`;
     pillEl.style.transform = `translateX(${nextX}px)`;
     pillEl.classList.add(styles.activePillReady);
-
+    
     moveTimerRef.current = window.setTimeout(() => {
       pillEl.classList.remove(
         styles.activePillMovingLeft,
@@ -129,44 +136,66 @@ export default function Footer() {
 
     return () => {
       window.removeEventListener("resize", handleResize);
+    };
+  }, [updateIndicator]);
+
+  useEffect(() => {
+    if (!innerRef.current) return;
+
+    resizeObserverRef.current = new ResizeObserver(() => {
+      updateIndicator();
+    });
+
+    resizeObserverRef.current.observe(innerRef.current);
+
+    return () => {
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
+    };
+  }, [updateIndicator]);
+
+  useEffect(() => {
+    return () => {
       if (moveTimerRef.current) {
         window.clearTimeout(moveTimerRef.current);
       }
     };
-  }, [updateIndicator]);
+  }, []);
 
   return (
-    <footer className={styles.footer}>
-      <div ref={innerRef} className={styles.inner}>
-        <span ref={activePillRef} className={styles.activePill} />
+    <div className={styles.footerWrap}>
+      <footer className={styles.footer}>
+        <div ref={innerRef} className={styles.inner}>
+          <span ref={activePillRef} className={styles.activePill} />
 
-        {footerItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = getIsActive(item.path);
+          {footerItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = getIsActive(item.path);
 
-          return (
-            <button
-              key={item.key}
-              ref={(el) => {
-                buttonRefs.current[item.key] = el;
-              }}
-              type="button"
-              className={`${styles.menuButton} ${isActive ? styles.menuButtonActive : ""}`}
-              onClick={() => navigate(item.path)}
-              aria-label={item.label}
-            >
-              <Icon
-                size={18}
-                strokeWidth={2}
-                className={`${styles.icon} ${isActive ? styles.iconActive : ""}`}
-              />
-              <span className={`${styles.label} ${isActive ? styles.labelActive : ""}`}>
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </footer>
+            return (
+              <button
+                key={item.key}
+                ref={(el) => {
+                  buttonRefs.current[item.key] = el;
+                }}
+                type="button"
+                className={`${styles.menuButton} ${isActive ? styles.menuButtonActive : ""}`}
+                onClick={() => navigate(item.path)}
+                aria-label={item.label}
+              >
+                <Icon
+                  size={18}
+                  strokeWidth={2}
+                  className={`${styles.icon} ${isActive ? styles.iconActive : ""}`}
+                />
+                <span className={`${styles.label} ${isActive ? styles.labelActive : ""}`}>
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </footer>
+    </div>
   );
 }

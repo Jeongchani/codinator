@@ -14,6 +14,8 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+const DEV_SEED_NOW = new Date('2026-04-06T12:00:00+09:00');
+
 const userSeeds = [
   {
     key: 'admin',
@@ -115,8 +117,6 @@ const feedbackTagSeeds = [
 ];
 
 const SEED_IMAGE_BASE_URL = '/uploads/seeds/posts';
-const AVAILABLE_OPEN_IMAGE_NAMES = ['open-post-1.jpg', 'open-post-2.jpg'];
-const AVAILABLE_RANKED_IMAGE_NAMES = ['ranked-post-1.jpg', 'ranked-post-2.jpg'];
 
 const ALL_USER_KEYS = ['alice', 'bob', 'charlie', 'diana'];
 
@@ -388,30 +388,6 @@ const WEEKLY_RANKING_SEEDS = [
     ],
     profile: 'good',
   },
-  {
-    imageName: 'ranked-post-11.jpg',
-    authorKey: 'alice',
-    content: '[SEED] 데님 자켓 활용한 캐주얼 코디입니다. 색조합이 무난한지 궁금합니다.',
-    keywordCodes: ['CAMPUS_LOOK', 'DAILY_LOOK'],
-    outfitItems: [
-      { category: GarmentCategory.OUTER, itemName: '데님 자켓', brand: 'LEVI’S' },
-      { category: GarmentCategory.TOP, itemName: '화이트 반팔', brand: 'UNIQLO' },
-      { category: GarmentCategory.BOTTOM, itemName: '차콜 팬츠', brand: '8SECONDS' },
-    ],
-    profile: 'good',
-  },
-  {
-    imageName: 'ranked-post-12.jpg',
-    authorKey: 'charlie',
-    content: '[SEED] 셔츠와 블루종으로 깔끔하게 정리한 코디입니다. 핏 위주로 봐주세요.',
-    keywordCodes: ['BOYFRIEND_LOOK', 'DAILY_LOOK'],
-    outfitItems: [
-      { category: GarmentCategory.OUTER, itemName: '라이트 블루종', brand: 'ZARA' },
-      { category: GarmentCategory.TOP, itemName: '화이트 셔츠', brand: 'UNIQLO' },
-      { category: GarmentCategory.BOTTOM, itemName: '베이지 팬츠', brand: 'COS' },
-    ],
-    profile: 'good',
-  },
 ];
 
 const MONTHLY_RANKING_SEEDS = [
@@ -607,31 +583,14 @@ function minDate(left, right) {
   return left.getTime() <= right.getTime() ? left : right;
 }
 
-function resolveSeedImageName(filename) {
-  const openMatch = filename.match(/^open-post-(\d+)\.jpg$/);
-  if (openMatch) {
-    const index = (Number(openMatch[1]) - 1) % AVAILABLE_OPEN_IMAGE_NAMES.length;
-    return AVAILABLE_OPEN_IMAGE_NAMES[index];
-  }
-
-  const rankedMatch = filename.match(/^ranked-post-(\d+)\.jpg$/);
-  if (rankedMatch) {
-    const index = (Number(rankedMatch[1]) - 1) % AVAILABLE_RANKED_IMAGE_NAMES.length;
-    return AVAILABLE_RANKED_IMAGE_NAMES[index];
-  }
-
-  return filename;
-}
-
 function buildImageCreate(filename) {
-  const resolvedFilename = resolveSeedImageName(filename);
-  const url = `${SEED_IMAGE_BASE_URL}/${resolvedFilename}`;
+  const url = `${SEED_IMAGE_BASE_URL}/${filename}`;
 
   return {
     originalImageUrl: url,
     processedImageUrl: url,
-    thumbnailUrl: null,
-    storageKey: `seeds/posts/${resolvedFilename}`,
+    thumbnailUrl: url,
+    storageKey: `seeds/posts/${filename}`,
     blurMethod: BlurMethod.NONE,
     aiBlurStatus: AiBlurStatus.DONE,
     sortOrder: 0,
@@ -856,7 +815,7 @@ async function seedVotesAndFeedback(post, seed, now, userMap, tagMap) {
 }
 
 async function createSamplePosts(userMap, keywordMap, tagMap) {
-  const now = new Date();
+  const now = DEV_SEED_NOW;
 
   const weeklyRankingStart = startOfWeek(now);
   const weeklyRankingEnd = endOfWeek(now);
