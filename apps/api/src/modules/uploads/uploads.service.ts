@@ -87,20 +87,20 @@ export class UploadsService {
   /**
    * PATCH /uploads/posts/:postId/manual-blur
    *
-   * 자동 블러(AI)가 실패했을 때, 사용자가 직접 블러 처리한 이미지를 업로드하여
-   * PostImage.processedImageUrl 을 교체하는 흐름.
+   * 작성자가 직접 블러 처리한 이미지를 업로드하여 PostImage.processedImageUrl 을 교체.
+   * AI 실패(FAILED) 또는 AI 성공 후 부정확 판단(DONE+AUTO) 모두 허용.
    *
-   * 허용 조건:
-   *   - 요청자 = 게시글 작성자
-   *   - post.status ≠ DELETED
-   *   - 해당 게시글의 primary 이미지가 존재해야 함
-   *   - aiBlurStatus = FAILED 인 경우만 허용
-   *     (AUTO 성공 이미지를 의도치 않게 덮어쓰는 것 방지)
+   * 허용 조건 (아래 셋 중 하나):
+   *   ① aiBlurStatus=FAILED  + blurMethod=NONE   — AI 실패, 미처리 상태
+   *   ② aiBlurStatus=DONE    + blurMethod=AUTO   — AI 성공이지만 결과 부정확 → override
+   *   ③                        blurMethod=MANUAL — 이미 수동 처리됨 → 재처리(덮어쓰기)
    *
-   * 처리:
-   *   - 업로드된 파일을 processed 디렉터리에 저장
-   *   - PostImage.processedImageUrl 갱신
-   *   - PostImage.blurMethod = MANUAL 로 변경
+   * 처리 결과:
+   *   - processedImageUrl → 새 수동 블러 이미지 URL 로 갱신
+   *   - blurMethod        → MANUAL 로 변경
+   *   - aiBlurStatus      → 기존 값 유지 (AI 처리 기록 보존)
+   *                         DONE+AUTO → override 후 DONE+MANUAL
+   *                         FAILED+NONE → 처리 후 FAILED+MANUAL
    */
   async applyManualBlur(
     userId: number,
@@ -136,11 +136,20 @@ export class UploadsService {
       throw new NotFoundException('게시글 이미지를 찾을 수 없습니다.');
     }
 
-    // AI 블러가 성공한 이미지는 수동 블러 불필요 (AUTO 결과 보호)
-    if (postImage.aiBlurStatus !== AiBlurStatus.FAILED) {
+    // 수동 블러 허용 조건:
+    //   ① FAILED + NONE  — AI 실패, 미처리 상태
+    //   ② DONE  + AUTO   — AI 성공이지만 결과 부정확 → 작성자 override
+    //   ③ 이미 MANUAL    — 재수동 처리(덮어쓰기) 허용
+    const canManualBlur =
+      (postImage.aiBlurStatus === AiBlurStatus.FAILED && postImage.blurMethod === BlurMethod.NONE) ||
+      (postImage.aiBlurStatus === AiBlurStatus.DONE && postImage.blurMethod === BlurMethod.AUTO) ||
+      postImage.blurMethod === BlurMethod.MANUAL;
+
+    if (!canManualBlur) {
       throw new UnprocessableEntityException(
-        'AI 블러가 실패한 이미지에만 수동 블러를 적용할 수 있습니다. ' +
-        `현재 상태: aiBlurStatus=${postImage.aiBlurStatus}`,
+        `수동 블러를 적용할 수 없는 상태입니다. ` +
+        `허용: AI 실패(FAILED+NONE), AI 성공 후 작성자 override(DONE+AUTO), 수동 재처리(MANUAL). ` +
+        `현재: aiBlurStatus=${postImage.aiBlurStatus}, blurMethod=${postImage.blurMethod}`,
       );
     }
 
