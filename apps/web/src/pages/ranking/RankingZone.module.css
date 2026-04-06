@@ -1,34 +1,19 @@
 .container {
-  /* 수정: Header + contentArea 세로 배치를 위해 flex flex-col 추가 */
   @apply w-[375px] h-[812px] bg-white mx-auto overflow-hidden relative flex flex-col;
 }
 
-/* 수정: 기존 topBarArea는 Header 컴포넌트를 직접 쓰면 필요 없음 */
-/* 필요 없으면 삭제해도 됨 */
 .topBarArea {
   @apply w-[375px] h-[93px] shrink-0;
 }
 
 .contentArea {
-  @apply w-full flex-1 px-[13px] pt-4 pb-24 overflow-y-auto;
+  @apply w-full flex-1 px-[13px] pt-[4px] pb-24 overflow-y-auto;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
 .contentArea::-webkit-scrollbar {
   display: none;
-}
-
-.searchBox {
-  @apply w-full h-10 rounded-[10px] bg-neutral-200 flex items-center gap-3 px-4 mb-4;
-}
-
-.searchIcon {
-  @apply text-white shrink-0;
-}
-
-.searchText {
-  @apply text-[14px] leading-[14px] text-neutral-400 font-medium;
 }
 
 .section {
@@ -51,10 +36,18 @@
 
 .card {
   @apply w-[126px] shrink-0 flex flex-col cursor-pointer;
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: center center;
 }
 
 .thumbnail {
   @apply relative w-[126px] h-[172px] rounded-[10px] bg-[#d9d9d9] overflow-hidden;
+  transition:
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: center center;
+  will-change: transform, filter;
 }
 
 .thumbnailGradient {
@@ -62,10 +55,13 @@
   background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(0, 0, 0, 0.08) 100%);
 }
 
-/* 수정: 북마크가 이미지 위에서도 잘 보이도록 배경을 네모 박스 느낌으로 변경 */
 .bookmarkButton {
   @apply absolute top-[8px] right-[8px] z-10 flex items-center justify-center
     w-5 h-5 rounded-full bg-black/45 border border-white/15;
+  transition:
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 180ms ease,
+    opacity 180ms ease;
 }
 
 .bookmarkDefault {
@@ -111,7 +107,6 @@
   @apply w-full h-full flex items-center justify-center text-[12px] text-neutral-400 bg-[#f3f3f3];
 }
 
-/* 추가: Header 클릭 후 나중에 SideMenu.tsx 연결할 임시 오버레이 */
 .sideMenuOverlay {
   @apply absolute inset-0 z-[60] bg-black/30 flex justify-end;
 }
@@ -127,6 +122,7 @@
 .sideMenuCloseButton {
   @apply mt-auto h-11 rounded-xl bg-black text-white text-sm font-medium;
 }
+
 .messageBox {
   @apply w-full min-h-[200px] flex items-center justify-center text-sm text-neutral-500;
 }
@@ -151,21 +147,6 @@
   filter: blur(12px);
   z-index: -1;
 }
-.card {
-  @apply w-[126px] shrink-0 flex flex-col cursor-pointer;
-  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
-  transform-origin: center center;
-}
-
-.thumbnail {
-  @apply relative w-[126px] h-[172px] rounded-[10px] bg-[#d9d9d9] overflow-hidden;
-  transition:
-    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
-    filter 180ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 180ms cubic-bezier(0.22, 1, 0.36, 1);
-  transform-origin: center center;
-  will-change: transform, filter;
-}
 
 .cardPressed {
   transform: scale(0.985);
@@ -175,15 +156,6 @@
   transform: scale(0.965);
   filter: brightness(0.92);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-}
-
-.bookmarkButton {
-  @apply absolute top-[8px] right-[8px] z-10 flex items-center justify-center
-    w-5 h-5 rounded-full bg-black/45 border border-white/15;
-  transition:
-    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 180ms ease,
-    opacity 180ms ease;
 }
 
 .bookmarkButtonPressed {

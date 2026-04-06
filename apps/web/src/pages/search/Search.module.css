@@ -1,0 +1,228 @@
+.container {
+  @apply w-[375px] h-[812px] mx-auto bg-white overflow-hidden flex flex-col;
+}
+
+.pageBody {
+  @apply flex-1 min-h-0 flex flex-col;
+}
+
+.topArea {
+  @apply px-4 pt-[10px] pb-[8px];
+}
+
+.searchRow {
+  @apply flex items-center gap-2;
+}
+
+.searchBar {
+  @apply flex-1 h-10 px-3 bg-zinc-100 border border-neutral-200 rounded-[10px] flex items-center gap-2;
+}
+
+.searchIconButton {
+  @apply w-5 h-5 flex items-center justify-center text-neutral-500 shrink-0 bg-transparent border-0 p-0;
+}
+
+.searchInput {
+  @apply flex-1 bg-transparent outline-none border-0 p-0 text-[14px] font-medium text-black;
+}
+
+.searchInput::placeholder {
+  @apply text-neutral-400;
+}
+
+.clearInputButton {
+  @apply w-5 h-5 flex items-center justify-center text-neutral-400 shrink-0 bg-transparent border-0 p-0;
+}
+
+.clearInputButtonVisible {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.clearInputButtonHidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.filterWrap {
+  @apply relative shrink-0;
+}
+
+.filterButton {
+  @apply h-10 px-3 rounded-[10px] flex items-center gap-1.5 text-neutral-700 bg-zinc-100 border border-neutral-200;
+}
+
+.filterButtonText {
+  @apply text-[12px] font-medium whitespace-nowrap;
+}
+
+.filterDropdown {
+  @apply absolute right-0 top-[44px] w-[160px] bg-white border border-neutral-200 rounded-[14px] shadow-lg p-1.5 z-20;
+}
+
+.filterOption {
+  @apply w-full min-h-[40px] px-3 py-2 rounded-[10px] flex items-center justify-between text-left bg-transparent border-0 text-neutral-700;
+}
+
+.filterOptionActive {
+  @apply bg-neutral-100 text-black;
+}
+
+.filterOptionCheck {
+  @apply text-[11px] font-medium text-neutral-500;
+}
+
+.dropdownDivider {
+  @apply h-px bg-neutral-200 my-1.5;
+}
+
+.aiFilterOption {
+  @apply w-full min-h-[40px] px-3 py-2 rounded-[10px] flex items-center justify-between text-left bg-transparent border-0 text-black;
+}
+
+.aiFilterOptionLeft {
+  @apply flex items-center gap-2 text-[13px] font-medium;
+}
+
+.divider {
+  @apply w-full h-px bg-black/10;
+}
+
+.contentArea {
+  @apply flex-1 overflow-y-auto pt-2 pb-4;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.contentArea::-webkit-scrollbar {
+  display: none;
+}
+
+.historyActionRow {
+  @apply h-8 px-4 flex items-center justify-end;
+}
+
+.clearAllTextButton {
+  @apply text-[12px] font-medium text-neutral-400 bg-transparent border-0 p-0;
+}
+
+.recentList {
+  @apply pt-1;
+}
+
+.recentItem {
+  @apply h-12 px-4 flex items-center justify-between;
+}
+
+.recentItemMain {
+  @apply flex-1 min-w-0 flex items-center gap-3 text-left bg-transparent border-0 p-0;
+}
+
+.recentItemIcon {
+  @apply text-neutral-300 shrink-0;
+}
+
+.recentTextWrap {
+  @apply min-w-0 flex items-center gap-2;
+}
+
+.recentItemText {
+  @apply truncate text-[14px] font-medium text-neutral-500;
+}
+
+.recentTypeBadge {
+  @apply shrink-0 px-2 h-5 rounded-full bg-neutral-100 text-[11px] font-medium text-neutral-500 inline-flex items-center;
+}
+
+.recentDeleteButton {
+  @apply w-7 h-7 ml-3 flex items-center justify-center text-neutral-300 shrink-0 bg-transparent border-0 p-0;
+}
+
+.stateBox {
+  @apply px-4 pt-6 flex justify-center;
+}
+
+.stateText {
+  @apply text-center text-neutral-300 text-[14px] font-medium;
+}
+
+.errorBox {
+  @apply justify-start;
+}
+
+.errorText {
+  @apply text-[13px] leading-5 text-red-500 font-medium;
+}
+
+.resultWrap {
+  @apply px-[13px] pt-2 pb-4 flex flex-col gap-6;
+}
+
+.sectionBlock {
+  @apply flex flex-col gap-3;
+}
+
+.sectionHeader {
+  @apply flex items-center justify-between px-[3px];
+}
+
+.sectionTitle {
+  @apply text-[15px] leading-5 font-semibold text-black;
+}
+
+.sectionCount {
+  @apply text-[12px] font-medium text-neutral-400;
+}
+
+.userList {
+  @apply flex flex-col gap-2;
+}
+
+.userItem {
+  @apply w-full rounded-[14px] border border-neutral-200 bg-white px-4 py-3 flex items-center gap-3 text-left;
+}
+
+.userAvatar {
+  @apply w-11 h-11 rounded-full bg-neutral-100 overflow-hidden flex items-center justify-center text-neutral-500 shrink-0;
+}
+
+.userAvatarImage {
+  @apply w-full h-full object-cover;
+}
+
+.userInfo {
+  @apply min-w-0 flex flex-col gap-0.5;
+}
+
+.userNickname {
+  @apply text-[15px] leading-5 font-semibold text-black truncate;
+}
+
+.userSubText {
+  @apply text-[12px] leading-4 text-neutral-400;
+}
+
+.feedGrid {
+  @apply grid grid-cols-3 gap-x-[8px] gap-y-4;
+}
+
+.feedCard {
+  @apply bg-transparent border-0 p-0 text-left;
+}
+
+.feedThumbWrap {
+  @apply w-full rounded-[12px] overflow-hidden bg-neutral-100;
+  aspect-ratio: 1 / 1.35;
+}
+
+.feedThumb {
+  @apply w-full h-full object-cover block;
+}
+
+.feedMetaText {
+  @apply mt-2 text-[11px] leading-[14px] text-neutral-700 break-words;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
