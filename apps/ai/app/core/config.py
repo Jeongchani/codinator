@@ -19,7 +19,7 @@ def get_float(name: str, default: float) -> float:
 
 
 AI_ENV = os.getenv("AI_ENV", "development")
-AI_PORT = get_int("AI_PORT", 8000)
+AI_PORT = get_int("AI_PORT", 8001)
 
 AI_MAX_UPLOAD_SIZE_MB = get_int("AI_MAX_UPLOAD_SIZE_MB", 10)
 AI_MAX_UPLOAD_SIZE_BYTES = AI_MAX_UPLOAD_SIZE_MB * 1024 * 1024
