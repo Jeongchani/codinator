@@ -88,7 +88,7 @@ export class BookmarksService {
             images: {
               orderBy: IMAGE_ORDER_BY,
               take: 1,
-              select: { processedImageUrl: true,originalImageUrl: true,},
+              select: { thumbnailUrl: true },
             },
             // 평가 상태 포함
             evaluation: {
@@ -122,10 +122,7 @@ export class BookmarksService {
         return {
           bookmarkId: b.id,
           postId: b.post.id,
-          imageUrl:
-          b.post.images[0]?.processedImageUrl ??
-          b.post.images[0]?.originalImageUrl ??
-          null,
+          thumbnailUrl: b.post.images[0]?.thumbnailUrl ?? null,
           content: b.post.content,
           postStatus: b.post.status,
           evaluationStatus: b.post.evaluation?.status ?? null,
