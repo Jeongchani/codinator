@@ -1,9 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { motion, useAnimation, type PanInfo } from "framer-motion";
+import {
+  motion,
+  useAnimation,
+  useDragControls,
+  type PanInfo,
+} from "framer-motion";
 import {
   Bookmark,
   ChevronsUp,
+  MoveHorizontal,
   Siren,
   ThumbsDown,
   ThumbsUp,
@@ -43,13 +49,21 @@ const toText = (value: unknown, fallback = "") => {
   return fallback;
 };
 
+const pickNumberOrNull = (...values: unknown[]) => {
+  for (const value of values) {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+};
+
 const normalizeFeedbackItems = (
   raw: unknown[],
   side: "LIKE" | "DISLIKE"
 ): FeedbackItem[] => {
-  if (!Array.isArray(raw)) return [];
+  if (!Array.isArray(raw) || raw.length === 0) return [];
 
-  return raw
+  const mapped = raw
     .map((item, index) => {
       const row = item as Record<string, unknown>;
 
@@ -63,46 +77,42 @@ const normalizeFeedbackItems = (
           toText(row.keywordLabel) ||
           toText(row.tagLabel) ||
           `피드백 ${index + 1}`,
-        percent: clampPercent(
-          row.percent ??
-            row.percentage ??
-            row.ratio ??
-            row.share ??
-            row.votePercent
+        rawPercent: pickNumberOrNull(
+          row.percent,
+          row.percentage,
+          row.ratio,
+          row.share,
+          row.votePercent
         ),
         count: Number(
           row.count ?? row.voteCount ?? row.total ?? row.totalCount ?? 0
         ),
-        side,
       };
     })
-    .filter((item) => item.label)
+    .filter((item) => item.label);
+
+  const totalCount = mapped.reduce((sum, item) => {
+    return item.count > 0 ? sum + item.count : sum;
+  }, 0);
+
+  return mapped
+    .map((item) => ({
+      label: item.label,
+      percent:
+        item.rawPercent !== null
+          ? clampPercent(item.rawPercent)
+          : totalCount > 0 && item.count > 0
+          ? clampPercent((item.count / totalCount) * 100)
+          : 0,
+      count: item.count,
+      side,
+    }))
+    .filter((item) => item.percent > 0 || item.count > 0)
     .sort((a, b) => {
       if (b.percent !== a.percent) return b.percent - a.percent;
       return b.count - a.count;
     })
     .slice(0, 5);
-};
-
-const fillFeedbackItems = (
-  items: FeedbackItem[],
-  side: "LIKE" | "DISLIKE"
-): FeedbackItem[] => {
-  const result = [...items].slice(0, 5);
-
-  while (result.length < 5) {
-    result.push({
-      label:
-        side === "LIKE"
-          ? "좋아요 피드백 데이터 없음"
-          : "싫어요 피드백 데이터 없음",
-      percent: 0,
-      count: 0,
-      side,
-    });
-  }
-
-  return result;
 };
 
 const extractKeywordLabels = (
@@ -147,14 +157,10 @@ const extractKeywordLabels = (
 };
 
 const extractFeedbackBreakdown = (
-  data: GetRankingPostDetailResponse | null,
-  likePercent: number,
-  dislikePercent: number,
-  likeCount: number,
-  dislikeCount: number
+  data: GetRankingPostDetailResponse | null
 ) => {
   if (!data) {
-    return { like: [], dislike: [] };
+    return { like: [] as FeedbackItem[], dislike: [] as FeedbackItem[] };
   }
 
   const unknownData = data as unknown as Record<string, unknown>;
@@ -239,30 +245,7 @@ const extractFeedbackBreakdown = (
     }
   }
 
-  return {
-    like:
-      likePercent > 0
-        ? [
-            {
-              label: "좋아요 비율",
-              percent: likePercent,
-              count: likeCount,
-              side: "LIKE" as const,
-            },
-          ]
-        : [],
-    dislike:
-      dislikePercent > 0
-        ? [
-            {
-              label: "싫어요 비율",
-              percent: dislikePercent,
-              count: dislikeCount,
-              side: "DISLIKE" as const,
-            },
-          ]
-        : [],
-  };
+  return { like: [] as FeedbackItem[], dislike: [] as FeedbackItem[] };
 };
 
 type FeedbackColumnProps = {
@@ -272,9 +255,10 @@ type FeedbackColumnProps = {
 };
 
 function FeedbackColumn({ title, side, items }: FeedbackColumnProps) {
-  const paddedItems = fillFeedbackItems(items, side);
-  const hero = paddedItems[0];
-  const rest = paddedItems.slice(1);
+  if (items.length === 0) return null;
+
+  const hero = items[0];
+  const rest = items.slice(1);
 
   const heroClass =
     side === "LIKE" ? styles.feedbackHeroLike : styles.feedbackHeroDislike;
@@ -283,7 +267,7 @@ function FeedbackColumn({ title, side, items }: FeedbackColumnProps) {
   const railClass =
     side === "LIKE" ? styles.feedbackRailLike : styles.feedbackRailDislike;
 
-  const stepHeights = [78, 64, 52, 40];
+  const stepHeights = [76, 62, 50, 40];
 
   return (
     <div className={styles.feedbackColumn}>
@@ -295,21 +279,23 @@ function FeedbackColumn({ title, side, items }: FeedbackColumnProps) {
         <span className={styles.feedbackHeroPercent}>{hero.percent}%</span>
       </div>
 
-      <div className={`${styles.feedbackRail} ${railClass}`}>
-        {rest.map((item, index) => (
-          <div
-            key={`${side}-${item.label}-${index}`}
-            className={`${styles.feedbackStep} ${stepClass}`}
-            style={{
-              width: `${100 - index * 16}%`,
-              height: `${stepHeights[index]}px`,
-            }}
-          >
-            <span className={styles.feedbackStepLabel}>{item.label}</span>
-            <span className={styles.feedbackStepPercent}>{item.percent}%</span>
-          </div>
-        ))}
-      </div>
+      {rest.length > 0 && (
+        <div className={`${styles.feedbackRail} ${railClass}`}>
+          {rest.map((item, index) => (
+            <div
+              key={`${side}-${item.label}-${index}`}
+              className={`${styles.feedbackStep} ${stepClass}`}
+              style={{
+                width: `${100 - index * 16}%`,
+                height: `${stepHeights[index] ?? 40}px`,
+              }}
+            >
+              <span className={styles.feedbackStepLabel}>{item.label}</span>
+              <span className={styles.feedbackStepPercent}>{item.percent}%</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -319,6 +305,7 @@ const RankingDetail: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const controls = useAnimation();
+  const dragControls = useDragControls();
 
   const [postData, setPostData] = useState<GetRankingPostDetailResponse | null>(
     null
@@ -423,35 +410,45 @@ const RankingDetail: React.FC = () => {
 
   const isAllLike = likePercent === 100;
   const isAllDislike = dislikePercent === 100;
+  const showLikeLabel = totalCount > 0 && !isAllDislike;
+  const showDislikeLabel = totalCount > 0 && !isAllLike;
 
   const keywordChips = useMemo(() => extractKeywordLabels(postData), [postData]);
 
   const feedbackBreakdown = useMemo(
-    () =>
-      extractFeedbackBreakdown(
-        postData,
-        likePercent,
-        dislikePercent,
-        likeCount,
-        dislikeCount
-      ),
-    [postData, likePercent, dislikePercent, likeCount, dislikeCount]
+    () => extractFeedbackBreakdown(postData),
+    [postData]
   );
 
-  const hasLikeFeedback = useMemo(
-    () => feedbackBreakdown.like.some((item) => item.percent > 0 || item.count > 0),
-    [feedbackBreakdown.like]
-  );
-
-  const hasDislikeFeedback = useMemo(
-    () =>
-      feedbackBreakdown.dislike.some(
-        (item) => item.percent > 0 || item.count > 0
-      ),
-    [feedbackBreakdown.dislike]
-  );
-
+  const hasLikeFeedback = feedbackBreakdown.like.length > 0;
+  const hasDislikeFeedback = feedbackBreakdown.dislike.length > 0;
   const hasAnyFeedbackGraph = hasLikeFeedback || hasDislikeFeedback;
+
+  const outfitItems = useMemo(() => {
+    return Array.isArray(postData?.outfitItems) ? postData.outfitItems : [];
+  }, [postData]);
+
+  const donutBackground = useMemo(() => {
+    if (totalCount <= 0) {
+      return "conic-gradient(from -90deg, #e6e6e6 0%, #e6e6e6 100%)";
+    }
+
+    if (dislikePercent === 0) {
+      return "conic-gradient(from -90deg, #f7b7ae 0%, #ef7f72 100%)";
+    }
+
+    if (likePercent === 0) {
+      return "conic-gradient(from -90deg, #aab4d7 0%, #8c95b5 100%)";
+    }
+
+    return `conic-gradient(
+      from -90deg,
+      #f7b7ae 0%,
+      #ef7f72 ${likePercent}%,
+      #aab4d7 ${likePercent}%,
+      #8c95b5 100%
+    )`;
+  }, [likePercent, dislikePercent, totalCount]);
 
   const snapTo = (position: SheetPosition) => {
     setSheetPosition(position);
@@ -465,7 +462,7 @@ const RankingDetail: React.FC = () => {
 
     controls.start({
       y: nextY,
-      transition: { type: "spring", stiffness: 300, damping: 30 },
+      transition: { type: "spring", stiffness: 340, damping: 34 },
     });
   };
 
@@ -555,8 +552,6 @@ const RankingDetail: React.FC = () => {
     return <div className={styles.loading}>게시글을 불러올 수 없습니다.</div>;
   }
 
-  const donutBackground = `conic-gradient(from 180deg, #ea8a7a 0 ${likePercent}%, #95a0cb ${likePercent}% 100%)`;
-
   return (
     <div className={styles.container}>
       <div className={styles.imageSection}>
@@ -612,14 +607,14 @@ const RankingDetail: React.FC = () => {
             style={{ width: `${dislikePercent}%` }}
           />
 
-          {!isAllDislike && (
+          {showLikeLabel && (
             <div className={styles.leftPercent}>
               <ThumbsUp size={12} strokeWidth={2} />
               <span>{likePercent}%</span>
             </div>
           )}
 
-          {!isAllLike && (
+          {showDislikeLabel && (
             <div className={styles.rightPercent}>
               <ThumbsDown size={12} strokeWidth={2} />
               <span>{dislikePercent}%</span>
@@ -631,14 +626,18 @@ const RankingDetail: React.FC = () => {
       <motion.div
         className={styles.bottomSheet}
         drag="y"
+        dragControls={dragControls}
+        dragListener={false}
         dragConstraints={{ top: EXPANDED_Y, bottom: HIDDEN_Y }}
         dragElastic={0}
+        dragMomentum={false}
         initial={{ y: HIDDEN_Y }}
         animate={controls}
         onDragEnd={onDragEnd}
       >
         <div
           className={styles.handlerArea}
+          onPointerDown={(event) => dragControls.start(event)}
           onClick={() => {
             if (sheetPosition === "expanded") {
               collapseSheet();
@@ -670,8 +669,8 @@ const RankingDetail: React.FC = () => {
                 disabled={bookmarkLoading}
               >
                 <Bookmark
-                  size={12}
-                  strokeWidth={2.2}
+                  size={11}
+                  strokeWidth={2.1}
                   className={
                     isBookmarked ? styles.bookmarkFilled : styles.bookmarkDefault
                   }
@@ -684,7 +683,7 @@ const RankingDetail: React.FC = () => {
                 className={`${styles.miniActionButton} ${styles.reportActionButton}`}
                 aria-label="신고"
               >
-                <Siren size={12} strokeWidth={2.2} />
+                <Siren size={11} strokeWidth={2.1} />
               </button>
             </div>
           </div>
@@ -727,15 +726,16 @@ const RankingDetail: React.FC = () => {
                 className={styles.donutChart}
                 style={{ background: donutBackground }}
               >
-                <div className={styles.donutGloss} />
                 <div className={styles.donutHole} />
 
-                {!isAllDislike && (
+                {showLikeLabel && (
                   <div className={styles.donutLabelLeft}>{likePercent}%</div>
                 )}
 
-                {!isAllLike && (
-                  <div className={styles.donutLabelRight}>{dislikePercent}%</div>
+                {showDislikeLabel && (
+                  <div className={styles.donutLabelRight}>
+                    {dislikePercent}%
+                  </div>
                 )}
               </div>
             </div>
@@ -767,29 +767,44 @@ const RankingDetail: React.FC = () => {
             )}
           </div>
 
-          <h3 className={styles.outfitTitle}>착용 아이템</h3>
+          <div className={styles.outfitHeaderRow}>
+            <h3 className={styles.outfitTitle}>착용 아이템</h3>
+
+            {outfitItems.length > 1 && (
+              <div className={styles.scrollHint}>
+                <MoveHorizontal size={13} strokeWidth={2} />
+                <span>좌우로 넘겨보세요</span>
+              </div>
+            )}
+          </div>
+
           <div className={styles.sectionDivider} />
 
           <div className={styles.itemScroll}>
-            {postData.outfitItems.length > 0 ? (
-              postData.outfitItems.map((item) => (
+            {outfitItems.length > 0 ? (
+              outfitItems.map((item) => (
                 <div key={item.id} className={styles.outfitCard}>
-                  <div className={styles.outfitFieldRow}>
-                    <span className={styles.outfitFieldValue}>
-                      {item.category || "의류 종류 선택"}
-                    </span>
-                    <span className={styles.outfitFieldSquare} />
-                  </div>
-
-                  <div className={styles.outfitFieldRow}>
-                    <span className={styles.outfitFieldValue}>
-                      {item.brand || "상품 브랜드"}
+                  <div className={styles.outfitCardTop}>
+                    <span className={styles.outfitCategoryBadge}>
+                      {item.category || "ITEM"}
                     </span>
                   </div>
 
+                  <div
+                    className={`${styles.outfitFieldRow} ${styles.outfitNameRow}`}
+                  >
+                    <span className={styles.outfitFieldLabel}>상품명</span>
+                    <span
+                      className={`${styles.outfitFieldValue} ${styles.outfitNameValue}`}
+                    >
+                      {item.itemName || "상품 이름 미등록"}
+                    </span>
+                  </div>
+
                   <div className={styles.outfitFieldRow}>
+                    <span className={styles.outfitFieldLabel}>브랜드</span>
                     <span className={styles.outfitFieldValue}>
-                      {item.itemName || "상품 이름"}
+                      {item.brand || "브랜드 미등록"}
                     </span>
                   </div>
                 </div>

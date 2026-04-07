@@ -82,12 +82,12 @@
 
 .likeFill {
   @apply absolute left-0 top-0 h-full rounded-l-[10px];
-  background: linear-gradient(90deg, rgba(244, 125, 114, 0.7) 0%, #f47d72 100%);
+  background: linear-gradient(90deg, rgba(244, 125, 114, 0.72) 0%, #f47d72 100%);
 }
 
 .dislikeFill {
   @apply absolute right-0 top-0 h-full rounded-r-[10px];
-  background: linear-gradient(270deg, rgba(140, 149, 181, 0.7) 0%, #8c95b5 100%);
+  background: linear-gradient(270deg, rgba(140, 149, 181, 0.72) 0%, #8c95b5 100%);
 }
 
 .leftPercent {
@@ -101,7 +101,7 @@
 }
 
 .bottomSheet {
-  @apply absolute left-0 w-full overflow-hidden rounded-t-[28px];
+  @apply absolute left-0 w-full overflow-hidden rounded-t-[28px] flex flex-col;
   top: 0;
   height: 812px;
   background: #ffffff;
@@ -109,8 +109,9 @@
 }
 
 .handlerArea {
-  @apply w-full flex justify-center items-center cursor-pointer;
+  @apply w-full flex justify-center items-center cursor-pointer shrink-0;
   height: 34px;
+  touch-action: none;
 }
 
 .handlerBar {
@@ -119,13 +120,16 @@
 }
 
 .sheetContent {
-  @apply h-[778px] px-4 pb-8;
+  @apply h-[778px] px-4 pb-10 pt-3;
 }
 
 .scroll {
   @apply overflow-y-auto;
   -ms-overflow-style: none;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 .scroll::-webkit-scrollbar {
@@ -134,6 +138,7 @@
 
 .sheetHeader {
   @apply flex items-start justify-between gap-3 mb-4;
+  min-height: 56px;
   overflow: visible;
 }
 
@@ -151,60 +156,38 @@
 
 .sheetActions {
   @apply flex items-center gap-2 shrink-0;
-  padding-top: 4px;
-  padding-right: 6px;
+  padding-top: 6px;
   overflow: visible;
 }
 
 .miniActionButton {
-  @apply w-[25px] h-[25px] rounded-[8px] border-0 p-0 flex items-center justify-center;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-  flex-shrink: 0;
+  @apply rounded-[8px] border-0 p-0 flex items-center justify-center shrink-0;
+  width: 24px;
+  height: 24px;
 }
 
 .bookmarkActionButton {
-  background: rgba(0, 0, 0, 0.45);
-  color: #ffffff;
+  background: #ffffff;
+  color: #6f6f6f;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .reportActionButton {
-  color: #ff4d4f;
-  background: rgba(255, 77, 79, 0.1);
+  color: #ff5b5d;
+  background: rgba(255, 91, 93, 0.08);
+  border: 1px solid rgba(255, 91, 93, 0.16);
   box-shadow:
-    0 0 0 1px rgba(255, 77, 79, 0.18),
-    0 0 8px rgba(255, 77, 79, 0.38),
-    0 0 18px rgba(255, 77, 79, 0.22);
-  animation: reportPulse 1.4s ease-in-out infinite;
-  overflow: visible;
-}
-
-@keyframes reportPulse {
-  0% {
-    box-shadow:
-      0 0 0 1px rgba(255, 77, 79, 0.16),
-      0 0 6px rgba(255, 77, 79, 0.28),
-      0 0 12px rgba(255, 77, 79, 0.18);
-  }
-  50% {
-    box-shadow:
-      0 0 0 1px rgba(255, 77, 79, 0.24),
-      0 0 12px rgba(255, 77, 79, 0.48),
-      0 0 24px rgba(255, 77, 79, 0.28);
-  }
-  100% {
-    box-shadow:
-      0 0 0 1px rgba(255, 77, 79, 0.16),
-      0 0 6px rgba(255, 77, 79, 0.28),
-      0 0 12px rgba(255, 77, 79, 0.18);
-  }
+    0 0 0 1px rgba(255, 91, 93, 0.08),
+    0 0 8px rgba(255, 91, 93, 0.18);
 }
 
 .bookmarkFilled {
-  color: #ffffff;
+  color: #5f5f5f;
 }
 
 .bookmarkDefault {
-  color: #ffffff;
+  color: #8c8c8c;
 }
 
 .keywordChipRow {
@@ -230,7 +213,7 @@
 }
 
 .feedbackPanel {
-  @apply rounded-[16px] p-3 mb-5;
+  @apply rounded-[18px] p-3 mb-6;
   background: #efefef;
   border: 1px solid rgba(0, 0, 0, 0.04);
 }
@@ -253,55 +236,38 @@
 }
 
 .donutWrap {
-  @apply flex justify-center mb-6;
+  @apply flex justify-center mb-5;
   padding-top: 6px;
-  padding-bottom: 8px;
+  padding-bottom: 2px;
 }
 
 .donutChart {
   @apply relative rounded-full;
-  width: 138px;
-  height: 138px;
-  box-shadow:
-    inset 0 14px 18px rgba(255, 255, 255, 0.16),
-    inset 0 -16px 18px rgba(0, 0, 0, 0.12),
-    0 10px 18px rgba(0, 0, 0, 0.12);
-}
-
-.donutGloss {
-  @apply absolute rounded-full pointer-events-none;
-  inset: 0;
-  background: radial-gradient(
-    circle at 30% 25%,
-    rgba(255, 255, 255, 0.45) 0%,
-    rgba(255, 255, 255, 0.18) 18%,
-    rgba(255, 255, 255, 0) 42%
-  );
+  width: 154px;
+  height: 154px;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.08);
 }
 
 .donutHole {
   @apply absolute left-1/2 top-1/2 rounded-full;
-  width: 38px;
-  height: 38px;
-  background: #f0f0f0;
+  width: 42px;
+  height: 42px;
+  background: #efefef;
   transform: translate(-50%, -50%);
-  box-shadow:
-    inset 0 2px 6px rgba(255, 255, 255, 0.7),
-    0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .donutLabelLeft {
-  @apply absolute text-[16px] font-bold;
+  @apply absolute text-[17px] font-bold;
   color: #ef7f72;
-  left: -6px;
+  left: -10px;
   top: 50%;
   transform: translate(-100%, -50%);
 }
 
 .donutLabelRight {
-  @apply absolute text-[16px] font-bold;
+  @apply absolute text-[17px] font-bold;
   color: #7e89b7;
-  right: -6px;
+  right: -10px;
   top: 50%;
   transform: translate(100%, -50%);
 }
@@ -309,8 +275,8 @@
 .feedbackColumns {
   @apply grid grid-cols-2 gap-4;
   align-items: start;
-  margin-top: 4px;
-  padding-top: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
@@ -323,17 +289,17 @@
 }
 
 .feedbackHero {
-  @apply px-3 rounded-t-[4px] flex items-start justify-between;
+  @apply px-3 rounded-t-[6px] flex items-start justify-between;
   min-height: 96px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
 
 .feedbackHeroLike {
   background: linear-gradient(
     90deg,
-    rgba(244, 125, 114, 0.35) 0%,
-    rgba(244, 125, 114, 0.94) 20%,
-    rgba(244, 125, 114, 0.86) 100%
+    rgba(244, 125, 114, 0.28) 0%,
+    rgba(244, 125, 114, 0.92) 26%,
+    rgba(244, 125, 114, 0.84) 100%
   );
   border-left: 3px solid #ef6f63;
 }
@@ -341,9 +307,9 @@
 .feedbackHeroDislike {
   background: linear-gradient(
     90deg,
-    rgba(140, 149, 181, 0.35) 0%,
-    rgba(140, 149, 181, 0.94) 20%,
-    rgba(140, 149, 181, 0.86) 100%
+    rgba(140, 149, 181, 0.28) 0%,
+    rgba(140, 149, 181, 0.92) 26%,
+    rgba(140, 149, 181, 0.84) 100%
   );
   border-left: 3px solid #6f7fb6;
 }
@@ -358,7 +324,7 @@
 
 .feedbackHeroLabel {
   @apply text-[11px] leading-4 text-white/95;
-  max-width: 74px;
+  max-width: 84px;
   word-break: keep-all;
 }
 
@@ -382,30 +348,30 @@
 
 .feedbackStep {
   @apply px-3 flex items-center justify-between;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
 }
 
 .feedbackStepLike {
   background: linear-gradient(
     90deg,
-    rgba(244, 125, 114, 0.22) 0%,
-    rgba(244, 125, 114, 0.88) 20%,
-    rgba(244, 125, 114, 0.76) 100%
+    rgba(244, 125, 114, 0.18) 0%,
+    rgba(244, 125, 114, 0.84) 22%,
+    rgba(244, 125, 114, 0.74) 100%
   );
 }
 
 .feedbackStepDislike {
   background: linear-gradient(
     90deg,
-    rgba(140, 149, 181, 0.22) 0%,
-    rgba(140, 149, 181, 0.9) 20%,
-    rgba(140, 149, 181, 0.78) 100%
+    rgba(140, 149, 181, 0.18) 0%,
+    rgba(140, 149, 181, 0.86) 22%,
+    rgba(140, 149, 181, 0.74) 100%
   );
 }
 
 .feedbackStepLabel {
   @apply text-[11px] leading-4 font-medium text-white;
-  max-width: 70px;
+  max-width: 92px;
   word-break: keep-all;
 }
 
@@ -413,15 +379,28 @@
   @apply text-[16px] leading-none font-bold text-white shrink-0;
 }
 
+.outfitHeaderRow {
+  @apply flex items-center justify-between gap-3 mb-3;
+}
+
 .outfitTitle {
-  @apply text-[18px] leading-[22px] font-bold text-neutral-900 mb-3;
+  @apply text-[18px] leading-[22px] font-bold text-neutral-900;
+}
+
+.scrollHint {
+  @apply inline-flex items-center gap-1 rounded-[999px] px-2.5 py-1 text-[11px] leading-4 font-medium whitespace-nowrap;
+  color: #ef7f72;
+  background: rgba(244, 125, 114, 0.12);
 }
 
 .itemScroll {
   @apply flex overflow-x-auto;
-  gap: 10px;
+  gap: 12px;
+  padding: 2px 2px 8px 2px;
   -ms-overflow-style: none;
   scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
 }
 
 .itemScroll::-webkit-scrollbar {
@@ -429,30 +408,49 @@
 }
 
 .outfitCard {
-  @apply shrink-0 rounded-[16px] bg-white p-3;
-  width: 132px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  @apply shrink-0 rounded-[18px] bg-white p-3;
+  width: 178px;
+  scroll-snap-align: start;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+}
+
+.outfitCardTop {
+  @apply flex items-center justify-between mb-3;
+}
+
+.outfitCategoryBadge {
+  @apply inline-flex items-center rounded-[999px] px-3 py-1 text-[11px] font-semibold;
+  color: #ef7f72;
+  background: rgba(244, 125, 114, 0.12);
 }
 
 .outfitFieldRow {
-  @apply h-[38px] rounded-[10px] px-3 flex items-center justify-between mb-2;
-  border: 2px solid #d5d5d5;
+  @apply rounded-[14px] px-3 py-2.5 mb-2;
+  border: 1px solid #ececec;
+  background: #ffffff;
 }
 
 .outfitFieldRow:last-child {
   @apply mb-0;
 }
 
-.outfitFieldValue {
-  @apply text-[12px] leading-4 font-medium text-neutral-500;
-  max-width: 88px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.outfitNameRow {
+  min-height: 64px;
 }
 
-.outfitFieldSquare {
-  @apply w-5 h-5 rounded-[3px] bg-neutral-300 shrink-0;
+.outfitFieldLabel {
+  @apply block text-[11px] leading-4 font-semibold mb-1;
+  color: #8d8d8d;
+}
+
+.outfitFieldValue {
+  @apply block text-[13px] leading-[18px] font-medium text-neutral-800;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.outfitNameValue {
+  white-space: normal;
 }
 
 .emptyText {
