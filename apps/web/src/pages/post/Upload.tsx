@@ -1,4 +1,12 @@
-import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  ChangeEvent,
+  MouseEvent as ReactMouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import type {
   CreatePostResponse,
@@ -38,7 +46,33 @@ type WearItem = {
   imageUrl?: string;
 };
 
-const wearTypeOptions: WearType[] = ["", "상의", "하의", "아우터", "신발", "가방", "악세사리", "기타"];
+type BlurRegion = {
+  id: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+type InteractionState =
+  | { type: "none" }
+  | { type: "move"; id: number; startX: number; startY: number; origX: number; origY: number }
+  | { type: "resize"; id: number; startX: number; startY: number; origW: number; origH: number };
+
+type BlurFlowStep = "idle" | "decision" | "manual";
+
+const EDITOR_IMG_W = 320;
+
+const wearTypeOptions: WearType[] = [
+  "",
+  "상의",
+  "하의",
+  "아우터",
+  "신발",
+  "가방",
+  "악세사리",
+  "기타",
+];
 
 const initialWearItems: WearItem[] = [
   { id: 1, type: "", brand: "", name: "" },
@@ -109,6 +143,350 @@ function cls(...names: Array<string | false | null | undefined>) {
   return names.filter(Boolean).join(" ");
 }
 
+function assetUrl(url: string | null | undefined) {
+  if (!url) return "";
+  return resolveAssetUrl(url);
+}
+
+function Modal({
+  children,
+  onClose,
+}: {
+  children: React.ReactNode;
+  onClose?: () => void;
+}) {
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ImgCompare({
+  originalUrl,
+  aiUrl,
+  aiFailed,
+  manualPreview,
+}: {
+  originalUrl: string;
+  aiUrl?: string;
+  aiFailed?: boolean;
+  manualPreview?: string | null;
+}) {
+  return (
+    <div className={cls(styles.compareGrid, manualPreview && styles.compareGridManual)}>
+      <div className={styles.comparePanel}>
+        <span className={styles.compareLabel}>원본</span>
+        <img src={originalUrl} alt="원본" className={styles.compareImage} />
+      </div>
+
+      <div className={styles.comparePanel}>
+        <span className={cls(styles.compareLabel, aiFailed && styles.compareLabelError)}>
+          AI 블러
+        </span>
+        {aiUrl && !aiFailed ? (
+          <img src={aiUrl} alt="AI 블러" className={styles.compareImage} />
+        ) : (
+          <div className={styles.comparePlaceholder}>블러 미처리</div>
+        )}
+      </div>
+
+      {manualPreview && (
+        <div className={styles.comparePanel}>
+          <span className={styles.compareLabel}>수동 블러</span>
+          <img src={manualPreview} alt="수동 블러" className={styles.compareImage} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ManualBlurEditor({
+  originalImageUrl,
+  onApprove,
+  onBack,
+}: {
+  originalImageUrl: string;
+  onApprove: (file: File, previewDataUrl: string) => void;
+  onBack: () => void;
+}) {
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imageLoadError, setImageLoadError] = useState("");
+  const [regions, setRegions] = useState<BlurRegion[]>([
+    { id: 1, x: 40, y: 40, width: 100, height: 100 },
+  ]);
+  const [selectedId, setSelectedId] = useState<number | null>(1);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+
+  const imgRef = useRef<HTMLImageElement>(null);
+  const nextId = useRef(2);
+  const interaction = useRef<InteractionState>({ type: "none" });
+
+  useEffect(() => {
+    setImgLoaded(false);
+    setImageLoadError("");
+    setPreviewUrl(null);
+  }, [originalImageUrl]);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    const state = interaction.current;
+    if (state.type === "none") return;
+
+    const dx = e.clientX - state.startX;
+    const dy = e.clientY - state.startY;
+
+    if (state.type === "move") {
+      setRegions((prev) =>
+        prev.map((region) =>
+          region.id !== state.id
+            ? region
+            : {
+                ...region,
+                x: Math.max(0, Math.min(EDITOR_IMG_W - region.width, state.origX + dx)),
+                y: Math.max(0, state.origY + dy),
+              },
+        ),
+      );
+    }
+
+    if (state.type === "resize") {
+      setRegions((prev) =>
+        prev.map((region) =>
+          region.id !== state.id
+            ? region
+            : {
+                ...region,
+                width: Math.max(30, Math.min(EDITOR_IMG_W - region.x, state.origW + dx)),
+                height: Math.max(30, state.origH + dy),
+              },
+        ),
+      );
+    }
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    interaction.current = { type: "none" };
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [handleMouseMove, handleMouseUp]);
+
+  const buildCanvas = () => {
+    const img = imgRef.current;
+    if (!img || !img.naturalWidth) return null;
+
+    const displayHeight = EDITOR_IMG_W * (img.naturalHeight / img.naturalWidth);
+    const scaleX = img.naturalWidth / EDITOR_IMG_W;
+    const scaleY = img.naturalHeight / displayHeight;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+
+    ctx.drawImage(img, 0, 0);
+
+    for (const region of regions) {
+      const nx = Math.round(region.x * scaleX);
+      const ny = Math.round(region.y * scaleY);
+      const nw = Math.max(1, Math.round(region.width * scaleX));
+      const nh = Math.max(1, Math.round(region.height * scaleY));
+
+      const pixelBlock = 18;
+      const tw = Math.max(1, Math.ceil(nw / pixelBlock));
+      const th = Math.max(1, Math.ceil(nh / pixelBlock));
+
+      const temp = document.createElement("canvas");
+      temp.width = tw;
+      temp.height = th;
+
+      const tctx = temp.getContext("2d");
+      if (!tctx) continue;
+
+      tctx.drawImage(img, nx, ny, nw, nh, 0, 0, tw, th);
+
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(temp, 0, 0, tw, th, nx, ny, nw, nh);
+      ctx.imageSmoothingEnabled = true;
+    }
+
+    return canvas;
+  };
+
+  const handleGeneratePreview = () => {
+    setGenerating(true);
+
+    requestAnimationFrame(() => {
+      try {
+        const canvas = buildCanvas();
+        if (!canvas) {
+          setGenerating(false);
+          return;
+        }
+        const url = canvas.toDataURL("image/jpeg", 0.92);
+        setPreviewUrl(url);
+      } catch (err) {
+        alert(`미리보기 생성 실패: ${(err as Error).message}`);
+      } finally {
+        setGenerating(false);
+      }
+    });
+  };
+
+  const handleApprove = async () => {
+    if (!previewUrl) return;
+    const blob = await fetch(previewUrl).then((res) => res.blob());
+    const file = new File([blob], "manual-blur.jpg", { type: "image/jpeg" });
+    onApprove(file, previewUrl);
+  };
+
+  const addRegion = () => {
+    const id = nextId.current++;
+    setRegions((prev) => [...prev, { id, x: 50, y: 50, width: 110, height: 110 }]);
+    setSelectedId(id);
+    setPreviewUrl(null);
+  };
+
+  const removeSelected = () => {
+    if (selectedId === null) return;
+    setRegions((prev) => prev.filter((region) => region.id !== selectedId));
+    setSelectedId(null);
+    setPreviewUrl(null);
+  };
+
+  const handleRegionMouseDown = (e: ReactMouseEvent<HTMLDivElement>, region: BlurRegion) => {
+    e.stopPropagation();
+    setSelectedId(region.id);
+    setPreviewUrl(null);
+
+    interaction.current = {
+      type: "move",
+      id: region.id,
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: region.x,
+      origY: region.y,
+    };
+  };
+
+  const handleResizeMouseDown = (e: ReactMouseEvent<HTMLDivElement>, region: BlurRegion) => {
+    e.stopPropagation();
+    setSelectedId(region.id);
+    setPreviewUrl(null);
+
+    interaction.current = {
+      type: "resize",
+      id: region.id,
+      startX: e.clientX,
+      startY: e.clientY,
+      origW: region.width,
+      origH: region.height,
+    };
+  };
+
+  return (
+    <div className={styles.manualEditorWrap}>
+      <div className={styles.manualToolbar}>
+        <button type="button" className={styles.editorGhostButton} onClick={addRegion}>
+          박스 추가
+        </button>
+
+        <button
+          type="button"
+          className={styles.editorGhostButton}
+          onClick={removeSelected}
+          disabled={selectedId === null}
+        >
+          선택 박스 삭제
+        </button>
+
+        <button
+          type="button"
+          className={styles.editorPrimaryButton}
+          onClick={handleGeneratePreview}
+          disabled={regions.length === 0 || generating || !imgLoaded}
+        >
+          {generating ? "생성 중..." : "미리보기 생성"}
+        </button>
+      </div>
+
+      {imageLoadError && <p className={styles.editorError}>{imageLoadError}</p>}
+
+      <div className={styles.editorStage}>
+        <div className={styles.editorCanvasWrap}>
+          <img
+            ref={imgRef}
+            src={originalImageUrl}
+            alt="수동 블러 편집"
+            className={styles.editorBaseImage}
+            onLoad={() => setImgLoaded(true)}
+            onError={() => setImageLoadError("원본 이미지를 불러오지 못했습니다.")}
+          />
+
+          {imgLoaded &&
+            regions.map((region) => {
+              const selected = selectedId === region.id;
+
+              return (
+                <div
+                  key={region.id}
+                  className={cls(styles.blurBox, selected && styles.blurBoxSelected)}
+                  style={{
+                    left: `${region.x}px`,
+                    top: `${region.y}px`,
+                    width: `${region.width}px`,
+                    height: `${region.height}px`,
+                  }}
+                  onMouseDown={(e) => handleRegionMouseDown(e, region)}
+                >
+                  <span className={styles.blurBoxIndex}>{region.id}</span>
+                  <div
+                    className={styles.blurBoxHandle}
+                    onMouseDown={(e) => handleResizeMouseDown(e, region)}
+                  />
+                </div>
+              );
+            })}
+        </div>
+      </div>
+
+      {previewUrl && (
+        <div className={styles.manualPreviewSection}>
+          <span className={styles.manualPreviewLabel}>수동 블러 미리보기</span>
+          <img src={previewUrl} alt="수동 블러 미리보기" className={styles.manualPreviewImage} />
+        </div>
+      )}
+
+      <div className={styles.editorBottomActions}>
+        <button
+          type="button"
+          className={styles.editorPrimaryButton}
+          onClick={handleApprove}
+          disabled={!previewUrl}
+        >
+          이 결과로 사용하기
+        </button>
+
+        <button type="button" className={styles.editorGhostButton} onClick={onBack}>
+          뒤로가기
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Upload() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -122,21 +500,20 @@ export default function Upload() {
   const [uploadedImage, setUploadedImage] = useState<UploadedPostImageResponse | null>(null);
   const [keywordOptions, setKeywordOptions] = useState<KeywordItem[]>([]);
 
-  const [imagePreview, setImagePreview] = useState<string>("");
+  const [rawLocalPreview, setRawLocalPreview] = useState("");
+  const [approvedPreview, setApprovedPreview] = useState("");
   const [selectedKeywords, setSelectedKeywords] = useState<number[]>([]);
   const [wearItems, setWearItems] = useState<WearItem[]>(initialWearItems);
 
+  const [blurStep, setBlurStep] = useState<BlurFlowStep>("idle");
+  const [blurDecisionOpen, setBlurDecisionOpen] = useState(false);
+  const [manualPreviewUrl, setManualPreviewUrl] = useState<string | null>(null);
+  const [manualBlurFile, setManualBlurFile] = useState<File | null>(null);
+  const [approvedBlurMode, setApprovedBlurMode] = useState<"AUTO" | "MANUAL" | null>(null);
+
   const previewUrl = useMemo(() => {
-    if (uploadedImage) {
-      return resolveAssetUrl(uploadedImage.processedImageUrl || uploadedImage.originalImageUrl);
-    }
-
-    if (imagePreview) {
-      return imagePreview;
-    }
-
-    return "";
-  }, [imagePreview, uploadedImage]);
+    return approvedPreview || "";
+  }, [approvedPreview]);
 
   const handleBack = () => {
     navigate(-1);
@@ -146,7 +523,33 @@ export default function Upload() {
     fileInputRef.current?.click();
   };
 
-  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const resetBlurState = () => {
+    setUploadedImage(null);
+    setBlurStep("idle");
+    setBlurDecisionOpen(false);
+    setManualPreviewUrl(null);
+    setManualBlurFile(null);
+    setApprovedBlurMode(null);
+    setApprovedPreview("");
+  };
+
+  const handleAuthError = (err: unknown) => {
+    const errorMessage = err instanceof Error ? err.message : "요청 처리 실패";
+
+    if (
+      errorMessage.includes("Unauthorized") ||
+      errorMessage.includes("로그인이 필요합니다") ||
+      errorMessage.includes("유효하지 않거나 만료된 토큰")
+    ) {
+      clearAuthTokens();
+      navigate("/login");
+      return true;
+    }
+
+    return false;
+  };
+
+  const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
 
     if (objectUrlRef.current) {
@@ -155,18 +558,39 @@ export default function Upload() {
     }
 
     setSelectedFile(file);
-    setUploadedImage(null);
+    resetBlurState();
 
     if (!file) {
-      setImagePreview("");
+      setRawLocalPreview("");
       setMessage("업로드할 이미지를 선택해주세요.");
       return;
     }
 
     const nextUrl = URL.createObjectURL(file);
     objectUrlRef.current = nextUrl;
-    setImagePreview(nextUrl);
-    setMessage(`선택된 파일: ${file.name}`);
+    setRawLocalPreview(nextUrl);
+
+    try {
+      setSubmitting(true);
+      setMessage("AI 얼굴 블러 처리 중...");
+
+      const uploaded = await uploadPostImage(file);
+      setUploadedImage(uploaded);
+      setBlurStep("decision");
+      setBlurDecisionOpen(true);
+
+      if (uploaded.aiBlurStatus === "FAILED") {
+        setMessage("AI 블러에 실패했습니다. 수동 블러를 진행해주세요.");
+      } else {
+        setMessage("AI 블러 결과를 확인해주세요.");
+      }
+    } catch (err) {
+      console.error("이미지 업로드 실패:", err);
+      if (handleAuthError(err)) return;
+      setMessage(err instanceof Error ? err.message : "이미지 업로드 실패");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const toggleKeyword = (keywordId: number) => {
@@ -203,25 +627,40 @@ export default function Upload() {
     );
   };
 
-  const handleAuthError = (err: unknown) => {
-    const message = err instanceof Error ? err.message : "요청 처리 실패";
+  const handleApproveAutoBlur = () => {
+    if (!uploadedImage) return;
 
-    if (
-      message.includes("Unauthorized") ||
-      message.includes("로그인이 필요합니다") ||
-      message.includes("유효하지 않거나 만료된 토큰")
-    ) {
-      clearAuthTokens();
-      navigate("/login");
-      return true;
-    }
+    setApprovedBlurMode("AUTO");
+    setApprovedPreview(resolveAssetUrl(uploadedImage.processedImageUrl || uploadedImage.originalImageUrl));
+    setBlurDecisionOpen(false);
+    setBlurStep("idle");
+    setMessage("AI 블러 결과가 적용되었습니다.");
+  };
 
-    return false;
+  const handleOpenManualEditor = () => {
+    setBlurStep("manual");
+  };
+
+  const handleManualApprove = (file: File, previewDataUrl: string) => {
+    setManualBlurFile(file);
+    setManualPreviewUrl(previewDataUrl);
+    setApprovedBlurMode("MANUAL");
+    setApprovedPreview(previewDataUrl);
+    setBlurDecisionOpen(false);
+    setBlurStep("idle");
+    setMessage("수동 블러가 적용되었습니다.");
   };
 
   const handleSubmit = async () => {
     if (!selectedFile) {
       setMessage("이미지를 먼저 선택해주세요.");
+      return;
+    }
+
+    if (!approvedBlurMode || !uploadedImage) {
+      setMessage("먼저 블러 확인을 완료해주세요.");
+      setBlurDecisionOpen(true);
+      setBlurStep("decision");
       return;
     }
 
@@ -232,14 +671,6 @@ export default function Upload() {
 
     try {
       setSubmitting(true);
-
-      let uploaded = uploadedImage;
-
-      if (!uploaded) {
-        setMessage("이미지 업로드 중...");
-        uploaded = await uploadPostImage(selectedFile);
-        setUploadedImage(uploaded);
-      }
 
       const outfitItems = wearItems
         .map((item) => ({
@@ -254,23 +685,50 @@ export default function Upload() {
 
       setMessage("게시글 생성 중...");
 
-      await fetcher<CreatePostResponse>("/posts", {
+      const created = await fetcher<CreatePostResponse & { postId?: number }>("/posts", {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({
           content: content.trim(),
           image: {
-            originalImageUrl: uploaded.originalImageUrl,
-            processedImageUrl: uploaded.processedImageUrl,
-            storageKey: uploaded.storageKey ?? null,
-            thumbnailUrl: uploaded.thumbnailUrl ?? null,
-            blurMethod: uploaded.blurMethod,
-            aiBlurStatus: uploaded.aiBlurStatus,
+            originalImageUrl: uploadedImage.originalImageUrl,
+            processedImageUrl:
+              approvedBlurMode === "MANUAL"
+                ? uploadedImage.originalImageUrl
+                : uploadedImage.processedImageUrl,
+            storageKey: uploadedImage.storageKey ?? null,
+            thumbnailUrl: uploadedImage.thumbnailUrl ?? null,
+            blurMethod: approvedBlurMode === "MANUAL" ? "MANUAL" : uploadedImage.blurMethod,
+            aiBlurStatus: uploadedImage.aiBlurStatus,
           },
           keywordIds: selectedKeywords,
           outfitItems,
         }),
       });
+
+      const postId =
+        created.postId ??
+        (created as unknown as { item?: { postId?: number } }).item?.postId;
+
+      if (approvedBlurMode === "MANUAL" && manualBlurFile && postId) {
+        setMessage("수동 블러 서버 반영 중...");
+
+        const formData = new FormData();
+        formData.append("file", manualBlurFile);
+
+        const response = await fetch(`/api/v2/uploads/posts/${postId}/manual-blur`, {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("accessToken") ?? ""}`,
+          },
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(text || "수동 블러 반영 실패");
+        }
+      }
 
       setMessage("게시글 생성 완료");
       navigate("/rankingZone");
@@ -314,7 +772,7 @@ export default function Upload() {
             <img src={previewUrl} alt="업로드 미리보기" className={styles.heroImage} />
           ) : (
             <div className={styles.heroPlaceholder}>
-              <span className={styles.heroPlaceholderText}>선택된 이미지가 없습니다.</span>
+              <span className={styles.heroPlaceholderText}>블러 승인된 이미지가 여기에 표시됩니다.</span>
             </div>
           )}
 
@@ -349,13 +807,35 @@ export default function Upload() {
           <div className={styles.titleBlock}>
             <h1 className={styles.title}>코디 업로드</h1>
             <p className={styles.description}>
-              이미지는 업로드 시 얼굴 블러가 적용됩니다.
+              사진 선택 후 먼저 AI 블러 결과를 확인합니다.
               <br />
-              키워드는 최대 3개까지 선택할 수 있습니다.
+              마음에 들지 않으면 수동 블러로 직접 수정할 수 있습니다.
             </p>
           </div>
 
           <div className={styles.divider} />
+
+          {approvedBlurMode && (
+            <>
+              <div className={styles.blurApprovedText}>
+                현재 적용: {approvedBlurMode === "AUTO" ? "AI 자동 블러" : "수동 블러"}
+              </div>
+              <div className={styles.blurActionArea}>
+                <button
+                  type="button"
+                  className={styles.blurCheckButton}
+                  onClick={() => {
+                    if (!uploadedImage) return;
+                    setBlurDecisionOpen(true);
+                    setBlurStep("decision");
+                  }}
+                >
+                  블러 결과 다시 확인
+                </button>
+              </div>
+              <div className={styles.divider} />
+            </>
+          )}
 
           <section className={styles.contentInputSection}>
             <label htmlFor="post-content" className={styles.contentLabel}>
@@ -464,6 +944,83 @@ export default function Upload() {
           </div>
         </section>
       </div>
+
+      {blurDecisionOpen && uploadedImage && (
+        <Modal onClose={() => setBlurDecisionOpen(false)}>
+          {blurStep === "decision" && (
+            <>
+              <div className={styles.modalTitleBlock}>
+                <h3 className={styles.modalTitle}>블러 처리 결과 확인</h3>
+                <p className={styles.modalDescription}>
+                  AI가 얼굴 블러를 적용했습니다. 괜찮으면 그대로 사용하고,
+                  마음에 들지 않으면 수동 블러로 직접 수정하세요.
+                </p>
+              </div>
+
+              <ImgCompare
+                originalUrl={rawLocalPreview || assetUrl(uploadedImage.originalImageUrl)}
+                aiUrl={uploadedImage.processedImageUrl ? assetUrl(uploadedImage.processedImageUrl) : ""}
+                aiFailed={uploadedImage.aiBlurStatus === "FAILED"}
+                manualPreview={manualPreviewUrl}
+              />
+
+              {uploadedImage.aiBlurStatus === "FAILED" ? (
+                <p className={styles.modalWarningText}>
+                  AI 블러가 실패했습니다. 수동 블러로 얼굴 영역을 직접 지정해주세요.
+                </p>
+              ) : (
+                <p className={styles.modalInfoText}>
+                  얼굴이 충분히 가려졌다면 자동 블러를 승인하면 됩니다.
+                </p>
+              )}
+
+              <div className={styles.modalButtonColumn}>
+                <button
+                  type="button"
+                  className={styles.modalPrimaryButton}
+                  onClick={handleApproveAutoBlur}
+                  disabled={uploadedImage.aiBlurStatus === "FAILED"}
+                >
+                  자동 블러 승인
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.modalSecondaryButton}
+                  onClick={handleOpenManualEditor}
+                >
+                  수동 블러로 수정하기
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.modalGhostButton}
+                  onClick={() => setBlurDecisionOpen(false)}
+                >
+                  닫기
+                </button>
+              </div>
+            </>
+          )}
+
+          {blurStep === "manual" && (
+            <>
+              <div className={styles.modalTitleBlock}>
+                <h3 className={styles.modalTitle}>수동 블러 편집</h3>
+                <p className={styles.modalDescription}>
+                  얼굴 위치에 박스를 올리고 미리보기를 만든 뒤 적용해주세요.
+                </p>
+              </div>
+
+              <ManualBlurEditor
+                originalImageUrl={rawLocalPreview || assetUrl(uploadedImage.originalImageUrl)}
+                onApprove={handleManualApprove}
+                onBack={() => setBlurStep("decision")}
+              />
+            </>
+          )}
+        </Modal>
+      )}
     </div>
   );
 }
