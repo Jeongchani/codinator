@@ -168,8 +168,12 @@ export class SearchService {
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
-      include: {
-        images: { orderBy: IMAGE_ORDER_BY, take: 1 },
+      select: {
+        id: true,
+        authorId: true,
+        content: true,
+        createdAt: true,
+        images: { orderBy: IMAGE_ORDER_BY, take: 1, select: { thumbnailUrl: true, processedImageUrl: true } },
       },
     });
 
@@ -205,8 +209,12 @@ export class SearchService {
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
-      include: {
-        images: { orderBy: IMAGE_ORDER_BY, take: 1 },
+      select: {
+        id: true,
+        authorId: true,
+        content: true,
+        createdAt: true,
+        images: { orderBy: IMAGE_ORDER_BY, take: 1, select: { thumbnailUrl: true, processedImageUrl: true } },
       },
     });
 
@@ -285,8 +293,12 @@ export class SearchService {
         },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: limit,
-        include: {
-          images: { orderBy: IMAGE_ORDER_BY, take: 1 },
+        select: {
+          id: true,
+          authorId: true,
+          content: true,
+          createdAt: true,
+          images: { orderBy: IMAGE_ORDER_BY, take: 1, select: { thumbnailUrl: true, processedImageUrl: true } },
         },
       }),
     ]);
@@ -310,10 +322,12 @@ export class SearchService {
 
   /**
    * Prisma Post 결과를 PostSearchItem으로 변환.
-   * author는 익명성 정책에 따라 반환하지 않는다.
+   * 닉네임은 익명성 정책에 따라 반환하지 않으나,
+   * userId는 피드 상세 페이지 이동에 필요하므로 포함한다.
    */
   private mapPostItem(post: {
     id: number;
+    authorId: number;
     content: string;
     createdAt: Date;
     images: Array<{
@@ -323,6 +337,7 @@ export class SearchService {
   }): PostSearchItem {
     return {
       postId: post.id,
+      userId: post.authorId,
       thumbnailUrl: post.images.length > 0 ? pickPostThumbnail(post.images) : null,
       content: post.content,
       createdAt: post.createdAt.toISOString(),

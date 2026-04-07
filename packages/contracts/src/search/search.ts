@@ -38,6 +38,7 @@ export interface UserSearchItem {
 
 export interface PostSearchItem {
   postId: number;
+  userId: number;
   thumbnailUrl: string | null;
   content: string;
   createdAt: string; // ISO 8601
