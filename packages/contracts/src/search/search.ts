@@ -36,12 +36,18 @@ export interface UserSearchItem {
   thumbnailUrl: string | null;
 }
 
+export interface PostSearchKeyword {
+  keywordId: number;
+  label: string;
+}
+
 export interface PostSearchItem {
   postId: number;
   userId: number;
   thumbnailUrl: string | null;
   content: string;
   createdAt: string; // ISO 8601
+  keywords: PostSearchKeyword[];
 }
 
 export interface SearchRequest {
