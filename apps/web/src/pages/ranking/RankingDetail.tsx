@@ -30,327 +30,70 @@ import type { GetRankingPostDetailResponse } from "@codinator/contracts";
 
 type SheetPosition = "expanded" | "collapsed" | "hidden";
 
-type FeedbackItem = {
+type StructuredFeedbackRow = {
   label: string;
+  count: number;
   percent: number;
-  count: number;
   side: "LIKE" | "DISLIKE";
 };
 
-type FeedbackKeywordChip = {
-  label: string;
-  side: "LIKE" | "DISLIKE";
-  count: number;
-};
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
-const clampPercent = (value: unknown) => {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.min(100, Math.round(n)));
-};
+function toSafeString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
 
-const toText = (value: unknown, fallback = "") => {
-  if (typeof value === "string" && value.trim()) return value.trim();
-  if (typeof value === "number") return String(value);
-  return fallback;
-};
+function toSafeNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
 
-const pickNumberOrNull = (...values: unknown[]) => {
-  for (const value of values) {
-    const n = Number(value);
-    if (Number.isFinite(n)) return n;
-  }
-  return null;
-};
-
-const normalizeTagText = (value: string) => {
-  const cleaned = value.replace(/^#+/, "").trim().replace(/\s+/g, "");
-  return cleaned ? `#${cleaned}` : "";
-};
-
-const resolveFeedbackSide = (
-  row: Record<string, unknown>,
-  fallback?: "LIKE" | "DISLIKE"
-): "LIKE" | "DISLIKE" | null => {
-  const raw = String(
-    row.side ?? row.choice ?? row.type ?? row.reaction ?? row.sentiment ?? ""
-  ).toUpperCase();
-
-  if (
-    raw.includes("DISLIKE") ||
-    raw.includes("NEGATIVE") ||
-    raw.includes("BAD")
-  ) {
-    return "DISLIKE";
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
   }
 
+  return undefined;
+}
+
+function normalizeVoteChoice(
+  value: unknown
+): "LIKE" | "DISLIKE" | undefined {
+  const text = String(value ?? "").toUpperCase();
+
   if (
-    raw.includes("LIKE") ||
-    raw.includes("POSITIVE") ||
-    raw.includes("GOOD")
+    text.includes("LIKE") &&
+    !text.includes("DISLIKE") &&
+    !text.includes("UNLIKE")
   ) {
     return "LIKE";
   }
 
-  return fallback ?? null;
-};
-
-const normalizeFeedbackItems = (
-  raw: unknown[],
-  side: "LIKE" | "DISLIKE"
-): FeedbackItem[] => {
-  if (!Array.isArray(raw) || raw.length === 0) return [];
-
-  const mapped = raw
-    .map((item, index) => {
-      const row = item as Record<string, unknown>;
-
-      return {
-        label:
-          toText(row.label) ||
-          toText(row.name) ||
-          toText(row.feedback) ||
-          toText(row.feedbackLabel) ||
-          toText(row.keyword) ||
-          toText(row.keywordLabel) ||
-          toText(row.tagLabel) ||
-          `피드백 ${index + 1}`,
-        rawPercent: pickNumberOrNull(
-          row.percent,
-          row.percentage,
-          row.ratio,
-          row.share,
-          row.votePercent
-        ),
-        count: Number(
-          row.count ?? row.voteCount ?? row.total ?? row.totalCount ?? 0
-        ),
-      };
-    })
-    .filter((item) => item.label);
-
-  const totalCount = mapped.reduce((sum, item) => {
-    return item.count > 0 ? sum + item.count : sum;
-  }, 0);
-
-  return mapped
-    .map((item) => ({
-      label: item.label,
-      percent:
-        item.rawPercent !== null
-          ? clampPercent(item.rawPercent)
-          : totalCount > 0 && item.count > 0
-          ? clampPercent((item.count / totalCount) * 100)
-          : 0,
-      count: item.count,
-      side,
-    }))
-    .filter((item) => item.percent > 0 || item.count > 0)
-    .sort((a, b) => {
-      if (b.percent !== a.percent) return b.percent - a.percent;
-      return b.count - a.count;
-    })
-    .slice(0, 5);
-};
-
-const mergeFeedbackKeywordChips = (chips: FeedbackKeywordChip[]) => {
-  const map = new Map<string, FeedbackKeywordChip>();
-
-  chips.forEach((chip) => {
-    const normalizedLabel = normalizeTagText(chip.label);
-    if (!normalizedLabel) return;
-
-    const key = `${chip.side}-${normalizedLabel}`;
-    const prev = map.get(key);
-
-    if (prev) {
-      map.set(key, {
-        ...prev,
-        count: prev.count + (chip.count || 0),
-      });
-      return;
-    }
-
-    map.set(key, {
-      label: normalizedLabel,
-      side: chip.side,
-      count: chip.count || 0,
-    });
-  });
-
-  return [...map.values()].sort((a, b) => {
-    if (b.count !== a.count) return b.count - a.count;
-    if (a.side !== b.side) return a.side === "LIKE" ? -1 : 1;
-    return a.label.localeCompare(b.label, "ko");
-  });
-};
-
-const parseFeedbackKeywordSource = (
-  source: unknown,
-  sideHint?: "LIKE" | "DISLIKE"
-): FeedbackKeywordChip[] => {
-  if (!source) return [];
-
-  if (typeof source === "string") {
-    return sideHint
-      ? [
-          {
-            label: source,
-            side: sideHint,
-            count: 0,
-          },
-        ]
-      : [];
+  if (text.includes("DISLIKE") || text.includes("NEGATIVE")) {
+    return "DISLIKE";
   }
 
-  if (Array.isArray(source)) {
-    return source.flatMap((item) => parseFeedbackKeywordSource(item, sideHint));
-  }
+  return undefined;
+}
 
-  if (typeof source === "object") {
-    const row = source as Record<string, unknown>;
-
-    const nestedResults: FeedbackKeywordChip[] = [
-      ...parseFeedbackKeywordSource(
-        row.likeKeywords ?? row.likeFeedbacks ?? row.likeTags ?? row.like,
-        "LIKE"
-      ),
-      ...parseFeedbackKeywordSource(
-        row.positiveKeywords ??
-          row.positiveFeedbacks ??
-          row.positiveTags ??
-          row.positive,
-        "LIKE"
-      ),
-      ...parseFeedbackKeywordSource(
-        row.dislikeKeywords ??
-          row.dislikeFeedbacks ??
-          row.dislikeTags ??
-          row.dislike,
-        "DISLIKE"
-      ),
-      ...parseFeedbackKeywordSource(
-        row.negativeKeywords ??
-          row.negativeFeedbacks ??
-          row.negativeTags ??
-          row.negative,
-        "DISLIKE"
-      ),
-    ];
-
-    if (nestedResults.length > 0) {
-      return nestedResults;
-    }
-
-    const label =
-      toText(row.label) ||
-      toText(row.name) ||
-      toText(row.feedback) ||
-      toText(row.feedbackLabel) ||
-      toText(row.keyword) ||
-      toText(row.keywordLabel) ||
-      toText(row.tag) ||
-      toText(row.tagLabel);
-
-    const side = resolveFeedbackSide(row, sideHint);
-    const count = Number(
-      row.count ?? row.voteCount ?? row.total ?? row.totalCount ?? 0
-    );
-
-    if (label && side) {
-      return [{ label, side, count }];
-    }
-
-    if (sideHint) {
-      const reservedKeys = new Set([
-        "side",
-        "choice",
-        "type",
-        "reaction",
-        "sentiment",
-        "count",
-        "voteCount",
-        "total",
-        "totalCount",
-      ]);
-
-      return Object.entries(row)
-        .filter(([key]) => !reservedKeys.has(key))
-        .flatMap(([key, value]) => {
-          if (typeof value === "number" || typeof value === "string") {
-            const parsedCount =
-              typeof value === "number"
-                ? value
-                : Number.isFinite(Number(value))
-                ? Number(value)
-                : 0;
-
-            return [
-              {
-                label: key,
-                side: sideHint,
-                count: parsedCount,
-              },
-            ];
-          }
-
-          return [];
-        });
-    }
-  }
-
-  return [];
-};
-
-const extractFeedbackKeywordChips = (
+function extractKeywordLabels(
   data: GetRankingPostDetailResponse | null
-): FeedbackKeywordChip[] => {
+): string[] {
   if (!data) return [];
 
-  const unknownData = data as unknown as Record<string, unknown>;
-  const voteSummary =
-    (unknownData.voteSummary as Record<string, unknown> | undefined) ?? {};
-  const feedbackSummary =
-    (unknownData.feedbackSummary as Record<string, unknown> | undefined) ?? {};
-  const keywordSummary =
-    (unknownData.keywordSummary as Record<string, unknown> | undefined) ?? {};
-  const feedbackTagSummary =
-    (unknownData.feedbackTagSummary as Record<string, unknown> | undefined) ??
-    {};
-
-  const rawChips: FeedbackKeywordChip[] = [
-    ...parseFeedbackKeywordSource(unknownData.feedbackKeywords),
-    ...parseFeedbackKeywordSource(unknownData.feedbackTags),
-    ...parseFeedbackKeywordSource(unknownData.receivedFeedbackKeywords),
-    ...parseFeedbackKeywordSource(unknownData.receivedFeedbackTags),
-    ...parseFeedbackKeywordSource(voteSummary.feedbackKeywords),
-    ...parseFeedbackKeywordSource(voteSummary.feedbackTags),
-    ...parseFeedbackKeywordSource(voteSummary.receivedFeedbackKeywords),
-    ...parseFeedbackKeywordSource(voteSummary.receivedFeedbackTags),
-    ...parseFeedbackKeywordSource(feedbackSummary),
-    ...parseFeedbackKeywordSource(keywordSummary),
-    ...parseFeedbackKeywordSource(feedbackTagSummary),
-  ];
-
-  return mergeFeedbackKeywordChips(rawChips).slice(0, 8);
-};
-
-const extractKeywordLabels = (
-  data: GetRankingPostDetailResponse | null
-): string[] => {
-  if (!data) return [];
-
-  const unknownData = data as unknown as Record<string, unknown>;
-  const sourceCandidates: unknown[] = [
-    unknownData.keywords,
-    unknownData.keywordLabels,
-    unknownData.tags,
-    unknownData.postKeywords,
+  const raw = data as unknown as Record<string, unknown>;
+  const candidates = [
+    raw.keywords,
+    raw.keywordLabels,
+    raw.tags,
+    raw.postKeywords,
   ];
 
   const labels: string[] = [];
 
-  sourceCandidates.forEach((candidate) => {
+  candidates.forEach((candidate) => {
     if (!Array.isArray(candidate)) return;
 
     candidate.forEach((item) => {
@@ -359,13 +102,12 @@ const extractKeywordLabels = (
         return;
       }
 
-      if (item && typeof item === "object") {
-        const row = item as Record<string, unknown>;
+      if (isRecord(item)) {
         const label =
-          toText(row.label) ||
-          toText(row.name) ||
-          toText(row.keyword) ||
-          toText(row.keywordLabel);
+          toSafeString(item.label) ??
+          toSafeString(item.name) ??
+          toSafeString(item.keyword) ??
+          toSafeString(item.keywordLabel);
 
         if (label) labels.push(label);
       }
@@ -373,148 +115,129 @@ const extractKeywordLabels = (
   });
 
   return [...new Set(labels)].slice(0, 5);
-};
+}
 
-const extractFeedbackBreakdown = (
+function extractStructuredFeedback(
   data: GetRankingPostDetailResponse | null
-) => {
+): {
+  likeRows: StructuredFeedbackRow[];
+  dislikeRows: StructuredFeedbackRow[];
+} {
   if (!data) {
-    return { like: [] as FeedbackItem[], dislike: [] as FeedbackItem[] };
+    return {
+      likeRows: [],
+      dislikeRows: [],
+    };
   }
 
-  const unknownData = data as unknown as Record<string, unknown>;
-  const voteSummary =
-    (unknownData.voteSummary as Record<string, unknown> | undefined) ?? {};
+  const raw = data as unknown as Record<string, unknown>;
+  const feedbackSummary = Array.isArray(raw.feedbackSummary)
+    ? raw.feedbackSummary
+    : [];
 
-  const summaryCandidates: Array<Record<string, unknown> | undefined> = [
-    (unknownData.feedbackSummary as Record<string, unknown> | undefined) ??
-      undefined,
-    (voteSummary.feedbackSummary as Record<string, unknown> | undefined) ??
-      undefined,
-    (unknownData.keywordSummary as Record<string, unknown> | undefined) ??
-      undefined,
-    (voteSummary.keywordSummary as Record<string, unknown> | undefined) ??
-      undefined,
-    (unknownData.feedbackTagSummary as Record<string, unknown> | undefined) ??
-      undefined,
-  ];
+  const parsedRows = feedbackSummary
+    .map((item) => {
+      if (!isRecord(item)) return null;
 
-  for (const summary of summaryCandidates) {
-    if (!summary) continue;
+      const label =
+        toSafeString(item.label) ??
+        toSafeString(item.name) ??
+        toSafeString(item.keyword) ??
+        toSafeString(item.feedbackLabel);
 
-    const like = normalizeFeedbackItems(
-      (summary.likeFeedbacks as unknown[]) ??
-        (summary.positiveFeedbacks as unknown[]) ??
-        (summary.likeTags as unknown[]) ??
-        (summary.likeKeywords as unknown[]) ??
-        (summary.like as unknown[]) ??
-        (summary.positive as unknown[]) ??
-        [],
-      "LIKE"
-    );
+      const voteChoice =
+        normalizeVoteChoice(item.voteChoice) ??
+        normalizeVoteChoice(item.side) ??
+        normalizeVoteChoice(item.type);
 
-    const dislike = normalizeFeedbackItems(
-      (summary.dislikeFeedbacks as unknown[]) ??
-        (summary.negativeFeedbacks as unknown[]) ??
-        (summary.dislikeTags as unknown[]) ??
-        (summary.dislikeKeywords as unknown[]) ??
-        (summary.dislike as unknown[]) ??
-        (summary.negative as unknown[]) ??
-        [],
-      "DISLIKE"
-    );
+      const count =
+        toSafeNumber(item.count) ??
+        toSafeNumber(item.totalCount) ??
+        toSafeNumber(item.voteCount) ??
+        0;
 
-    if (like.length > 0 || dislike.length > 0) {
-      return { like, dislike };
-    }
-  }
+      if (!label || !voteChoice || count <= 0) return null;
 
-  const genericStats =
-    (unknownData.feedbackStats as unknown[]) ??
-    (unknownData.keywordStats as unknown[]) ??
-    (voteSummary.feedbackStats as unknown[]) ??
-    (voteSummary.keywordStats as unknown[]) ??
-    [];
+      return {
+        label,
+        count,
+        side: voteChoice,
+      };
+    })
+    .filter((item): item is { label: string; count: number; side: "LIKE" | "DISLIKE" } => Boolean(item));
 
-  if (Array.isArray(genericStats) && genericStats.length > 0) {
-    const like = normalizeFeedbackItems(
-      genericStats.filter((item) => {
-        const row = item as Record<string, unknown>;
-        return (
-          String(row.side ?? row.choice ?? row.type ?? "").toUpperCase() ===
-          "LIKE"
-        );
-      }),
-      "LIKE"
-    );
+  const likeList = parsedRows
+    .filter((item) => item.side === "LIKE")
+    .sort((a, b) => b.count - a.count);
 
-    const dislike = normalizeFeedbackItems(
-      genericStats.filter((item) => {
-        const row = item as Record<string, unknown>;
-        return (
-          String(row.side ?? row.choice ?? row.type ?? "").toUpperCase() ===
-          "DISLIKE"
-        );
-      }),
-      "DISLIKE"
-    );
+  const dislikeList = parsedRows
+    .filter((item) => item.side === "DISLIKE")
+    .sort((a, b) => b.count - a.count);
 
-    if (like.length > 0 || dislike.length > 0) {
-      return { like, dislike };
-    }
-  }
+  const likeTotal = likeList.reduce((sum, item) => sum + item.count, 0);
+  const dislikeTotal = dislikeList.reduce((sum, item) => sum + item.count, 0);
 
-  return { like: [] as FeedbackItem[], dislike: [] as FeedbackItem[] };
-};
+  const likeRows: StructuredFeedbackRow[] = likeList.slice(0, 5).map((item) => ({
+    ...item,
+    percent: likeTotal > 0 ? Math.round((item.count / likeTotal) * 100) : 0,
+  }));
 
-type FeedbackColumnProps = {
+  const dislikeRows: StructuredFeedbackRow[] = dislikeList
+    .slice(0, 5)
+    .map((item) => ({
+      ...item,
+      percent:
+        dislikeTotal > 0 ? Math.round((item.count / dislikeTotal) * 100) : 0,
+    }));
+
+  return {
+    likeRows,
+    dislikeRows,
+  };
+}
+
+type StructuredFeedbackColumnProps = {
   title: string;
   side: "LIKE" | "DISLIKE";
-  items: FeedbackItem[];
+  rows: StructuredFeedbackRow[];
 };
 
-function FeedbackColumn({ title, side, items }: FeedbackColumnProps) {
-  if (items.length === 0) return null;
-
-  const hero = items[0];
-  const rest = items.slice(1);
-
-  const heroClass =
-    side === "LIKE" ? styles.feedbackHeroLike : styles.feedbackHeroDislike;
-  const stepClass =
-    side === "LIKE" ? styles.feedbackStepLike : styles.feedbackStepDislike;
-  const railClass =
-    side === "LIKE" ? styles.feedbackRailLike : styles.feedbackRailDislike;
-
-  const stepHeights = [76, 62, 50, 40];
+function StructuredFeedbackColumn({
+  title,
+  side,
+  rows,
+}: StructuredFeedbackColumnProps) {
+  if (rows.length === 0) return null;
 
   return (
-    <div className={styles.feedbackColumn}>
-      <div className={`${styles.feedbackHero} ${heroClass}`}>
-        <div className={styles.feedbackHeroCopy}>
-          <p className={styles.feedbackHeroTitle}>{title}</p>
-          <p className={styles.feedbackHeroLabel}>{hero.label}</p>
-        </div>
-        <span className={styles.feedbackHeroPercent}>{hero.percent}%</span>
+    <div className={styles.structuredFeedbackColumn}>
+      <div className={styles.structuredFeedbackHeader}>
+        <h4 className={styles.structuredFeedbackTitle}>{title}</h4>
       </div>
 
-      {rest.length > 0 && (
-        <div className={`${styles.feedbackRail} ${railClass}`}>
-          {rest.map((item, index) => (
-            <div
-              key={`${side}-${item.label}-${index}`}
-              className={`${styles.feedbackStep} ${stepClass}`}
-              style={{
-                width: `${100 - index * 16}%`,
-                height: `${stepHeights[index] ?? 40}px`,
-              }}
-            >
-              <span className={styles.feedbackStepLabel}>{item.label}</span>
-              <span className={styles.feedbackStepPercent}>{item.percent}%</span>
+      <div className={styles.structuredFeedbackRows}>
+        {rows.map((row) => (
+          <div key={`${side}-${row.label}`} className={styles.structuredFeedbackRow}>
+            <div className={styles.structuredFeedbackLabelRow}>
+              <span className={styles.structuredFeedbackLabel}>{row.label}</span>
+              <span className={styles.structuredFeedbackPercent}>
+                {row.percent}%
+              </span>
             </div>
-          ))}
-        </div>
-      )}
+
+            <div className={styles.structuredFeedbackTrack}>
+              <div
+                className={`${styles.structuredFeedbackFill} ${
+                  side === "LIKE"
+                    ? styles.structuredFeedbackFillLike
+                    : styles.structuredFeedbackFillDislike
+                }`}
+                style={{ width: `${Math.max(row.percent, 6)}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -537,6 +260,11 @@ const RankingDetail: React.FC = () => {
   const EXPANDED_Y = 0;
   const COLLAPSED_Y = 360;
   const HIDDEN_Y = 860;
+
+  const SHEET_TOTAL_HEIGHT = 812;
+  const HANDLE_HEIGHT = 34;
+  const EXPANDED_SCROLL_HEIGHT = SHEET_TOTAL_HEIGHT - HANDLE_HEIGHT;
+  const COLLAPSED_SCROLL_HEIGHT = SHEET_TOTAL_HEIGHT - COLLAPSED_Y - HANDLE_HEIGHT;
 
   const period =
     searchParams.get("period") === "MONTHLY" ? "MONTHLY" : "WEEKLY";
@@ -627,26 +355,16 @@ const RankingDetail: React.FC = () => {
     return 100 - likePercent;
   }, [likePercent, totalCount]);
 
-  const isAllLike = likePercent === 100;
-  const isAllDislike = dislikePercent === 100;
-  const showLikeLabel = totalCount > 0 && !isAllDislike;
-  const showDislikeLabel = totalCount > 0 && !isAllLike;
-
   const keywordChips = useMemo(() => extractKeywordLabels(postData), [postData]);
 
-  const feedbackBreakdown = useMemo(
-    () => extractFeedbackBreakdown(postData),
+  const structuredFeedback = useMemo(
+    () => extractStructuredFeedback(postData),
     [postData]
   );
 
-  const feedbackKeywordChips = useMemo(
-    () => extractFeedbackKeywordChips(postData),
-    [postData]
-  );
-
-  const hasLikeFeedback = feedbackBreakdown.like.length > 0;
-  const hasDislikeFeedback = feedbackBreakdown.dislike.length > 0;
-  const hasAnyFeedbackGraph = hasLikeFeedback || hasDislikeFeedback;
+  const hasStructuredFeedback =
+    structuredFeedback.likeRows.length > 0 ||
+    structuredFeedback.dislikeRows.length > 0;
 
   const outfitItems = useMemo(() => {
     return Array.isArray(postData?.outfitItems) ? postData.outfitItems : [];
@@ -673,6 +391,13 @@ const RankingDetail: React.FC = () => {
       #8c95b5 100%
     )`;
   }, [likePercent, dislikePercent, totalCount]);
+
+  const currentScrollAreaHeight =
+    sheetPosition === "expanded"
+      ? EXPANDED_SCROLL_HEIGHT
+      : sheetPosition === "collapsed"
+      ? COLLAPSED_SCROLL_HEIGHT
+      : 0;
 
   const snapTo = (position: SheetPosition) => {
     setSheetPosition(position);
@@ -831,14 +556,14 @@ const RankingDetail: React.FC = () => {
             style={{ width: `${dislikePercent}%` }}
           />
 
-          {showLikeLabel && (
+          {totalCount > 0 && likePercent > 0 && (
             <div className={styles.leftPercent}>
               <ThumbsUp size={12} strokeWidth={2} />
               <span>{likePercent}%</span>
             </div>
           )}
 
-          {showDislikeLabel && (
+          {totalCount > 0 && dislikePercent > 0 && (
             <div className={styles.rightPercent}>
               <ThumbsDown size={12} strokeWidth={2} />
               <span>{dislikePercent}%</span>
@@ -875,7 +600,10 @@ const RankingDetail: React.FC = () => {
           <div className={styles.handlerBar} />
         </div>
 
-        <div className={`${styles.sheetScrollArea} ${styles.scroll}`}>
+        <div
+          className={`${styles.sheetScrollArea} ${styles.scroll}`}
+          style={{ height: currentScrollAreaHeight }}
+        >
           <div className={styles.sheetContent}>
             <div className={styles.sheetHeader}>
               <div className={styles.sheetHeaderCopy}>
@@ -937,14 +665,14 @@ const RankingDetail: React.FC = () => {
                   className={`${styles.voteCountBadge} ${styles.voteCountBadgeLike}`}
                 >
                   <ThumbsUp size={12} strokeWidth={2} />
-                  <span>{likeCount.toLocaleString("ko-KR")}</span>
+                  <span>{likeCount}</span>
                 </div>
 
                 <div
                   className={`${styles.voteCountBadge} ${styles.voteCountBadgeDislike}`}
                 >
                   <ThumbsDown size={12} strokeWidth={2} />
-                  <span>{dislikeCount.toLocaleString("ko-KR")}</span>
+                  <span>{dislikeCount}</span>
                 </div>
               </div>
 
@@ -955,11 +683,11 @@ const RankingDetail: React.FC = () => {
                 >
                   <div className={styles.donutHole} />
 
-                  {showLikeLabel && (
+                  {totalCount > 0 && likePercent > 0 && (
                     <div className={styles.donutLabelLeft}>{likePercent}%</div>
                   )}
 
-                  {showDislikeLabel && (
+                  {totalCount > 0 && dislikePercent > 0 && (
                     <div className={styles.donutLabelRight}>
                       {dislikePercent}%
                     </div>
@@ -967,49 +695,28 @@ const RankingDetail: React.FC = () => {
                 </div>
               </div>
 
-              {feedbackKeywordChips.length > 0 && (
-                <div className={styles.feedbackKeywordWrap}>
-                  {feedbackKeywordChips.map((chip) => (
-                    <span
-                      key={`${chip.side}-${chip.label}`}
-                      className={`${styles.feedbackKeywordChip} ${
-                        chip.side === "LIKE"
-                          ? styles.feedbackKeywordChipLike
-                          : styles.feedbackKeywordChipDislike
-                      }`}
-                    >
-                      {chip.side === "LIKE" ? (
-                        <ThumbsUp size={11} strokeWidth={2} />
-                      ) : (
-                        <ThumbsDown size={11} strokeWidth={2} />
-                      )}
-                      <span>{chip.label}</span>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {hasAnyFeedbackGraph && (
+              {hasStructuredFeedback && (
                 <div
-                  className={`${styles.feedbackColumns} ${
-                    !hasLikeFeedback || !hasDislikeFeedback
-                      ? styles.feedbackColumnsSingle
+                  className={`${styles.structuredFeedbackGrid} ${
+                    structuredFeedback.likeRows.length === 0 ||
+                    structuredFeedback.dislikeRows.length === 0
+                      ? styles.structuredFeedbackGridSingle
                       : ""
                   }`}
                 >
-                  {hasLikeFeedback && (
-                    <FeedbackColumn
-                      title="제일 많이 받은 긍정 피드백"
+                  {structuredFeedback.likeRows.length > 0 && (
+                    <StructuredFeedbackColumn
+                      title="좋아요 피드백"
                       side="LIKE"
-                      items={feedbackBreakdown.like}
+                      rows={structuredFeedback.likeRows}
                     />
                   )}
 
-                  {hasDislikeFeedback && (
-                    <FeedbackColumn
-                      title="제일 많이 받은 부정 피드백"
+                  {structuredFeedback.dislikeRows.length > 0 && (
+                    <StructuredFeedbackColumn
+                      title="싫어요 피드백"
                       side="DISLIKE"
-                      items={feedbackBreakdown.dislike}
+                      rows={structuredFeedback.dislikeRows}
                     />
                   )}
                 </div>
@@ -1031,30 +738,33 @@ const RankingDetail: React.FC = () => {
 
             <div className={styles.itemScroll}>
               {outfitItems.length > 0 ? (
-                outfitItems.map((item) => (
-                  <div key={item.id} className={styles.outfitCard}>
+                outfitItems.map((item, index) => (
+                  <div
+                    key={item.id ?? index}
+                    className={styles.outfitCard}
+                  >
                     <div className={styles.outfitCardTop}>
                       <span className={styles.outfitCategoryBadge}>
                         {item.category || "ITEM"}
                       </span>
                     </div>
 
-                    <div
-                      className={`${styles.outfitFieldRow} ${styles.outfitNameRow}`}
-                    >
-                      <span className={styles.outfitFieldLabel}>상품명</span>
-                      <span
-                        className={`${styles.outfitFieldValue} ${styles.outfitNameValue}`}
-                      >
-                        {item.itemName || "상품 이름 미등록"}
-                      </span>
-                    </div>
+                    <div className={styles.outfitInfoBox}>
+                      <div className={styles.outfitInfoRow}>
+                        <span className={styles.outfitInfoLabel}>상품명</span>
+                        <span className={styles.outfitInfoValue}>
+                          {item.itemName || "상품 이름 미등록"}
+                        </span>
+                      </div>
 
-                    <div className={styles.outfitFieldRow}>
-                      <span className={styles.outfitFieldLabel}>브랜드</span>
-                      <span className={styles.outfitFieldValue}>
-                        {item.brand || "브랜드 미등록"}
-                      </span>
+                      <div className={styles.outfitInfoDivider} />
+
+                      <div className={styles.outfitInfoRow}>
+                        <span className={styles.outfitInfoLabel}>브랜드</span>
+                        <span className={styles.outfitInfoValue}>
+                          {item.brand || "브랜드 미등록"}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))
