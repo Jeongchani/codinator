@@ -41,6 +41,16 @@ type SearchPostItem = {
   userId?: number;
 };
 
+type SearchPageSnapshot = {
+  query: string;
+  searchType: SearchType;
+  searched: boolean;
+  searchResult: unknown;
+  errorMessage: string;
+  visibleCounts: Record<ExpandSectionKey, number>;
+  scrollTop: number;
+};
+
 type SearchProps = {
   initialRecentSearches?: string[];
 };
@@ -148,6 +158,10 @@ function getHistoryStorageKey() {
   return `${HISTORY_KEY_PREFIX}:guest`;
 }
 
+function getSearchPageStateKey(historyStorageKey: string) {
+  return `${historyStorageKey}:page-state`;
+}
+
 function isSearchType(value: unknown): value is SearchType {
   return value === "ALL" || value === "NICKNAME" || value === "KEYWORD" || value === "POST";
 }
@@ -192,6 +206,60 @@ function getStoredRecentSearches(storageKey: string): RecentSearchItem[] {
 function saveRecentSearches(storageKey: string, items: RecentSearchItem[]) {
   try {
     localStorage.setItem(storageKey, JSON.stringify(items));
+  } catch {
+    // noop
+  }
+}
+
+function isVisibleCountRecord(
+  value: unknown,
+): value is Record<ExpandSectionKey, number> {
+  if (!value || typeof value !== "object") return false;
+
+  const record = value as Record<string, unknown>;
+
+  return (
+    typeof record.users === "number" &&
+    typeof record.posts === "number" &&
+    typeof record.keywords === "number"
+  );
+}
+
+function getStoredSearchPageSnapshot(
+  storageKey: string,
+): SearchPageSnapshot | null {
+  try {
+    const raw = sessionStorage.getItem(storageKey);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as Partial<SearchPageSnapshot>;
+
+    return {
+      query: typeof parsed.query === "string" ? parsed.query : "",
+      searchType: isSearchType(parsed.searchType) ? parsed.searchType : "ALL",
+      searched: parsed.searched === true,
+      searchResult: parsed.searchResult ?? null,
+      errorMessage:
+        typeof parsed.errorMessage === "string" ? parsed.errorMessage : "",
+      visibleCounts: isVisibleCountRecord(parsed.visibleCounts)
+        ? parsed.visibleCounts
+        : getDefaultVisibleCounts(),
+      scrollTop:
+        typeof parsed.scrollTop === "number" && Number.isFinite(parsed.scrollTop)
+          ? parsed.scrollTop
+          : 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveSearchPageSnapshot(
+  storageKey: string,
+  snapshot: SearchPageSnapshot,
+) {
+  try {
+    sessionStorage.setItem(storageKey, JSON.stringify(snapshot));
   } catch {
     // noop
   }
@@ -540,6 +608,14 @@ export default function Search({ initialRecentSearches }: SearchProps) {
   const navigate = useNavigate();
 
   const historyStorageKey = getHistoryStorageKey();
+  const pageStateStorageKey = useMemo(
+    () => getSearchPageStateKey(historyStorageKey),
+    [historyStorageKey],
+  );
+  const initialPageSnapshot = useMemo(
+    () => getStoredSearchPageSnapshot(pageStateStorageKey),
+    [pageStateStorageKey],
+  );
 
   const initialRecentSearchItems = useMemo(
     () =>
@@ -549,8 +625,10 @@ export default function Search({ initialRecentSearches }: SearchProps) {
     [initialRecentSearches],
   );
 
-  const [query, setQuery] = useState("");
-  const [searchType, setSearchType] = useState<SearchType>("ALL");
+  const [query, setQuery] = useState(initialPageSnapshot?.query ?? "");
+  const [searchType, setSearchType] = useState<SearchType>(
+    initialPageSnapshot?.searchType ?? "ALL",
+  );
   const [recentSearches, setRecentSearches] = useState<RecentSearchItem[]>(() => {
     const stored = getStoredRecentSearches(getHistoryStorageKey());
     if (stored.length > 0) return stored;
@@ -560,14 +638,20 @@ export default function Search({ initialRecentSearches }: SearchProps) {
   });
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [searched, setSearched] = useState(false);
-  const [searchResult, setSearchResult] = useState<unknown>(null);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [searched, setSearched] = useState(initialPageSnapshot?.searched ?? false);
+  const [searchResult, setSearchResult] = useState<unknown>(
+    initialPageSnapshot?.searchResult ?? null,
+  );
+  const [errorMessage, setErrorMessage] = useState(
+    initialPageSnapshot?.errorMessage ?? "",
+  );
   const [visibleCounts, setVisibleCounts] = useState<Record<ExpandSectionKey, number>>(
-    getDefaultVisibleCounts(),
+    initialPageSnapshot?.visibleCounts ?? getDefaultVisibleCounts(),
   );
 
   const filterRef = useRef<HTMLDivElement>(null);
+  const contentAreaRef = useRef<HTMLDivElement>(null);
+  const restoredScrollRef = useRef(false);
 
   const trimmedQuery = useMemo(() => query.trim(), [query]);
   const loweredQuery = useMemo(() => trimmedQuery.toLowerCase(), [trimmedQuery]);
@@ -655,6 +739,21 @@ export default function Search({ initialRecentSearches }: SearchProps) {
   const canLoadMorePosts = postResults.length > visibleCounts.posts;
   const canLoadMoreKeywords = keywordResults.length > visibleCounts.keywords;
 
+  const persistSearchPageSnapshot = (
+    overrides?: Partial<SearchPageSnapshot>,
+  ) => {
+    saveSearchPageSnapshot(pageStateStorageKey, {
+      query,
+      searchType,
+      searched,
+      searchResult,
+      errorMessage,
+      visibleCounts,
+      scrollTop: contentAreaRef.current?.scrollTop ?? 0,
+      ...overrides,
+    });
+  };
+
   useEffect(() => {
     const stored = getStoredRecentSearches(historyStorageKey);
 
@@ -671,8 +770,31 @@ export default function Search({ initialRecentSearches }: SearchProps) {
   }, [historyStorageKey, recentSearches]);
 
   useEffect(() => {
-    setVisibleCounts(getDefaultVisibleCounts());
-  }, [searchResult, searchType]);
+    persistSearchPageSnapshot();
+  }, [
+    pageStateStorageKey,
+    query,
+    searchType,
+    searched,
+    searchResult,
+    errorMessage,
+    visibleCounts,
+  ]);
+
+  useEffect(() => {
+    if (restoredScrollRef.current) return;
+    restoredScrollRef.current = true;
+
+    const nextScrollTop = initialPageSnapshot?.scrollTop ?? 0;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (contentAreaRef.current) {
+          contentAreaRef.current.scrollTop = nextScrollTop;
+        }
+      });
+    });
+  }, [initialPageSnapshot]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -772,6 +894,22 @@ export default function Search({ initialRecentSearches }: SearchProps) {
       pushRecentSearch(finalQuery, requestType, isAi);
       setQuery(finalQuery);
       setSearchType(requestType);
+
+      saveSearchPageSnapshot(pageStateStorageKey, {
+        query: finalQuery,
+        searchType: requestType,
+        searched: true,
+        searchResult: data,
+        errorMessage: "",
+        visibleCounts: getDefaultVisibleCounts(),
+        scrollTop: 0,
+      });
+
+      requestAnimationFrame(() => {
+        if (contentAreaRef.current) {
+          contentAreaRef.current.scrollTop = 0;
+        }
+      });
     } catch (error) {
       setSearchResult(null);
       setErrorMessage(error instanceof Error ? error.message : "검색 중 오류가 발생했습니다.");
@@ -788,7 +926,18 @@ export default function Search({ initialRecentSearches }: SearchProps) {
       return;
     }
 
-    navigate(`/user/${userId}/feed/${postId}`);
+    persistSearchPageSnapshot();
+
+    navigate(`/user/${userId}/feed/${postId}`, {
+      state: {
+        from: "search",
+        userId,
+        post: {
+          postId,
+          authorId: userId,
+        },
+      },
+    });
   };
 
   const handleInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -798,11 +947,29 @@ export default function Search({ initialRecentSearches }: SearchProps) {
   };
 
   const handleClearInput = () => {
+    const clearedVisibleCounts = getDefaultVisibleCounts();
+
     setQuery("");
     setErrorMessage("");
     setSearchResult(null);
     setSearched(false);
-    setVisibleCounts(getDefaultVisibleCounts());
+    setVisibleCounts(clearedVisibleCounts);
+
+    saveSearchPageSnapshot(pageStateStorageKey, {
+      query: "",
+      searchType,
+      searched: false,
+      searchResult: null,
+      errorMessage: "",
+      visibleCounts: clearedVisibleCounts,
+      scrollTop: 0,
+    });
+
+    requestAnimationFrame(() => {
+      if (contentAreaRef.current) {
+        contentAreaRef.current.scrollTop = 0;
+      }
+    });
   };
 
   const handleRemoveRecent = (target: RecentSearchItem) => {
@@ -828,7 +995,13 @@ export default function Search({ initialRecentSearches }: SearchProps) {
   };
 
   const goToUserFeed = (userId: number) => {
-    navigate(`/user/${userId}/feed`);
+    persistSearchPageSnapshot();
+    navigate(`/user/${userId}/feed`, {
+      state: {
+        from: "search",
+        userId,
+      },
+    });
   };
 
   return (
@@ -928,7 +1101,7 @@ export default function Search({ initialRecentSearches }: SearchProps) {
 
         <div className={styles.divider} />
 
-        <div className={styles.contentArea}>
+        <div className={styles.contentArea} ref={contentAreaRef}>
           {shouldShowRecent && (
             <>
               <div className={styles.historyActionRow}>

@@ -17,7 +17,7 @@ import AppLayout from "./AppLayout";
 import TestPage from "./TestPage";
 import Bookmark from "./pages/bookmark/Bookmark";
 import MyPage from "./pages/auth/MyPage";
-import Search from "./pages/search/search";
+import Search from "./pages/search/Search";
 
 function AppRoutes() {
   const navigate = useNavigate();
