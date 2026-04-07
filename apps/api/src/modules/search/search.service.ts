@@ -105,7 +105,23 @@ export class SearchService {
       },
       orderBy: [{ id: 'asc' }],
       take: limit + 1,
-      select: { id: true, nickname: true },
+      select: {
+        id: true,
+        nickname: true,
+        // 유저의 최근 랭킹 등재 게시글 대표 이미지 1장
+        posts: {
+          where: publicPostWhere(),
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          take: 1,
+          select: {
+            images: {
+              orderBy: IMAGE_ORDER_BY,
+              take: 1,
+              select: { thumbnailUrl: true, processedImageUrl: true },
+            },
+          },
+        },
+      },
     });
 
     const hasMore = users.length > limit;
@@ -116,6 +132,9 @@ export class SearchService {
       users: pageItems.map<UserSearchItem>((u) => ({
         userId: u.id,
         nickname: u.nickname,
+        thumbnailUrl: u.posts[0]?.images.length
+          ? pickPostThumbnail(u.posts[0].images)
+          : null,
       })),
       posts: [],
       nextCursor: hasMore ? (pageItems[pageItems.length - 1]?.id ?? null) : null,
@@ -149,8 +168,12 @@ export class SearchService {
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
-      include: {
-        images: { orderBy: IMAGE_ORDER_BY, take: 1 },
+      select: {
+        id: true,
+        authorId: true,
+        content: true,
+        createdAt: true,
+        images: { orderBy: IMAGE_ORDER_BY, take: 1, select: { thumbnailUrl: true, processedImageUrl: true } },
       },
     });
 
@@ -186,8 +209,12 @@ export class SearchService {
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
-      include: {
-        images: { orderBy: IMAGE_ORDER_BY, take: 1 },
+      select: {
+        id: true,
+        authorId: true,
+        content: true,
+        createdAt: true,
+        images: { orderBy: IMAGE_ORDER_BY, take: 1, select: { thumbnailUrl: true, processedImageUrl: true } },
       },
     });
 
@@ -228,7 +255,23 @@ export class SearchService {
         },
         orderBy: [{ id: 'asc' }],
         take: limit,
-        select: { id: true, nickname: true },
+        select: {
+          id: true,
+          nickname: true,
+          // 유저의 최근 랭킹 등재 게시글 대표 이미지 1장
+          posts: {
+            where: publicPostWhere(),
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            take: 1,
+            select: {
+              images: {
+                orderBy: IMAGE_ORDER_BY,
+                take: 1,
+                select: { thumbnailUrl: true, processedImageUrl: true },
+              },
+            },
+          },
+        },
       }),
 
       // 게시글 검색 (키워드 label OR 본문 포함)
@@ -250,8 +293,12 @@ export class SearchService {
         },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: limit,
-        include: {
-          images: { orderBy: IMAGE_ORDER_BY, take: 1 },
+        select: {
+          id: true,
+          authorId: true,
+          content: true,
+          createdAt: true,
+          images: { orderBy: IMAGE_ORDER_BY, take: 1, select: { thumbnailUrl: true, processedImageUrl: true } },
         },
       }),
     ]);
@@ -261,6 +308,9 @@ export class SearchService {
       users: users.map<UserSearchItem>((u) => ({
         userId: u.id,
         nickname: u.nickname,
+        thumbnailUrl: u.posts[0]?.images.length
+          ? pickPostThumbnail(u.posts[0].images)
+          : null,
       })),
       posts: posts.map((p) => this.mapPostItem(p)),
       nextCursor: null,
@@ -272,20 +322,22 @@ export class SearchService {
 
   /**
    * Prisma Post 결과를 PostSearchItem으로 변환.
-   * author는 익명성 정책에 따라 반환하지 않는다.
+   * 닉네임은 익명성 정책에 따라 반환하지 않으나,
+   * userId는 피드 상세 페이지 이동에 필요하므로 포함한다.
    */
   private mapPostItem(post: {
     id: number;
+    authorId: number;
     content: string;
     createdAt: Date;
     images: Array<{
       thumbnailUrl: string | null;
       processedImageUrl: string | null;
-      originalImageUrl: string;
     }>;
   }): PostSearchItem {
     return {
       postId: post.id,
+      userId: post.authorId,
       thumbnailUrl: post.images.length > 0 ? pickPostThumbnail(post.images) : null,
       content: post.content,
       createdAt: post.createdAt.toISOString(),
