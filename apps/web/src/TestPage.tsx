@@ -687,7 +687,7 @@ function ManualBlurEditor({
   onCancel: () => void;
 }) {
   const [tool, setTool]           = useState<'pencil' | 'eraser'>('pencil');
-  const [brushSize, setBrushSize] = useState(40);
+  const [brushSize, setBrushSize] = useState(56);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [approving, setApproving] = useState(false);
   const [canUndo, setCanUndo]     = useState(false);
@@ -788,7 +788,7 @@ function ManualBlurEditor({
 
     // 블록 크기 = 브러시 반경의 절반 (브러시가 클수록 큰 모자이크 타일)
     // 최소 6px 보장 → 작은 브러시에서도 격자 패턴 유지
-    const BLOCK = Math.max(20, Math.round(cvsR / 2));
+    const BLOCK = Math.max(8, Math.round(cvsR / 2 * 0.4));
 
     // 브러시 원이 덮는 격자 칸 범위
     const bx1 = Math.max(0, Math.floor((cx - cvsR) / BLOCK));
@@ -958,17 +958,33 @@ function ManualBlurEditor({
 
           <div style={{ width: 1, height: 22, background: '#e2e8f0', margin: '0 2px' }} />
 
-          {/* 브러시 크기 */}
+          {/* 브러시 크기 — 원형 아이콘 */}
           <span style={{ fontSize: 11, color: '#718096', fontWeight: 600 }}>크기</span>
-          <input
-            type="range" min={10} max={120} step={2} value={brushSize}
-            onChange={(e) => changeBrush(Number(e.target.value))}
-            style={{ width: 90, accentColor: toolColor, cursor: 'pointer' }}
-          />
-          <span style={{
-            fontSize: 12, fontWeight: 700, color: '#2d3748',
-            minWidth: 28, textAlign: 'center', fontVariantNumeric: 'tabular-nums',
-          }}>{brushSize}</span>
+          {([8, 16, 26] as number[]).map((dotSize, i) => {
+            const brushVal = [24, 56, 100][i];
+            const active = brushSize === brushVal;
+            return (
+              <button
+                key={brushVal}
+                onClick={() => changeBrush(brushVal)}
+                title={['S', 'M', 'L'][i]}
+                style={{
+                  width: 36, height: 32, borderRadius: 6,
+                  border: `2px solid ${active ? toolColor : '#cbd5e0'}`,
+                  background: active ? '#f0ebff' : '#fff',
+                  cursor: 'pointer', transition: 'all 0.12s',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <div style={{
+                  width: dotSize, height: dotSize, borderRadius: '50%',
+                  background: active ? toolColor : '#a0aec0',
+                  transition: 'all 0.12s',
+                }} />
+              </button>
+            );
+          })}
+
 
           <div style={{ width: 1, height: 22, background: '#e2e8f0', margin: '0 2px' }} />
 
