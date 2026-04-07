@@ -166,12 +166,20 @@
   @apply flex items-center justify-between px-[3px];
 }
 
+.sectionHeaderRight {
+  @apply flex items-center gap-2 shrink-0;
+}
+
 .sectionTitle {
   @apply text-[15px] leading-5 font-semibold text-black;
 }
 
 .sectionCount {
   @apply text-[12px] font-medium text-neutral-400;
+}
+
+.moreButton {
+  @apply text-[11px] font-medium text-neutral-400 bg-transparent border-0 p-0 whitespace-nowrap;
 }
 
 .userList {

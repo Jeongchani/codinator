@@ -13,6 +13,7 @@ import { resolveAssetUrl } from "../../lib/api";
 import styles from "./Search.module.css";
 
 type SearchType = "ALL" | "NICKNAME" | "KEYWORD" | "POST";
+type ExpandSectionKey = "users" | "posts" | "keywords";
 
 type RecentSearchItem = {
   query: string;
@@ -45,9 +46,9 @@ type SearchProps = {
 };
 
 const BASE = "/api/v2";
-const HISTORY_KEY = "searchRecentKeywords";
-
-const tok = () => localStorage.getItem("accessToken") ?? "";
+const HISTORY_KEY_PREFIX = "searchRecentKeywords";
+const DEFAULT_VISIBLE_COUNT = 6;
+const LOAD_MORE_STEP = 6;
 
 const TYPE_OPTIONS: { value: SearchType; label: string; shortLabel: string }[] = [
   { value: "ALL", label: "전체 검색", shortLabel: "전체" },
@@ -55,6 +56,16 @@ const TYPE_OPTIONS: { value: SearchType; label: string; shortLabel: string }[] =
   { value: "KEYWORD", label: "키워드", shortLabel: "키워드" },
   { value: "POST", label: "게시글", shortLabel: "게시글" },
 ];
+
+const tok = () => localStorage.getItem("accessToken") ?? "";
+
+function getDefaultVisibleCounts(): Record<ExpandSectionKey, number> {
+  return {
+    users: DEFAULT_VISIBLE_COUNT,
+    posts: DEFAULT_VISIBLE_COUNT,
+    keywords: DEFAULT_VISIBLE_COUNT,
+  };
+}
 
 async function api<T>(method: string, path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -89,6 +100,54 @@ async function api<T>(method: string, path: string): Promise<T> {
   return data as T;
 }
 
+function parseJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const decoded = atob(padded);
+
+    try {
+      const utf8 = decodeURIComponent(
+        decoded
+          .split("")
+          .map((char) => `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`)
+          .join(""),
+      );
+      return JSON.parse(utf8) as Record<string, unknown>;
+    } catch {
+      return JSON.parse(decoded) as Record<string, unknown>;
+    }
+  } catch {
+    return null;
+  }
+}
+
+function getHistoryStorageKey() {
+  const accessToken = tok();
+
+  if (!accessToken) {
+    return `${HISTORY_KEY_PREFIX}:guest`;
+  }
+
+  const payload = parseJwtPayload(accessToken);
+  const candidate =
+    payload?.sub ??
+    payload?.userId ??
+    payload?.id ??
+    payload?.email ??
+    payload?.nickname;
+
+  if (typeof candidate === "string" || typeof candidate === "number") {
+    return `${HISTORY_KEY_PREFIX}:${String(candidate)}`;
+  }
+
+  return `${HISTORY_KEY_PREFIX}:guest`;
+}
+
 function isSearchType(value: unknown): value is SearchType {
   return value === "ALL" || value === "NICKNAME" || value === "KEYWORD" || value === "POST";
 }
@@ -114,9 +173,9 @@ function normalizeHistoryItem(item: unknown): RecentSearchItem | null {
   };
 }
 
-function getStoredRecentSearches(): RecentSearchItem[] {
+function getStoredRecentSearches(storageKey: string): RecentSearchItem[] {
   try {
-    const raw = localStorage.getItem(HISTORY_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return [];
 
     const parsed = JSON.parse(raw);
@@ -130,9 +189,9 @@ function getStoredRecentSearches(): RecentSearchItem[] {
   }
 }
 
-function saveRecentSearches(items: RecentSearchItem[]) {
+function saveRecentSearches(storageKey: string, items: RecentSearchItem[]) {
   try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(items));
+    localStorage.setItem(storageKey, JSON.stringify(items));
   } catch {
     // noop
   }
@@ -161,11 +220,15 @@ function pickString(record: Record<string, unknown>, keys: string[]) {
 function pickNumber(record: Record<string, unknown>, keys: string[]) {
   for (const key of keys) {
     const value = record[key];
-    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+
     if (typeof value === "string" && value.trim() && !Number.isNaN(Number(value))) {
       return Number(value);
     }
   }
+
   return null;
 }
 
@@ -340,10 +403,7 @@ function pickContentText(record: Record<string, unknown>) {
   return "";
 }
 
-function collectCandidateArrays(
-  result: unknown,
-  keys: string[],
-): Record<string, unknown>[] {
+function collectCandidateArrays(result: unknown, keys: string[]): Record<string, unknown>[] {
   if (Array.isArray(result)) {
     return toRecordArray(result);
   }
@@ -365,7 +425,7 @@ function collectCandidateArrays(
 function normalizeUsers(result: unknown): SearchUserItem[] {
   const items = collectCandidateArrays(result, ["users", "nicknames", "nicknameResults"]);
 
-  return items
+  const mapped = items
     .map((record): SearchUserItem | null => {
       const userId =
         pickNumber(record, ["userId", "id"]) ??
@@ -390,6 +450,8 @@ function normalizeUsers(result: unknown): SearchUserItem[] {
       };
     })
     .filter((item): item is SearchUserItem => item !== null);
+
+  return Array.from(new Map(mapped.map((item) => [item.userId, item])).values());
 }
 
 function normalizeKeywordPosts(result: unknown): SearchKeywordPostItem[] {
@@ -401,7 +463,7 @@ function normalizeKeywordPosts(result: unknown): SearchKeywordPostItem[] {
     "items",
   ]);
 
-  return items
+  const mapped = items
     .map((record): SearchKeywordPostItem | null => {
       const postId =
         pickNumber(record, ["postId", "id"]) ??
@@ -425,17 +487,14 @@ function normalizeKeywordPosts(result: unknown): SearchKeywordPostItem[] {
       };
     })
     .filter((item): item is SearchKeywordPostItem => item !== null);
+
+  return Array.from(new Map(mapped.map((item) => [item.postId, item])).values());
 }
 
 function normalizePosts(result: unknown): SearchPostItem[] {
-  const items = collectCandidateArrays(result, [
-    "posts",
-    "postResults",
-    "contents",
-    "items",
-  ]);
+  const items = collectCandidateArrays(result, ["posts", "postResults", "contents", "items"]);
 
-  return items
+  const mapped = items
     .map((record): SearchPostItem | null => {
       const postId =
         pickNumber(record, ["postId", "id"]) ??
@@ -459,26 +518,42 @@ function normalizePosts(result: unknown): SearchPostItem[] {
       };
     })
     .filter((item): item is SearchPostItem => item !== null);
+
+  return Array.from(new Map(mapped.map((item) => [item.postId, item])).values());
 }
 
 function getTypeLabel(type: SearchType) {
   return TYPE_OPTIONS.find((option) => option.value === type)?.shortLabel ?? "전체";
 }
 
-export default function Search({
-  initialRecentSearches,
-}: SearchProps) {
+function buildSearchPath(finalQuery: string, type: SearchType) {
+  return `/search?q=${encodeURIComponent(finalQuery)}&type=${type}`;
+}
+
+function makeFallbackKeywordText(query: string) {
+  const trimmed = query.trim();
+  if (!trimmed) return "";
+  return trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
+}
+
+export default function Search({ initialRecentSearches }: SearchProps) {
   const navigate = useNavigate();
+
+  const historyStorageKey = getHistoryStorageKey();
+
+  const initialRecentSearchItems = useMemo(
+    () =>
+      (initialRecentSearches ?? [])
+        .map((item) => normalizeHistoryItem(item))
+        .filter((item): item is RecentSearchItem => item !== null),
+    [initialRecentSearches],
+  );
 
   const [query, setQuery] = useState("");
   const [searchType, setSearchType] = useState<SearchType>("ALL");
   const [recentSearches, setRecentSearches] = useState<RecentSearchItem[]>(() => {
-    const stored = getStoredRecentSearches();
-
-    if (stored.length > 0) {
-      return stored;
-    }
-
+    const stored = getStoredRecentSearches(getHistoryStorageKey());
+    if (stored.length > 0) return stored;
     return (initialRecentSearches ?? [])
       .map((item) => normalizeHistoryItem(item))
       .filter((item): item is RecentSearchItem => item !== null);
@@ -488,8 +563,12 @@ export default function Search({
   const [searched, setSearched] = useState(false);
   const [searchResult, setSearchResult] = useState<unknown>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [visibleCounts, setVisibleCounts] = useState<Record<ExpandSectionKey, number>>(
+    getDefaultVisibleCounts(),
+  );
 
   const filterRef = useRef<HTMLDivElement>(null);
+
   const trimmedQuery = useMemo(() => query.trim(), [query]);
   const loweredQuery = useMemo(() => trimmedQuery.toLowerCase(), [trimmedQuery]);
 
@@ -504,9 +583,7 @@ export default function Search({
     if (rawKeywordResults.length > 0) return rawKeywordResults;
 
     if (searchType === "KEYWORD" && rawPostResults.length > 0 && trimmedQuery) {
-      const fallbackTag = trimmedQuery.startsWith("#")
-        ? trimmedQuery
-        : `#${trimmedQuery}`;
+      const fallbackTag = makeFallbackKeywordText(trimmedQuery);
 
       return rawPostResults.map((item) => ({
         postId: item.postId,
@@ -521,6 +598,7 @@ export default function Search({
 
   const userResults = useMemo(() => {
     if (!loweredQuery) return rawUserResults;
+
     return rawUserResults.filter((item) =>
       item.nickname.toLowerCase().includes(loweredQuery),
     );
@@ -529,26 +607,72 @@ export default function Search({
   const keywordResults = useMemo(() => {
     if (!loweredQuery) return displayKeywordResults;
 
-    return displayKeywordResults.filter((item) =>
-      item.keywordsText.toLowerCase().includes(loweredQuery.replace(/^#/, "")) ||
-      item.keywordsText.toLowerCase().includes(loweredQuery),
-    );
+    const normalizedLoweredQuery = loweredQuery.replace(/^#/, "");
+
+    return displayKeywordResults.filter((item) => {
+      const normalizedKeywords = item.keywordsText.toLowerCase();
+      return (
+        normalizedKeywords.includes(loweredQuery) ||
+        normalizedKeywords.includes(normalizedLoweredQuery)
+      );
+    });
   }, [displayKeywordResults, loweredQuery]);
 
   const postResults = useMemo(() => {
     if (!loweredQuery) return rawPostResults;
+
     return rawPostResults.filter((item) =>
       item.content.toLowerCase().includes(loweredQuery),
     );
   }, [rawPostResults, loweredQuery]);
 
   const shouldShowRecent = !searched && trimmedQuery.length === 0 && recentSearches.length > 0;
+
+  const shouldShowUserSection =
+    (searchType === "ALL" || searchType === "NICKNAME") && userResults.length > 0;
+  const shouldShowPostSection =
+    (searchType === "ALL" || searchType === "POST") && postResults.length > 0;
+  const shouldShowKeywordSection =
+    (searchType === "ALL" || searchType === "KEYWORD") && keywordResults.length > 0;
+
   const hasVisualResults =
-    userResults.length > 0 || keywordResults.length > 0 || postResults.length > 0;
+    shouldShowUserSection || shouldShowPostSection || shouldShowKeywordSection;
+
+  const visibleUserResults = useMemo(
+    () => userResults.slice(0, visibleCounts.users),
+    [userResults, visibleCounts.users],
+  );
+  const visiblePostResults = useMemo(
+    () => postResults.slice(0, visibleCounts.posts),
+    [postResults, visibleCounts.posts],
+  );
+  const visibleKeywordResults = useMemo(
+    () => keywordResults.slice(0, visibleCounts.keywords),
+    [keywordResults, visibleCounts.keywords],
+  );
+
+  const canLoadMoreUsers = userResults.length > visibleCounts.users;
+  const canLoadMorePosts = postResults.length > visibleCounts.posts;
+  const canLoadMoreKeywords = keywordResults.length > visibleCounts.keywords;
 
   useEffect(() => {
-    saveRecentSearches(recentSearches);
-  }, [recentSearches]);
+    const stored = getStoredRecentSearches(historyStorageKey);
+
+    if (stored.length > 0) {
+      setRecentSearches(stored);
+      return;
+    }
+
+    setRecentSearches(initialRecentSearchItems);
+  }, [historyStorageKey, initialRecentSearchItems]);
+
+  useEffect(() => {
+    saveRecentSearches(historyStorageKey, recentSearches);
+  }, [historyStorageKey, recentSearches]);
+
+  useEffect(() => {
+    setVisibleCounts(getDefaultVisibleCounts());
+  }, [searchResult, searchType]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -584,6 +708,13 @@ export default function Search({
     );
   };
 
+  const increaseVisibleCount = (section: ExpandSectionKey) => {
+    setVisibleCounts((prev) => ({
+      ...prev,
+      [section]: prev[section] + LOAD_MORE_STEP,
+    }));
+  };
+
   const executeSearch = async (
     targetQuery?: string,
     targetType?: SearchType,
@@ -603,12 +734,39 @@ export default function Search({
     setIsLoading(true);
     setErrorMessage("");
     setSearched(true);
+    setVisibleCounts(getDefaultVisibleCounts());
 
     try {
-      const data = await api<unknown>(
-        "GET",
-        `/search?q=${encodeURIComponent(finalQuery)}&type=${requestType}`,
-      );
+      let data: unknown;
+
+      if (requestType === "ALL") {
+        const [nicknameData, postData, keywordData] = await Promise.all([
+          api<unknown>("GET", buildSearchPath(finalQuery, "NICKNAME")),
+          api<unknown>("GET", buildSearchPath(finalQuery, "POST")),
+          api<unknown>("GET", buildSearchPath(finalQuery, "KEYWORD")),
+        ]);
+
+        const normalizedKeywordPosts = normalizeKeywordPosts(keywordData);
+        const fallbackKeywordText = makeFallbackKeywordText(finalQuery);
+
+        const fallbackKeywordPosts =
+          normalizedKeywordPosts.length > 0
+            ? normalizedKeywordPosts
+            : normalizePosts(keywordData).map((item) => ({
+                postId: item.postId,
+                imageUrl: item.imageUrl,
+                userId: item.userId,
+                keywordsText: fallbackKeywordText,
+              }));
+
+        data = {
+          users: normalizeUsers(nicknameData),
+          posts: normalizePosts(postData),
+          keywordPosts: fallbackKeywordPosts,
+        };
+      } else {
+        data = await api<unknown>("GET", buildSearchPath(finalQuery, requestType));
+      }
 
       setSearchResult(data);
       pushRecentSearch(finalQuery, requestType, isAi);
@@ -644,6 +802,7 @@ export default function Search({
     setErrorMessage("");
     setSearchResult(null);
     setSearched(false);
+    setVisibleCounts(getDefaultVisibleCounts());
   };
 
   const handleRemoveRecent = (target: RecentSearchItem) => {
@@ -838,15 +997,28 @@ export default function Search({
 
           {!isLoading && searched && !errorMessage && hasVisualResults && (
             <div className={styles.resultWrap}>
-              {userResults.length > 0 && (
+              {shouldShowUserSection && (
                 <section className={styles.sectionBlock}>
                   <div className={styles.sectionHeader}>
                     <h3 className={styles.sectionTitle}>닉네임 검색 결과</h3>
-                    <span className={styles.sectionCount}>{userResults.length}</span>
+
+                    <div className={styles.sectionHeaderRight}>
+                      <span className={styles.sectionCount}>{userResults.length}</span>
+
+                      {canLoadMoreUsers && (
+                        <button
+                          type="button"
+                          className={styles.moreButton}
+                          onClick={() => increaseVisibleCount("users")}
+                        >
+                          더보기
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className={styles.userList}>
-                    {userResults.map((user) => (
+                    {visibleUserResults.map((user) => (
                       <button
                         key={user.userId}
                         type="button"
@@ -875,44 +1047,28 @@ export default function Search({
                 </section>
               )}
 
-              {keywordResults.length > 0 && (
-                <section className={styles.sectionBlock}>
-                  <div className={styles.sectionHeader}>
-                    <h3 className={styles.sectionTitle}>키워드 검색 결과</h3>
-                    <span className={styles.sectionCount}>{keywordResults.length}</span>
-                  </div>
-
-                  <div className={styles.feedGrid}>
-                    {keywordResults.map((item) => (
-                      <button
-                        key={`keyword-${item.postId}`}
-                        type="button"
-                        className={styles.feedCard}
-                        onClick={() => openFeedDetail(item.postId, item.userId)}
-                      >
-                        <div className={styles.feedThumbWrap}>
-                          <img
-                            src={item.imageUrl}
-                            alt={item.keywordsText}
-                            className={styles.feedThumb}
-                          />
-                        </div>
-                        <span className={styles.feedMetaText}>{item.keywordsText}</span>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {searchType !== "KEYWORD" && postResults.length > 0 && (
+              {shouldShowPostSection && (
                 <section className={styles.sectionBlock}>
                   <div className={styles.sectionHeader}>
                     <h3 className={styles.sectionTitle}>게시글 검색 결과</h3>
-                    <span className={styles.sectionCount}>{postResults.length}</span>
+
+                    <div className={styles.sectionHeaderRight}>
+                      <span className={styles.sectionCount}>{postResults.length}</span>
+
+                      {canLoadMorePosts && (
+                        <button
+                          type="button"
+                          className={styles.moreButton}
+                          onClick={() => increaseVisibleCount("posts")}
+                        >
+                          더보기
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className={styles.feedGrid}>
-                    {postResults.map((item) => (
+                    {visiblePostResults.map((item) => (
                       <button
                         key={`post-${item.postId}`}
                         type="button"
@@ -927,6 +1083,48 @@ export default function Search({
                           />
                         </div>
                         <span className={styles.feedMetaText}>{item.content}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {shouldShowKeywordSection && (
+                <section className={styles.sectionBlock}>
+                  <div className={styles.sectionHeader}>
+                    <h3 className={styles.sectionTitle}>키워드 검색 결과</h3>
+
+                    <div className={styles.sectionHeaderRight}>
+                      <span className={styles.sectionCount}>{keywordResults.length}</span>
+
+                      {canLoadMoreKeywords && (
+                        <button
+                          type="button"
+                          className={styles.moreButton}
+                          onClick={() => increaseVisibleCount("keywords")}
+                        >
+                          더보기
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.feedGrid}>
+                    {visibleKeywordResults.map((item) => (
+                      <button
+                        key={`keyword-${item.postId}`}
+                        type="button"
+                        className={styles.feedCard}
+                        onClick={() => openFeedDetail(item.postId, item.userId)}
+                      >
+                        <div className={styles.feedThumbWrap}>
+                          <img
+                            src={item.imageUrl}
+                            alt={item.keywordsText}
+                            className={styles.feedThumb}
+                          />
+                        </div>
+                        <span className={styles.feedMetaText}>{item.keywordsText}</span>
                       </button>
                     ))}
                   </div>
