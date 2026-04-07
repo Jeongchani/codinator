@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bookmark, Search, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Bookmark, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import styles from "./RankingZone.module.css";
 import {
@@ -384,11 +384,6 @@ export default function RankingZone() {
       <Header />
 
       <div className={styles.contentArea}>
-        <div className={styles.searchBox}>
-          <Search size={18} strokeWidth={2} className={styles.searchIcon} />
-          <span className={styles.searchText}>검색하기</span>
-        </div>
-
         {loading ? (
           <div className={styles.messageBox}>데이터 불러오는 중...</div>
         ) : error ? (

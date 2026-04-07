@@ -17,6 +17,7 @@ import AppLayout from "./AppLayout";
 import TestPage from "./TestPage";
 import Bookmark from "./pages/bookmark/Bookmark";
 import MyPage from "./pages/auth/MyPage";
+import Search from "./pages/search/Search";
 import RankingFocus from "./pages/ranking/RankingFocus";
 
 function AppRoutes() {
@@ -35,8 +36,6 @@ function AppRoutes() {
       <Route path="/myFeedEdit" element={<MyFeedEdit />} />
       <Route path="/user/:userId/feed/:postId" element={<UserFeedDetail />} />
       <Route path="/myPage" element={<MyPage />} />
-      <Route path="/rnkingFocus" element={<RankingFocus />} />
-      
       
       <Route path="/test" element={<TestPage />} />
 
@@ -46,6 +45,7 @@ function AppRoutes() {
         <Route path="/myFeeds" element={<MyFeeds />} />
         <Route path="/myFeedDetail/:postId" element={<MyFeedDetail />} />
         <Route path="/bookmark" element={<Bookmark />} />
+        <Route path="/search" element={<Search />} />
 
 
       </Route>
