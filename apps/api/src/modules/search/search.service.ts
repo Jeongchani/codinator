@@ -105,7 +105,23 @@ export class SearchService {
       },
       orderBy: [{ id: 'asc' }],
       take: limit + 1,
-      select: { id: true, nickname: true },
+      select: {
+        id: true,
+        nickname: true,
+        // 유저의 최근 랭킹 등재 게시글 대표 이미지 1장
+        posts: {
+          where: publicPostWhere(),
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          take: 1,
+          select: {
+            images: {
+              orderBy: IMAGE_ORDER_BY,
+              take: 1,
+              select: { thumbnailUrl: true, processedImageUrl: true },
+            },
+          },
+        },
+      },
     });
 
     const hasMore = users.length > limit;
@@ -116,6 +132,9 @@ export class SearchService {
       users: pageItems.map<UserSearchItem>((u) => ({
         userId: u.id,
         nickname: u.nickname,
+        thumbnailUrl: u.posts[0]?.images.length
+          ? pickPostThumbnail(u.posts[0].images)
+          : null,
       })),
       posts: [],
       nextCursor: hasMore ? (pageItems[pageItems.length - 1]?.id ?? null) : null,
@@ -228,7 +247,23 @@ export class SearchService {
         },
         orderBy: [{ id: 'asc' }],
         take: limit,
-        select: { id: true, nickname: true },
+        select: {
+          id: true,
+          nickname: true,
+          // 유저의 최근 랭킹 등재 게시글 대표 이미지 1장
+          posts: {
+            where: publicPostWhere(),
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            take: 1,
+            select: {
+              images: {
+                orderBy: IMAGE_ORDER_BY,
+                take: 1,
+                select: { thumbnailUrl: true, processedImageUrl: true },
+              },
+            },
+          },
+        },
       }),
 
       // 게시글 검색 (키워드 label OR 본문 포함)
@@ -261,6 +296,9 @@ export class SearchService {
       users: users.map<UserSearchItem>((u) => ({
         userId: u.id,
         nickname: u.nickname,
+        thumbnailUrl: u.posts[0]?.images.length
+          ? pickPostThumbnail(u.posts[0].images)
+          : null,
       })),
       posts: posts.map((p) => this.mapPostItem(p)),
       nextCursor: null,
@@ -281,7 +319,6 @@ export class SearchService {
     images: Array<{
       thumbnailUrl: string | null;
       processedImageUrl: string | null;
-      originalImageUrl: string;
     }>;
   }): PostSearchItem {
     return {
