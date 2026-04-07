@@ -1,142 +1,400 @@
 .container {
-  @apply w-[375px] h-[812px] relative bg-white overflow-hidden mx-auto shadow-2xl;
+  @apply w-[375px] h-[812px] mx-auto relative overflow-hidden bg-black;
 }
 
 .loading {
-  @apply w-[375px] h-[812px] bg-white flex items-center justify-center mx-auto text-neutral-400;
+  @apply w-[375px] h-[812px] mx-auto flex items-center justify-center bg-white text-[14px] text-neutral-500;
 }
 
 .imageSection {
-  @apply w-full h-full absolute left-0 top-0 overflow-hidden bg-neutral-400;
+  @apply absolute inset-0;
 }
 
 .mainImage {
-  @apply w-full h-full bg-cover bg-center;
+  @apply absolute inset-0;
 }
 
 .topGradient {
-  @apply w-full h-24 absolute top-0 left-0 bg-gradient-to-b from-black/70 to-transparent z-10;
+  @apply absolute left-0 top-0 w-full h-36;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0) 100%);
 }
 
 .bottomGradient {
-  @apply w-full h-40 absolute bottom-0 left-0 bg-gradient-to-t from-black/70 to-transparent z-10;
+  @apply absolute left-0 bottom-0 w-full h-52;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.2) 100%);
 }
 
 .headerTitle {
-  @apply absolute left-[16px] top-[69px] text-white text-2xl font-bold z-10;
+  @apply absolute left-4 text-white text-[20px] font-semibold leading-7;
+  top: 66px;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
 }
 
 .closeBtn {
-  @apply absolute right-4 top-[68px] z-10 cursor-pointer active:scale-90 transition-transform;
-  background: none;
-  border: none;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  @apply absolute right-4 flex items-center justify-center rounded-[10px] border-0 p-0 text-white;
+  top: 63px;
+  width: 28px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.45);
 }
 
-.hiddenPeekButton {
-  @apply absolute left-1/2 bottom-4 z-30 -translate-x-1/2 w-[96px] h-[28px] flex items-center justify-center active:scale-95 transition-transform;
-  background: transparent;
-  border: none;
-  padding: 0;
+.floatingArea {
+  @apply absolute left-0 right-0 px-5;
+  bottom: 44px;
 }
 
-.hiddenPeekBar {
-  @apply w-[40px] h-[4px] bg-neutral-300 rounded-full;
+.detailButton {
+  @apply h-[30px] rounded-[999px] border-0 flex items-center justify-between text-white px-4 mb-4;
+  width: 118px;
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+  transition:
+    background 0.16s ease,
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.16s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.detailButton:hover {
+  background: rgba(0, 0, 0, 0.58);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.22);
+}
+
+.detailButton:active {
+  background: rgba(0, 0, 0, 0.68);
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+}
+
+.detailButtonText {
+  @apply text-[12px] font-semibold leading-4;
+}
+
+.detailButtonUpIcon {
+  @apply shrink-0 text-white;
+}
+
+.progressTrack {
+  @apply relative w-full h-5 rounded-[10px] overflow-hidden;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.likeFill {
+  @apply absolute left-0 top-0 h-full rounded-l-[10px];
+  background: linear-gradient(90deg, rgba(244, 125, 114, 0.7) 0%, #f47d72 100%);
+}
+
+.dislikeFill {
+  @apply absolute right-0 top-0 h-full rounded-r-[10px];
+  background: linear-gradient(270deg, rgba(140, 149, 181, 0.7) 0%, #8c95b5 100%);
+}
+
+.leftPercent {
+  @apply absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-white text-[10px] leading-3 font-medium;
+}
+
+.rightPercent {
+  @apply absolute right-3 top-1/2 -translate-y-1/2 flex items-center text-white text-[10px] leading-3 font-medium;
+  flex-direction: row-reverse;
+  gap: 4px;
 }
 
 .bottomSheet {
-  @apply absolute left-0 w-full bg-white rounded-t-[32px] shadow-[0px_-8px_20px_rgba(0,0,0,0.2)] z-20;
+  @apply absolute left-0 w-full overflow-hidden rounded-t-[28px];
   top: 0;
-  height: 812px;
+  height: 760px;
+  background: #ffffff;
+  box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.14);
 }
 
 .handlerArea {
-  @apply w-full flex justify-center py-4;
+  @apply w-full flex justify-center items-center cursor-pointer;
+  height: 34px;
 }
 
 .handlerBar {
-  @apply w-[40px] h-[4px] bg-neutral-300 rounded-full;
+  @apply w-12 h-[5px] rounded-full;
+  background: rgba(0, 0, 0, 0.22);
 }
 
 .sheetContent {
-  @apply px-5 h-full pb-20;
+  @apply h-[726px] px-4 pb-8;
 }
 
 .scroll {
   @apply overflow-y-auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-.noScroll {
-  @apply overflow-hidden;
+.scroll::-webkit-scrollbar {
+  display: none;
 }
 
-.titleRow {
-  @apply flex justify-between items-start gap-3 mt-2;
+.sheetHeader {
+  @apply flex items-start justify-between gap-3 mb-4;
 }
 
-.title {
-  @apply text-xl font-bold text-neutral-900 leading-8 flex-1 min-w-0;
+.sheetHeaderCopy {
+  @apply flex-1 min-w-0;
 }
 
-.authorRow {
-  @apply mt-2 w-full flex items-center justify-between gap-3;
+.authorName {
+  @apply text-[24px] leading-7 font-bold text-neutral-900 mb-3;
 }
 
-.author {
-  @apply text-stone-500 text-sm m-0 flex-1 min-w-0 truncate;
+.contentText {
+  @apply text-[14px] leading-[20px] text-neutral-700 whitespace-pre-line;
 }
 
-.feedMoveBtn {
-  @apply h-[30px] px-3 rounded-full bg-neutral-800 text-white text-[11px] font-bold shadow-md active:scale-95 transition-transform flex items-center gap-1 whitespace-nowrap shrink-0;
-  border: none;
+.sheetActions {
+  @apply flex items-center gap-2 shrink-0;
 }
 
-.feedMoveIcon {
-  @apply text-[13px] font-bold leading-none;
+.miniActionButton {
+  @apply w-[25px] h-[25px] rounded-[8px] border-0 p-0 flex items-center justify-center text-neutral-700;
+  background: #d9d9d9;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
-.actionGroup {
-  @apply flex items-center gap-3 shrink-0;
+.reportActionButton {
+  color: #ff4d4f;
+  background: rgba(255, 77, 79, 0.1);
+  box-shadow:
+    0 0 0 1px rgba(255, 77, 79, 0.18),
+    0 0 8px rgba(255, 77, 79, 0.38),
+    0 0 18px rgba(255, 77, 79, 0.22);
+  animation: reportPulse 1.4s ease-in-out infinite;
 }
 
-.bookmarkBtn {
-  @apply shrink-0 flex items-center justify-center
-    w-7 h-7 rounded-full bg-black/45 border border-white/15
-    active:scale-95 transition-transform;
-}
-
-.bookmarkDefault {
-  @apply text-white;
+@keyframes reportPulse {
+  0% {
+    box-shadow:
+      0 0 0 1px rgba(255, 77, 79, 0.16),
+      0 0 6px rgba(255, 77, 79, 0.28),
+      0 0 12px rgba(255, 77, 79, 0.18);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(255, 77, 79, 0.24),
+      0 0 12px rgba(255, 77, 79, 0.48),
+      0 0 24px rgba(255, 77, 79, 0.28);
+  }
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(255, 77, 79, 0.16),
+      0 0 6px rgba(255, 77, 79, 0.28),
+      0 0 12px rgba(255, 77, 79, 0.18);
+  }
 }
 
 .bookmarkFilled {
-  @apply text-white;
+  @apply text-neutral-700;
 }
 
-.likeBadge {
-  @apply bg-black px-4 py-2 rounded-full flex items-center justify-center;
+.bookmarkDefault {
+  @apply text-neutral-700;
 }
 
-.likeCount {
-  @apply text-white text-xs font-bold;
+.keywordChipRow {
+  @apply flex flex-wrap gap-2 mb-4;
 }
 
-.divider {
-  @apply w-full h-[1px] bg-neutral-200 my-6;
+.keywordChip {
+  @apply px-3 h-7 rounded-[999px] text-[11px] leading-[27px] font-medium text-neutral-700;
+  background: #dedede;
 }
 
-.subTitle {
-  @apply text-base font-bold text-neutral-900 mb-4;
+.sectionDivider {
+  @apply w-full h-px mb-5;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.feedbackHeader {
+  @apply flex items-center justify-between mb-3;
+}
+
+.feedbackTitle {
+  @apply text-[18px] leading-[22px] font-bold text-neutral-900;
+}
+
+.feedbackWriteButton {
+  @apply h-8 px-3 rounded-[10px] border-0 text-[12px] font-semibold text-white bg-black;
+}
+
+.feedbackPanel {
+  @apply rounded-[16px] p-3 mb-5;
+  background: #efefef;
+}
+
+.voteCountRow {
+  @apply flex items-center gap-2 mb-4;
+}
+
+.voteCountBadge {
+  @apply h-8 px-3 rounded-[999px] flex items-center gap-1 text-[12px] font-semibold bg-white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.voteCountBadgeLike {
+  color: #ef7f72;
+}
+
+.voteCountBadgeDislike {
+  color: #7e89b7;
+}
+
+.donutWrap {
+  @apply flex justify-center mb-6;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.donutChart {
+  @apply relative rounded-full;
+  width: 138px;
+  height: 138px;
+  box-shadow:
+    inset 0 3px 10px rgba(0, 0, 0, 0.08),
+    0 3px 8px rgba(0, 0, 0, 0.08);
+}
+
+.donutHole {
+  @apply absolute left-1/2 top-1/2 rounded-full;
+  width: 38px;
+  height: 38px;
+  background: #e7e7e7;
+  transform: translate(-50%, -50%);
+  box-shadow:
+    inset 0 2px 6px rgba(255, 255, 255, 0.7),
+    0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.donutLabelLeft {
+  @apply absolute text-[16px] font-bold;
+  color: #ef7f72;
+  left: -6px;
+  top: 50%;
+  transform: translate(-100%, -50%);
+}
+
+.donutLabelRight {
+  @apply absolute text-[16px] font-bold;
+  color: #7e89b7;
+  right: -6px;
+  top: 50%;
+  transform: translate(100%, -50%);
+}
+
+.feedbackColumns {
+  @apply grid grid-cols-2 gap-4;
+  align-items: start;
+}
+
+.feedbackColumn {
+  @apply flex flex-col;
+}
+
+.feedbackHero {
+  @apply px-3 rounded-t-[4px] flex items-start justify-between;
+  min-height: 96px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
+}
+
+.feedbackHeroLike {
+  background: linear-gradient(
+    90deg,
+    rgba(244, 125, 114, 0.35) 0%,
+    rgba(244, 125, 114, 0.94) 20%,
+    rgba(244, 125, 114, 0.86) 100%
+  );
+  border-left: 3px solid #ef6f63;
+}
+
+.feedbackHeroDislike {
+  background: linear-gradient(
+    90deg,
+    rgba(140, 149, 181, 0.35) 0%,
+    rgba(140, 149, 181, 0.94) 20%,
+    rgba(140, 149, 181, 0.86) 100%
+  );
+  border-left: 3px solid #6f7fb6;
+}
+
+.feedbackHeroCopy {
+  @apply pt-3;
+}
+
+.feedbackHeroTitle {
+  @apply text-[12px] leading-4 font-semibold text-white whitespace-pre-line mb-2;
+}
+
+.feedbackHeroLabel {
+  @apply text-[11px] leading-4 text-white/95;
+  max-width: 74px;
+  word-break: keep-all;
+}
+
+.feedbackHeroPercent {
+  @apply text-[24px] leading-none font-bold text-white;
+  padding-top: 12px;
+}
+
+.feedbackRail {
+  @apply flex flex-col gap-0;
+  padding-bottom: 2px;
+}
+
+.feedbackRailLike {
+  border-left: 3px solid #ef6f63;
+}
+
+.feedbackRailDislike {
+  border-left: 3px solid #6f7fb6;
+}
+
+.feedbackStep {
+  @apply px-3 flex items-center justify-between;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14);
+}
+
+.feedbackStepLike {
+  background: linear-gradient(
+    90deg,
+    rgba(244, 125, 114, 0.22) 0%,
+    rgba(244, 125, 114, 0.88) 20%,
+    rgba(244, 125, 114, 0.76) 100%
+  );
+}
+
+.feedbackStepDislike {
+  background: linear-gradient(
+    90deg,
+    rgba(140, 149, 181, 0.22) 0%,
+    rgba(140, 149, 181, 0.9) 20%,
+    rgba(140, 149, 181, 0.78) 100%
+  );
+}
+
+.feedbackStepLabel {
+  @apply text-[11px] leading-4 font-medium text-white;
+  max-width: 70px;
+  word-break: keep-all;
+}
+
+.feedbackStepPercent {
+  @apply text-[16px] leading-none font-bold text-white shrink-0;
+}
+
+.outfitTitle {
+  @apply text-[18px] leading-[22px] font-bold text-neutral-900 mb-3;
 }
 
 .itemScroll {
-  @apply flex gap-4 overflow-x-auto pb-4 flex-nowrap;
+  @apply flex gap-3 overflow-x-auto;
   -ms-overflow-style: none;
   scrollbar-width: none;
-  touch-action: pan-x;
 }
 
 .itemScroll::-webkit-scrollbar {
@@ -144,17 +402,23 @@
 }
 
 .outfitCard {
-  @apply flex-shrink-0 w-[144px] bg-white rounded-xl shadow-sm border p-2;
+  @apply w-[228px] shrink-0 rounded-[16px] bg-white p-4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.itemImg {
-  @apply w-full h-[100px] bg-neutral-100 rounded-lg mb-2;
+.outfitFieldRow {
+  @apply h-[42px] rounded-[12px] px-4 flex items-center mb-3;
+  border: 2px solid #d5d5d5;
 }
 
-.brandName {
-  @apply text-xs font-bold text-neutral-900;
+.outfitFieldRow:last-child {
+  @apply mb-0;
 }
 
-.itemName {
-  @apply text-[10px] text-neutral-500;
+.outfitFieldValue {
+  @apply text-[14px] leading-5 font-medium text-neutral-500;
+}
+
+.emptyText {
+  @apply text-[13px] text-neutral-500;
 }

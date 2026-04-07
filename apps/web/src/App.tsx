@@ -2,7 +2,6 @@ import { BrowserRouter, Route, Routes, useNavigate } from "react-router-dom";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
 import Upload from "./pages/post/Upload";
-import RankingDetail from "./pages/ranking/RankingDetail";
 import RankingZone from "./pages/ranking/RankingZone";
 import Splash from "./pages/splash/Splash";
 import UserFeedDetail from "./pages/feeds/UserFeedDetail";
@@ -18,7 +17,7 @@ import TestPage from "./TestPage";
 import Bookmark from "./pages/bookmark/Bookmark";
 import MyPage from "./pages/auth/MyPage";
 import Search from "./pages/search/Search";
-import RankingFocus from "./pages/ranking/RankingFocus";
+import RankingDetail from "./pages/ranking/RankingDetail";
 
 function AppRoutes() {
   const navigate = useNavigate();
