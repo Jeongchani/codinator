@@ -77,7 +77,10 @@ const normalizeFeedbackItems = (
       };
     })
     .filter((item) => item.label)
-    .sort((a, b) => b.percent - a.percent)
+    .sort((a, b) => {
+      if (b.percent !== a.percent) return b.percent - a.percent;
+      return b.count - a.count;
+    })
     .slice(0, 5);
 };
 
@@ -134,6 +137,7 @@ const extractKeywordLabels = (
           toText(row.name) ||
           toText(row.keyword) ||
           toText(row.keywordLabel);
+
         if (label) labels.push(label);
       }
     });
@@ -324,7 +328,7 @@ const RankingDetail: React.FC = () => {
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
   const [sheetPosition, setSheetPosition] = useState<SheetPosition>("hidden");
 
-  const EXPANDED_Y = 88;
+  const EXPANDED_Y = 0;
   const COLLAPSED_Y = 360;
   const HIDDEN_Y = 860;
 
@@ -433,6 +437,21 @@ const RankingDetail: React.FC = () => {
       ),
     [postData, likePercent, dislikePercent, likeCount, dislikeCount]
   );
+
+  const hasLikeFeedback = useMemo(
+    () => feedbackBreakdown.like.some((item) => item.percent > 0 || item.count > 0),
+    [feedbackBreakdown.like]
+  );
+
+  const hasDislikeFeedback = useMemo(
+    () =>
+      feedbackBreakdown.dislike.some(
+        (item) => item.percent > 0 || item.count > 0
+      ),
+    [feedbackBreakdown.dislike]
+  );
+
+  const hasAnyFeedbackGraph = hasLikeFeedback || hasDislikeFeedback;
 
   const snapTo = (position: SheetPosition) => {
     setSheetPosition(position);
@@ -645,7 +664,7 @@ const RankingDetail: React.FC = () => {
             <div className={styles.sheetActions}>
               <button
                 type="button"
-                className={styles.miniActionButton}
+                className={`${styles.miniActionButton} ${styles.bookmarkActionButton}`}
                 onClick={handleToggleBookmark}
                 aria-label={isBookmarked ? "북마크 해제" : "북마크 추가"}
                 disabled={bookmarkLoading}
@@ -684,9 +703,6 @@ const RankingDetail: React.FC = () => {
 
           <div className={styles.feedbackHeader}>
             <h3 className={styles.feedbackTitle}>피드백</h3>
-            <button type="button" className={styles.feedbackWriteButton}>
-              피드백 작성
-            </button>
           </div>
 
           <div className={styles.feedbackPanel}>
@@ -711,6 +727,7 @@ const RankingDetail: React.FC = () => {
                 className={styles.donutChart}
                 style={{ background: donutBackground }}
               >
+                <div className={styles.donutGloss} />
                 <div className={styles.donutHole} />
 
                 {!isAllDislike && (
@@ -723,19 +740,31 @@ const RankingDetail: React.FC = () => {
               </div>
             </div>
 
-            <div className={styles.feedbackColumns}>
-              <FeedbackColumn
-                title="제일 많이 받은 긍정 피드백"
-                side="LIKE"
-                items={feedbackBreakdown.like}
-              />
+            {hasAnyFeedbackGraph && (
+              <div
+                className={`${styles.feedbackColumns} ${
+                  !hasLikeFeedback || !hasDislikeFeedback
+                    ? styles.feedbackColumnsSingle
+                    : ""
+                }`}
+              >
+                {hasLikeFeedback && (
+                  <FeedbackColumn
+                    title="제일 많이 받은 긍정 피드백"
+                    side="LIKE"
+                    items={feedbackBreakdown.like}
+                  />
+                )}
 
-              <FeedbackColumn
-                title="제일 많이 받은 부정 피드백"
-                side="DISLIKE"
-                items={feedbackBreakdown.dislike}
-              />
-            </div>
+                {hasDislikeFeedback && (
+                  <FeedbackColumn
+                    title="제일 많이 받은 부정 피드백"
+                    side="DISLIKE"
+                    items={feedbackBreakdown.dislike}
+                  />
+                )}
+              </div>
+            )}
           </div>
 
           <h3 className={styles.outfitTitle}>착용 아이템</h3>
@@ -749,6 +778,7 @@ const RankingDetail: React.FC = () => {
                     <span className={styles.outfitFieldValue}>
                       {item.category || "의류 종류 선택"}
                     </span>
+                    <span className={styles.outfitFieldSquare} />
                   </div>
 
                   <div className={styles.outfitFieldRow}>
