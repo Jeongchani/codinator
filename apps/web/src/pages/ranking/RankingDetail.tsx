@@ -37,6 +37,12 @@ type FeedbackItem = {
   side: "LIKE" | "DISLIKE";
 };
 
+type FeedbackKeywordChip = {
+  label: string;
+  side: "LIKE" | "DISLIKE";
+  count: number;
+};
+
 const clampPercent = (value: unknown) => {
   const n = Number(value);
   if (!Number.isFinite(n)) return 0;
@@ -55,6 +61,38 @@ const pickNumberOrNull = (...values: unknown[]) => {
     if (Number.isFinite(n)) return n;
   }
   return null;
+};
+
+const normalizeTagText = (value: string) => {
+  const cleaned = value.replace(/^#+/, "").trim().replace(/\s+/g, "");
+  return cleaned ? `#${cleaned}` : "";
+};
+
+const resolveFeedbackSide = (
+  row: Record<string, unknown>,
+  fallback?: "LIKE" | "DISLIKE"
+): "LIKE" | "DISLIKE" | null => {
+  const raw = String(
+    row.side ?? row.choice ?? row.type ?? row.reaction ?? row.sentiment ?? ""
+  ).toUpperCase();
+
+  if (
+    raw.includes("DISLIKE") ||
+    raw.includes("NEGATIVE") ||
+    raw.includes("BAD")
+  ) {
+    return "DISLIKE";
+  }
+
+  if (
+    raw.includes("LIKE") ||
+    raw.includes("POSITIVE") ||
+    raw.includes("GOOD")
+  ) {
+    return "LIKE";
+  }
+
+  return fallback ?? null;
 };
 
 const normalizeFeedbackItems = (
@@ -115,6 +153,188 @@ const normalizeFeedbackItems = (
     .slice(0, 5);
 };
 
+const mergeFeedbackKeywordChips = (chips: FeedbackKeywordChip[]) => {
+  const map = new Map<string, FeedbackKeywordChip>();
+
+  chips.forEach((chip) => {
+    const normalizedLabel = normalizeTagText(chip.label);
+    if (!normalizedLabel) return;
+
+    const key = `${chip.side}-${normalizedLabel}`;
+    const prev = map.get(key);
+
+    if (prev) {
+      map.set(key, {
+        ...prev,
+        count: prev.count + (chip.count || 0),
+      });
+      return;
+    }
+
+    map.set(key, {
+      label: normalizedLabel,
+      side: chip.side,
+      count: chip.count || 0,
+    });
+  });
+
+  return [...map.values()].sort((a, b) => {
+    if (b.count !== a.count) return b.count - a.count;
+    if (a.side !== b.side) return a.side === "LIKE" ? -1 : 1;
+    return a.label.localeCompare(b.label, "ko");
+  });
+};
+
+const parseFeedbackKeywordSource = (
+  source: unknown,
+  sideHint?: "LIKE" | "DISLIKE"
+): FeedbackKeywordChip[] => {
+  if (!source) return [];
+
+  if (typeof source === "string") {
+    return sideHint
+      ? [
+          {
+            label: source,
+            side: sideHint,
+            count: 0,
+          },
+        ]
+      : [];
+  }
+
+  if (Array.isArray(source)) {
+    return source.flatMap((item) => parseFeedbackKeywordSource(item, sideHint));
+  }
+
+  if (typeof source === "object") {
+    const row = source as Record<string, unknown>;
+
+    const nestedResults: FeedbackKeywordChip[] = [
+      ...parseFeedbackKeywordSource(
+        row.likeKeywords ?? row.likeFeedbacks ?? row.likeTags ?? row.like,
+        "LIKE"
+      ),
+      ...parseFeedbackKeywordSource(
+        row.positiveKeywords ??
+          row.positiveFeedbacks ??
+          row.positiveTags ??
+          row.positive,
+        "LIKE"
+      ),
+      ...parseFeedbackKeywordSource(
+        row.dislikeKeywords ??
+          row.dislikeFeedbacks ??
+          row.dislikeTags ??
+          row.dislike,
+        "DISLIKE"
+      ),
+      ...parseFeedbackKeywordSource(
+        row.negativeKeywords ??
+          row.negativeFeedbacks ??
+          row.negativeTags ??
+          row.negative,
+        "DISLIKE"
+      ),
+    ];
+
+    if (nestedResults.length > 0) {
+      return nestedResults;
+    }
+
+    const label =
+      toText(row.label) ||
+      toText(row.name) ||
+      toText(row.feedback) ||
+      toText(row.feedbackLabel) ||
+      toText(row.keyword) ||
+      toText(row.keywordLabel) ||
+      toText(row.tag) ||
+      toText(row.tagLabel);
+
+    const side = resolveFeedbackSide(row, sideHint);
+    const count = Number(
+      row.count ?? row.voteCount ?? row.total ?? row.totalCount ?? 0
+    );
+
+    if (label && side) {
+      return [{ label, side, count }];
+    }
+
+    if (sideHint) {
+      const reservedKeys = new Set([
+        "side",
+        "choice",
+        "type",
+        "reaction",
+        "sentiment",
+        "count",
+        "voteCount",
+        "total",
+        "totalCount",
+      ]);
+
+      return Object.entries(row)
+        .filter(([key]) => !reservedKeys.has(key))
+        .flatMap(([key, value]) => {
+          if (typeof value === "number" || typeof value === "string") {
+            const parsedCount =
+              typeof value === "number"
+                ? value
+                : Number.isFinite(Number(value))
+                ? Number(value)
+                : 0;
+
+            return [
+              {
+                label: key,
+                side: sideHint,
+                count: parsedCount,
+              },
+            ];
+          }
+
+          return [];
+        });
+    }
+  }
+
+  return [];
+};
+
+const extractFeedbackKeywordChips = (
+  data: GetRankingPostDetailResponse | null
+): FeedbackKeywordChip[] => {
+  if (!data) return [];
+
+  const unknownData = data as unknown as Record<string, unknown>;
+  const voteSummary =
+    (unknownData.voteSummary as Record<string, unknown> | undefined) ?? {};
+  const feedbackSummary =
+    (unknownData.feedbackSummary as Record<string, unknown> | undefined) ?? {};
+  const keywordSummary =
+    (unknownData.keywordSummary as Record<string, unknown> | undefined) ?? {};
+  const feedbackTagSummary =
+    (unknownData.feedbackTagSummary as Record<string, unknown> | undefined) ??
+    {};
+
+  const rawChips: FeedbackKeywordChip[] = [
+    ...parseFeedbackKeywordSource(unknownData.feedbackKeywords),
+    ...parseFeedbackKeywordSource(unknownData.feedbackTags),
+    ...parseFeedbackKeywordSource(unknownData.receivedFeedbackKeywords),
+    ...parseFeedbackKeywordSource(unknownData.receivedFeedbackTags),
+    ...parseFeedbackKeywordSource(voteSummary.feedbackKeywords),
+    ...parseFeedbackKeywordSource(voteSummary.feedbackTags),
+    ...parseFeedbackKeywordSource(voteSummary.receivedFeedbackKeywords),
+    ...parseFeedbackKeywordSource(voteSummary.receivedFeedbackTags),
+    ...parseFeedbackKeywordSource(feedbackSummary),
+    ...parseFeedbackKeywordSource(keywordSummary),
+    ...parseFeedbackKeywordSource(feedbackTagSummary),
+  ];
+
+  return mergeFeedbackKeywordChips(rawChips).slice(0, 8);
+};
+
 const extractKeywordLabels = (
   data: GetRankingPostDetailResponse | null
 ): string[] => {
@@ -126,7 +346,6 @@ const extractKeywordLabels = (
     unknownData.keywordLabels,
     unknownData.tags,
     unknownData.postKeywords,
-    unknownData.feedbackTags,
   ];
 
   const labels: string[] = [];
@@ -420,6 +639,11 @@ const RankingDetail: React.FC = () => {
     [postData]
   );
 
+  const feedbackKeywordChips = useMemo(
+    () => extractFeedbackKeywordChips(postData),
+    [postData]
+  );
+
   const hasLikeFeedback = feedbackBreakdown.like.length > 0;
   const hasDislikeFeedback = feedbackBreakdown.dislike.length > 0;
   const hasAnyFeedbackGraph = hasLikeFeedback || hasDislikeFeedback;
@@ -651,167 +875,193 @@ const RankingDetail: React.FC = () => {
           <div className={styles.handlerBar} />
         </div>
 
-        <div className={`${styles.sheetContent} ${styles.scroll}`}>
-          <div className={styles.sheetHeader}>
-            <div className={styles.sheetHeaderCopy}>
-              <p className={styles.authorName}>
-                {postData.author?.nickname ?? "닉네임"}
-              </p>
-              <p className={styles.contentText}>{postData.content}</p>
-            </div>
-
-            <div className={styles.sheetActions}>
-              <button
-                type="button"
-                className={`${styles.miniActionButton} ${styles.bookmarkActionButton}`}
-                onClick={handleToggleBookmark}
-                aria-label={isBookmarked ? "북마크 해제" : "북마크 추가"}
-                disabled={bookmarkLoading}
-              >
-                <Bookmark
-                  size={11}
-                  strokeWidth={2.1}
-                  className={
-                    isBookmarked ? styles.bookmarkFilled : styles.bookmarkDefault
-                  }
-                  fill={isBookmarked ? "currentColor" : "none"}
-                />
-              </button>
-
-              <button
-                type="button"
-                className={`${styles.miniActionButton} ${styles.reportActionButton}`}
-                aria-label="신고"
-              >
-                <Siren size={11} strokeWidth={2.1} />
-              </button>
-            </div>
-          </div>
-
-          {keywordChips.length > 0 && (
-            <div className={styles.keywordChipRow}>
-              {keywordChips.map((keyword) => (
-                <span key={keyword} className={styles.keywordChip}>
-                  #{keyword}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <div className={styles.sectionDivider} />
-
-          <div className={styles.feedbackHeader}>
-            <h3 className={styles.feedbackTitle}>피드백</h3>
-          </div>
-
-          <div className={styles.feedbackPanel}>
-            <div className={styles.voteCountRow}>
-              <div
-                className={`${styles.voteCountBadge} ${styles.voteCountBadgeLike}`}
-              >
-                <ThumbsUp size={12} strokeWidth={2} />
-                <span>{likeCount.toLocaleString("ko-KR")}</span>
+        <div className={`${styles.sheetScrollArea} ${styles.scroll}`}>
+          <div className={styles.sheetContent}>
+            <div className={styles.sheetHeader}>
+              <div className={styles.sheetHeaderCopy}>
+                <p className={styles.authorName}>
+                  {postData.author?.nickname ?? "닉네임"}
+                </p>
+                <p className={styles.contentText}>{postData.content}</p>
               </div>
 
-              <div
-                className={`${styles.voteCountBadge} ${styles.voteCountBadgeDislike}`}
-              >
-                <ThumbsDown size={12} strokeWidth={2} />
-                <span>{dislikeCount.toLocaleString("ko-KR")}</span>
-              </div>
-            </div>
-
-            <div className={styles.donutWrap}>
-              <div
-                className={styles.donutChart}
-                style={{ background: donutBackground }}
-              >
-                <div className={styles.donutHole} />
-
-                {showLikeLabel && (
-                  <div className={styles.donutLabelLeft}>{likePercent}%</div>
-                )}
-
-                {showDislikeLabel && (
-                  <div className={styles.donutLabelRight}>
-                    {dislikePercent}%
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {hasAnyFeedbackGraph && (
-              <div
-                className={`${styles.feedbackColumns} ${
-                  !hasLikeFeedback || !hasDislikeFeedback
-                    ? styles.feedbackColumnsSingle
-                    : ""
-                }`}
-              >
-                {hasLikeFeedback && (
-                  <FeedbackColumn
-                    title="제일 많이 받은 긍정 피드백"
-                    side="LIKE"
-                    items={feedbackBreakdown.like}
+              <div className={styles.sheetActions}>
+                <button
+                  type="button"
+                  className={`${styles.miniActionButton} ${styles.bookmarkActionButton}`}
+                  onClick={handleToggleBookmark}
+                  aria-label={isBookmarked ? "북마크 해제" : "북마크 추가"}
+                  disabled={bookmarkLoading}
+                >
+                  <Bookmark
+                    size={11}
+                    strokeWidth={2.1}
+                    className={
+                      isBookmarked
+                        ? styles.bookmarkFilled
+                        : styles.bookmarkDefault
+                    }
+                    fill={isBookmarked ? "currentColor" : "none"}
                   />
-                )}
+                </button>
 
-                {hasDislikeFeedback && (
-                  <FeedbackColumn
-                    title="제일 많이 받은 부정 피드백"
-                    side="DISLIKE"
-                    items={feedbackBreakdown.dislike}
-                  />
-                )}
+                <button
+                  type="button"
+                  className={`${styles.miniActionButton} ${styles.reportActionButton}`}
+                  aria-label="신고"
+                >
+                  <Siren size={11} strokeWidth={2.1} />
+                </button>
+              </div>
+            </div>
+
+            {keywordChips.length > 0 && (
+              <div className={styles.keywordChipRow}>
+                {keywordChips.map((keyword) => (
+                  <span key={keyword} className={styles.keywordChip}>
+                    #{keyword}
+                  </span>
+                ))}
               </div>
             )}
-          </div>
 
-          <div className={styles.outfitHeaderRow}>
-            <h3 className={styles.outfitTitle}>착용 아이템</h3>
+            <div className={styles.sectionDivider} />
 
-            {outfitItems.length > 1 && (
-              <div className={styles.scrollHint}>
-                <MoveHorizontal size={13} strokeWidth={2} />
-                <span>좌우로 넘겨보세요</span>
-              </div>
-            )}
-          </div>
+            <div className={styles.feedbackHeader}>
+              <h3 className={styles.feedbackTitle}>피드백</h3>
+            </div>
 
-          <div className={styles.sectionDivider} />
-
-          <div className={styles.itemScroll}>
-            {outfitItems.length > 0 ? (
-              outfitItems.map((item) => (
-                <div key={item.id} className={styles.outfitCard}>
-                  <div className={styles.outfitCardTop}>
-                    <span className={styles.outfitCategoryBadge}>
-                      {item.category || "ITEM"}
-                    </span>
-                  </div>
-
-                  <div
-                    className={`${styles.outfitFieldRow} ${styles.outfitNameRow}`}
-                  >
-                    <span className={styles.outfitFieldLabel}>상품명</span>
-                    <span
-                      className={`${styles.outfitFieldValue} ${styles.outfitNameValue}`}
-                    >
-                      {item.itemName || "상품 이름 미등록"}
-                    </span>
-                  </div>
-
-                  <div className={styles.outfitFieldRow}>
-                    <span className={styles.outfitFieldLabel}>브랜드</span>
-                    <span className={styles.outfitFieldValue}>
-                      {item.brand || "브랜드 미등록"}
-                    </span>
-                  </div>
+            <div className={styles.feedbackPanel}>
+              <div className={styles.voteCountRow}>
+                <div
+                  className={`${styles.voteCountBadge} ${styles.voteCountBadgeLike}`}
+                >
+                  <ThumbsUp size={12} strokeWidth={2} />
+                  <span>{likeCount.toLocaleString("ko-KR")}</span>
                 </div>
-              ))
-            ) : (
-              <div className={styles.emptyText}>등록된 아이템이 없습니다.</div>
-            )}
+
+                <div
+                  className={`${styles.voteCountBadge} ${styles.voteCountBadgeDislike}`}
+                >
+                  <ThumbsDown size={12} strokeWidth={2} />
+                  <span>{dislikeCount.toLocaleString("ko-KR")}</span>
+                </div>
+              </div>
+
+              <div className={styles.donutWrap}>
+                <div
+                  className={styles.donutChart}
+                  style={{ background: donutBackground }}
+                >
+                  <div className={styles.donutHole} />
+
+                  {showLikeLabel && (
+                    <div className={styles.donutLabelLeft}>{likePercent}%</div>
+                  )}
+
+                  {showDislikeLabel && (
+                    <div className={styles.donutLabelRight}>
+                      {dislikePercent}%
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {feedbackKeywordChips.length > 0 && (
+                <div className={styles.feedbackKeywordWrap}>
+                  {feedbackKeywordChips.map((chip) => (
+                    <span
+                      key={`${chip.side}-${chip.label}`}
+                      className={`${styles.feedbackKeywordChip} ${
+                        chip.side === "LIKE"
+                          ? styles.feedbackKeywordChipLike
+                          : styles.feedbackKeywordChipDislike
+                      }`}
+                    >
+                      {chip.side === "LIKE" ? (
+                        <ThumbsUp size={11} strokeWidth={2} />
+                      ) : (
+                        <ThumbsDown size={11} strokeWidth={2} />
+                      )}
+                      <span>{chip.label}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {hasAnyFeedbackGraph && (
+                <div
+                  className={`${styles.feedbackColumns} ${
+                    !hasLikeFeedback || !hasDislikeFeedback
+                      ? styles.feedbackColumnsSingle
+                      : ""
+                  }`}
+                >
+                  {hasLikeFeedback && (
+                    <FeedbackColumn
+                      title="제일 많이 받은 긍정 피드백"
+                      side="LIKE"
+                      items={feedbackBreakdown.like}
+                    />
+                  )}
+
+                  {hasDislikeFeedback && (
+                    <FeedbackColumn
+                      title="제일 많이 받은 부정 피드백"
+                      side="DISLIKE"
+                      items={feedbackBreakdown.dislike}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className={styles.outfitHeaderRow}>
+              <h3 className={styles.outfitTitle}>착용 아이템</h3>
+
+              {outfitItems.length > 1 && (
+                <div className={styles.scrollHint}>
+                  <MoveHorizontal size={13} strokeWidth={2} />
+                  <span>좌우로 넘겨보세요</span>
+                </div>
+              )}
+            </div>
+
+            <div className={styles.sectionDivider} />
+
+            <div className={styles.itemScroll}>
+              {outfitItems.length > 0 ? (
+                outfitItems.map((item) => (
+                  <div key={item.id} className={styles.outfitCard}>
+                    <div className={styles.outfitCardTop}>
+                      <span className={styles.outfitCategoryBadge}>
+                        {item.category || "ITEM"}
+                      </span>
+                    </div>
+
+                    <div
+                      className={`${styles.outfitFieldRow} ${styles.outfitNameRow}`}
+                    >
+                      <span className={styles.outfitFieldLabel}>상품명</span>
+                      <span
+                        className={`${styles.outfitFieldValue} ${styles.outfitNameValue}`}
+                      >
+                        {item.itemName || "상품 이름 미등록"}
+                      </span>
+                    </div>
+
+                    <div className={styles.outfitFieldRow}>
+                      <span className={styles.outfitFieldLabel}>브랜드</span>
+                      <span className={styles.outfitFieldValue}>
+                        {item.brand || "브랜드 미등록"}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className={styles.emptyText}>등록된 아이템이 없습니다.</div>
+              )}
+            </div>
           </div>
         </div>
       </motion.div>
