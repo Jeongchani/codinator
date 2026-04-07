@@ -1,12 +1,4 @@
-import React, {
-  ChangeEvent,
-  MouseEvent as ReactMouseEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type {
   CreatePostResponse,
@@ -46,22 +38,8 @@ type WearItem = {
   imageUrl?: string;
 };
 
-type BlurRegion = {
-  id: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
-
-type InteractionState =
-  | { type: "none" }
-  | { type: "move"; id: number; startX: number; startY: number; origX: number; origY: number }
-  | { type: "resize"; id: number; startX: number; startY: number; origW: number; origH: number };
-
 type BlurFlowStep = "idle" | "decision" | "manual";
-
-const EDITOR_IMG_W = 320;
+type BrushTool = "pencil" | "eraser";
 
 const wearTypeOptions: WearType[] = [
   "",
@@ -212,260 +190,410 @@ function ManualBlurEditor({
   onApprove: (file: File, previewDataUrl: string) => void;
   onBack: () => void;
 }) {
+  const [tool, setTool] = useState<BrushTool>("pencil");
+  const [brushSize, setBrushSize] = useState(56);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
   const [imageLoadError, setImageLoadError] = useState("");
-  const [regions, setRegions] = useState<BlurRegion[]>([
-    { id: 1, x: 40, y: 40, width: 100, height: 100 },
-  ]);
-  const [selectedId, setSelectedId] = useState<number | null>(1);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
 
-  const imgRef = useRef<HTMLImageElement>(null);
-  const nextId = useRef(2);
-  const interaction = useRef<InteractionState>({ type: "none" });
+  const toolRef = useRef<BrushTool>("pencil");
+  const brushRef = useRef(56);
+  const displayCanvasRef = useRef<HTMLCanvasElement>(null);
+  const origCanvasRef = useRef<HTMLCanvasElement>(null);
+  const isDrawing = useRef(false);
+  const lastCvsPos = useRef<{ x: number; y: number } | null>(null);
+  const historyRef = useRef<ImageData[]>([]);
 
-  useEffect(() => {
-    setImgLoaded(false);
-    setImageLoadError("");
-    setPreviewUrl(null);
-  }, [originalImageUrl]);
+  const changeTool = (nextTool: BrushTool) => {
+    toolRef.current = nextTool;
+    setTool(nextTool);
+  };
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    const state = interaction.current;
-    if (state.type === "none") return;
-
-    const dx = e.clientX - state.startX;
-    const dy = e.clientY - state.startY;
-
-    if (state.type === "move") {
-      setRegions((prev) =>
-        prev.map((region) =>
-          region.id !== state.id
-            ? region
-            : {
-                ...region,
-                x: Math.max(0, Math.min(EDITOR_IMG_W - region.width, state.origX + dx)),
-                y: Math.max(0, state.origY + dy),
-              },
-        ),
-      );
-    }
-
-    if (state.type === "resize") {
-      setRegions((prev) =>
-        prev.map((region) =>
-          region.id !== state.id
-            ? region
-            : {
-                ...region,
-                width: Math.max(30, Math.min(EDITOR_IMG_W - region.x, state.origW + dx)),
-                height: Math.max(30, state.origH + dy),
-              },
-        ),
-      );
-    }
-  }, []);
-
-  const handleMouseUp = useCallback(() => {
-    interaction.current = { type: "none" };
-  }, []);
+  const changeBrush = (nextBrush: number) => {
+    brushRef.current = nextBrush;
+    setBrushSize(nextBrush);
+  };
 
   useEffect(() => {
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
+    let cancelled = false;
+
+    historyRef.current = [];
+
+    const sameOriginUrl = originalImageUrl.replace(/^https?:\/\/localhost:\d+/, "");
+
+    const img = new Image();
+    img.onload = () => {
+      if (cancelled) return;
+
+      const displayCanvas = displayCanvasRef.current;
+      const origCanvas = origCanvasRef.current;
+      if (!displayCanvas || !origCanvas) return;
+
+      const width = img.naturalWidth;
+      const height = img.naturalHeight;
+
+      displayCanvas.width = origCanvas.width = width;
+      displayCanvas.height = origCanvas.height = height;
+
+      const displayCtx = displayCanvas.getContext("2d");
+      const origCtx = origCanvas.getContext("2d");
+      if (!displayCtx || !origCtx) return;
+
+      displayCtx.clearRect(0, 0, width, height);
+      origCtx.clearRect(0, 0, width, height);
+
+      displayCtx.drawImage(img, 0, 0);
+      origCtx.drawImage(img, 0, 0);
+
+      setImgLoaded(true);
+    };
+
+    img.onerror = () => {
+      if (cancelled) return;
+      setImageLoadError("원본 이미지를 불러오지 못했습니다.");
+    };
+
+    img.src = sameOriginUrl;
 
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
+      cancelled = true;
     };
-  }, [handleMouseMove, handleMouseUp]);
+  }, [originalImageUrl]);
 
-  const buildCanvas = () => {
-    const img = imgRef.current;
-    if (!img || !img.naturalWidth) return null;
+  const saveSnapshot = () => {
+    const displayCanvas = displayCanvasRef.current;
+    if (!displayCanvas) return;
 
-    const displayHeight = EDITOR_IMG_W * (img.naturalHeight / img.naturalWidth);
-    const scaleX = img.naturalWidth / EDITOR_IMG_W;
-    const scaleY = img.naturalHeight / displayHeight;
+    try {
+      const ctx = displayCanvas.getContext("2d");
+      if (!ctx) return;
 
-    const canvas = document.createElement("canvas");
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
+      const snapshot = ctx.getImageData(0, 0, displayCanvas.width, displayCanvas.height);
+      historyRef.current.push(snapshot);
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
+      if (historyRef.current.length > 30) {
+        historyRef.current.shift();
+      }
 
-    ctx.drawImage(img, 0, 0);
-
-    for (const region of regions) {
-      const nx = Math.round(region.x * scaleX);
-      const ny = Math.round(region.y * scaleY);
-      const nw = Math.max(1, Math.round(region.width * scaleX));
-      const nh = Math.max(1, Math.round(region.height * scaleY));
-
-      const pixelBlock = 18;
-      const tw = Math.max(1, Math.ceil(nw / pixelBlock));
-      const th = Math.max(1, Math.ceil(nh / pixelBlock));
-
-      const temp = document.createElement("canvas");
-      temp.width = tw;
-      temp.height = th;
-
-      const tctx = temp.getContext("2d");
-      if (!tctx) continue;
-
-      tctx.drawImage(img, nx, ny, nw, nh, 0, 0, tw, th);
-
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(temp, 0, 0, tw, th, nx, ny, nw, nh);
-      ctx.imageSmoothingEnabled = true;
+      setCanUndo(true);
+    } catch {
+      // same-origin 이 아닌 경우 등을 방어. 업로드 플로우에서는 대부분 정상 동작.
     }
-
-    return canvas;
   };
 
-  const handleGeneratePreview = () => {
-    setGenerating(true);
+  const handleUndo = () => {
+    const displayCanvas = displayCanvasRef.current;
+    if (!displayCanvas || historyRef.current.length === 0) return;
 
-    requestAnimationFrame(() => {
-      try {
-        const canvas = buildCanvas();
-        if (!canvas) {
-          setGenerating(false);
+    const ctx = displayCanvas.getContext("2d");
+    if (!ctx) return;
+
+    const prev = historyRef.current.pop();
+    if (!prev) return;
+
+    ctx.putImageData(prev, 0, 0);
+    setCanUndo(historyRef.current.length > 0);
+  };
+
+  const applyAt = (cx: number, cy: number, canvasRadius: number) => {
+    const displayCanvas = displayCanvasRef.current;
+    const origCanvas = origCanvasRef.current;
+    if (!displayCanvas || !origCanvas) return;
+
+    const displayCtx = displayCanvas.getContext("2d");
+    const origCtx = origCanvas.getContext("2d");
+    if (!displayCtx || !origCtx) return;
+
+    const block = Math.max(8, Math.round((canvasRadius / 2) * 0.4));
+
+    const bx1 = Math.max(0, Math.floor((cx - canvasRadius) / block));
+    const by1 = Math.max(0, Math.floor((cy - canvasRadius) / block));
+    const bx2 = Math.min(
+      Math.ceil(displayCanvas.width / block) - 1,
+      Math.floor((cx + canvasRadius) / block),
+    );
+    const by2 = Math.min(
+      Math.ceil(displayCanvas.height / block) - 1,
+      Math.floor((cy + canvasRadius) / block),
+    );
+
+    for (let bx = bx1; bx <= bx2; bx += 1) {
+      for (let by = by1; by <= by2; by += 1) {
+        const gx = bx * block;
+        const gy = by * block;
+        const gw = Math.min(block, displayCanvas.width - gx);
+        const gh = Math.min(block, displayCanvas.height - gy);
+
+        if (gw <= 0 || gh <= 0) continue;
+
+        if (toolRef.current === "eraser") {
+          const imageData = origCtx.getImageData(gx, gy, gw, gh);
+          displayCtx.putImageData(imageData, gx, gy);
+        } else {
+          const srcCanvas = document.createElement("canvas");
+          srcCanvas.width = gw;
+          srcCanvas.height = gh;
+
+          const srcCtx = srcCanvas.getContext("2d");
+          if (!srcCtx) continue;
+
+          srcCtx.putImageData(origCtx.getImageData(gx, gy, gw, gh), 0, 0);
+
+          const onePxCanvas = document.createElement("canvas");
+          onePxCanvas.width = 1;
+          onePxCanvas.height = 1;
+
+          const onePxCtx = onePxCanvas.getContext("2d");
+          if (!onePxCtx) continue;
+
+          onePxCtx.drawImage(srcCanvas, 0, 0, 1, 1);
+
+          displayCtx.imageSmoothingEnabled = false;
+          displayCtx.drawImage(onePxCanvas, 0, 0, 1, 1, gx, gy, gw, gh);
+          displayCtx.imageSmoothingEnabled = true;
+        }
+      }
+    }
+  };
+
+  const interpolate = (
+    from: { x: number; y: number },
+    to: { x: number; y: number },
+    canvasRadius: number,
+  ) => {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const step = Math.max(1, canvasRadius / 2);
+    const steps = Math.ceil(distance / step);
+
+    for (let i = 1; i <= steps; i += 1) {
+      applyAt(
+        from.x + (dx * i) / steps,
+        from.y + (dy * i) / steps,
+        canvasRadius,
+      );
+    }
+  };
+
+  const toCanvasPosition = (
+    clientX: number,
+    clientY: number,
+    canvas: HTMLCanvasElement,
+  ) => {
+    const rect = canvas.getBoundingClientRect();
+
+    return {
+      x: (clientX - rect.left) * (canvas.width / rect.width),
+      y: (clientY - rect.top) * (canvas.height / rect.height),
+    };
+  };
+
+  const toCanvasRadius = (cssRadius: number, canvas: HTMLCanvasElement) => {
+    const rect = canvas.getBoundingClientRect();
+    return cssRadius * (canvas.width / rect.width);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!imgLoaded) return;
+
+    e.preventDefault();
+
+    const canvas = e.currentTarget;
+    const pos = toCanvasPosition(e.clientX, e.clientY, canvas);
+    const canvasRadius = toCanvasRadius(brushRef.current / 2, canvas);
+
+    isDrawing.current = true;
+    lastCvsPos.current = pos;
+    saveSnapshot();
+    applyAt(pos.x, pos.y, canvasRadius);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = e.currentTarget;
+    const rect = canvas.getBoundingClientRect();
+
+    setCursorPos({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+
+    if (!isDrawing.current || !lastCvsPos.current) return;
+
+    const pos = toCanvasPosition(e.clientX, e.clientY, canvas);
+    const canvasRadius = toCanvasRadius(brushRef.current / 2, canvas);
+
+    interpolate(lastCvsPos.current, pos, canvasRadius);
+    lastCvsPos.current = pos;
+  };
+
+  const stopDrawing = () => {
+    isDrawing.current = false;
+    lastCvsPos.current = null;
+  };
+
+  const handleMouseLeave = () => {
+    setCursorPos(null);
+    stopDrawing();
+  };
+
+  const handleApprove = () => {
+    const displayCanvas = displayCanvasRef.current;
+    if (!displayCanvas || !imgLoaded) return;
+
+    setApproving(true);
+
+    const previewDataUrl = displayCanvas.toDataURL("image/jpeg", 0.92);
+
+    displayCanvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          setApproving(false);
           return;
         }
-        const url = canvas.toDataURL("image/jpeg", 0.92);
-        setPreviewUrl(url);
-      } catch (err) {
-        alert(`미리보기 생성 실패: ${(err as Error).message}`);
-      } finally {
-        setGenerating(false);
-      }
-    });
+
+        const file = new File([blob], "manual-blur.jpg", { type: "image/jpeg" });
+        onApprove(file, previewDataUrl);
+        setApproving(false);
+      },
+      "image/jpeg",
+      0.92,
+    );
   };
 
-  const handleApprove = async () => {
-    if (!previewUrl) return;
-    const blob = await fetch(previewUrl).then((res) => res.blob());
-    const file = new File([blob], "manual-blur.jpg", { type: "image/jpeg" });
-    onApprove(file, previewUrl);
-  };
-
-  const addRegion = () => {
-    const id = nextId.current++;
-    setRegions((prev) => [...prev, { id, x: 50, y: 50, width: 110, height: 110 }]);
-    setSelectedId(id);
-    setPreviewUrl(null);
-  };
-
-  const removeSelected = () => {
-    if (selectedId === null) return;
-    setRegions((prev) => prev.filter((region) => region.id !== selectedId));
-    setSelectedId(null);
-    setPreviewUrl(null);
-  };
-
-  const handleRegionMouseDown = (e: ReactMouseEvent<HTMLDivElement>, region: BlurRegion) => {
-    e.stopPropagation();
-    setSelectedId(region.id);
-    setPreviewUrl(null);
-
-    interaction.current = {
-      type: "move",
-      id: region.id,
-      startX: e.clientX,
-      startY: e.clientY,
-      origX: region.x,
-      origY: region.y,
-    };
-  };
-
-  const handleResizeMouseDown = (e: ReactMouseEvent<HTMLDivElement>, region: BlurRegion) => {
-    e.stopPropagation();
-    setSelectedId(region.id);
-    setPreviewUrl(null);
-
-    interaction.current = {
-      type: "resize",
-      id: region.id,
-      startX: e.clientX,
-      startY: e.clientY,
-      origW: region.width,
-      origH: region.height,
-    };
-  };
+  const toolColor = tool === "pencil" ? "#3182ce" : "#e53e3e";
 
   return (
     <div className={styles.manualEditorWrap}>
-      <div className={styles.manualToolbar}>
-        <button type="button" className={styles.editorGhostButton} onClick={addRegion}>
-          박스 추가
+      <div className={styles.editorHeader}>
+        <h3 className={styles.editorTitle}>수동 블러 편집기</h3>
+        <p className={styles.editorDescription}>
+          펜슬로 모자이크할 영역을 드래그하고, 지우개로 원본을 복원하세요.
+        </p>
+      </div>
+
+      <div className={styles.editorToolbar}>
+        <button
+          type="button"
+          className={styles.editorToolButton}
+          onClick={() => changeTool("pencil")}
+          style={{
+            borderColor: tool === "pencil" ? "#3182ce" : "#cbd5e0",
+            background: tool === "pencil" ? "#3182ce" : "#ffffff",
+            color: tool === "pencil" ? "#ffffff" : "#4a5568",
+          }}
+        >
+          펜슬
         </button>
 
         <button
           type="button"
-          className={styles.editorGhostButton}
-          onClick={removeSelected}
-          disabled={selectedId === null}
+          className={styles.editorToolButton}
+          onClick={() => changeTool("eraser")}
+          style={{
+            borderColor: tool === "eraser" ? "#e53e3e" : "#cbd5e0",
+            background: tool === "eraser" ? "#e53e3e" : "#ffffff",
+            color: tool === "eraser" ? "#ffffff" : "#4a5568",
+          }}
         >
-          선택 박스 삭제
+          지우개
         </button>
+
+        <div className={styles.editorToolbarDivider} />
+
+        <span className={styles.editorToolLabel}>크기</span>
+
+        {[
+          { dotSize: 8, brush: 24 },
+          { dotSize: 16, brush: 56 },
+          { dotSize: 26, brush: 100 },
+        ].map((item) => {
+          const active = brushSize === item.brush;
+
+          return (
+            <button
+              key={item.brush}
+              type="button"
+              className={styles.editorBrushButton}
+              onClick={() => changeBrush(item.brush)}
+              style={{
+                borderColor: active ? toolColor : "#cbd5e0",
+                background: active ? "#f0ebff" : "#ffffff",
+              }}
+            >
+              <span
+                className={styles.editorBrushDot}
+                style={{
+                  width: `${item.dotSize}px`,
+                  height: `${item.dotSize}px`,
+                  background: active ? toolColor : "#a0aec0",
+                }}
+              />
+            </button>
+          );
+        })}
+
+        <div className={styles.editorToolbarDivider} />
 
         <button
           type="button"
-          className={styles.editorPrimaryButton}
-          onClick={handleGeneratePreview}
-          disabled={regions.length === 0 || generating || !imgLoaded}
+          className={styles.editorUndoButton}
+          onClick={handleUndo}
+          disabled={!canUndo}
         >
-          {generating ? "생성 중..." : "미리보기 생성"}
+          ↩ 뒤로가기
         </button>
       </div>
 
       {imageLoadError && <p className={styles.editorError}>{imageLoadError}</p>}
 
-      <div className={styles.editorStage}>
-        <div className={styles.editorCanvasWrap}>
-          <img
-            ref={imgRef}
-            src={originalImageUrl}
-            alt="수동 블러 편집"
-            className={styles.editorBaseImage}
-            onLoad={() => setImgLoaded(true)}
-            onError={() => setImageLoadError("원본 이미지를 불러오지 못했습니다.")}
+      {!imgLoaded && !imageLoadError && (
+        <div className={styles.editorLoading}>이미지 로딩 중...</div>
+      )}
+
+      <div
+        className={styles.editorCanvasFrame}
+        style={{
+          display: imgLoaded ? "block" : "none",
+          borderColor: toolColor,
+        }}
+      >
+        <div className={styles.editorCanvasInner}>
+          <canvas
+            ref={displayCanvasRef}
+            className={styles.editorCanvas}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={stopDrawing}
+            onMouseLeave={handleMouseLeave}
           />
 
-          {imgLoaded &&
-            regions.map((region) => {
-              const selected = selectedId === region.id;
-
-              return (
-                <div
-                  key={region.id}
-                  className={cls(styles.blurBox, selected && styles.blurBoxSelected)}
-                  style={{
-                    left: `${region.x}px`,
-                    top: `${region.y}px`,
-                    width: `${region.width}px`,
-                    height: `${region.height}px`,
-                  }}
-                  onMouseDown={(e) => handleRegionMouseDown(e, region)}
-                >
-                  <span className={styles.blurBoxIndex}>{region.id}</span>
-                  <div
-                    className={styles.blurBoxHandle}
-                    onMouseDown={(e) => handleResizeMouseDown(e, region)}
-                  />
-                </div>
-              );
-            })}
+          {cursorPos && (
+            <div
+              className={styles.editorCursor}
+              style={{
+                left: `${cursorPos.x - brushSize / 2}px`,
+                top: `${cursorPos.y - brushSize / 2}px`,
+                width: `${brushSize}px`,
+                height: `${brushSize}px`,
+                borderColor: toolColor,
+                background:
+                  tool === "pencil"
+                    ? "rgba(49,130,206,0.15)"
+                    : "rgba(229,62,62,0.15)",
+              }}
+            />
+          )}
         </div>
       </div>
 
-      {previewUrl && (
-        <div className={styles.manualPreviewSection}>
-          <span className={styles.manualPreviewLabel}>수동 블러 미리보기</span>
-          <img src={previewUrl} alt="수동 블러 미리보기" className={styles.manualPreviewImage} />
+      {imgLoaded && (
+        <div className={styles.editorHint}>
+          <strong>펜슬</strong>로 드래그 → 즉시 모자이크 ·{" "}
+          <strong>지우개</strong>로 드래그 → 원본 복원 ·{" "}
+          <strong>↩ 뒤로가기</strong> → 스트로크 단위 취소
         </div>
       )}
 
@@ -474,15 +602,17 @@ function ManualBlurEditor({
           type="button"
           className={styles.editorPrimaryButton}
           onClick={handleApprove}
-          disabled={!previewUrl}
+          disabled={!imgLoaded || approving}
         >
-          이 결과로 사용하기
+          {approving ? "처리 중..." : "이 결과로 사용하기"}
         </button>
 
         <button type="button" className={styles.editorGhostButton} onClick={onBack}>
           뒤로가기
         </button>
       </div>
+
+      <canvas ref={origCanvasRef} className={styles.hiddenCanvas} />
     </div>
   );
 }
@@ -511,9 +641,7 @@ export default function Upload() {
   const [manualBlurFile, setManualBlurFile] = useState<File | null>(null);
   const [approvedBlurMode, setApprovedBlurMode] = useState<"AUTO" | "MANUAL" | null>(null);
 
-  const previewUrl = useMemo(() => {
-    return approvedPreview || "";
-  }, [approvedPreview]);
+  const previewUrl = useMemo(() => approvedPreview || "", [approvedPreview]);
 
   const handleBack = () => {
     navigate(-1);
@@ -679,8 +807,13 @@ export default function Upload() {
           itemName: item.name.trim() || null,
         }))
         .filter(
-          (item): item is { category: GarmentCategory; brand: string | null; itemName: string | null } =>
-            item.category !== null && Boolean(item.brand || item.itemName),
+          (
+            item,
+          ): item is {
+            category: GarmentCategory;
+            brand: string | null;
+            itemName: string | null;
+          } => item.category !== null && Boolean(item.brand || item.itemName),
         );
 
       setMessage("게시글 생성 중...");
@@ -938,7 +1071,12 @@ export default function Upload() {
           <p className={styles.statusMessage}>{message}</p>
 
           <div className={styles.submitArea}>
-            <button type="button" className={styles.submitButton} onClick={handleSubmit} disabled={submitting}>
+            <button
+              type="button"
+              className={styles.submitButton}
+              onClick={handleSubmit}
+              disabled={submitting}
+            >
               {submitting ? "처리 중..." : "게시글 작성 완료"}
             </button>
           </div>
@@ -1008,11 +1146,12 @@ export default function Upload() {
               <div className={styles.modalTitleBlock}>
                 <h3 className={styles.modalTitle}>수동 블러 편집</h3>
                 <p className={styles.modalDescription}>
-                  얼굴 위치에 박스를 올리고 미리보기를 만든 뒤 적용해주세요.
+                  드래그해서 바로 모자이크하고, 필요하면 지우개와 뒤로가기로 수정해주세요.
                 </p>
               </div>
 
               <ManualBlurEditor
+                key={rawLocalPreview || assetUrl(uploadedImage.originalImageUrl)}
                 originalImageUrl={rawLocalPreview || assetUrl(uploadedImage.originalImageUrl)}
                 onApprove={handleManualApprove}
                 onBack={() => setBlurStep("decision")}

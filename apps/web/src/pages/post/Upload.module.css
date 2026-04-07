@@ -42,6 +42,10 @@
   display: none;
 }
 
+.hiddenCanvas {
+  display: none;
+}
+
 .contentSection {
   @apply px-4 pt-4 pb-8;
 }
@@ -266,63 +270,83 @@
   @apply flex flex-col gap-4;
 }
 
-.manualToolbar {
-  @apply flex flex-wrap gap-2;
+.editorHeader {
+  @apply flex flex-col gap-1;
 }
 
-.editorPrimaryButton {
-  @apply flex h-[40px] items-center justify-center rounded-full bg-black px-4 text-[13px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50;
+.editorTitle {
+  @apply text-[16px] font-extrabold leading-6 text-neutral-800;
 }
 
-.editorGhostButton {
-  @apply flex h-[40px] items-center justify-center rounded-full border border-neutral-300 bg-white px-4 text-[13px] font-medium text-neutral-900 disabled:cursor-not-allowed disabled:opacity-50;
+.editorDescription {
+  @apply text-[12px] leading-5 text-neutral-500;
+}
+
+.editorToolbar {
+  @apply flex flex-wrap items-center gap-2 rounded-xl border border-neutral-200 bg-slate-50 px-3 py-2;
+}
+
+.editorToolButton {
+  @apply h-[34px] rounded-md border-2 px-4 text-[12px] font-bold transition;
+}
+
+.editorToolLabel {
+  @apply text-[11px] font-semibold text-neutral-500;
+}
+
+.editorToolbarDivider {
+  @apply mx-[2px] h-[22px] w-px bg-neutral-200;
+}
+
+.editorBrushButton {
+  @apply flex h-8 w-9 items-center justify-center rounded-md border-2 transition;
+}
+
+.editorBrushDot {
+  @apply block rounded-full transition;
+}
+
+.editorUndoButton {
+  @apply h-[34px] rounded-md border-2 border-neutral-200 px-4 text-[12px] font-bold text-neutral-600 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-neutral-400;
 }
 
 .editorError {
   @apply rounded-2xl bg-red-50 px-4 py-3 text-[13px] leading-5 text-red-500;
 }
 
-.editorStage {
-  @apply flex justify-center;
+.editorLoading {
+  @apply flex h-[180px] items-center justify-center text-[13px] text-neutral-400;
 }
 
-.editorCanvasWrap {
-  @apply relative overflow-hidden rounded-[20px] border-2 border-neutral-200 bg-neutral-100;
-  width: 320px;
-  max-width: 100%;
+.editorCanvasFrame {
+  @apply overflow-hidden rounded-[12px] border-2 transition;
+  user-select: none;
+  cursor: none;
 }
 
-.editorBaseImage {
-  @apply block h-auto w-full;
+.editorCanvasInner {
+  @apply relative overflow-hidden;
+  line-height: 0;
 }
 
-.blurBox {
-  @apply absolute box-border cursor-move border-2 border-amber-500 bg-amber-400/10;
+.editorCanvas {
+  @apply block w-full h-auto;
 }
 
-.blurBoxSelected {
-  @apply border-blue-500 bg-blue-500/10;
+.editorCursor {
+  @apply absolute rounded-full border-[2.5px] pointer-events-none;
 }
 
-.blurBoxIndex {
-  @apply absolute left-1 top-1 text-[10px] font-bold leading-none text-blue-600;
+.editorHint {
+  @apply rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-[11px] leading-5 text-sky-700;
 }
 
-.blurBoxHandle {
-  @apply absolute -bottom-[5px] -right-[5px] h-[14px] w-[14px] rounded-[4px] border-2 border-white bg-blue-500;
-  cursor: se-resize;
+.editorPrimaryButton {
+  @apply flex h-[42px] items-center justify-center rounded-full bg-black px-4 text-[13px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50;
 }
 
-.manualPreviewSection {
-  @apply flex flex-col gap-2;
-}
-
-.manualPreviewLabel {
-  @apply text-[12px] font-semibold text-neutral-700;
-}
-
-.manualPreviewImage {
-  @apply w-full rounded-2xl border-2 border-neutral-300 bg-neutral-100 object-contain;
+.editorGhostButton {
+  @apply flex h-[42px] items-center justify-center rounded-full border border-neutral-300 bg-white px-4 text-[13px] font-medium text-neutral-900 disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 .editorBottomActions {
