@@ -27,6 +27,7 @@ import {
   togglePostBookmark,
 } from "../../lib/api";
 import type { GetRankingPostDetailResponse } from "@codinator/contracts";
+import Reports from "../../components/Reports";
 
 type SheetPosition = "expanded" | "collapsed" | "hidden";
 
@@ -314,6 +315,7 @@ function FeedbackPanel({
 }
 
 const RankingDetail: React.FC = () => {
+  const [reportOpen, setReportOpen] = useState(false);
   const { postId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -689,6 +691,7 @@ const RankingDetail: React.FC = () => {
                   type="button"
                   className={`${styles.miniActionButton} ${styles.reportActionButton}`}
                   aria-label="신고"
+                  onClick={() => setReportOpen(true)}
                 >
                   <Siren size={11} strokeWidth={2.1} />
                 </button>
@@ -810,6 +813,24 @@ const RankingDetail: React.FC = () => {
           </div>
         </div>
       </motion.div>
+        {postData && (
+          <Reports
+            isOpen={reportOpen}
+            onClose={() => setReportOpen(false)}
+            defaultTab="post"
+            postTarget={{
+              id: postData.postId,
+              displayText: postData.content,
+            }}
+            userTarget={{
+              id: postData.author.userId,
+              displayText: postData.author.nickname,
+            }}
+            onSubmitted={(response, payload) => {
+              console.log("신고 완료:", payload, response);
+            }}
+          />
+        )}
     </div>
   );
 };
