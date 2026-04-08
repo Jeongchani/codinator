@@ -1,5 +1,6 @@
 import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ChevronLeft, Undo2 } from "lucide-react";
 import type {
   CreatePostResponse,
   GarmentCategory,
@@ -39,7 +40,7 @@ type WearItem = {
 };
 
 type BlurFlowStep = "idle" | "decision" | "manual";
-type BrushTool = "pencil" | "eraser";
+type BrushTool = "mosaic" | "eraser";
 
 const wearTypeOptions: WearType[] = [
   "",
@@ -78,20 +79,6 @@ function mapWearTypeToCategory(type: WearType): GarmentCategory | null {
     default:
       return null;
   }
-}
-
-function BackIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M14.5 6L8.5 12L14.5 18"
-        stroke="black"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 function PhotoFrameIcon() {
@@ -154,27 +141,34 @@ function ImgCompare({
   manualPreview?: string | null;
 }) {
   return (
-    <div className={cls(styles.compareGrid, manualPreview && styles.compareGridManual)}>
-      <div className={styles.comparePanel}>
-        <span className={styles.compareLabel}>원본</span>
-        <img src={originalUrl} alt="원본" className={styles.compareImage} />
+    <div className={styles.compareStack}>
+      <div className={styles.compareLargePanel}>
+        <div className={styles.compareLargeHeader}>
+          <span className={styles.compareLargeLabel}>원본</span>
+        </div>
+        <img src={originalUrl} alt="원본" className={styles.compareLargeImage} />
       </div>
 
-      <div className={styles.comparePanel}>
-        <span className={cls(styles.compareLabel, aiFailed && styles.compareLabelError)}>
-          AI 블러
-        </span>
+      <div className={styles.compareLargePanel}>
+        <div className={styles.compareLargeHeader}>
+          <span className={cls(styles.compareLargeLabel, aiFailed && styles.compareLabelError)}>
+            AI 블러
+          </span>
+        </div>
+
         {aiUrl && !aiFailed ? (
-          <img src={aiUrl} alt="AI 블러" className={styles.compareImage} />
+          <img src={aiUrl} alt="AI 블러" className={styles.compareLargeImage} />
         ) : (
-          <div className={styles.comparePlaceholder}>블러 미처리</div>
+          <div className={styles.compareLargePlaceholder}>AI 블러 미처리</div>
         )}
       </div>
 
       {manualPreview && (
-        <div className={styles.comparePanel}>
-          <span className={styles.compareLabel}>수동 블러</span>
-          <img src={manualPreview} alt="수동 블러" className={styles.compareImage} />
+        <div className={styles.compareLargePanel}>
+          <div className={styles.compareLargeHeader}>
+            <span className={styles.compareLargeLabel}>수동 블러</span>
+          </div>
+          <img src={manualPreview} alt="수동 블러" className={styles.compareLargeImage} />
         </div>
       )}
     </div>
@@ -190,16 +184,16 @@ function ManualBlurEditor({
   onApprove: (file: File, previewDataUrl: string) => void;
   onBack: () => void;
 }) {
-  const [tool, setTool] = useState<BrushTool>("pencil");
-  const [brushSize, setBrushSize] = useState(56);
+  const [tool, setTool] = useState<BrushTool>("mosaic");
+  const [brushSize, setBrushSize] = useState(52);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [approving, setApproving] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
   const [imageLoadError, setImageLoadError] = useState("");
 
-  const toolRef = useRef<BrushTool>("pencil");
-  const brushRef = useRef(56);
+  const toolRef = useRef<BrushTool>("mosaic");
+  const brushRef = useRef(52);
   const displayCanvasRef = useRef<HTMLCanvasElement>(null);
   const origCanvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
@@ -219,11 +213,9 @@ function ManualBlurEditor({
   useEffect(() => {
     let cancelled = false;
 
-    historyRef.current = [];
-
     const sameOriginUrl = originalImageUrl.replace(/^https?:\/\/localhost:\d+/, "");
-
     const img = new Image();
+
     img.onload = () => {
       if (cancelled) return;
 
@@ -247,6 +239,8 @@ function ManualBlurEditor({
       displayCtx.drawImage(img, 0, 0);
       origCtx.drawImage(img, 0, 0);
 
+      historyRef.current = [];
+      setCanUndo(false);
       setImgLoaded(true);
     };
 
@@ -279,7 +273,7 @@ function ManualBlurEditor({
 
       setCanUndo(true);
     } catch {
-      // same-origin 이 아닌 경우 등을 방어. 업로드 플로우에서는 대부분 정상 동작.
+      // no-op
     }
   };
 
@@ -396,22 +390,33 @@ function ManualBlurEditor({
     return cssRadius * (canvas.width / rect.width);
   };
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const stopDrawing = (canvas?: HTMLCanvasElement, pointerId?: number) => {
+    if (canvas && pointerId !== undefined && canvas.hasPointerCapture(pointerId)) {
+      canvas.releasePointerCapture(pointerId);
+    }
+    isDrawing.current = false;
+    lastCvsPos.current = null;
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!imgLoaded) return;
 
-    e.preventDefault();
-
     const canvas = e.currentTarget;
+    canvas.setPointerCapture(e.pointerId);
+
+    isDrawing.current = true;
+    saveSnapshot();
+
     const pos = toCanvasPosition(e.clientX, e.clientY, canvas);
     const canvasRadius = toCanvasRadius(brushRef.current / 2, canvas);
 
-    isDrawing.current = true;
     lastCvsPos.current = pos;
-    saveSnapshot();
+    setCursorPos({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
+
     applyAt(pos.x, pos.y, canvasRadius);
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = e.currentTarget;
     const rect = canvas.getBoundingClientRect();
 
@@ -429,14 +434,16 @@ function ManualBlurEditor({
     lastCvsPos.current = pos;
   };
 
-  const stopDrawing = () => {
-    isDrawing.current = false;
-    lastCvsPos.current = null;
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    stopDrawing(e.currentTarget, e.pointerId);
   };
 
-  const handleMouseLeave = () => {
+  const handlePointerCancel = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    stopDrawing(e.currentTarget, e.pointerId);
+  };
+
+  const handlePointerLeave = () => {
     setCursorPos(null);
-    stopDrawing();
   };
 
   const handleApprove = () => {
@@ -454,103 +461,96 @@ function ManualBlurEditor({
           return;
         }
 
-        const file = new File([blob], "manual-blur.jpg", { type: "image/jpeg" });
-        onApprove(file, previewDataUrl);
-        setApproving(false);
+        onApprove(new File([blob], "manual-blur.jpg", { type: "image/jpeg" }), previewDataUrl);
       },
       "image/jpeg",
       0.92,
     );
   };
 
-  const toolColor = tool === "pencil" ? "#3182ce" : "#e53e3e";
+  const brushPresets = [
+    { value: 28, dot: 10 },
+    { value: 52, dot: 18 },
+    { value: 84, dot: 26 },
+  ];
+
+  const toolColor = tool === "mosaic" ? "#2563eb" : "#ef4444";
 
   return (
     <div className={styles.manualEditorWrap}>
-      <div className={styles.editorHeader}>
-        <h3 className={styles.editorTitle}>수동 블러 편집기</h3>
-        <p className={styles.editorDescription}>
-          펜슬로 모자이크할 영역을 드래그하고, 지우개로 원본을 복원하세요.
-        </p>
+      <div className={styles.manualHeader}>
+        <div>
+          <h3 className={styles.manualTitle}>수동 블러 편집</h3>
+          <p className={styles.manualSubText}>터치하거나 드래그해서 바로 수정</p>
+        </div>
       </div>
 
-      <div className={styles.editorToolbar}>
-        <button
-          type="button"
-          className={styles.editorToolButton}
-          onClick={() => changeTool("pencil")}
-          style={{
-            borderColor: tool === "pencil" ? "#3182ce" : "#cbd5e0",
-            background: tool === "pencil" ? "#3182ce" : "#ffffff",
-            color: tool === "pencil" ? "#ffffff" : "#4a5568",
-          }}
-        >
-          펜슬
-        </button>
+      <div className={styles.manualControls}>
+        <div className={styles.toolSegment}>
+          <button
+            type="button"
+            className={cls(
+              styles.toolSegmentButton,
+              tool === "mosaic" && styles.toolSegmentButtonActiveBlue,
+            )}
+            onClick={() => changeTool("mosaic")}
+          >
+            모자이크
+          </button>
+
+          <button
+            type="button"
+            className={cls(
+              styles.toolSegmentButton,
+              tool === "eraser" && styles.toolSegmentButtonActiveRed,
+            )}
+            onClick={() => changeTool("eraser")}
+          >
+            지우기
+          </button>
+        </div>
 
         <button
           type="button"
-          className={styles.editorToolButton}
-          onClick={() => changeTool("eraser")}
-          style={{
-            borderColor: tool === "eraser" ? "#e53e3e" : "#cbd5e0",
-            background: tool === "eraser" ? "#e53e3e" : "#ffffff",
-            color: tool === "eraser" ? "#ffffff" : "#4a5568",
-          }}
+          className={styles.undoButton}
+          onClick={handleUndo}
+          disabled={!canUndo}
+          aria-label="되돌리기"
         >
-          지우개
+          <Undo2 size={18} strokeWidth={2.2} />
+          <span>되돌리기</span>
         </button>
+      </div>
 
-        <div className={styles.editorToolbarDivider} />
-
-        <span className={styles.editorToolLabel}>크기</span>
-
-        {[
-          { dotSize: 8, brush: 24 },
-          { dotSize: 16, brush: 56 },
-          { dotSize: 26, brush: 100 },
-        ].map((item) => {
-          const active = brushSize === item.brush;
+      <div className={styles.sizeRow}>
+        {brushPresets.map((item) => {
+          const active = brushSize === item.value;
 
           return (
             <button
-              key={item.brush}
+              key={item.value}
               type="button"
-              className={styles.editorBrushButton}
-              onClick={() => changeBrush(item.brush)}
-              style={{
-                borderColor: active ? toolColor : "#cbd5e0",
-                background: active ? "#f0ebff" : "#ffffff",
-              }}
+              className={cls(styles.sizeDotButton, active && styles.sizeDotButtonActive)}
+              onClick={() => changeBrush(item.value)}
+              aria-label={`브러시 크기 ${item.value}`}
             >
               <span
-                className={styles.editorBrushDot}
+                className={styles.sizeDot}
                 style={{
-                  width: `${item.dotSize}px`,
-                  height: `${item.dotSize}px`,
-                  background: active ? toolColor : "#a0aec0",
+                  width: `${item.dot}px`,
+                  height: `${item.dot}px`,
+                  backgroundColor: active ? toolColor : "#9ca3af",
                 }}
               />
             </button>
           );
         })}
-
-        <div className={styles.editorToolbarDivider} />
-
-        <button
-          type="button"
-          className={styles.editorUndoButton}
-          onClick={handleUndo}
-          disabled={!canUndo}
-        >
-          ↩ 뒤로가기
-        </button>
       </div>
 
       {imageLoadError && <p className={styles.editorError}>{imageLoadError}</p>}
 
       {!imgLoaded && !imageLoadError && (
-        <div className={styles.editorLoading}>이미지 로딩 중...</div>
+        <div className={styles.editorLoading}>이미지 불러오는 중...</div>
       )}
 
       <div
@@ -564,10 +564,11 @@ function ManualBlurEditor({
           <canvas
             ref={displayCanvasRef}
             className={styles.editorCanvas}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={stopDrawing}
-            onMouseLeave={handleMouseLeave}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerCancel}
+            onPointerLeave={handlePointerLeave}
           />
 
           {cursorPos && (
@@ -580,35 +581,36 @@ function ManualBlurEditor({
                 height: `${brushSize}px`,
                 borderColor: toolColor,
                 background:
-                  tool === "pencil"
-                    ? "rgba(49,130,206,0.15)"
-                    : "rgba(229,62,62,0.15)",
+                  tool === "mosaic"
+                    ? "rgba(37,99,235,0.14)"
+                    : "rgba(239,68,68,0.14)",
               }}
             />
           )}
         </div>
       </div>
 
-      {imgLoaded && (
-        <div className={styles.editorHint}>
-          <strong>펜슬</strong>로 드래그 → 즉시 모자이크 ·{" "}
-          <strong>지우개</strong>로 드래그 → 원본 복원 ·{" "}
-          <strong>↩ 뒤로가기</strong> → 스트로크 단위 취소
-        </div>
-      )}
+      <div className={styles.editorHint}>
+        <span className={styles.hintBadge}>모자이크</span>
+        <span>터치/드래그</span>
+        <span className={styles.hintDivider}>·</span>
+        <span className={styles.hintBadgeRed}>지우기</span>
+        <span>복원</span>
+      </div>
 
       <div className={styles.editorBottomActions}>
         <button
           type="button"
-          className={styles.editorPrimaryButton}
+          className={styles.editorApplyButton}
           onClick={handleApprove}
           disabled={!imgLoaded || approving}
         >
           {approving ? "처리 중..." : "이 결과로 사용하기"}
         </button>
 
-        <button type="button" className={styles.editorGhostButton} onClick={onBack}>
-          뒤로가기
+        <button type="button" className={styles.editorBackButton} onClick={onBack}>
+          <ChevronLeft size={16} strokeWidth={2.2} />
+          <span>블러 비교로 돌아가기</span>
         </button>
       </div>
 
@@ -915,7 +917,7 @@ export default function Upload() {
             onClick={handleBack}
             aria-label="뒤로가기"
           >
-            <BackIcon />
+            <ChevronLeft size={22} strokeWidth={2.2} />
           </button>
 
           <button
@@ -940,9 +942,7 @@ export default function Upload() {
           <div className={styles.titleBlock}>
             <h1 className={styles.title}>코디 업로드</h1>
             <p className={styles.description}>
-              사진 선택 후 먼저 AI 블러 결과를 확인합니다.
-              <br />
-              마음에 들지 않으면 수동 블러로 직접 수정할 수 있습니다.
+              사진 선택 후 블러 결과를 확인하고 업로드를 진행하세요.
             </p>
           </div>
 
@@ -963,7 +963,7 @@ export default function Upload() {
                     setBlurStep("decision");
                   }}
                 >
-                  블러 결과 다시 확인
+                  블러 결과 다시 보기
                 </button>
               </div>
               <div className={styles.divider} />
@@ -1087,12 +1087,9 @@ export default function Upload() {
         <Modal onClose={() => setBlurDecisionOpen(false)}>
           {blurStep === "decision" && (
             <>
-              <div className={styles.modalTitleBlock}>
-                <h3 className={styles.modalTitle}>블러 처리 결과 확인</h3>
-                <p className={styles.modalDescription}>
-                  AI가 얼굴 블러를 적용했습니다. 괜찮으면 그대로 사용하고,
-                  마음에 들지 않으면 수동 블러로 직접 수정하세요.
-                </p>
+              <div className={styles.modalHeaderCompact}>
+                <h3 className={styles.modalTitle}>블러 확인</h3>
+                <p className={styles.modalDescription}>이미지를 크게 보고 선택하세요.</p>
               </div>
 
               <ImgCompare
@@ -1104,12 +1101,10 @@ export default function Upload() {
 
               {uploadedImage.aiBlurStatus === "FAILED" ? (
                 <p className={styles.modalWarningText}>
-                  AI 블러가 실패했습니다. 수동 블러로 얼굴 영역을 직접 지정해주세요.
+                  AI 블러가 실패했어요. 수동 블러로 바로 수정해주세요.
                 </p>
               ) : (
-                <p className={styles.modalInfoText}>
-                  얼굴이 충분히 가려졌다면 자동 블러를 승인하면 됩니다.
-                </p>
+                <p className={styles.modalInfoText}>가려짐이 충분하면 AI 블러를 그대로 사용하면 됩니다.</p>
               )}
 
               <div className={styles.modalButtonColumn}>
@@ -1119,7 +1114,7 @@ export default function Upload() {
                   onClick={handleApproveAutoBlur}
                   disabled={uploadedImage.aiBlurStatus === "FAILED"}
                 >
-                  자동 블러 승인
+                  AI 블러 사용
                 </button>
 
                 <button
@@ -1127,7 +1122,7 @@ export default function Upload() {
                   className={styles.modalSecondaryButton}
                   onClick={handleOpenManualEditor}
                 >
-                  수동 블러로 수정하기
+                  직접 수정하기
                 </button>
 
                 <button
@@ -1142,21 +1137,12 @@ export default function Upload() {
           )}
 
           {blurStep === "manual" && (
-            <>
-              <div className={styles.modalTitleBlock}>
-                <h3 className={styles.modalTitle}>수동 블러 편집</h3>
-                <p className={styles.modalDescription}>
-                  드래그해서 바로 모자이크하고, 필요하면 지우개와 뒤로가기로 수정해주세요.
-                </p>
-              </div>
-
-              <ManualBlurEditor
-                key={rawLocalPreview || assetUrl(uploadedImage.originalImageUrl)}
-                originalImageUrl={rawLocalPreview || assetUrl(uploadedImage.originalImageUrl)}
-                onApprove={handleManualApprove}
-                onBack={() => setBlurStep("decision")}
-              />
-            </>
+            <ManualBlurEditor
+              key={rawLocalPreview || assetUrl(uploadedImage.originalImageUrl)}
+              originalImageUrl={rawLocalPreview || assetUrl(uploadedImage.originalImageUrl)}
+              onApprove={handleManualApprove}
+              onBack={() => setBlurStep("decision")}
+            />
           )}
         </Modal>
       )}
