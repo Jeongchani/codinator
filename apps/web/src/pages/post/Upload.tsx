@@ -588,7 +588,7 @@ function ManualBlurEditor({
           onClick={onBack}
           aria-label="블러 확인으로 돌아가기"
         >
-          <ChevronLeft size={18} strokeWidth={2.8} />
+          <ChevronLeft size={18} strokeWidth={2.4} />
         </button>
       </div>
 
@@ -733,10 +733,7 @@ export default function Upload() {
   const previewUrl = useMemo(() => approvedPreview || "", [approvedPreview]);
 
   const visibleStatusMessage =
-    message &&
-    message !== "이미지와 설명을 입력하면 게시글을 등록할 수 있습니다." &&
-    message !== "AI 블러 결과가 적용되었습니다." &&
-    message !== "수동 블러가 적용되었습니다."
+    message && message !== "이미지와 설명을 입력하면 게시글을 등록할 수 있습니다."
       ? message
       : "";
 
@@ -1024,25 +1021,25 @@ export default function Upload() {
                 </span>
               </div>
             )}
+
+            <button
+              type="button"
+              className={styles.headerCircleButton}
+              onClick={handleBack}
+              aria-label="뒤로가기"
+            >
+              <ChevronLeft size={15} strokeWidth={2.6} />
+            </button>
+
+            <button
+              type="button"
+              className={styles.editCircleButton}
+              onClick={handleOpenFilePicker}
+              aria-label="사진 선택"
+            >
+              <PhotoFrameIcon />
+            </button>
           </div>
-
-          <button
-            type="button"
-            className={styles.headerCircleButton}
-            onClick={handleBack}
-            aria-label="뒤로가기"
-          >
-            <ChevronLeft size={16} strokeWidth={2.8} />
-          </button>
-
-          <button
-            type="button"
-            className={styles.editCircleButton}
-            onClick={handleOpenFilePicker}
-            aria-label="사진 선택"
-          >
-            <PhotoFrameIcon />
-          </button>
 
           <input
             ref={fileInputRef}
@@ -1054,24 +1051,6 @@ export default function Upload() {
         </section>
 
         <section className={styles.contentSection}>
-          {uploadedImage && (
-            <>
-              <div className={styles.blurActionArea}>
-                <button
-                  type="button"
-                  className={styles.blurCheckButton}
-                  onClick={() => {
-                    setBlurDecisionOpen(true);
-                    setBlurStep("decision");
-                  }}
-                >
-                  블러 다시 처리하기
-                </button>
-              </div>
-              <div className={styles.divider} />
-            </>
-          )}
-
           <section className={styles.contentInputSection}>
             <label htmlFor="post-content" className={styles.contentLabel}>
               게시글 설명
