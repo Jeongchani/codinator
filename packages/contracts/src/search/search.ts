@@ -32,13 +32,22 @@ export type SearchType = 'ALL' | 'NICKNAME' | 'KEYWORD' | 'POST';
 export interface UserSearchItem {
   userId: number;
   nickname: string;
+  /** 유저의 최근 랭킹 등재 게시글 대표 썸네일. 없으면 null */
+  thumbnailUrl: string | null;
+}
+
+export interface PostSearchKeyword {
+  keywordId: number;
+  label: string;
 }
 
 export interface PostSearchItem {
   postId: number;
+  userId: number;
   thumbnailUrl: string | null;
   content: string;
   createdAt: string; // ISO 8601
+  keywords: PostSearchKeyword[];
 }
 
 export interface SearchRequest {

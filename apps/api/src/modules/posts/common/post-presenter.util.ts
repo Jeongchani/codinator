@@ -70,18 +70,23 @@ export function mapPostKeywords(
   }));
 }
 
+/**
+ * 썸네일 URL 우선순위: thumbnailUrl → processedImageUrl → null
+ *
+ * ⚠️ originalImageUrl은 블러 처리 전 원본이므로 절대 외부에 반환하지 않는다.
+ * processedImageUrl까지 없는 경우 null 반환 (이미지 처리 미완료 상태).
+ */
 export function pickPostThumbnail(
   images: Array<{
     thumbnailUrl: string | null;
     processedImageUrl: string | null;
-    originalImageUrl: string;
   }>,
-): string {
+): string | null {
   const first = images[0];
 
   if (!first) {
-    return '';
+    return null;
   }
 
-  return first.thumbnailUrl ?? first.processedImageUrl ?? first.originalImageUrl;
+  return first.thumbnailUrl ?? first.processedImageUrl ?? null;
 }
