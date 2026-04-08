@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import type {
   PostSearchItem,
+  PostSearchKeyword,
   SearchResponse,
   SearchType,
   UserSearchItem,
@@ -174,6 +175,10 @@ export class SearchService {
         content: true,
         createdAt: true,
         images: { orderBy: IMAGE_ORDER_BY, take: 1, select: { thumbnailUrl: true, processedImageUrl: true } },
+        postKeywords: {
+          orderBy: { sortOrder: 'asc' as const },
+          select: { keyword: { select: { id: true, label: true } } },
+        },
       },
     });
 
@@ -215,6 +220,10 @@ export class SearchService {
         content: true,
         createdAt: true,
         images: { orderBy: IMAGE_ORDER_BY, take: 1, select: { thumbnailUrl: true, processedImageUrl: true } },
+        postKeywords: {
+          orderBy: { sortOrder: 'asc' as const },
+          select: { keyword: { select: { id: true, label: true } } },
+        },
       },
     });
 
@@ -299,6 +308,10 @@ export class SearchService {
           content: true,
           createdAt: true,
           images: { orderBy: IMAGE_ORDER_BY, take: 1, select: { thumbnailUrl: true, processedImageUrl: true } },
+          postKeywords: {
+            orderBy: { sortOrder: 'asc' as const },
+            select: { keyword: { select: { id: true, label: true } } },
+          },
         },
       }),
     ]);
@@ -334,13 +347,22 @@ export class SearchService {
       thumbnailUrl: string | null;
       processedImageUrl: string | null;
     }>;
+    postKeywords: Array<{
+      keyword: { id: number; label: string };
+    }>;
   }): PostSearchItem {
+    const keywords: PostSearchKeyword[] = post.postKeywords.map((pk) => ({
+      keywordId: pk.keyword.id,
+      label: pk.keyword.label,
+    }));
+
     return {
       postId: post.id,
       userId: post.authorId,
       thumbnailUrl: post.images.length > 0 ? pickPostThumbnail(post.images) : null,
       content: post.content,
       createdAt: post.createdAt.toISOString(),
+      keywords,
     };
   }
 

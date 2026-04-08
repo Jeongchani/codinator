@@ -389,7 +389,10 @@ function pushKeywordPieces(raw: string, target: string[]) {
     .map((item) => item.replace(/^#/, "").trim())
     .filter(Boolean);
 
-  const values = splitCandidates.length > 1 ? splitCandidates : [cleaned.replace(/^#/, "").trim()];
+  const values =
+    splitCandidates.length > 1
+      ? splitCandidates
+      : [cleaned.replace(/^#/, "").trim()];
 
   for (const value of values) {
     if (!value) continue;
@@ -456,6 +459,29 @@ function formatKeywordsText(record: Record<string, unknown>) {
   if (keywords.length === 0) return "";
 
   return keywords.map((keyword) => `#${keyword}`).join(" ");
+}
+
+function splitHashTags(text: string) {
+  return text
+    .split(/\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => item.replace(/^#/, "").trim())
+    .filter(Boolean);
+}
+
+function buildCombinedKeywordText(searchedQuery: string, keywordsText: string) {
+  const merged: string[] = [];
+
+  splitHashTags(searchedQuery).forEach((tag) => {
+    if (!merged.includes(tag)) merged.push(tag);
+  });
+
+  splitHashTags(keywordsText).forEach((tag) => {
+    if (!merged.includes(tag)) merged.push(tag);
+  });
+
+  return merged.map((tag) => `#${tag}`).join(" ");
 }
 
 function pickContentText(record: Record<string, unknown>) {
@@ -1297,7 +1323,9 @@ export default function Search({ initialRecentSearches }: SearchProps) {
                             className={styles.feedThumb}
                           />
                         </div>
-                        <span className={styles.feedMetaText}>{item.keywordsText}</span>
+                        <span className={styles.feedMetaText}>
+                          {buildCombinedKeywordText(trimmedQuery, item.keywordsText)}
+                        </span>
                       </button>
                     ))}
                   </div>
