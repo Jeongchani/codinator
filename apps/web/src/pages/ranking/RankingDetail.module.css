@@ -206,8 +206,24 @@
   color: #8c8c8c;
 }
 
+.keywordLaneSection {
+  @apply mb-4;
+}
+
+.keywordLane {
+  @apply flex items-center gap-2 overflow-x-auto;
+  padding: 2px 0 2px 0;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.keywordLane::-webkit-scrollbar {
+  display: none;
+}
+
 .keywordChip {
-  @apply px-3 h-7 rounded-[999px] text-[11px] leading-[27px] font-medium text-neutral-700;
+  @apply shrink-0 px-3 h-7 rounded-[999px] text-[11px] leading-[27px] font-medium text-neutral-700;
   background: #dedede;
 }
 
@@ -329,10 +345,6 @@
   background: linear-gradient(90deg, #b9c2df 0%, #8c95b5 100%);
 }
 
-.outfitKeywordRow {
-  @apply flex flex-wrap gap-2 mb-3;
-}
-
 .outfitHeaderRow {
   @apply flex items-center mb-3;
 }
@@ -344,9 +356,9 @@
 .itemScroll {
   @apply flex overflow-x-auto;
   gap: 14px;
-  padding: 4px 2px 12px 2px;
+  padding: 6px 10px 20px 10px;
   scroll-snap-type: x proximity;
-  scroll-padding-left: 2px;
+  scroll-padding-left: 10px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: rgba(140, 149, 181, 0.8) rgba(0, 0, 0, 0.08);
@@ -374,6 +386,7 @@
 .outfitCard {
   @apply shrink-0;
   width: 168px;
+  padding-bottom: 8px;
   background: transparent;
   scroll-snap-align: start;
 }

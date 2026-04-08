@@ -707,12 +707,14 @@ const RankingDetail: React.FC = () => {
             </div>
 
             {keywordChips.length > 0 && (
-              <div className={styles.outfitKeywordRow}>
-                {keywordChips.map((keyword) => (
-                  <span key={keyword} className={styles.keywordChip}>
-                    {formatKeywordLabel(keyword)}
-                  </span>
-                ))}
+              <div className={styles.keywordLaneSection}>
+                <div className={styles.keywordLane}>
+                  {keywordChips.map((keyword) => (
+                    <span key={keyword} className={styles.keywordChip}>
+                      {formatKeywordLabel(keyword)}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
 
