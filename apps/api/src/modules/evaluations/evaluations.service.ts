@@ -37,6 +37,8 @@ export class EvaluationsService {
         id: { gt: cursor },
         status: EvaluationStatus.OPEN,
         endsAt: { gt: new Date() },
+        // 이미 투표한 평가는 DB 쿼리 레벨에서 제외 (재노출 방지)
+        votes: { none: { voterId: params.userId } },
         post: {
           authorId: { not: params.userId },
           status: PostStatus.ACTIVE,
@@ -51,6 +53,14 @@ export class EvaluationsService {
             images: {
               orderBy: IMAGE_ORDER_BY,
               take: 1,
+            },
+            postKeywords: {
+              orderBy: POST_KEYWORD_ORDER_BY,
+              include: {
+                keyword: {
+                  select: { id: true, code: true, label: true },
+                },
+              },
             },
           },
         },
@@ -69,6 +79,12 @@ export class EvaluationsService {
         evaluationId: evaluation.id,
         postId: evaluation.postId,
         thumbnailUrl: pickPostThumbnail(evaluation.post.images),
+        content: evaluation.post.content,
+        keywords: evaluation.post.postKeywords.map((pk) => ({
+          id: pk.keyword.id,
+          code: pk.keyword.code,
+          label: pk.keyword.label,
+        })),
         endsAt: evaluation.endsAt.toISOString(),
         hasVoted: evaluation.votes.length > 0,
       })),

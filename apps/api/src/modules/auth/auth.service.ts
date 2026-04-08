@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common'; // 여기
 import {
   LoginResponse,
   LogoutRequest,
@@ -6,7 +6,7 @@ import {
   RefreshTokenRequest,
   RefreshTokenResponse,
 } from '@codinator/contracts';
-import { Gender } from '@prisma/client';
+import { Gender, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { createHash } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -22,12 +22,77 @@ export class AuthService {
     private readonly authTokenService: AuthTokenService,
   ) {}
 
+  // 여기: 회원가입 전 이메일/닉네임/비밀번호 사용 가능 여부 확인용 메서드 추가
+  async checkSignupAvailability(
+    dto: { type: 'EMAIL' | 'NICKNAME' | 'PASSWORD'; value: string },
+  ): Promise<{ available: boolean; message: string }> {
+    const type = dto.type;
+    const value = dto.value?.trim();
+
+    if (!value) {
+      throw new BadRequestException('확인할 값을 입력해 주세요.');
+    }
+
+    if (type === 'EMAIL') {
+      const email = value.toLowerCase();
+
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email },
+        select: { id: true },
+      });
+
+      if (existingUser) {
+        return {
+          available: false,
+          message: '이미 가입된 이메일입니다.',
+        };
+      }
+
+      return {
+        available: true,
+        message: '사용 가능한 이메일입니다.',
+      };
+    }
+
+    if (type === 'NICKNAME') {
+      const nickname = value;
+
+      const existingUser = await this.prisma.user.findUnique({
+        where: { nickname },
+        select: { id: true },
+      });
+
+      if (existingUser) {
+        return {
+          available: false,
+          message: '이미 사용 중인 닉네임입니다.',
+        };
+      }
+
+      return {
+        available: true,
+        message: '사용 가능한 닉네임입니다.',
+      };
+    }
+
+    if (type === 'PASSWORD') {
+      return {
+        available: true,
+        message: '사용 가능한 비밀번호입니다.',
+      };
+    }
+
+    throw new BadRequestException('지원하지 않는 확인 타입입니다.');
+  }
+
   async signup(dto: SignupRequestDto): Promise<SignupResponseDto> {
     const email = dto.email.trim().toLowerCase();
     const nickname = dto.nickname.trim();
     const gender = this.normalizeGender(dto.gender);
     const birthDate = this.normalizeBirthDate(dto.birthDate);
     const phoneNumber = this.normalizePhoneNumber(dto.phoneNumber);
+
+    // 여기: 비밀번호 사전 검증 로직은 넣지 않음
 
     const [existingEmailUser, existingNicknameUser, existingPhoneUser] = await Promise.all([
       this.prisma.user.findUnique({
@@ -88,6 +153,10 @@ export class AuthService {
 
     if (!user) {
       throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.');
+    }
+
+    if (user.status === UserStatus.DELETED || user.status === UserStatus.SUSPENDED) {
+      throw new UnauthorizedException('사용할 수 없는 계정입니다. 고객센터에 문의해 주세요.');
     }
 
     const isValid = await bcrypt.compare(dto.password, user.passwordHash);

@@ -16,7 +16,7 @@ export interface CreatePostImageInput {
 }
 
 export interface CreatePostRequest {
-  content?: string | null;
+  content: string; // V2 정책: 필수값
   image: CreatePostImageInput;
   keywordIds?: number[];
   outfitItems?: CreateOutfitItemInput[];
