@@ -1,27 +1,40 @@
 .overlay {
-  @apply fixed inset-0 z-[2000] flex items-center justify-center bg-black/55 px-3 py-6;
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  @apply fixed inset-0 z-[2000] flex items-center justify-center px-4 py-6;
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .card {
-  @apply w-[375px] max-w-full max-h-[90vh] overflow-hidden rounded-[22px] bg-white shadow-2xl flex flex-col;
+  @apply flex max-h-[90vh] w-[375px] max-w-full flex-col overflow-hidden rounded-[28px];
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(18, 18, 18, 0.34);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 .header {
-  @apply relative w-full h-[93px] shrink-0 bg-white;
-}
-
-.backButton {
-  @apply absolute left-4 top-[59px] -translate-y-1/2 flex h-[25px] w-[25px] items-center justify-center border-0 bg-transparent p-0 text-black;
+  @apply relative h-[96px] w-full shrink-0 bg-transparent;
 }
 
 .title {
-  @apply absolute left-1/2 top-[59px] -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-center text-[20px] font-semibold leading-7 text-black;
+  @apply absolute left-1/2 top-[56px] -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-center text-[20px] font-semibold leading-7;
+  color: #ffffff;
+}
+
+.closeButton {
+  @apply absolute right-4 top-[22px] flex h-9 w-9 items-center justify-center rounded-full border-0 p-0 transition-colors;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.closeButton:hover {
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .content {
-  @apply flex-1 overflow-y-auto px-4 pb-4 pt-3;
+  @apply flex-1 overflow-y-auto px-4 pb-4 pt-1;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -30,20 +43,38 @@
   display: none;
 }
 
-.tabRow {
-  @apply mb-5 flex w-full items-center justify-center gap-[10px];
+.tabSwitch {
+  @apply relative mx-auto mb-5 flex h-11 w-[180px] items-end;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .tabButton {
-  @apply h-9 w-20 border-0 border-b bg-white p-2 text-base font-normal leading-6 text-black;
+  @apply relative z-10 h-full w-1/2 cursor-pointer border-0 bg-transparent text-base font-normal leading-6 transition-colors;
+  color: rgba(255, 255, 255, 0.42);
 }
 
 .tabButtonActive {
-  @apply border-black;
+  color: #ffffff;
+  font-weight: 500;
 }
 
 .tabButtonDisabled {
-  @apply cursor-not-allowed text-neutral-300;
+  cursor: not-allowed;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.tabIndicator {
+  @apply absolute bottom-0 left-0 h-[1px] w-1/2 transition-transform duration-300 ease-out;
+  background: #ffffff;
+  pointer-events: none;
+}
+
+.tabIndicatorPost {
+  transform: translateX(0%);
+}
+
+.tabIndicatorUser {
+  transform: translateX(100%);
 }
 
 .section {
@@ -51,31 +82,46 @@
 }
 
 .targetBox {
-  @apply flex h-10 w-full items-center rounded-[10px] border border-neutral-400 px-2.5 py-2;
+  @apply flex h-10 w-full items-center rounded-[12px] px-3;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .targetText {
-  @apply text-sm font-normal leading-5 text-black;
+  @apply block w-full truncate text-sm font-normal leading-5;
+  color: #ffffff;
 }
 
 .targetPlaceholder {
-  @apply text-sm font-normal leading-5 text-neutral-400;
+  @apply block w-full truncate text-sm font-normal leading-5;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .fieldTitle {
-  @apply mb-2 text-base font-medium leading-6 text-neutral-900;
+  @apply mb-2 text-base font-medium leading-6;
+  color: #ffffff;
 }
 
 .reasonGrid {
-  @apply grid grid-cols-2 gap-[9px];
+  @apply grid grid-cols-2 gap-[10px];
 }
 
 .reasonButton {
-  @apply flex h-[34px] items-center justify-center rounded-[10px] border border-neutral-400 bg-white px-3 text-center text-base font-normal leading-6 text-black transition-colors;
+  @apply flex h-11 items-center justify-center rounded-[12px] px-3 text-center text-base font-normal leading-6 transition-colors;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+}
+
+.reasonButton:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .reasonButtonActive {
-  @apply bg-neutral-300;
+  border-color: #ffffff;
+  background: #ffffff;
+  color: #000000;
 }
 
 .labelRow {
@@ -83,45 +129,73 @@
 }
 
 .labelText {
-  @apply text-base font-medium leading-6 text-neutral-900;
+  @apply text-base font-medium leading-6;
+  color: #ffffff;
 }
 
 .labelSubText {
-  @apply text-xs font-medium leading-4 text-neutral-400;
+  @apply text-xs font-medium leading-4;
+  color: rgba(255, 255, 255, 0.42);
 }
 
 .textInput {
-  @apply h-10 w-full rounded-[10px] border border-neutral-400 px-3.5 text-sm font-normal leading-5 text-black outline-none;
+  @apply h-10 w-full rounded-[12px] px-3.5 text-sm font-normal leading-5 outline-none transition-colors;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #ffffff;
 }
 
 .textInput::placeholder {
-  @apply text-neutral-400;
+  color: rgba(255, 255, 255, 0.34);
+}
+
+.textInput:focus {
+  border-color: rgba(255, 255, 255, 0.26);
 }
 
 .textarea {
-  @apply h-44 w-full resize-none rounded-[10px] border border-neutral-400 px-3.5 py-3.5 text-sm font-normal leading-5 text-black outline-none;
+  @apply h-44 w-full resize-none rounded-[12px] px-3.5 py-3.5 text-sm font-normal leading-5 outline-none transition-colors;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #ffffff;
 }
 
 .textarea::placeholder {
-  @apply text-neutral-400;
+  color: rgba(255, 255, 255, 0.34);
+}
+
+.textarea:focus {
+  border-color: rgba(255, 255, 255, 0.26);
 }
 
 .feedback {
-  @apply mb-3 rounded-[10px] border px-3 py-2 text-sm;
+  @apply mb-3 rounded-[12px] border px-3 py-2 text-sm;
 }
 
 .feedbackSuccess {
-  @apply border-green-200 bg-green-50 text-green-700;
+  border-color: rgba(74, 222, 128, 0.28);
+  background: rgba(34, 197, 94, 0.12);
+  color: #dcfce7;
 }
 
 .feedbackError {
-  @apply border-red-200 bg-red-50 text-red-600;
+  border-color: rgba(248, 113, 113, 0.28);
+  background: rgba(239, 68, 68, 0.12);
+  color: #fee2e2;
 }
 
 .submitButton {
-  @apply h-12 w-full rounded-[10px] border-0 bg-black text-center text-xl font-medium leading-7 text-white transition-opacity;
+  @apply h-12 w-full rounded-[12px] border-0 text-center text-xl font-medium leading-7 transition-colors;
+  background: rgba(255, 255, 255, 0.96);
+  color: #000000;
+}
+
+.submitButton:hover {
+  background: #ffffff;
 }
 
 .submitButtonDisabled {
-  @apply cursor-not-allowed opacity-40;
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.42);
 }

@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft } from "lucide-react";
-import styles from "./reports.module.css";
+import { X } from "lucide-react";
+import styles from "./Reports.module.css";
 
 type ReportTab = "post" | "user";
-
 type ReportReason = "SPAM" | "ABUSE" | "INAPPROPRIATE" | "ETC";
 
 type ReportTarget = {
   id: number | string;
   label?: string;
+  displayText?: string;
 };
 
 type ReportsProps = {
@@ -31,6 +31,7 @@ type ReportsProps = {
 };
 
 const BASE = "/api/v2";
+const tok = () => localStorage.getItem("accessToken") ?? "";
 
 const REASON_OPTIONS: { value: ReportReason; label: string }[] = [
   { value: "SPAM", label: "스팸" },
@@ -39,19 +40,18 @@ const REASON_OPTIONS: { value: ReportReason; label: string }[] = [
   { value: "ETC", label: "기타" },
 ];
 
-const getAccessToken = () => localStorage.getItem("accessToken") ?? "";
-
-async function postReport<T>(
+async function api<T>(
+  method: string,
   path: string,
-  body: Record<string, unknown>
+  body?: unknown
 ): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    method: "POST",
+    method,
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${getAccessToken()}`,
+      Authorization: `Bearer ${tok()}`,
     },
-    body: JSON.stringify(body),
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
   const text = await res.text();
@@ -161,9 +161,14 @@ export default function Reports({
     return tab === "post" ? postTarget : userTarget;
   }, [tab, postTarget, userTarget]);
 
-  const activeTargetLabel = useMemo(() => {
+  const activeTargetDisplay = useMemo(() => {
     if (!activeTarget) return "신고 대상";
-    if (activeTarget.label?.trim()) return activeTarget.label.trim();
+
+    const displayText =
+      activeTarget.displayText?.trim() || activeTarget.label?.trim();
+
+    if (displayText) return displayText;
+
     return tab === "post"
       ? `게시글 #${activeTarget.id}`
       : `사용자 #${activeTarget.id}`;
@@ -223,7 +228,7 @@ export default function Reports({
         body.description = description.trim();
       }
 
-      const response = await postReport(path, body);
+      const response = await api("POST", path, body);
 
       setFeedback({
         type: "success",
@@ -268,20 +273,29 @@ export default function Reports({
         aria-label="신고 모달"
       >
         <div className={styles.header}>
+          <h2 className={styles.title}>신고 하기</h2>
+
           <button
             type="button"
-            className={styles.backButton}
+            className={styles.closeButton}
             onClick={handleClose}
             aria-label="신고 모달 닫기"
           >
-            <ChevronLeft size={25} strokeWidth={2.2} />
+            <X size={22} strokeWidth={2.2} />
           </button>
-
-          <h2 className={styles.title}>신고 하기</h2>
         </div>
 
         <div className={styles.content}>
-          <div className={styles.tabRow}>
+          <div className={styles.tabSwitch}>
+            <div
+              className={[
+                styles.tabIndicator,
+                tab === "user"
+                  ? styles.tabIndicatorUser
+                  : styles.tabIndicatorPost,
+              ].join(" ")}
+            />
+
             <button
               type="button"
               className={[
@@ -310,13 +324,13 @@ export default function Reports({
           </div>
 
           <div className={styles.section}>
-            <div className={styles.targetBox}>
+            <div className={styles.targetBox} title={activeTargetDisplay}>
               <span
                 className={
                   activeTarget ? styles.targetText : styles.targetPlaceholder
                 }
               >
-                {activeTarget ? activeTargetLabel : "신고 대상"}
+                {activeTarget ? activeTargetDisplay : "신고 대상"}
               </span>
             </div>
           </div>
@@ -356,7 +370,7 @@ export default function Reports({
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               maxLength={100}
-              placeholder="ex: 욕설이 포함된 게시물 제목"
+              placeholder="신고제목을입력해주세요."
               className={styles.textInput}
             />
           </div>

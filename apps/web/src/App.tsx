@@ -18,6 +18,7 @@ import TestPage from "./TestPage";
 import Bookmark from "./pages/bookmark/Bookmark";
 import MyPage from "./pages/auth/MyPage";
 import Search from "./pages/search/Search";
+import ReportModalTestPage from "./pages/test/ReportModalTestPage";
 
 function AppRoutes() {
   const navigate = useNavigate();
@@ -36,6 +37,8 @@ function AppRoutes() {
       <Route path="/user/:userId/feed/:postId" element={<UserFeedDetail />} />
       <Route path="/myPage" element={<MyPage />} />
       
+      <Route path="/report-test" element={<ReportModalTestPage />} />
+
       <Route path="/test" element={<TestPage />} />
 
       <Route element={<AppLayout />}>
