@@ -172,6 +172,14 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
+.itemSelectContent {
+  @apply flex min-w-0 flex-1 items-center gap-1.5;
+}
+
+.itemSelectTagIcon {
+  @apply shrink-0 text-neutral-500;
+}
+
 .itemSelectText {
   @apply block truncate text-[11px] leading-4 text-neutral-900;
   padding-right: 10px;
@@ -190,7 +198,7 @@
 }
 
 .selectMenu {
-  @apply absolute left-0 right-0 overflow-hidden border bg-white;
+  @apply absolute left-0 right-0 border bg-white;
   top: calc(100% + 6px);
   z-index: 50;
   border-radius: 14px;
@@ -198,6 +206,23 @@
   box-shadow:
     0 14px 28px rgba(15, 23, 42, 0.12),
     0 4px 10px rgba(15, 23, 42, 0.06);
+  max-height: 188px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.selectMenu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.selectMenu::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 999px;
+}
+
+.selectMenu::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .selectOption {
@@ -210,8 +235,16 @@
   border-top: 1px solid #f1f5f9;
 }
 
+.selectOptionContent {
+  @apply flex min-w-0 items-center gap-1.5;
+}
+
+.selectOptionTagIcon {
+  @apply shrink-0 text-neutral-500;
+}
+
 .selectOptionLabel {
-  @apply text-[12px] leading-4 text-neutral-800;
+  @apply truncate text-[12px] leading-4 text-neutral-800;
 }
 
 .selectOption:hover {
@@ -225,6 +258,10 @@
 .selectOptionActive .selectOptionLabel {
   color: #ffffff;
   font-weight: 600;
+}
+
+.selectOptionActive .selectOptionTagIcon {
+  color: #ffffff;
 }
 
 .selectOptionPlaceholder .selectOptionLabel {
