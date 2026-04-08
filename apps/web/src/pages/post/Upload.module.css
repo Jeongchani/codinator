@@ -115,16 +115,20 @@
   @apply text-[15px] font-semibold leading-6 text-neutral-900;
 }
 
+/* 추가 버튼 */
 .addItemButton {
-  @apply inline-flex h-8 items-center justify-center gap-1 rounded-full border border-neutral-300 bg-white px-3 text-[12px] font-semibold text-neutral-700;
+  @apply inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-neutral-300 bg-white px-3 text-[12px] font-semibold text-neutral-700;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
-.addItemPlus {
-  @apply flex h-4 items-center justify-center text-[16px] leading-none;
+.addItemPlusIcon {
+  @apply shrink-0 text-neutral-800;
 }
 
 .addItemText {
-  @apply leading-none;
+  @apply inline-flex items-center leading-none;
 }
 
 .itemGrid {
@@ -132,20 +136,117 @@
 }
 
 .itemCard {
-  @apply rounded-[8px] border border-neutral-200 bg-white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  @apply rounded-[12px] border border-neutral-200 bg-white;
+  position: relative;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+}
+
+.itemCardOpen {
+  z-index: 30;
 }
 
 .itemInfo {
   @apply flex flex-col gap-1.5 p-2;
 }
 
-.itemSelect {
-  @apply h-8 w-full rounded-[6px] border border-neutral-200 bg-white px-2 text-[11px] leading-4 text-neutral-900 outline-none;
+/* 커스텀 드롭다운 */
+.selectWrap {
+  position: relative;
 }
 
+.itemSelectButton {
+  @apply flex h-9 w-full items-center justify-between border bg-white text-left outline-none transition;
+  border-radius: 12px;
+  border-color: #d4d4d8;
+  padding: 0 12px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.itemSelectButtonOpen {
+  border-color: #171717;
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.05),
+    0 8px 20px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.itemSelectText {
+  @apply block truncate text-[11px] leading-4 text-neutral-900;
+  padding-right: 10px;
+}
+
+.itemSelectPlaceholder {
+  @apply text-neutral-500;
+}
+
+.itemSelectChevron {
+  @apply shrink-0 text-neutral-700 transition-transform duration-200;
+}
+
+.itemSelectChevronOpen {
+  transform: rotate(180deg);
+}
+
+.selectMenu {
+  @apply absolute left-0 right-0 overflow-hidden border bg-white;
+  top: calc(100% + 6px);
+  z-index: 50;
+  border-radius: 14px;
+  border-color: #d4d4d8;
+  box-shadow:
+    0 14px 28px rgba(15, 23, 42, 0.12),
+    0 4px 10px rgba(15, 23, 42, 0.06);
+}
+
+.selectOption {
+  @apply flex w-full items-center bg-white text-left transition;
+  min-height: 38px;
+  padding: 0 12px;
+}
+
+.selectOption + .selectOption {
+  border-top: 1px solid #f1f5f9;
+}
+
+.selectOptionLabel {
+  @apply text-[12px] leading-4 text-neutral-800;
+}
+
+.selectOption:hover {
+  background: #f5f5f5;
+}
+
+.selectOptionActive {
+  background: #111111;
+}
+
+.selectOptionActive .selectOptionLabel {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.selectOptionPlaceholder .selectOptionLabel {
+  color: #737373;
+}
+
+/* 입력칸 */
 .itemInput {
-  @apply h-8 w-full rounded-[6px] border border-neutral-200 bg-white px-2 text-[11px] leading-4 text-neutral-900 outline-none placeholder:text-neutral-400;
+  @apply h-9 w-full border bg-white text-[11px] leading-4 text-neutral-900 outline-none placeholder:text-neutral-400;
+  border-radius: 12px;
+  border-color: #e5e5e5;
+  padding: 0 12px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.itemInput:focus {
+  border-color: #171717;
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .submitArea {
@@ -353,4 +454,12 @@
 
 .editorApplyButton {
   @apply flex h-[50px] w-full items-center justify-center rounded-full bg-black px-4 text-[15px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.blurActionArea {
+  @apply flex flex-col gap-2;
+}
+
+.blurCheckButton {
+  @apply flex h-[40px] w-full items-center justify-center rounded-[10px] bg-black text-[14px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60;
 }

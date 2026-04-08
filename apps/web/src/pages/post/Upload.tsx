@@ -1,6 +1,6 @@
 import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, Sparkles, Undo2, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, Plus, Sparkles, Undo2, X } from "lucide-react";
 import type {
   CreatePostResponse,
   GarmentCategory,
@@ -145,6 +145,109 @@ function Modal({
       <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
         {children}
       </div>
+    </div>
+  );
+}
+
+function WearTypeDropdown({
+  value,
+  options,
+  open,
+  onToggle,
+  onClose,
+  onChange,
+}: {
+  value: WearType;
+  options: WearType[];
+  open: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  onChange: (value: WearType) => void;
+}) {
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+
+      if (wrapRef.current && !wrapRef.current.contains(target)) {
+        onClose();
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [open, onClose]);
+
+  return (
+    <div className={styles.selectWrap} ref={wrapRef}>
+      <button
+        type="button"
+        className={cls(styles.itemSelectButton, open && styles.itemSelectButtonOpen)}
+        onClick={onToggle}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span
+          className={cls(
+            styles.itemSelectText,
+            !value && styles.itemSelectPlaceholder,
+          )}
+        >
+          {value || "의류 종류 선택"}
+        </span>
+
+        <ChevronDown
+          size={16}
+          strokeWidth={2.2}
+          className={cls(styles.itemSelectChevron, open && styles.itemSelectChevronOpen)}
+        />
+      </button>
+
+      {open && (
+        <div className={styles.selectMenu} role="listbox">
+          {options.map((type) => {
+            const isPlaceholder = type === "";
+            const selected = value === type;
+
+            return (
+              <button
+                key={type || "placeholder"}
+                type="button"
+                className={cls(
+                  styles.selectOption,
+                  selected && styles.selectOptionActive,
+                  isPlaceholder && styles.selectOptionPlaceholder,
+                )}
+                onClick={() => {
+                  onChange(type);
+                  onClose();
+                }}
+              >
+                <span className={styles.selectOptionLabel}>
+                  {type || "의류 종류 선택"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -723,6 +826,7 @@ export default function Upload() {
   const [approvedPreview, setApprovedPreview] = useState("");
   const [selectedKeywords, setSelectedKeywords] = useState<number[]>([]);
   const [wearItems, setWearItems] = useState<WearItem[]>(initialWearItems);
+  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
 
   const [blurStep, setBlurStep] = useState<BlurFlowStep>("idle");
   const [blurDecisionOpen, setBlurDecisionOpen] = useState(false);
@@ -863,6 +967,7 @@ export default function Upload() {
         },
       ];
     });
+    setOpenDropdownId(null);
   };
 
   const handleApproveAutoBlur = () => {
@@ -1051,6 +1156,24 @@ export default function Upload() {
         </section>
 
         <section className={styles.contentSection}>
+          {uploadedImage && (
+            <>
+              <div className={styles.blurActionArea}>
+                <button
+                  type="button"
+                  className={styles.blurCheckButton}
+                  onClick={() => {
+                    setBlurDecisionOpen(true);
+                    setBlurStep("decision");
+                  }}
+                >
+                  블러 다시 처리하기
+                </button>
+              </div>
+              <div className={styles.divider} />
+            </>
+          )}
+
           <section className={styles.contentInputSection}>
             <label htmlFor="post-content" className={styles.contentLabel}>
               게시글 설명
@@ -1113,45 +1236,55 @@ export default function Upload() {
                 className={styles.addItemButton}
                 onClick={handleAddWearItem}
               >
-                <span className={styles.addItemPlus}>+</span>
+                <Plus size={14} strokeWidth={2.5} className={styles.addItemPlusIcon} />
                 <span className={styles.addItemText}>추가</span>
               </button>
             </div>
 
             <div className={styles.itemGrid}>
-              {wearItems.map((item) => (
-                <article key={item.id} className={styles.itemCard}>
-                  <div className={styles.itemInfo}>
-                    <select
-                      value={item.type}
-                      onChange={(e) => handleWearItemChange(item.id, "type", e.target.value)}
-                      className={styles.itemSelect}
-                    >
-                      {wearTypeOptions.map((type) => (
-                        <option key={type || "empty"} value={type}>
-                          {type || "의류 종류 선택"}
-                        </option>
-                      ))}
-                    </select>
+              {wearItems.map((item) => {
+                const isOpen = openDropdownId === item.id;
 
-                    <input
-                      type="text"
-                      value={item.brand}
-                      onChange={(e) => handleWearItemChange(item.id, "brand", e.target.value)}
-                      placeholder="상품 브랜드"
-                      className={styles.itemInput}
-                    />
+                return (
+                  <article
+                    key={item.id}
+                    className={cls(styles.itemCard, isOpen && styles.itemCardOpen)}
+                  >
+                    <div className={styles.itemInfo}>
+                      <WearTypeDropdown
+                        value={item.type}
+                        options={wearTypeOptions}
+                        open={isOpen}
+                        onToggle={() =>
+                          setOpenDropdownId((prev) => (prev === item.id ? null : item.id))
+                        }
+                        onClose={() => {
+                          setOpenDropdownId((prev) => (prev === item.id ? null : prev));
+                        }}
+                        onChange={(value) =>
+                          handleWearItemChange(item.id, "type", value)
+                        }
+                      />
 
-                    <input
-                      type="text"
-                      value={item.name}
-                      onChange={(e) => handleWearItemChange(item.id, "name", e.target.value)}
-                      placeholder="상품 이름"
-                      className={styles.itemInput}
-                    />
-                  </div>
-                </article>
-              ))}
+                      <input
+                        type="text"
+                        value={item.brand}
+                        onChange={(e) => handleWearItemChange(item.id, "brand", e.target.value)}
+                        placeholder="상품 브랜드"
+                        className={styles.itemInput}
+                      />
+
+                      <input
+                        type="text"
+                        value={item.name}
+                        onChange={(e) => handleWearItemChange(item.id, "name", e.target.value)}
+                        placeholder="상품 이름"
+                        className={styles.itemInput}
+                      />
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </section>
 
