@@ -1,6 +1,6 @@
 .overlay {
   @apply fixed inset-0 z-[2000] flex items-center justify-center px-4 py-6;
-  background: rgba(0, 0, 0, 0.52);
+  background: rgba(0, 0, 0, 0.42);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -8,19 +8,54 @@
 .card {
   @apply flex max-h-[90vh] w-[375px] max-w-full flex-col overflow-hidden rounded-[28px];
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(18, 18, 18, 0.34);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(18, 18, 18, 0.22);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
 }
 
 .header {
   @apply relative h-[96px] w-full shrink-0 bg-transparent;
 }
 
+.titleWrap {
+  @apply absolute left-1/2 top-[56px] flex -translate-x-1/2 -translate-y-1/2 items-center gap-2;
+}
+
 .title {
-  @apply absolute left-1/2 top-[56px] -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-center text-[20px] font-semibold leading-7;
+  @apply whitespace-nowrap text-center text-[20px] font-semibold leading-7;
   color: #ffffff;
+}
+
+.titleIconWrap {
+  @apply flex h-7 w-7 items-center justify-center rounded-full;
+  background: rgba(255, 59, 48, 0.14);
+  box-shadow:
+    0 0 10px rgba(255, 59, 48, 0.32),
+    0 0 22px rgba(255, 59, 48, 0.14);
+  animation: sirenGlow 2.4s ease-in-out infinite;
+}
+
+.titleIcon {
+  color: #ff5c55;
+  filter: drop-shadow(0 0 6px rgba(255, 92, 85, 0.5));
+}
+
+@keyframes sirenGlow {
+  0%,
+  100% {
+    background: rgba(255, 59, 48, 0.12);
+    box-shadow:
+      0 0 8px rgba(255, 59, 48, 0.24),
+      0 0 18px rgba(255, 59, 48, 0.1);
+  }
+
+  50% {
+    background: rgba(255, 59, 48, 0.2);
+    box-shadow:
+      0 0 14px rgba(255, 59, 48, 0.4),
+      0 0 28px rgba(255, 59, 48, 0.16);
+  }
 }
 
 .closeButton {
@@ -107,10 +142,12 @@
 }
 
 .reasonButton {
-  @apply flex h-11 items-center justify-center rounded-[12px] px-3 text-center text-base font-normal leading-6 transition-colors;
+  @apply flex h-11 items-center justify-center rounded-[12px] px-3 text-center text-base font-normal leading-6 transition-all duration-200;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.05);
   color: #ffffff;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .reasonButton:hover {
@@ -118,10 +155,27 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
+.reasonButton:active {
+  transform: scale(0.985);
+}
+
 .reasonButtonActive {
   border-color: #ffffff;
   background: #ffffff;
   color: #000000;
+}
+
+.reasonButtonActive:hover {
+  border-color: #ffffff;
+  background: #ffffff;
+  color: #000000;
+}
+
+.reasonButtonActive:active {
+  border-color: #ffffff;
+  background: #ffffff;
+  color: #000000;
+  transform: scale(0.985);
 }
 
 .labelRow {

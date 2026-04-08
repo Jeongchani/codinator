@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { Siren, X } from "lucide-react";
 import styles from "./Reports.module.css";
 
 type ReportTab = "post" | "user";
@@ -31,7 +31,8 @@ type ReportsProps = {
 };
 
 const BASE = "/api/v2";
-const tok = () => localStorage.getItem("accessToken") ?? "";
+
+const getAccessToken = () => localStorage.getItem("accessToken") ?? "";
 
 const REASON_OPTIONS: { value: ReportReason; label: string }[] = [
   { value: "SPAM", label: "스팸" },
@@ -45,16 +46,16 @@ async function api<T>(
   path: string,
   body?: unknown
 ): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const response = await fetch(`${BASE}${path}`, {
     method,
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${tok()}`,
+      Authorization: `Bearer ${getAccessToken()}`,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
-  const text = await res.text();
+  const text = await response.text();
 
   let data: unknown;
   try {
@@ -63,7 +64,7 @@ async function api<T>(
     data = text;
   }
 
-  if (!res.ok) {
+  if (!response.ok) {
     const raw = data as Record<string, unknown> | null;
     const message =
       raw && typeof raw === "object" && "message" in raw
@@ -72,7 +73,7 @@ async function api<T>(
           : String(raw.message)
         : text || "신고 처리 중 오류가 발생했습니다.";
 
-    throw new Error(`[${res.status}] ${message}`);
+    throw new Error(`[${response.status}] ${message}`);
   }
 
   return data as T;
@@ -124,6 +125,7 @@ export default function Reports({
     if (!isOpen) return;
 
     const nextTab = getPreferredTab(defaultTab, hasPostTarget, hasUserTarget);
+
     setTab(nextTab);
     setReason("ETC");
     setTitle("");
@@ -135,7 +137,7 @@ export default function Reports({
   useEffect(() => {
     if (!isOpen) return;
 
-    const prevOverflow = document.body.style.overflow;
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -147,7 +149,7 @@ export default function Reports({
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.body.style.overflow = prevOverflow;
+      document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
 
       if (closeTimerRef.current) {
@@ -273,7 +275,12 @@ export default function Reports({
         aria-label="신고 모달"
       >
         <div className={styles.header}>
-          <h2 className={styles.title}>신고 하기</h2>
+          <div className={styles.titleWrap}>
+            <span className={styles.titleIconWrap} aria-hidden="true">
+              <Siren size={16} strokeWidth={2.2} className={styles.titleIcon} />
+            </span>
+            <h2 className={styles.title}>신고 하기</h2>
+          </div>
 
           <button
             type="button"
