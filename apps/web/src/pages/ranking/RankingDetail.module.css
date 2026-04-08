@@ -95,7 +95,8 @@
 }
 
 .rightPercent {
-  @apply absolute right-3 top-1/2 -translate-y-1/2 flex items-center text-white text-[10px] leading-3 font-medium;
+  @apply absolute right-3 top-1/2 flex items-center text-white text-[10px] leading-3 font-medium;
+  transform: translateY(-50%);
   flex-direction: row-reverse;
   gap: 4px;
 }
@@ -176,6 +177,16 @@
   color: #6f6f6f;
   border: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bookmarkActionButton:active {
+  transform: scale(0.9);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .reportActionButton {
@@ -193,10 +204,6 @@
 
 .bookmarkDefault {
   color: #8c8c8c;
-}
-
-.keywordChipRow {
-  @apply flex flex-wrap gap-2 mb-4;
 }
 
 .keywordChip {
@@ -223,63 +230,45 @@
   border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
-.voteCountRow {
-  @apply flex items-center gap-2 mb-4;
+.feedbackSummaryRow {
+  @apply flex items-center justify-end mb-3;
 }
 
-.voteCountBadge {
-  @apply h-8 px-3 rounded-[999px] flex items-center gap-1 text-[12px] font-semibold bg-white;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+.totalVoteCount {
+  @apply text-[12px] leading-4 font-semibold;
+  color: #6a6a6a;
 }
 
-.voteCountBadgeLike {
-  color: #ef7f72;
+.feedbackProgressTrack {
+  @apply relative w-full h-[22px] rounded-[12px] overflow-hidden;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
 }
 
-.voteCountBadgeDislike {
-  color: #7e89b7;
+.feedbackLikeFill {
+  @apply absolute left-0 top-0 h-full rounded-l-[12px];
+  background: linear-gradient(90deg, rgba(244, 125, 114, 0.72) 0%, #f47d72 100%);
 }
 
-.donutWrap {
-  @apply flex justify-center mb-5;
-  padding-top: 6px;
-  padding-bottom: 2px;
+.feedbackDislikeFill {
+  @apply absolute right-0 top-0 h-full rounded-r-[12px];
+  background: linear-gradient(270deg, rgba(140, 149, 181, 0.72) 0%, #8c95b5 100%);
 }
 
-.donutChart {
-  @apply relative rounded-full;
-  width: 154px;
-  height: 154px;
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.08);
+.feedbackLeftPercent {
+  @apply absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-white text-[10px] leading-3 font-medium;
 }
 
-.donutHole {
-  @apply absolute left-1/2 top-1/2 rounded-full;
-  width: 42px;
-  height: 42px;
-  background: #efefef;
-  transform: translate(-50%, -50%);
-}
-
-.donutLabelLeft {
-  @apply absolute text-[17px] font-bold;
-  color: #ef7f72;
-  left: -10px;
-  top: 50%;
-  transform: translate(-100%, -50%);
-}
-
-.donutLabelRight {
-  @apply absolute text-[17px] font-bold;
-  color: #7e89b7;
-  right: -10px;
-  top: 50%;
-  transform: translate(100%, -50%);
+.feedbackRightPercent {
+  @apply absolute right-3 top-1/2 flex items-center text-white text-[10px] leading-3 font-medium;
+  transform: translateY(-50%);
+  flex-direction: row-reverse;
+  gap: 4px;
 }
 
 .structuredFeedbackGrid {
   @apply grid grid-cols-2 gap-3;
-  margin-top: 8px;
+  margin-top: 14px;
   padding-top: 14px;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
@@ -354,14 +343,18 @@
   background: rgba(244, 125, 114, 0.12);
 }
 
+.outfitKeywordRow {
+  @apply flex flex-wrap gap-2 mb-4;
+}
+
 .itemScroll {
   @apply flex overflow-x-auto;
   gap: 14px;
-  padding: 4px 8px 12px 12px;
+  padding: 4px 8px 12px 2px;
   -ms-overflow-style: none;
   scrollbar-width: none;
   scroll-snap-type: x proximity;
-  scroll-padding-left: 12px;
+  scroll-padding-left: 2px;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -376,20 +369,27 @@
   scroll-snap-align: start;
 }
 
-.outfitCardTop {
-  @apply mb-3;
-}
-
-.outfitCategoryBadge {
-  @apply inline-flex items-center rounded-[999px] px-3 py-1 text-[11px] font-semibold;
-  color: #ef7f72;
-  background: rgba(244, 125, 114, 0.12);
-}
-
-.outfitInfoBox {
-  @apply rounded-[16px] bg-white overflow-hidden;
+.outfitCardBox {
+  @apply rounded-[18px] bg-white overflow-hidden;
   border: 1px solid #ececec;
-  box-shadow: -6px 8px 0 rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+}
+
+.outfitCategoryBox {
+  @apply flex items-center gap-2 px-3 py-3;
+  background: #faf7f6;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.outfitCategoryIcon {
+  color: #ef7f72;
+  flex-shrink: 0;
+}
+
+.outfitCategoryText {
+  @apply text-[12px] leading-4 font-semibold;
+  color: #ef7f72;
+  letter-spacing: 0.02em;
 }
 
 .outfitInfoRow {

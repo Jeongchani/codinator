@@ -11,6 +11,7 @@ import {
   ChevronsUp,
   MoveHorizontal,
   Siren,
+  Tag,
   ThumbsDown,
   ThumbsUp,
   X,
@@ -76,6 +77,16 @@ function normalizeVoteChoice(
   }
 
   return undefined;
+}
+
+function formatKeywordLabel(keyword: string) {
+  return keyword.startsWith("#") ? keyword : `#${keyword}`;
+}
+
+function formatCategoryLabel(value: unknown) {
+  const text = toSafeString(value);
+  if (!text) return "ITEM";
+  return text.toUpperCase();
 }
 
 function extractKeywordLabels(
@@ -164,7 +175,10 @@ function extractStructuredFeedback(
         side: voteChoice,
       };
     })
-    .filter((item): item is { label: string; count: number; side: "LIKE" | "DISLIKE" } => Boolean(item));
+    .filter(
+      (item): item is { label: string; count: number; side: "LIKE" | "DISLIKE" } =>
+        Boolean(item)
+    );
 
   const likeList = parsedRows
     .filter((item) => item.side === "LIKE")
@@ -177,10 +191,12 @@ function extractStructuredFeedback(
   const likeTotal = likeList.reduce((sum, item) => sum + item.count, 0);
   const dislikeTotal = dislikeList.reduce((sum, item) => sum + item.count, 0);
 
-  const likeRows: StructuredFeedbackRow[] = likeList.slice(0, 5).map((item) => ({
-    ...item,
-    percent: likeTotal > 0 ? Math.round((item.count / likeTotal) * 100) : 0,
-  }));
+  const likeRows: StructuredFeedbackRow[] = likeList
+    .slice(0, 5)
+    .map((item) => ({
+      ...item,
+      percent: likeTotal > 0 ? Math.round((item.count / likeTotal) * 100) : 0,
+    }));
 
   const dislikeRows: StructuredFeedbackRow[] = dislikeList
     .slice(0, 5)
@@ -217,7 +233,10 @@ function StructuredFeedbackColumn({
 
       <div className={styles.structuredFeedbackRows}>
         {rows.map((row) => (
-          <div key={`${side}-${row.label}`} className={styles.structuredFeedbackRow}>
+          <div
+            key={`${side}-${row.label}`}
+            className={styles.structuredFeedbackRow}
+          >
             <div className={styles.structuredFeedbackLabelRow}>
               <span className={styles.structuredFeedbackLabel}>{row.label}</span>
               <span className={styles.structuredFeedbackPercent}>
@@ -264,7 +283,8 @@ const RankingDetail: React.FC = () => {
   const SHEET_TOTAL_HEIGHT = 812;
   const HANDLE_HEIGHT = 34;
   const EXPANDED_SCROLL_HEIGHT = SHEET_TOTAL_HEIGHT - HANDLE_HEIGHT;
-  const COLLAPSED_SCROLL_HEIGHT = SHEET_TOTAL_HEIGHT - COLLAPSED_Y - HANDLE_HEIGHT;
+  const COLLAPSED_SCROLL_HEIGHT =
+    SHEET_TOTAL_HEIGHT - COLLAPSED_Y - HANDLE_HEIGHT;
 
   const period =
     searchParams.get("period") === "MONTHLY" ? "MONTHLY" : "WEEKLY";
@@ -369,28 +389,6 @@ const RankingDetail: React.FC = () => {
   const outfitItems = useMemo(() => {
     return Array.isArray(postData?.outfitItems) ? postData.outfitItems : [];
   }, [postData]);
-
-  const donutBackground = useMemo(() => {
-    if (totalCount <= 0) {
-      return "conic-gradient(from -90deg, #e6e6e6 0%, #e6e6e6 100%)";
-    }
-
-    if (dislikePercent === 0) {
-      return "conic-gradient(from -90deg, #f7b7ae 0%, #ef7f72 100%)";
-    }
-
-    if (likePercent === 0) {
-      return "conic-gradient(from -90deg, #aab4d7 0%, #8c95b5 100%)";
-    }
-
-    return `conic-gradient(
-      from -90deg,
-      #f7b7ae 0%,
-      #ef7f72 ${likePercent}%,
-      #aab4d7 ${likePercent}%,
-      #8c95b5 100%
-    )`;
-  }, [likePercent, dislikePercent, totalCount]);
 
   const currentScrollAreaHeight =
     sheetPosition === "expanded"
@@ -614,12 +612,14 @@ const RankingDetail: React.FC = () => {
               </div>
 
               <div className={styles.sheetActions}>
-                <button
+                <motion.button
                   type="button"
                   className={`${styles.miniActionButton} ${styles.bookmarkActionButton}`}
                   onClick={handleToggleBookmark}
                   aria-label={isBookmarked ? "북마크 해제" : "북마크 추가"}
                   disabled={bookmarkLoading}
+                  whileTap={{ scale: 0.82, y: 1 }}
+                  transition={{ type: "spring", stiffness: 520, damping: 24 }}
                 >
                   <Bookmark
                     size={11}
@@ -631,7 +631,7 @@ const RankingDetail: React.FC = () => {
                     }
                     fill={isBookmarked ? "currentColor" : "none"}
                   />
-                </button>
+                </motion.button>
 
                 <button
                   type="button"
@@ -643,16 +643,6 @@ const RankingDetail: React.FC = () => {
               </div>
             </div>
 
-            {keywordChips.length > 0 && (
-              <div className={styles.keywordChipRow}>
-                {keywordChips.map((keyword) => (
-                  <span key={keyword} className={styles.keywordChip}>
-                    #{keyword}
-                  </span>
-                ))}
-              </div>
-            )}
-
             <div className={styles.sectionDivider} />
 
             <div className={styles.feedbackHeader}>
@@ -660,39 +650,33 @@ const RankingDetail: React.FC = () => {
             </div>
 
             <div className={styles.feedbackPanel}>
-              <div className={styles.voteCountRow}>
-                <div
-                  className={`${styles.voteCountBadge} ${styles.voteCountBadgeLike}`}
-                >
-                  <ThumbsUp size={12} strokeWidth={2} />
-                  <span>{likeCount}</span>
-                </div>
-
-                <div
-                  className={`${styles.voteCountBadge} ${styles.voteCountBadgeDislike}`}
-                >
-                  <ThumbsDown size={12} strokeWidth={2} />
-                  <span>{dislikeCount}</span>
-                </div>
+              <div className={styles.feedbackSummaryRow}>
+                <span className={styles.totalVoteCount}>총 {totalCount}표</span>
               </div>
 
-              <div className={styles.donutWrap}>
+              <div className={styles.feedbackProgressTrack}>
                 <div
-                  className={styles.donutChart}
-                  style={{ background: donutBackground }}
-                >
-                  <div className={styles.donutHole} />
+                  className={styles.feedbackLikeFill}
+                  style={{ width: `${likePercent}%` }}
+                />
+                <div
+                  className={styles.feedbackDislikeFill}
+                  style={{ width: `${dislikePercent}%` }}
+                />
 
-                  {totalCount > 0 && likePercent > 0 && (
-                    <div className={styles.donutLabelLeft}>{likePercent}%</div>
-                  )}
+                {totalCount > 0 && likePercent > 0 && (
+                  <div className={styles.feedbackLeftPercent}>
+                    <ThumbsUp size={12} strokeWidth={2} />
+                    <span>{likePercent}%</span>
+                  </div>
+                )}
 
-                  {totalCount > 0 && dislikePercent > 0 && (
-                    <div className={styles.donutLabelRight}>
-                      {dislikePercent}%
-                    </div>
-                  )}
-                </div>
+                {totalCount > 0 && dislikePercent > 0 && (
+                  <div className={styles.feedbackRightPercent}>
+                    <ThumbsDown size={12} strokeWidth={2} />
+                    <span>{dislikePercent}%</span>
+                  </div>
+                )}
               </div>
 
               {hasStructuredFeedback && (
@@ -736,20 +720,32 @@ const RankingDetail: React.FC = () => {
 
             <div className={styles.sectionDivider} />
 
+            {keywordChips.length > 0 && (
+              <div className={styles.outfitKeywordRow}>
+                {keywordChips.map((keyword) => (
+                  <span key={keyword} className={styles.keywordChip}>
+                    {formatKeywordLabel(keyword)}
+                  </span>
+                ))}
+              </div>
+            )}
+
             <div className={styles.itemScroll}>
               {outfitItems.length > 0 ? (
                 outfitItems.map((item, index) => (
-                  <div
-                    key={item.id ?? index}
-                    className={styles.outfitCard}
-                  >
-                    <div className={styles.outfitCardTop}>
-                      <span className={styles.outfitCategoryBadge}>
-                        {item.category || "ITEM"}
-                      </span>
-                    </div>
+                  <div key={item.id ?? index} className={styles.outfitCard}>
+                    <div className={styles.outfitCardBox}>
+                      <div className={styles.outfitCategoryBox}>
+                        <Tag
+                          size={13}
+                          strokeWidth={2}
+                          className={styles.outfitCategoryIcon}
+                        />
+                        <span className={styles.outfitCategoryText}>
+                          {formatCategoryLabel(item.category)}
+                        </span>
+                      </div>
 
-                    <div className={styles.outfitInfoBox}>
                       <div className={styles.outfitInfoRow}>
                         <span className={styles.outfitInfoLabel}>상품명</span>
                         <span className={styles.outfitInfoValue}>
