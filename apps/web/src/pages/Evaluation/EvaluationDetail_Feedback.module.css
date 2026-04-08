@@ -1,9 +1,10 @@
 .container {
-  @apply w-[375px] h-[812px] mx-auto bg-[#f5f5f5] text-black overflow-hidden;
+  @apply w-[375px] h-[812px] mx-auto overflow-hidden bg-white;
 }
 
 .scrollArea {
-  @apply h-full overflow-y-auto px-4 pt-[56px] pb-8;
+  @apply h-full overflow-y-auto bg-white;
+  -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
@@ -12,242 +13,406 @@
 }
 
 .loadingBox {
-  @apply rounded-[24px] bg-white px-5 py-8 text-center text-[15px] font-medium text-neutral-600 shadow-[0_8px_20px_rgba(0,0,0,0.05)];
+  @apply mx-4 mt-10 rounded-[24px] bg-white px-5 py-8 text-center text-[15px] font-medium text-neutral-600 shadow-[0_8px_20px_rgba(0,0,0,0.05)];
 }
 
-.headerSection {
-  @apply mb-6;
+.heroSection {
+  @apply relative w-full;
 }
 
-.textBlock {
-  @apply mb-6;
+.heroMediaFrame {
+  @apply relative h-[460px] w-full overflow-hidden bg-neutral-200;
+}
+
+.heroImage {
+  @apply h-full w-full object-contain bg-neutral-100;
+}
+
+.heroPlaceholder {
+  @apply flex h-full w-full items-center justify-center bg-neutral-200 px-6 text-center;
+}
+
+.heroPlaceholderText {
+  @apply text-[14px] leading-5 text-neutral-500;
+}
+
+.backButton {
+  @apply absolute left-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full text-white;
+  background: rgba(0, 0, 0, 0.42);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.contentPanel {
+  @apply bg-white px-4 pb-8 pt-3;
+}
+
+.sheetHeader {
+  @apply mb-4;
+}
+
+.sheetHeaderCopy {
+  @apply min-w-0;
+}
+
+.titleRow {
+  @apply mb-3 flex items-center justify-between gap-3;
 }
 
 .mainTitle {
-  @apply text-[20px] font-semibold leading-8 text-neutral-900 tracking-[-0.02em];
+  @apply text-[20px] font-bold leading-7 text-neutral-900;
 }
 
-.subText {
-  @apply mt-2 text-[16px] font-normal leading-5 text-stone-500;
+.sheetActions {
+  @apply flex items-center gap-2 shrink-0;
+  overflow: visible;
 }
 
-.topKeywordRow {
-  @apply flex flex-wrap gap-2;
+.miniActionButton {
+  @apply rounded-[8px] border-0 p-0 flex items-center justify-center shrink-0;
+  width: 24px;
+  height: 24px;
 }
 
-.topKeywordChip {
-  @apply h-7 px-3 rounded-2xl bg-[#e9e9e9] flex items-center justify-center text-[12px] font-normal leading-4 text-neutral-700;
+.bookmarkActionButton {
+  background: #ffffff;
+  color: #6f6f6f;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.imageWrap {
-  @apply mt-4 overflow-hidden rounded-[24px];
+.bookmarkActionButton:active {
+  transform: scale(0.9);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-.image {
-  @apply w-full max-h-[420px] object-cover;
+.reportActionButton {
+  color: #ff5b5d;
+  background: rgba(255, 91, 93, 0.08);
+  border: 1px solid rgba(255, 91, 93, 0.16);
+  box-shadow:
+    0 0 0 1px rgba(255, 91, 93, 0.08),
+    0 0 8px rgba(255, 91, 93, 0.18);
 }
 
-.feedbackComposerSection {
-  @apply mb-6 rounded-[24px] bg-white px-4 py-5 shadow-[0_8px_24px_rgba(0,0,0,0.05)];
+.bookmarkFilled {
+  color: #5f5f5f;
 }
 
-.feedbackComposerHeader {
-  @apply flex items-center justify-between gap-3;
+.bookmarkDefault {
+  color: #8c8c8c;
 }
 
-.feedbackComposerTitle {
-  @apply text-[16px] font-semibold leading-7 text-neutral-900;
+.authorName {
+  @apply text-[22px] leading-7 font-bold text-neutral-900 mb-2;
 }
 
-.voteChoiceBadge {
-  @apply rounded-full px-3 py-1 text-[12px] font-semibold leading-4;
+.contentText {
+  @apply text-[14px] leading-[20px] text-neutral-700 whitespace-pre-line;
 }
 
-.likeChoice {
-  @apply bg-[#f3e8ff] text-[#9d34da];
+.keywordLaneSection {
+  @apply mb-4;
 }
 
-.dislikeChoice {
-  @apply bg-[#ffe4e6] text-[#e11d48];
-}
-
-.feedbackGuide {
-  @apply mt-2 text-[13px] font-normal leading-5 text-neutral-500;
-}
-
-.feedbackSelectGrid {
-  @apply mt-4 grid grid-cols-2 gap-3;
-}
-
-.selectChip {
-  @apply min-h-[52px] rounded-full border border-neutral-300 bg-white px-4 py-3 text-[14px] font-medium leading-5 text-neutral-800 transition-all duration-200;
-}
-
-.selectChipSelected {
-  @apply border-[#BE45F7] bg-[#faf2ff] text-[#9d34da] shadow-[0_0_0_1px_rgba(190,69,247,0.18)];
-}
-
-.feedbackHintText {
-  @apply mt-4 text-[12px] font-normal leading-4 text-neutral-400;
-}
-
-.feedbackSavedText {
-  @apply mt-4 text-[13px] font-medium leading-5 text-[#9d34da];
-}
-
-.feedbackErrorText {
-  @apply mt-4 text-[13px] font-normal leading-5 text-red-500;
-}
-
-.feedbackEmptyBox {
-  @apply mt-4 rounded-[18px] bg-neutral-100 px-4 py-4 text-[13px] font-normal leading-5 text-neutral-500;
-}
-
-.divider {
-  @apply w-full h-px bg-neutral-400 mb-5;
-}
-
-.sectionTitle {
-  @apply text-[16px] font-semibold leading-7 text-neutral-900;
-}
-
-.scoreSection {
-  @apply mb-5;
-}
-
-.scoreWrap {
-  @apply mt-4 flex items-end gap-6;
-}
-
-.mainScoreGroup {
-  @apply flex items-end gap-2;
-}
-
-.subScoreGroup {
-  @apply flex items-end gap-2 pt-3;
-}
-
-.bigScore {
-  @apply text-[58px] font-semibold leading-[1] text-black;
-}
-
-.smallScore {
-  @apply text-[42px] font-semibold leading-[1] text-black;
-}
-
-.percent {
-  @apply ml-1 text-[24px] font-medium leading-none text-black;
-}
-
-.smallPercent {
-  @apply ml-1 text-[20px] font-medium leading-none text-black;
-}
-
-.scoreLabel {
-  @apply mb-[6px] text-[16px] font-normal leading-5 text-neutral-400;
-}
-
-.feedbackListSection {
-  @apply mb-6 flex flex-col gap-4;
-}
-
-.feedbackRow {
-  @apply flex items-center gap-4;
-}
-
-.iconCircle {
-  @apply flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full bg-white shadow-[0_4px_8px_rgba(0,0,0,0.12)];
-}
-
-.iconText {
-  @apply text-[15px] leading-none;
-}
-
-.feedbackKeywords {
-  @apply flex flex-wrap gap-2;
-}
-
-.feedbackChip {
-  @apply h-7 px-3 rounded-2xl bg-[#d9d9d9] flex items-center justify-center text-[12px] font-normal leading-4 text-neutral-700;
-}
-
-.itemDivider {
-  @apply w-full h-px bg-neutral-400 mb-4;
-}
-
-.itemSection {
-  @apply mb-8;
-}
-
-.itemHeader {
-  @apply mb-4 flex items-center justify-between;
-}
-
-.itemTitle {
-  @apply text-[16px] font-semibold leading-7 text-neutral-900;
-}
-
-.itemScrollRow {
-  @apply flex gap-3 overflow-x-auto pb-2;
+.keywordLane {
+  @apply flex items-center gap-2 overflow-x-auto;
+  padding: 2px 0;
+  -ms-overflow-style: none;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
-.itemScrollRow::-webkit-scrollbar {
+.keywordLane::-webkit-scrollbar {
   display: none;
 }
 
-.itemCard {
-  @apply w-[112px] shrink-0 overflow-hidden rounded-xl bg-white shadow-[8px_8px_5px_0px_rgba(0,0,0,0.05)];
+.keywordChip {
+  @apply shrink-0 px-3 h-7 rounded-[999px] text-[11px] leading-[27px] font-medium text-neutral-700;
+  background: #dedede;
 }
 
-.itemImage {
-  @apply h-[78px] w-full bg-neutral-400 rounded-t-xl;
+.sectionDivider {
+  @apply w-full h-px mb-4;
+  background: rgba(0, 0, 0, 0.12);
 }
 
-.itemInfo {
-  @apply px-3 pt-3 pb-4;
+.sectionBlock {
+  @apply mb-0;
 }
 
-.itemBrand {
-  @apply text-[12px] font-medium leading-4 text-neutral-900;
+.sectionHeaderRow {
+  @apply flex items-center justify-between gap-2 mb-3;
 }
 
-.itemPrice {
-  @apply mt-1 text-[12px] font-normal leading-4 text-neutral-900;
+.sectionTitle {
+  @apply text-[18px] leading-[22px] font-bold text-neutral-900;
 }
 
-.buttonStack {
-  @apply mt-2 flex flex-col gap-3 pb-2;
+.sectionMetaText {
+  @apply text-[12px] leading-4 text-neutral-500;
 }
 
-.completeButton {
-  @apply w-full h-12 rounded-full text-[14px] font-semibold transition-all duration-200;
+.evaluationSummaryRow {
+  @apply flex items-center justify-between mb-2;
 }
 
-.completeButtonActive {
-  @apply bg-[#BE45F7] text-white;
+.evaluationSummaryItem {
+  @apply inline-flex items-center gap-1 text-[12px] leading-4 font-semibold;
 }
 
-.completeButtonDisabled {
-  @apply bg-[#E7C8F6] text-white cursor-not-allowed;
+.evaluationSummaryLike {
+  color: #f47d72;
 }
 
-.secondaryButton {
-  @apply w-full h-12 rounded-full border border-neutral-300 bg-white text-[14px] font-semibold text-neutral-700 transition-all duration-200;
+.evaluationSummaryDislike {
+  color: #8c95b5;
 }
 
-.feedbackActionArea {
-  @apply mt-5 pt-4 border-t border-neutral-200;
+.evaluationTrack {
+  @apply relative w-full h-[22px] rounded-[10px] overflow-hidden mb-0;
+  background: rgba(241, 241, 241, 0.95);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
-.feedbackInlineButton {
-  @apply w-full h-12 rounded-full text-[15px] font-semibold transition-all duration-200;
+.evaluationLikeFill {
+  @apply absolute left-0 top-0 h-full rounded-l-[10px];
+  background: linear-gradient(90deg, rgba(244, 125, 114, 0.78) 0%, #f47d72 100%);
 }
 
-.feedbackInlineButtonActive {
-  @apply bg-[#BE45F7] text-white shadow-[0_8px_18px_rgba(190,69,247,0.28)];
+.evaluationDislikeFill {
+  @apply absolute right-0 top-0 h-full rounded-r-[10px];
+  background: linear-gradient(270deg, rgba(140, 149, 181, 0.78) 0%, #8c95b5 100%);
 }
 
-.feedbackInlineButtonDisabled {
-  @apply bg-[#E9CFF7] text-white cursor-not-allowed;
+.feedbackComposerCard {
+  @apply rounded-[16px] border border-[#e6e6e6] bg-[#fbfbfb] px-[14px] py-[14px];
+  transition:
+    box-shadow 0.22s ease,
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    background 0.22s ease;
+}
+
+.feedbackComposerCardRaised {
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.14),
+    0 4px 10px rgba(0, 0, 0, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96);
+  transform: translateY(-1px);
+}
+
+.feedbackComposerCardFlat {
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  transform: translateY(0);
+}
+
+.feedbackSelectGrid {
+  @apply grid grid-cols-3 gap-[10px];
+}
+
+.selectChip {
+  @apply min-h-[36px] rounded-[12px] border border-neutral-400 bg-white px-3 py-2 text-[14px] font-medium leading-5 text-neutral-500 transition-all duration-200;
+}
+
+.selectChipSelected {
+  @apply border-black bg-black text-white;
+}
+
+.feedbackHintText {
+  @apply mt-3 text-[12px] font-normal leading-4 text-neutral-400;
+}
+
+.feedbackSavedText {
+  @apply mt-3 text-[13px] font-medium leading-5 text-neutral-700;
+}
+
+.feedbackErrorText {
+  @apply mt-3 text-[13px] font-normal leading-5 text-red-500;
+}
+
+.feedbackEmptyBox {
+  @apply rounded-[14px] bg-neutral-100 px-4 py-4 text-[13px] font-normal leading-5 text-neutral-500;
+}
+
+.feedbackCompleteInset {
+  @apply mt-4 rounded-[14px] p-[2px];
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.12) 0%, rgba(255, 255, 255, 0.45) 100%);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.14);
+}
+
+.feedbackCompleteButton {
+  @apply flex h-[42px] w-full items-center justify-center rounded-[12px] bg-black text-[15px] font-semibold text-white transition-all duration-200;
+  box-shadow:
+    0 3px 6px rgba(0, 0, 0, 0.22),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.feedbackCompleteButtonDisabled {
+  @apply cursor-not-allowed bg-neutral-300 text-white;
+  box-shadow: none;
+}
+
+.feedbackPanelsWrap {
+  @apply mt-5 mb-8 grid grid-cols-2 gap-3;
+}
+
+.feedbackPanel {
+  @apply rounded-[16px] p-0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.feedbackPanelHeader {
+  @apply flex items-center justify-between gap-2 mb-3;
+}
+
+.feedbackPanelTitle {
+  @apply text-[16px] leading-5 font-bold text-neutral-900;
+}
+
+.feedbackPanelCount {
+  @apply text-[11px] leading-4 text-neutral-500 shrink-0;
+}
+
+.feedbackRows {
+  @apply flex flex-col gap-3;
+}
+
+.feedbackRow {
+  @apply flex flex-col gap-1.5;
+}
+
+.feedbackRowHead {
+  @apply flex items-center justify-between gap-2;
+}
+
+.feedbackRowLabel {
+  @apply text-[10px] leading-4 text-neutral-500 min-w-0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feedbackRowPercent {
+  @apply text-[10px] leading-4 font-semibold text-black shrink-0;
+}
+
+.feedbackRowTrack {
+  @apply w-full h-[8px] rounded-full overflow-hidden;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.feedbackRowFill {
+  @apply h-full rounded-full;
+}
+
+.feedbackRowFillLike {
+  background: linear-gradient(90deg, #f5b8af 0%, #ef8a7d 100%);
+}
+
+.feedbackRowFillDislike {
+  background: linear-gradient(90deg, #c4cbe2 0%, #98a2c8 100%);
+}
+
+.feedbackEmptyText {
+  @apply text-[11px] leading-4 text-neutral-400;
+}
+
+.outfitHeaderRow {
+  @apply flex items-center mb-3;
+}
+
+.outfitTitle {
+  @apply text-[18px] leading-[22px] font-bold text-neutral-900;
+}
+
+.itemScroll {
+  @apply flex overflow-x-auto;
+  gap: 12px;
+  padding: 2px 0 16px 0;
+  margin-bottom: 2px;
+  scroll-snap-type: x proximity;
+  scroll-padding-left: 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 149, 181, 0.8) rgba(0, 0, 0, 0.08);
+}
+
+.itemScroll::-webkit-scrollbar {
+  display: block;
+  height: 6px;
+}
+
+.itemScroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+}
+
+.itemScroll::-webkit-scrollbar-thumb {
+  background: rgba(140, 149, 181, 0.8);
+  border-radius: 999px;
+}
+
+.itemScroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 149, 181, 0.95);
+}
+
+.outfitCard {
+  @apply shrink-0 rounded-[16px];
+  width: 168px;
+  padding: 10px;
+  background: #f5f5f5;
+  border: 1px solid #e7e7e7;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  scroll-snap-align: start;
+  margin-bottom: 4px;
+}
+
+.outfitField {
+  @apply w-full h-10 rounded-[12px] border border-[#dddddd] px-3 flex items-center bg-white;
+}
+
+.outfitCard .outfitField + .outfitField {
+  margin-top: 8px;
+}
+
+.outfitCategoryField {
+  background: #f4efe9;
+  border-color: #e2d6cb;
+}
+
+.outfitCategoryInner {
+  @apply flex items-center gap-2 min-w-0 w-full;
+}
+
+.outfitCategoryIcon {
+  @apply shrink-0;
+  color: #7b5f4c;
+}
+
+.outfitFieldValue {
+  @apply text-[12px] leading-4 min-w-0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #6b6b6b;
+}
+
+.outfitCategoryField .outfitFieldValue {
+  color: #7b5f4c;
+  font-weight: 700;
+}
+
+.emptyText {
+  @apply text-[13px] text-neutral-500;
 }

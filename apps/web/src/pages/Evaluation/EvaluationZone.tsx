@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import type {
   CreateVoteResponse,
   EvaluationListItem,
+  GetEvaluationPostDetailResponse,
   GetEvaluationsResponse,
   VoteChoice,
 } from '@codinator/contracts';
@@ -15,7 +16,17 @@ import {
 } from '../../lib/api';
 import styles from './EvaluationZone.module.css';
 
-const THUMB_SIZE = 56;
+const THUMB_SIZE = 50;
+
+type VoteSummaryState = {
+  likeCount: number;
+  dislikeCount: number;
+  totalCount: number;
+};
+
+type DisplayPage =
+  | { type: 'post'; post: EvaluationListItem }
+  | { type: 'empty' };
 
 const CloseIcon = () => (
   <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true">
@@ -92,6 +103,53 @@ const ThumbDownIcon = ({ dark = false }: { dark?: boolean }) => (
   </svg>
 );
 
+const getFallbackVoteSummary = (choice: VoteChoice | null): VoteSummaryState => {
+  if (choice === 'LIKE') {
+    return {
+      likeCount: 1,
+      dislikeCount: 0,
+      totalCount: 1,
+    };
+  }
+
+  if (choice === 'DISLIKE') {
+    return {
+      likeCount: 0,
+      dislikeCount: 1,
+      totalCount: 1,
+    };
+  }
+
+  return {
+    likeCount: 0,
+    dislikeCount: 0,
+    totalCount: 0,
+  };
+};
+
+const normalizeVoteSummary = (
+  detail: GetEvaluationPostDetailResponse | null,
+  fallbackChoice: VoteChoice | null,
+): VoteSummaryState => {
+  if (!detail?.voteSummary) {
+    return getFallbackVoteSummary(fallbackChoice);
+  }
+
+  const likeCount = detail.voteSummary.likeCount ?? 0;
+  const dislikeCount = detail.voteSummary.dislikeCount ?? 0;
+  const totalCount = Math.max(detail.voteSummary.totalCount ?? 0, likeCount + dislikeCount);
+
+  if (totalCount === 0) {
+    return getFallbackVoteSummary(fallbackChoice);
+  }
+
+  return {
+    likeCount,
+    dislikeCount,
+    totalCount,
+  };
+};
+
 const EvaluationZone: React.FC = () => {
   const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -105,15 +163,46 @@ const EvaluationZone: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [voteSummaryMap, setVoteSummaryMap] = useState<Record<number, VoteSummaryState>>({});
 
   const dragX = useMotionValue(0);
 
-  const currentPost = useMemo(() => posts[currentIndex] ?? null, [currentIndex, posts]);
+  const pages = useMemo<DisplayPage[]>(() => {
+    return [
+      ...posts.map((post) => ({ type: 'post', post }) as DisplayPage),
+      { type: 'empty' } as DisplayPage,
+    ];
+  }, [posts]);
+
+  const currentPage = useMemo(() => pages[currentIndex] ?? pages[0] ?? { type: 'empty' }, [pages, currentIndex]);
+
+  const currentPost = useMemo(() => {
+    return currentPage.type === 'post' ? currentPage.post : null;
+  }, [currentPage]);
 
   const isLikeSelected = selectedVote === 'LIKE';
   const isDislikeSelected = selectedVote === 'DISLIKE';
   const isActionActive = selectedVote !== null;
   const hasCurrentVoteSaved = createdVoteId !== null;
+  const isEmptyLastPage = currentPage.type === 'empty';
+
+  const currentVoteSummary = useMemo(() => {
+    if (!currentPost) {
+      return getFallbackVoteSummary(null);
+    }
+
+    return voteSummaryMap[currentPost.postId] ?? getFallbackVoteSummary(selectedVote);
+  }, [currentPost, selectedVote, voteSummaryMap]);
+
+  const likePercent = useMemo(() => {
+    if (currentVoteSummary.totalCount <= 0) return 0;
+    return Math.round((currentVoteSummary.likeCount / currentVoteSummary.totalCount) * 100);
+  }, [currentVoteSummary]);
+
+  const dislikePercent = useMemo(() => {
+    if (currentVoteSummary.totalCount <= 0) return 0;
+    return 100 - likePercent;
+  }, [currentVoteSummary, likePercent]);
 
   useEffect(() => {
     const loadEvaluations = async () => {
@@ -195,7 +284,17 @@ const EvaluationZone: React.FC = () => {
     animate(dragX, 0, { duration: 0.15 });
   };
 
-  const removePostAndKeepFlow = (removedPostId: number, previousIndex: number) => {
+  const removePostAndKeepFlow = (
+    removedPostId: number,
+    fromIndex: number,
+    toIndex: number,
+  ) => {
+    setVoteSummaryMap((prev) => {
+      const next = { ...prev };
+      delete next[removedPostId];
+      return next;
+    });
+
     setPosts((prev) => {
       const nextPosts = prev.filter((post) => post.postId !== removedPostId);
 
@@ -203,8 +302,9 @@ const EvaluationZone: React.FC = () => {
         const container = scrollRef.current;
         if (!container) return;
 
-        const nextIndex =
-          nextPosts.length === 0 ? 0 : Math.min(previousIndex, nextPosts.length - 1);
+        const lastPageIndex = nextPosts.length;
+        const adjustedIndex = toIndex > fromIndex ? toIndex - 1 : toIndex;
+        const nextIndex = Math.max(0, Math.min(adjustedIndex, lastPageIndex));
 
         container.scrollTo({
           top: container.clientHeight * nextIndex,
@@ -225,14 +325,16 @@ const EvaluationZone: React.FC = () => {
     if (!container) return;
 
     const pageHeight = container.clientHeight;
-    const nextIndex = Math.round(container.scrollTop / pageHeight);
+    const rawIndex = Math.round(container.scrollTop / pageHeight);
+    const nextIndex = Math.max(0, Math.min(rawIndex, pages.length - 1));
 
     if (nextIndex !== currentIndex) {
-      const prevPost = posts[currentIndex];
+      const prevPage = pages[currentIndex];
+      const prevPost = prevPage?.type === 'post' ? prevPage.post : null;
       const hadSavedVote = createdVoteId !== null;
 
       if (hadSavedVote && prevPost) {
-        removePostAndKeepFlow(prevPost.postId, nextIndex);
+        removePostAndKeepFlow(prevPost.postId, currentIndex, nextIndex);
         return;
       }
 
@@ -261,14 +363,36 @@ const EvaluationZone: React.FC = () => {
 
       setSelectedVote(choice);
       setCreatedVoteId(data.voteId);
+      setVoteSummaryMap((prev) => ({
+        ...prev,
+        [votedPostId]: getFallbackVoteSummary(choice),
+      }));
       animate(dragX, 0, { duration: 0.2 });
+
+      try {
+        const detail = await fetcher<GetEvaluationPostDetailResponse>(
+          `/evaluations/posts/${votedPostId}`,
+          {
+            headers: getAuthHeaders(),
+          },
+        );
+
+        const normalizedSummary = normalizeVoteSummary(detail, choice);
+
+        setVoteSummaryMap((prev) => ({
+          ...prev,
+          [votedPostId]: normalizedSummary,
+        }));
+      } catch {
+        // fallback 그래프 유지
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : '투표에 실패했습니다.';
       setError(message);
 
       if (message.includes('이미 투표한 게시글')) {
         if (currentPost) {
-          removePostAndKeepFlow(currentPost.postId, currentIndex);
+          removePostAndKeepFlow(currentPost.postId, currentIndex, currentIndex + 1);
         }
         return;
       }
@@ -287,14 +411,7 @@ const EvaluationZone: React.FC = () => {
   };
 
   const handleVoteSelect = (choice: VoteChoice) => {
-    if (!currentPost || submitting) return;
-
-    if (hasCurrentVoteSaved) {
-      setSelectedVote(choice);
-      animate(dragX, 0, { duration: 0.2 });
-      return;
-    }
-
+    if (!currentPost || submitting || isEmptyLastPage || hasCurrentVoteSaved) return;
     void submitVoteImmediately(choice);
   };
 
@@ -328,9 +445,11 @@ const EvaluationZone: React.FC = () => {
 
   const helperMessage = error
     ? error
-    : hasCurrentVoteSaved
-      ? '투표가 저장됐어요. 옆으로 드래그하면 상세보기로 이동하고, 그 안에서 피드백도 남길 수 있어요.'
-      : '좋아요 또는 싫어요를 누르면 바로 투표가 저장돼요.';
+    : isEmptyLastPage
+      ? posts.length === 0
+        ? '현재 평가할 게시글이 없습니다. 이 페이지가 마지막 평가존 페이지예요.'
+        : '더 이상 평가할 게시글이 없습니다. 이 페이지가 마지막 평가존 페이지예요.'
+      : '';
 
   if (loading) {
     return (
@@ -343,34 +462,35 @@ const EvaluationZone: React.FC = () => {
     );
   }
 
-  if (!posts.length) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.emptyState}>
-          <button className={styles.closeButton} onClick={handleClose} aria-label="닫기">
-            <CloseIcon />
-          </button>
-          <div className={styles.title}>평가 존</div>
-          <div className={styles.statusText}>{error || '현재 평가할 게시글이 없습니다.'}</div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={styles.container}>
       <div className={styles.viewport} ref={scrollRef} onScroll={handleScroll}>
-        {posts.map((post) => (
-          <section key={post.evaluationId} className={styles.slide}>
-            <div
-              className={styles.imageSection}
-              style={{
-                backgroundImage: `url(${resolveAssetUrl(post.thumbnailUrl)})`,
-              }}
-            >
-              <div className={styles.topGradient} />
-              <div className={styles.bottomGradient} />
-            </div>
+        {pages.map((page, idx) => (
+          <section
+            key={page.type === 'post' ? page.post.evaluationId : `empty-${idx}`}
+            className={styles.slide}
+          >
+            {page.type === 'post' ? (
+              <div
+                className={styles.imageSection}
+                style={{
+                  backgroundImage: `url(${resolveAssetUrl(page.post.thumbnailUrl)})`,
+                }}
+              >
+                <div className={styles.topGradient} />
+                <div className={styles.bottomGradient} />
+              </div>
+            ) : (
+              <div className={styles.emptyPageSection}>
+                <div className={styles.topGradient} />
+                <div className={styles.bottomGradient} />
+                <div className={styles.emptyPageCenterText}>
+                  {posts.length === 0
+                    ? '현재 평가할 게시글이 없습니다.'
+                    : '더 이상 평가할 게시글이 없습니다.'}
+                </div>
+              </div>
+            )}
           </section>
         ))}
       </div>
@@ -383,7 +503,7 @@ const EvaluationZone: React.FC = () => {
         <div className={styles.title}>평가 존</div>
 
         <div className={styles.slideIndicator}>
-          {posts.map((_, idx) => (
+          {pages.map((_, idx) => (
             <div
               key={idx}
               className={
@@ -395,86 +515,107 @@ const EvaluationZone: React.FC = () => {
           ))}
         </div>
 
-        <div className={styles.helperText}>{helperMessage}</div>
+        {helperMessage ? (
+          <div className={styles.helperText}>{helperMessage}</div>
+        ) : null}
 
-        <div className={styles.bottomActionArea}>
-          {!isLikeSelected && (
-            <button
-              type="button"
-              className={`${styles.circleButton} ${
-                selectedVote === null
-                  ? styles.circleButtonInactive
-                  : styles.circleButtonPassive
-              } ${styles.leftButton}`}
-              onClick={() => handleVoteSelect('LIKE')}
-              aria-label="좋아요"
-              disabled={submitting}
-            >
-              <ThumbUpIcon />
-            </button>
-          )}
+        {!isEmptyLastPage && hasCurrentVoteSaved && (
+          <div className={styles.voteGraphArea}>
+            <div className={styles.progressTrack}>
+              <div
+                className={styles.likeFill}
+                style={{ width: `${likePercent}%` }}
+              />
+              <div
+                className={styles.dislikeFill}
+                style={{ width: `${dislikePercent}%` }}
+              />
 
-          {!isDislikeSelected && (
-            <button
-              type="button"
-              className={`${styles.circleButton} ${
-                selectedVote === null
-                  ? styles.circleButtonInactive
-                  : styles.circleButtonPassive
-              } ${styles.rightButton}`}
-              onClick={() => handleVoteSelect('DISLIKE')}
-              aria-label="싫어요"
-              disabled={submitting}
-            >
-              <ThumbDownIcon />
-            </button>
-          )}
+              <div className={styles.leftPercent}>
+                <ThumbUpIcon />
+                <span>{likePercent}%</span>
+              </div>
 
-          {isActionActive && hasCurrentVoteSaved && (
-            <div
-              ref={trackRef}
-              className={`${styles.dragTrack} ${
-                isLikeSelected ? styles.dragTrackFromLeft : styles.dragTrackFromRight
-              }`}
-            >
-              <div className={styles.trackText}>상세보기</div>
-
-              {isLikeSelected && (
-                <div className={styles.trackHintRight}>
-                  <ChevronRightDouble />
-                </div>
-              )}
-
-              {isDislikeSelected && (
-                <div className={styles.trackHintLeft}>
-                  <ChevronLeftDouble />
-                </div>
-              )}
-
-              <motion.div
-                className={styles.dragThumb}
-                drag="x"
-                dragMomentum={false}
-                dragElastic={0}
-                dragConstraints={
-                  isLikeSelected
-                    ? { left: 0, right: maxDrag }
-                    : { left: -maxDrag, right: 0 }
-                }
-                style={{
-                  x: dragX,
-                  left: isLikeSelected ? 4 : 'auto',
-                  right: isDislikeSelected ? 4 : 'auto',
-                  width: `${THUMB_SIZE}px`,
-                  height: `${THUMB_SIZE}px`,
-                }}
-                onDragEnd={handleDragEnd}
-              >
-                {isLikeSelected ? <ThumbUpIcon dark /> : <ThumbDownIcon dark />}
-              </motion.div>
+              <div className={styles.rightPercent}>
+                <ThumbDownIcon />
+                <span>{dislikePercent}%</span>
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {!isEmptyLastPage && (
+          <div className={styles.bottomActionArea}>
+            {!isActionActive && (
+              <>
+                <button
+                  type="button"
+                  className={`${styles.circleButton} ${styles.circleButtonInactive} ${styles.leftButton}`}
+                  onClick={() => handleVoteSelect('LIKE')}
+                  aria-label="좋아요"
+                  disabled={submitting}
+                >
+                  <ThumbUpIcon />
+                </button>
+
+                <button
+                  type="button"
+                  className={`${styles.circleButton} ${styles.circleButtonInactive} ${styles.rightButton}`}
+                  onClick={() => handleVoteSelect('DISLIKE')}
+                  aria-label="싫어요"
+                  disabled={submitting}
+                >
+                  <ThumbDownIcon />
+                </button>
+              </>
+            )}
+
+            {isActionActive && hasCurrentVoteSaved && (
+              <div
+                ref={trackRef}
+                className={`${styles.dragTrack} ${
+                  isLikeSelected ? styles.dragTrackFromLeft : styles.dragTrackFromRight
+                }`}
+              >
+                <div className={styles.trackText}>상세보기</div>
+
+                {isLikeSelected && (
+                  <div className={styles.trackHintRight}>
+                    <ChevronRightDouble />
+                  </div>
+                )}
+
+                {isDislikeSelected && (
+                  <div className={styles.trackHintLeft}>
+                    <ChevronLeftDouble />
+                  </div>
+                )}
+
+                <motion.div
+                  className={styles.dragThumb}
+                  drag="x"
+                  dragMomentum={false}
+                  dragElastic={0}
+                  dragConstraints={
+                    isLikeSelected
+                      ? { left: 0, right: maxDrag }
+                      : { left: -maxDrag, right: 0 }
+                  }
+                  style={{
+                    x: dragX,
+                    left: isLikeSelected ? 4 : 'auto',
+                    right: isDislikeSelected ? 4 : 'auto',
+                    width: `${THUMB_SIZE}px`,
+                    height: `${THUMB_SIZE}px`,
+                  }}
+                  onDragEnd={handleDragEnd}
+                >
+                  {isLikeSelected ? <ThumbUpIcon dark /> : <ThumbDownIcon dark />}
+                </motion.div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

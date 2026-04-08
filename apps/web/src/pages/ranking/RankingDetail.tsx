@@ -820,7 +820,7 @@ const RankingDetail: React.FC = () => {
             defaultTab="post"
             postTarget={{
               id: postData.postId,
-              displayText: postData.content,
+              displayText: toSafeString(postData.content),
             }}
             userTarget={{
               id: postData.author.userId,
