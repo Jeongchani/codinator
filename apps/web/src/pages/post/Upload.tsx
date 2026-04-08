@@ -36,7 +36,6 @@ type WearItem = {
   type: WearType;
   brand: string;
   name: string;
-  imageUrl?: string;
 };
 
 type BlurFlowStep = "idle" | "decision" | "manual";
@@ -96,19 +95,27 @@ function mapWearTypeToCategory(type: WearType): GarmentCategory | null {
 
 function PhotoFrameIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="3.5" y="5" width="17" height="14" rx="2.5" stroke="black" strokeWidth="1.8" />
-      <circle cx="16.8" cy="9.2" r="1.5" fill="black" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect
+        x="3.5"
+        y="5"
+        width="17"
+        height="14"
+        rx="2.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <circle cx="16.8" cy="9.2" r="1.5" fill="currentColor" />
       <path
         d="M6.5 16L10.2 12.4C10.6 12 11.2 12 11.6 12.4L13.6 14.4"
-        stroke="black"
+        stroke="currentColor"
         strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
         d="M11.8 14L13.4 12.5C13.8 12.1 14.4 12.1 14.8 12.5L17.5 15.2"
-        stroke="black"
+        stroke="currentColor"
         strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -569,9 +576,20 @@ function ManualBlurEditor({
 
   return (
     <div className={styles.manualEditorWrap}>
-      <div className={styles.manualHeader}>
-        <h3 className={styles.manualTitle}>수동 블러 편집</h3>
-        <p className={styles.manualSubText}>터치하거나 드래그해서 바로 수정</p>
+      <div className={styles.manualHeaderRow}>
+        <div className={styles.manualHeaderText}>
+          <h3 className={styles.manualTitle}>수동 블러 편집</h3>
+          <p className={styles.manualSubText}>터치하거나 드래그해서 바로 수정</p>
+        </div>
+
+        <button
+          type="button"
+          className={styles.manualTopBackButton}
+          onClick={onBack}
+          aria-label="블러 확인으로 돌아가기"
+        >
+          <ChevronLeft size={18} strokeWidth={2.8} />
+        </button>
       </div>
 
       <div className={styles.manualToolbar}>
@@ -681,11 +699,6 @@ function ManualBlurEditor({
         >
           {approving ? "처리 중..." : "이 결과로 사용하기"}
         </button>
-
-        <button type="button" className={styles.editorBackButton} onClick={onBack}>
-          <ChevronLeft size={16} strokeWidth={2.2} />
-          <span>블러 비교로 돌아가기</span>
-        </button>
       </div>
 
       <canvas ref={origCanvasRef} className={styles.hiddenCanvas} />
@@ -718,13 +731,14 @@ export default function Upload() {
   const [approvedBlurMode, setApprovedBlurMode] = useState<"AUTO" | "MANUAL" | null>(null);
 
   const previewUrl = useMemo(() => approvedPreview || "", [approvedPreview]);
+
   const visibleStatusMessage =
-  message &&
-  message !== "이미지와 설명을 입력하면 게시글을 등록할 수 있습니다." &&
-  message !== "AI 블러 결과가 적용되었습니다." &&
-  message !== "수동 블러가 적용되었습니다."
-    ? message
-    : "";
+    message &&
+    message !== "이미지와 설명을 입력하면 게시글을 등록할 수 있습니다." &&
+    message !== "AI 블러 결과가 적용되었습니다." &&
+    message !== "수동 블러가 적용되었습니다."
+      ? message
+      : "";
 
   const handleBack = () => {
     navigate(-1);
@@ -1000,13 +1014,17 @@ export default function Upload() {
     <div className={styles.container}>
       <div className={styles.scrollArea}>
         <section className={styles.heroSection}>
-          {previewUrl ? (
-            <img src={previewUrl} alt="업로드 미리보기" className={styles.heroImage} />
-          ) : (
-            <div className={styles.heroPlaceholder}>
-              <span className={styles.heroPlaceholderText}>블러 승인된 이미지가 여기에 표시됩니다.</span>
-            </div>
-          )}
+          <div className={styles.heroMediaFrame}>
+            {previewUrl ? (
+              <img src={previewUrl} alt="업로드 미리보기" className={styles.heroImage} />
+            ) : (
+              <div className={styles.heroPlaceholder}>
+                <span className={styles.heroPlaceholderText}>
+                  블러 승인된 이미지가 여기에 표시됩니다.
+                </span>
+              </div>
+            )}
+          </div>
 
           <button
             type="button"
@@ -1016,7 +1034,7 @@ export default function Upload() {
           >
             <ChevronLeft size={16} strokeWidth={2.8} />
           </button>
-          
+
           <button
             type="button"
             className={styles.editCircleButton}
@@ -1117,7 +1135,7 @@ export default function Upload() {
                 onClick={handleAddWearItem}
               >
                 <span className={styles.addItemPlus}>+</span>
-                <span>추가</span>
+                <span className={styles.addItemText}>추가</span>
               </button>
             </div>
 
@@ -1158,6 +1176,9 @@ export default function Upload() {
             </div>
           </section>
 
+          {visibleStatusMessage ? (
+            <p className={styles.statusMessage}>{visibleStatusMessage}</p>
+          ) : null}
 
           <div className={styles.submitArea}>
             <button

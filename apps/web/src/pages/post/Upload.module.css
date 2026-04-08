@@ -13,12 +13,17 @@
 }
 
 .heroSection {
-  @apply relative w-full h-[460px] overflow-hidden bg-neutral-200;
+  @apply relative w-full;
+}
+
+.heroMediaFrame {
+  @apply h-[460px] w-full overflow-hidden bg-neutral-200;
 }
 
 .heroImage {
   @apply h-full w-full object-contain bg-neutral-100;
 }
+
 .heroPlaceholder {
   @apply flex h-full w-full items-center justify-center bg-neutral-200;
 }
@@ -27,19 +32,26 @@
   @apply text-[12px] text-neutral-500;
 }
 
-.headerCircleButton {
-  @apply absolute left-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full text-white;
+.headerCircleButton,
+.editCircleButton,
+.manualTopBackButton {
+  @apply flex items-center justify-center rounded-full text-white;
   background: rgba(0, 0, 0, 0.42);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
-.backTextIcon {
-  display: none;
+.headerCircleButton {
+  @apply absolute left-3 top-3 z-10 h-10 w-10;
 }
 
 .editCircleButton {
-  @apply absolute bottom-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white text-black;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+  @apply absolute bottom-4 right-4 z-10 h-10 w-10;
+}
+
+.manualTopBackButton {
+  @apply h-9 w-9 shrink-0;
 }
 
 .hiddenInput {
@@ -54,18 +66,6 @@
   @apply px-4 pt-3 pb-4;
 }
 
-.titleBlock {
-  @apply mb-3;
-}
-
-.title {
-  @apply text-[22px] font-bold leading-[30px] text-neutral-900;
-}
-
-.description {
-  @apply mt-1 text-[13px] leading-[18px] text-neutral-500;
-}
-
 .divider {
   @apply my-4 h-px w-full bg-neutral-300;
 }
@@ -76,10 +76,6 @@
 
 .blurCheckButton {
   @apply flex h-[40px] w-full items-center justify-center rounded-[10px] bg-black text-[14px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60;
-}
-
-.blurApprovedText {
-  @apply text-[13px] font-medium text-neutral-700;
 }
 
 .keywordSection {
@@ -94,10 +90,6 @@
   @apply mb-3 text-[11px] text-neutral-400;
 }
 
-.keywordGuide {
-  @apply text-[12px] font-medium text-neutral-500;
-}
-
 .keywordGrid {
   @apply flex flex-wrap gap-2;
 }
@@ -108,14 +100,6 @@
 
 .keywordChipSelected {
   @apply border-black bg-black;
-}
-
-.keywordThumb {
-  display: none;
-}
-
-.keywordThumbSelected {
-  display: none;
 }
 
 .keywordLabel {
@@ -139,11 +123,15 @@
 }
 
 .addItemButton {
-  @apply flex h-8 items-center gap-1 rounded-full border border-neutral-300 bg-white px-3 text-[12px] font-semibold text-neutral-700;
+  @apply inline-flex h-8 items-center justify-center gap-1 rounded-full border border-neutral-300 bg-white px-3 text-[12px] font-semibold text-neutral-700;
 }
 
 .addItemPlus {
-  @apply text-[16px] leading-none;
+  @apply flex h-4 items-center justify-center text-[16px] leading-none;
+}
+
+.addItemText {
+  @apply leading-none;
 }
 
 .itemGrid {
@@ -153,14 +141,6 @@
 .itemCard {
   @apply rounded-[8px] border border-neutral-200 bg-white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.itemImage {
-  display: none;
-}
-
-.itemImagePlaceholder {
-  display: none;
 }
 
 .itemInfo {
@@ -220,12 +200,17 @@
   @apply max-h-full w-full max-w-[360px] overflow-y-auto rounded-[28px] bg-[#f7f7f7] px-4 py-4;
 }
 
-.modalHeaderCompact {
-  @apply mb-3;
+.modalHeaderRow {
+  @apply mb-3 flex items-center justify-between;
 }
 
 .modalTitle {
   @apply text-[24px] font-bold leading-8 text-neutral-900;
+}
+
+.modalCloseButton {
+  @apply flex h-8 w-8 items-center justify-center rounded-full bg-white text-neutral-700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .modalInfoText {
@@ -246,10 +231,6 @@
 
 .modalSecondaryButton {
   @apply flex h-[48px] w-full items-center justify-center rounded-full border border-neutral-300 bg-white text-[15px] font-semibold text-neutral-900;
-}
-
-.modalGhostButton {
-  @apply flex h-[44px] w-full items-center justify-center rounded-full bg-neutral-200 text-[14px] font-medium text-neutral-700;
 }
 
 /* compare */
@@ -275,8 +256,7 @@
 }
 
 .comparePlaceholder {
-  @apply flex w-full items-center justify-center rounded-[24px] bg-red-50 text-[13px] text-red-500;
-  height: 260px;
+  @apply flex h-[260px] w-full items-center justify-center rounded-[24px] bg-red-50 text-[13px] text-red-500;
 }
 
 /* manual editor */
@@ -284,8 +264,12 @@
   @apply flex flex-col gap-3;
 }
 
-.manualHeader {
-  @apply mb-1;
+.manualHeaderRow {
+  @apply mb-1 flex items-start justify-between gap-3;
+}
+
+.manualHeaderText {
+  @apply min-w-0 flex-1;
 }
 
 .manualTitle {
@@ -367,25 +351,13 @@
 }
 
 .editorCursor {
-  @apply absolute rounded-full border-2 pointer-events-none;
+  @apply pointer-events-none absolute rounded-full border-2;
 }
 
 .editorBottomActions {
-  @apply mt-1 flex flex-col gap-2;
+  @apply mt-1;
 }
 
 .editorApplyButton {
   @apply flex h-[50px] w-full items-center justify-center rounded-full bg-black px-4 text-[15px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50;
-}
-
-.editorBackButton {
-  @apply flex h-[46px] w-full items-center justify-center gap-1 rounded-full bg-neutral-200 px-4 text-[14px] font-medium text-neutral-700;
-}
-.modalHeaderRow {
-  @apply mb-3 flex items-center justify-between;
-}
-
-.modalCloseButton {
-  @apply flex h-8 w-8 items-center justify-center rounded-full bg-white text-neutral-700;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
