@@ -1,0 +1,255 @@
+.overlay {
+  @apply fixed inset-0 z-[2000] flex items-center justify-center px-4 py-6;
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.card {
+  @apply flex max-h-[90vh] w-[375px] max-w-full flex-col overflow-hidden rounded-[28px];
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(18, 18, 18, 0.22);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+.header {
+  @apply relative h-[96px] w-full shrink-0 bg-transparent;
+}
+
+.titleWrap {
+  @apply absolute left-1/2 top-[56px] flex -translate-x-1/2 -translate-y-1/2 items-center gap-2;
+}
+
+.title {
+  @apply whitespace-nowrap text-center text-[20px] font-semibold leading-7;
+  color: #ffffff;
+}
+
+.titleIconWrap {
+  @apply flex h-7 w-7 items-center justify-center rounded-full;
+  background: rgba(255, 59, 48, 0.14);
+  box-shadow:
+    0 0 10px rgba(255, 59, 48, 0.32),
+    0 0 22px rgba(255, 59, 48, 0.14);
+  animation: sirenGlow 2.4s ease-in-out infinite;
+}
+
+.titleIcon {
+  color: #ff5c55;
+  filter: drop-shadow(0 0 6px rgba(255, 92, 85, 0.5));
+}
+
+@keyframes sirenGlow {
+  0%,
+  100% {
+    background: rgba(255, 59, 48, 0.12);
+    box-shadow:
+      0 0 8px rgba(255, 59, 48, 0.24),
+      0 0 18px rgba(255, 59, 48, 0.1);
+  }
+
+  50% {
+    background: rgba(255, 59, 48, 0.2);
+    box-shadow:
+      0 0 14px rgba(255, 59, 48, 0.4),
+      0 0 28px rgba(255, 59, 48, 0.16);
+  }
+}
+
+.closeButton {
+  @apply absolute right-4 top-[22px] flex h-9 w-9 items-center justify-center rounded-full border-0 p-0 transition-colors;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.closeButton:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.content {
+  @apply flex-1 overflow-y-auto px-4 pb-4 pt-1;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.content::-webkit-scrollbar {
+  display: none;
+}
+
+.tabSwitch {
+  @apply relative mx-auto mb-5 flex h-11 w-[180px] items-end;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.tabButton {
+  @apply relative z-10 h-full w-1/2 cursor-pointer border-0 bg-transparent text-base font-normal leading-6 transition-colors;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.tabButtonActive {
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.tabButtonDisabled {
+  cursor: not-allowed;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.tabIndicator {
+  @apply absolute bottom-0 left-0 h-[1px] w-1/2 transition-transform duration-300 ease-out;
+  background: #ffffff;
+  pointer-events: none;
+}
+
+.tabIndicatorPost {
+  transform: translateX(0%);
+}
+
+.tabIndicatorUser {
+  transform: translateX(100%);
+}
+
+.section {
+  @apply mb-5;
+}
+
+.targetBox {
+  @apply flex h-10 w-full items-center rounded-[12px] px-3;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.targetText {
+  @apply block w-full truncate text-sm font-normal leading-5;
+  color: #ffffff;
+}
+
+.targetPlaceholder {
+  @apply block w-full truncate text-sm font-normal leading-5;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.fieldTitle {
+  @apply mb-2 text-base font-medium leading-6;
+  color: #ffffff;
+}
+
+.reasonGrid {
+  @apply grid grid-cols-2 gap-[10px];
+}
+
+.reasonButton {
+  @apply flex h-11 items-center justify-center rounded-[12px] px-3 text-center text-base font-normal leading-6 transition-all duration-200;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.reasonButton:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.reasonButton:active {
+  transform: scale(0.985);
+}
+
+.reasonButtonActive {
+  border-color: #ffffff;
+  background: #ffffff;
+  color: #000000;
+}
+
+.reasonButtonActive:hover {
+  border-color: #ffffff;
+  background: #ffffff;
+  color: #000000;
+}
+
+.reasonButtonActive:active {
+  border-color: #ffffff;
+  background: #ffffff;
+  color: #000000;
+  transform: scale(0.985);
+}
+
+.labelRow {
+  @apply mb-2 flex items-end gap-1;
+}
+
+.labelText {
+  @apply text-base font-medium leading-6;
+  color: #ffffff;
+}
+
+.labelSubText {
+  @apply text-xs font-medium leading-4;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.textInput {
+  @apply h-10 w-full rounded-[12px] px-3.5 text-sm font-normal leading-5 outline-none transition-colors;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #ffffff;
+}
+
+.textInput::placeholder {
+  color: rgba(255, 255, 255, 0.34);
+}
+
+.textInput:focus {
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
+.textarea {
+  @apply h-44 w-full resize-none rounded-[12px] px-3.5 py-3.5 text-sm font-normal leading-5 outline-none transition-colors;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #ffffff;
+}
+
+.textarea::placeholder {
+  color: rgba(255, 255, 255, 0.34);
+}
+
+.textarea:focus {
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
+.feedback {
+  @apply mb-3 rounded-[12px] border px-3 py-2 text-sm;
+}
+
+.feedbackSuccess {
+  border-color: rgba(74, 222, 128, 0.28);
+  background: rgba(34, 197, 94, 0.12);
+  color: #dcfce7;
+}
+
+.feedbackError {
+  border-color: rgba(248, 113, 113, 0.28);
+  background: rgba(239, 68, 68, 0.12);
+  color: #fee2e2;
+}
+
+.submitButton {
+  @apply h-12 w-full rounded-[12px] border-0 text-center text-xl font-medium leading-7 transition-colors;
+  background: rgba(255, 255, 255, 0.96);
+  color: #000000;
+}
+
+.submitButton:hover {
+  background: #ffffff;
+}
+
+.submitButtonDisabled {
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.42);
+}

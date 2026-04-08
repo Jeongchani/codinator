@@ -36,6 +36,7 @@ function AppRoutes() {
       <Route path="/user/:userId/feed/:postId" element={<UserFeedDetail />} />
       <Route path="/myPage" element={<MyPage />} />
       
+
       <Route path="/test" element={<TestPage />} />
 
       <Route element={<AppLayout />}>
