@@ -197,7 +197,7 @@
 }
 
 .modalCard {
-  @apply max-h-full w-full max-w-[360px] overflow-y-auto rounded-[28px] bg-white px-4 py-4;
+  @apply max-h-full w-full max-w-[360px] overflow-y-auto rounded-[28px] bg-[#f7f7f7] px-4 py-4;
 }
 
 .modalHeaderCompact {
@@ -206,10 +206,6 @@
 
 .modalTitle {
   @apply text-[24px] font-bold leading-8 text-neutral-900;
-}
-
-.modalDescription {
-  @apply mt-1 text-[13px] leading-5 text-neutral-500;
 }
 
 .modalInfoText {
@@ -233,38 +229,33 @@
 }
 
 .modalGhostButton {
-  @apply flex h-[44px] w-full items-center justify-center rounded-full bg-neutral-100 text-[14px] font-medium text-neutral-700;
+  @apply flex h-[44px] w-full items-center justify-center rounded-full bg-neutral-200 text-[14px] font-medium text-neutral-700;
 }
 
 /* compare */
 .compareStack {
-  @apply flex flex-col gap-3;
+  @apply flex flex-col gap-4;
 }
 
-.compareLargePanel {
-  @apply overflow-hidden rounded-[22px] border border-neutral-200 bg-white;
+.compareImageWrap {
+  @apply relative;
 }
 
-.compareLargeHeader {
-  @apply flex items-center justify-between px-4 pt-4 pb-2;
+.compareFloatingLabel {
+  @apply absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold text-white;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
-.compareLargeLabel {
-  @apply text-[13px] font-semibold text-neutral-800;
+.compareOnlyImage {
+  @apply block w-full rounded-[24px] bg-neutral-100 object-contain;
+  height: 260px;
 }
 
-.compareLabelError {
-  @apply text-red-500;
-}
-
-.compareLargeImage {
-  @apply block w-full bg-neutral-100 object-contain;
-  height: 250px;
-}
-
-.compareLargePlaceholder {
-  @apply flex w-full items-center justify-center bg-red-50 text-[13px] text-red-500;
-  height: 250px;
+.comparePlaceholder {
+  @apply flex w-full items-center justify-center rounded-[24px] bg-red-50 text-[13px] text-red-500;
+  height: 260px;
 }
 
 /* manual editor */
@@ -284,45 +275,48 @@
   @apply mt-1 text-[13px] leading-5 text-neutral-500;
 }
 
-.manualControls {
-  @apply flex items-center gap-2;
+.manualToolbar {
+  @apply flex flex-wrap items-center gap-2;
 }
 
-.toolSegment {
-  @apply flex flex-1 rounded-full bg-neutral-100 p-1;
+.toolButton {
+  @apply h-[42px] rounded-full bg-white px-4 text-[14px] font-semibold text-neutral-700 transition border border-transparent;
 }
 
-.toolSegmentButton {
-  @apply flex-1 h-[40px] rounded-full text-[14px] font-semibold text-neutral-600 transition;
-}
-
-.toolSegmentButtonActiveBlue {
+.toolButtonBlue {
   @apply bg-blue-600 text-white;
 }
 
-.toolSegmentButtonActiveRed {
+.toolButtonRed {
   @apply bg-red-500 text-white;
 }
 
-.undoButton {
-  @apply flex h-[42px] shrink-0 items-center gap-1.5 rounded-full border border-neutral-300 bg-white px-3 text-[13px] font-medium text-neutral-700 disabled:cursor-not-allowed disabled:opacity-50;
+.sizeGroup {
+  @apply flex flex-1 min-w-0 items-center gap-2 rounded-full bg-white px-3 py-2;
 }
 
-.sizeRow {
-  @apply flex items-center justify-center gap-4 py-1;
+.sizeGroupLabel {
+  @apply shrink-0 text-[12px] font-semibold text-neutral-500;
+}
+
+.sizeDots {
+  @apply flex items-center gap-2;
 }
 
 .sizeDotButton {
-  @apply flex h-11 w-11 items-center justify-center rounded-full bg-transparent transition;
+  @apply flex h-8 w-8 items-center justify-center rounded-full bg-transparent transition;
 }
 
 .sizeDotButtonActive {
   @apply bg-neutral-100;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
 .sizeDot {
   @apply block rounded-full;
+}
+
+.undoIconButton {
+  @apply flex h-[42px] w-[42px] items-center justify-center rounded-full border border-neutral-300 bg-white text-neutral-700 disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 .editorError {
@@ -330,11 +324,11 @@
 }
 
 .editorLoading {
-  @apply flex h-[200px] items-center justify-center rounded-[22px] bg-neutral-100 text-[13px] text-neutral-400;
+  @apply flex h-[220px] items-center justify-center rounded-[24px] bg-neutral-100 text-[13px] text-neutral-400;
 }
 
 .editorCanvasFrame {
-  @apply overflow-hidden rounded-[22px] border-2 bg-neutral-50;
+  @apply overflow-hidden rounded-[24px] border-2 bg-neutral-50;
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
@@ -356,22 +350,6 @@
   @apply absolute rounded-full border-2 pointer-events-none;
 }
 
-.editorHint {
-  @apply flex flex-wrap items-center justify-center gap-1 rounded-[18px] bg-sky-50 px-4 py-3 text-[12px] leading-5 text-sky-700;
-}
-
-.hintBadge {
-  @apply rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-semibold text-white;
-}
-
-.hintBadgeRed {
-  @apply rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-semibold text-white;
-}
-
-.hintDivider {
-  @apply px-1 text-sky-400;
-}
-
 .editorBottomActions {
   @apply mt-1 flex flex-col gap-2;
 }
@@ -381,5 +359,5 @@
 }
 
 .editorBackButton {
-  @apply flex h-[46px] w-full items-center justify-center gap-1 rounded-full bg-neutral-100 px-4 text-[14px] font-medium text-neutral-700;
+  @apply flex h-[46px] w-full items-center justify-center gap-1 rounded-full bg-neutral-200 px-4 text-[14px] font-medium text-neutral-700;
 }

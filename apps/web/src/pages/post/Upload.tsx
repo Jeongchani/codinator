@@ -1,6 +1,6 @@
 import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, Undo2 } from "lucide-react";
+import { ChevronLeft, Sparkles, Undo2 } from "lucide-react";
 import type {
   CreatePostResponse,
   GarmentCategory,
@@ -40,7 +40,20 @@ type WearItem = {
 };
 
 type BlurFlowStep = "idle" | "decision" | "manual";
-type BrushTool = "mosaic" | "eraser";
+type BrushTool = "blur" | "eraser";
+
+type BrushPreset = {
+  id: "s" | "m" | "l";
+  size: number;
+  dot: number;
+  block: number;
+};
+
+const BRUSH_PRESETS: BrushPreset[] = [
+  { id: "s", size: 28, dot: 10, block: 10 },
+  { id: "m", size: 52, dot: 18, block: 18 },
+  { id: "l", size: 84, dot: 26, block: 26 },
+];
 
 const wearTypeOptions: WearType[] = [
   "",
@@ -129,6 +142,26 @@ function Modal({
   );
 }
 
+function CompareImage({
+  label,
+  imageUrl,
+  ai,
+}: {
+  label: string;
+  imageUrl: string;
+  ai?: boolean;
+}) {
+  return (
+    <div className={styles.compareImageWrap}>
+      <div className={styles.compareFloatingLabel}>
+        {ai ? <Sparkles size={14} strokeWidth={2.1} /> : null}
+        <span>{label}</span>
+      </div>
+      <img src={imageUrl} alt={label} className={styles.compareOnlyImage} />
+    </div>
+  );
+}
+
 function ImgCompare({
   originalUrl,
   aiUrl,
@@ -142,37 +175,59 @@ function ImgCompare({
 }) {
   return (
     <div className={styles.compareStack}>
-      <div className={styles.compareLargePanel}>
-        <div className={styles.compareLargeHeader}>
-          <span className={styles.compareLargeLabel}>원본</span>
-        </div>
-        <img src={originalUrl} alt="원본" className={styles.compareLargeImage} />
-      </div>
-
-      <div className={styles.compareLargePanel}>
-        <div className={styles.compareLargeHeader}>
-          <span className={cls(styles.compareLargeLabel, aiFailed && styles.compareLabelError)}>
-            AI 블러
-          </span>
-        </div>
-
-        {aiUrl && !aiFailed ? (
-          <img src={aiUrl} alt="AI 블러" className={styles.compareLargeImage} />
-        ) : (
-          <div className={styles.compareLargePlaceholder}>AI 블러 미처리</div>
-        )}
-      </div>
-
-      {manualPreview && (
-        <div className={styles.compareLargePanel}>
-          <div className={styles.compareLargeHeader}>
-            <span className={styles.compareLargeLabel}>수동 블러</span>
+      <CompareImage label="원본" imageUrl={originalUrl} />
+      {aiUrl && !aiFailed ? (
+        <CompareImage label="AI 블러" imageUrl={aiUrl} ai />
+      ) : (
+        <div className={styles.compareImageWrap}>
+          <div className={styles.compareFloatingLabel}>
+            <Sparkles size={14} strokeWidth={2.1} />
+            <span>AI 블러</span>
           </div>
-          <img src={manualPreview} alt="수동 블러" className={styles.compareLargeImage} />
+          <div className={styles.comparePlaceholder}>AI 블러 미처리</div>
         </div>
       )}
+
+      {manualPreview && <CompareImage label="수동 블러" imageUrl={manualPreview} />}
     </div>
   );
+}
+
+function buildPixelatedCanvas(sourceCanvas: HTMLCanvasElement, block: number) {
+  const width = sourceCanvas.width;
+  const height = sourceCanvas.height;
+
+  const scaledCanvas = document.createElement("canvas");
+  scaledCanvas.width = Math.max(1, Math.ceil(width / block));
+  scaledCanvas.height = Math.max(1, Math.ceil(height / block));
+
+  const scaledCtx = scaledCanvas.getContext("2d");
+  if (!scaledCtx) return null;
+
+  scaledCtx.drawImage(sourceCanvas, 0, 0, scaledCanvas.width, scaledCanvas.height);
+
+  const resultCanvas = document.createElement("canvas");
+  resultCanvas.width = width;
+  resultCanvas.height = height;
+
+  const resultCtx = resultCanvas.getContext("2d");
+  if (!resultCtx) return null;
+
+  resultCtx.imageSmoothingEnabled = false;
+  resultCtx.drawImage(
+    scaledCanvas,
+    0,
+    0,
+    scaledCanvas.width,
+    scaledCanvas.height,
+    0,
+    0,
+    width,
+    height,
+  );
+  resultCtx.imageSmoothingEnabled = true;
+
+  return resultCanvas;
 }
 
 function ManualBlurEditor({
@@ -184,21 +239,30 @@ function ManualBlurEditor({
   onApprove: (file: File, previewDataUrl: string) => void;
   onBack: () => void;
 }) {
-  const [tool, setTool] = useState<BrushTool>("mosaic");
-  const [brushSize, setBrushSize] = useState(52);
+  const [tool, setTool] = useState<BrushTool>("blur");
+  const [brushSize, setBrushSize] = useState(BRUSH_PRESETS[1].size);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [approving, setApproving] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
   const [imageLoadError, setImageLoadError] = useState("");
 
-  const toolRef = useRef<BrushTool>("mosaic");
-  const brushRef = useRef(52);
+  const toolRef = useRef<BrushTool>("blur");
+  const brushRef = useRef(BRUSH_PRESETS[1].size);
+
   const displayCanvasRef = useRef<HTMLCanvasElement>(null);
   const origCanvasRef = useRef<HTMLCanvasElement>(null);
+  const mosaicCacheRef = useRef<Map<number, HTMLCanvasElement>>(new Map());
+
   const isDrawing = useRef(false);
   const lastCvsPos = useRef<{ x: number; y: number } | null>(null);
   const historyRef = useRef<ImageData[]>([]);
+
+  const pendingPointRef = useRef<{ x: number; y: number; canvas: HTMLCanvasElement } | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  const getCurrentPreset = () =>
+    BRUSH_PRESETS.find((preset) => preset.size === brushRef.current) ?? BRUSH_PRESETS[1];
 
   const changeTool = (nextTool: BrushTool) => {
     toolRef.current = nextTool;
@@ -239,6 +303,14 @@ function ManualBlurEditor({
       displayCtx.drawImage(img, 0, 0);
       origCtx.drawImage(img, 0, 0);
 
+      mosaicCacheRef.current.clear();
+      for (const preset of BRUSH_PRESETS) {
+        const cached = buildPixelatedCanvas(origCanvas, preset.block);
+        if (cached) {
+          mosaicCacheRef.current.set(preset.block, cached);
+        }
+      }
+
       historyRef.current = [];
       setCanUndo(false);
       setImgLoaded(true);
@@ -253,6 +325,9 @@ function ManualBlurEditor({
 
     return () => {
       cancelled = true;
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
     };
   }, [originalImageUrl]);
 
@@ -267,7 +342,7 @@ function ManualBlurEditor({
       const snapshot = ctx.getImageData(0, 0, displayCanvas.width, displayCanvas.height);
       historyRef.current.push(snapshot);
 
-      if (historyRef.current.length > 30) {
+      if (historyRef.current.length > 20) {
         historyRef.current.shift();
       }
 
@@ -291,87 +366,6 @@ function ManualBlurEditor({
     setCanUndo(historyRef.current.length > 0);
   };
 
-  const applyAt = (cx: number, cy: number, canvasRadius: number) => {
-    const displayCanvas = displayCanvasRef.current;
-    const origCanvas = origCanvasRef.current;
-    if (!displayCanvas || !origCanvas) return;
-
-    const displayCtx = displayCanvas.getContext("2d");
-    const origCtx = origCanvas.getContext("2d");
-    if (!displayCtx || !origCtx) return;
-
-    const block = Math.max(8, Math.round((canvasRadius / 2) * 0.4));
-
-    const bx1 = Math.max(0, Math.floor((cx - canvasRadius) / block));
-    const by1 = Math.max(0, Math.floor((cy - canvasRadius) / block));
-    const bx2 = Math.min(
-      Math.ceil(displayCanvas.width / block) - 1,
-      Math.floor((cx + canvasRadius) / block),
-    );
-    const by2 = Math.min(
-      Math.ceil(displayCanvas.height / block) - 1,
-      Math.floor((cy + canvasRadius) / block),
-    );
-
-    for (let bx = bx1; bx <= bx2; bx += 1) {
-      for (let by = by1; by <= by2; by += 1) {
-        const gx = bx * block;
-        const gy = by * block;
-        const gw = Math.min(block, displayCanvas.width - gx);
-        const gh = Math.min(block, displayCanvas.height - gy);
-
-        if (gw <= 0 || gh <= 0) continue;
-
-        if (toolRef.current === "eraser") {
-          const imageData = origCtx.getImageData(gx, gy, gw, gh);
-          displayCtx.putImageData(imageData, gx, gy);
-        } else {
-          const srcCanvas = document.createElement("canvas");
-          srcCanvas.width = gw;
-          srcCanvas.height = gh;
-
-          const srcCtx = srcCanvas.getContext("2d");
-          if (!srcCtx) continue;
-
-          srcCtx.putImageData(origCtx.getImageData(gx, gy, gw, gh), 0, 0);
-
-          const onePxCanvas = document.createElement("canvas");
-          onePxCanvas.width = 1;
-          onePxCanvas.height = 1;
-
-          const onePxCtx = onePxCanvas.getContext("2d");
-          if (!onePxCtx) continue;
-
-          onePxCtx.drawImage(srcCanvas, 0, 0, 1, 1);
-
-          displayCtx.imageSmoothingEnabled = false;
-          displayCtx.drawImage(onePxCanvas, 0, 0, 1, 1, gx, gy, gw, gh);
-          displayCtx.imageSmoothingEnabled = true;
-        }
-      }
-    }
-  };
-
-  const interpolate = (
-    from: { x: number; y: number },
-    to: { x: number; y: number },
-    canvasRadius: number,
-  ) => {
-    const dx = to.x - from.x;
-    const dy = to.y - from.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const step = Math.max(1, canvasRadius / 2);
-    const steps = Math.ceil(distance / step);
-
-    for (let i = 1; i <= steps; i += 1) {
-      applyAt(
-        from.x + (dx * i) / steps,
-        from.y + (dy * i) / steps,
-        canvasRadius,
-      );
-    }
-  };
-
   const toCanvasPosition = (
     clientX: number,
     clientY: number,
@@ -390,10 +384,104 @@ function ManualBlurEditor({
     return cssRadius * (canvas.width / rect.width);
   };
 
+  const applyAt = (cx: number, cy: number, canvasRadius: number, canvas: HTMLCanvasElement) => {
+    const displayCanvas = displayCanvasRef.current;
+    const origCanvas = origCanvasRef.current;
+    if (!displayCanvas || !origCanvas) return;
+
+    const displayCtx = displayCanvas.getContext("2d");
+    if (!displayCtx) return;
+
+    const currentPreset = getCurrentPreset();
+    const block = currentPreset.block;
+
+    const blurSource = mosaicCacheRef.current.get(block);
+    const sourceCanvas = toolRef.current === "blur" ? blurSource : origCanvas;
+    if (!sourceCanvas) return;
+
+    const bx1 = Math.max(0, Math.floor((cx - canvasRadius) / block));
+    const by1 = Math.max(0, Math.floor((cy - canvasRadius) / block));
+    const bx2 = Math.min(
+      Math.ceil(displayCanvas.width / block) - 1,
+      Math.floor((cx + canvasRadius) / block),
+    );
+    const by2 = Math.min(
+      Math.ceil(displayCanvas.height / block) - 1,
+      Math.floor((cy + canvasRadius) / block),
+    );
+
+    for (let bx = bx1; bx <= bx2; bx += 1) {
+      for (let by = by1; by <= by2; by += 1) {
+        const gx = bx * block;
+        const gy = by * block;
+        const gw = Math.min(block, displayCanvas.width - gx);
+        const gh = Math.min(block, displayCanvas.height - gy);
+        if (gw <= 0 || gh <= 0) continue;
+
+        displayCtx.drawImage(sourceCanvas, gx, gy, gw, gh, gx, gy, gw, gh);
+      }
+    }
+  };
+
+  const interpolate = (
+    from: { x: number; y: number },
+    to: { x: number; y: number },
+    canvasRadius: number,
+    canvas: HTMLCanvasElement,
+  ) => {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const step = Math.max(1, canvasRadius / 2);
+    const steps = Math.ceil(distance / step);
+
+    for (let i = 1; i <= steps; i += 1) {
+      applyAt(
+        from.x + (dx * i) / steps,
+        from.y + (dy * i) / steps,
+        canvasRadius,
+        canvas,
+      );
+    }
+  };
+
+  const flushPendingDraw = () => {
+    const pending = pendingPointRef.current;
+    if (!pending || !lastCvsPos.current) {
+      rafRef.current = null;
+      return;
+    }
+
+    const canvasRadius = toCanvasRadius(brushRef.current / 2, pending.canvas);
+    interpolate(lastCvsPos.current, pending, canvasRadius, pending.canvas);
+    lastCvsPos.current = { x: pending.x, y: pending.y };
+    pendingPointRef.current = null;
+    rafRef.current = null;
+  };
+
+  const scheduleDraw = () => {
+    if (rafRef.current !== null) return;
+    rafRef.current = requestAnimationFrame(flushPendingDraw);
+  };
+
   const stopDrawing = (canvas?: HTMLCanvasElement, pointerId?: number) => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+
+    if (pendingPointRef.current && lastCvsPos.current) {
+      const pending = pendingPointRef.current;
+      const canvasRadius = toCanvasRadius(brushRef.current / 2, pending.canvas);
+      interpolate(lastCvsPos.current, pending, canvasRadius, pending.canvas);
+      lastCvsPos.current = { x: pending.x, y: pending.y };
+      pendingPointRef.current = null;
+    }
+
     if (canvas && pointerId !== undefined && canvas.hasPointerCapture(pointerId)) {
       canvas.releasePointerCapture(pointerId);
     }
+
     isDrawing.current = false;
     lastCvsPos.current = null;
   };
@@ -413,7 +501,7 @@ function ManualBlurEditor({
     lastCvsPos.current = pos;
     setCursorPos({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
 
-    applyAt(pos.x, pos.y, canvasRadius);
+    applyAt(pos.x, pos.y, canvasRadius, canvas);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -427,11 +515,12 @@ function ManualBlurEditor({
 
     if (!isDrawing.current || !lastCvsPos.current) return;
 
-    const pos = toCanvasPosition(e.clientX, e.clientY, canvas);
-    const canvasRadius = toCanvasRadius(brushRef.current / 2, canvas);
+    pendingPointRef.current = {
+      ...toCanvasPosition(e.clientX, e.clientY, canvas),
+      canvas,
+    };
 
-    interpolate(lastCvsPos.current, pos, canvasRadius);
-    lastCvsPos.current = pos;
+    scheduleDraw();
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -468,83 +557,69 @@ function ManualBlurEditor({
     );
   };
 
-  const brushPresets = [
-    { value: 28, dot: 10 },
-    { value: 52, dot: 18 },
-    { value: 84, dot: 26 },
-  ];
-
-  const toolColor = tool === "mosaic" ? "#2563eb" : "#ef4444";
+  const toolColor = tool === "blur" ? "#2563eb" : "#ef4444";
 
   return (
     <div className={styles.manualEditorWrap}>
       <div className={styles.manualHeader}>
-        <div>
-          <h3 className={styles.manualTitle}>수동 블러 편집</h3>
-          <p className={styles.manualSubText}>터치하거나 드래그해서 바로 수정</p>
-        </div>
+        <h3 className={styles.manualTitle}>수동 블러 편집</h3>
+        <p className={styles.manualSubText}>터치하거나 드래그해서 바로 수정</p>
       </div>
 
-      <div className={styles.manualControls}>
-        <div className={styles.toolSegment}>
-          <button
-            type="button"
-            className={cls(
-              styles.toolSegmentButton,
-              tool === "mosaic" && styles.toolSegmentButtonActiveBlue,
-            )}
-            onClick={() => changeTool("mosaic")}
-          >
-            모자이크
-          </button>
+      <div className={styles.manualToolbar}>
+        <button
+          type="button"
+          className={cls(styles.toolButton, tool === "blur" && styles.toolButtonBlue)}
+          onClick={() => changeTool("blur")}
+        >
+          블러
+        </button>
 
-          <button
-            type="button"
-            className={cls(
-              styles.toolSegmentButton,
-              tool === "eraser" && styles.toolSegmentButtonActiveRed,
-            )}
-            onClick={() => changeTool("eraser")}
-          >
-            지우기
-          </button>
+        <button
+          type="button"
+          className={cls(styles.toolButton, tool === "eraser" && styles.toolButtonRed)}
+          onClick={() => changeTool("eraser")}
+        >
+          지우개
+        </button>
+
+        <div className={styles.sizeGroup}>
+          <span className={styles.sizeGroupLabel}>블러 크기</span>
+          <div className={styles.sizeDots}>
+            {BRUSH_PRESETS.map((preset) => {
+              const active = brushSize === preset.size;
+
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  className={cls(styles.sizeDotButton, active && styles.sizeDotButtonActive)}
+                  onClick={() => changeBrush(preset.size)}
+                  aria-label={`블러 크기 ${preset.id}`}
+                >
+                  <span
+                    className={styles.sizeDot}
+                    style={{
+                      width: `${preset.dot}px`,
+                      height: `${preset.dot}px`,
+                      backgroundColor: active ? toolColor : "#9ca3af",
+                    }}
+                  />
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <button
           type="button"
-          className={styles.undoButton}
+          className={styles.undoIconButton}
           onClick={handleUndo}
           disabled={!canUndo}
           aria-label="되돌리기"
         >
           <Undo2 size={18} strokeWidth={2.2} />
-          <span>되돌리기</span>
         </button>
-      </div>
-
-      <div className={styles.sizeRow}>
-        {brushPresets.map((item) => {
-          const active = brushSize === item.value;
-
-          return (
-            <button
-              key={item.value}
-              type="button"
-              className={cls(styles.sizeDotButton, active && styles.sizeDotButtonActive)}
-              onClick={() => changeBrush(item.value)}
-              aria-label={`브러시 크기 ${item.value}`}
-            >
-              <span
-                className={styles.sizeDot}
-                style={{
-                  width: `${item.dot}px`,
-                  height: `${item.dot}px`,
-                  backgroundColor: active ? toolColor : "#9ca3af",
-                }}
-              />
-            </button>
-          );
-        })}
       </div>
 
       {imageLoadError && <p className={styles.editorError}>{imageLoadError}</p>}
@@ -581,21 +656,13 @@ function ManualBlurEditor({
                 height: `${brushSize}px`,
                 borderColor: toolColor,
                 background:
-                  tool === "mosaic"
+                  tool === "blur"
                     ? "rgba(37,99,235,0.14)"
                     : "rgba(239,68,68,0.14)",
               }}
             />
           )}
         </div>
-      </div>
-
-      <div className={styles.editorHint}>
-        <span className={styles.hintBadge}>모자이크</span>
-        <span>터치/드래그</span>
-        <span className={styles.hintDivider}>·</span>
-        <span className={styles.hintBadgeRed}>지우기</span>
-        <span>복원</span>
       </div>
 
       <div className={styles.editorBottomActions}>
@@ -1089,7 +1156,6 @@ export default function Upload() {
             <>
               <div className={styles.modalHeaderCompact}>
                 <h3 className={styles.modalTitle}>블러 확인</h3>
-                <p className={styles.modalDescription}>이미지를 크게 보고 선택하세요.</p>
               </div>
 
               <ImgCompare
@@ -1104,7 +1170,9 @@ export default function Upload() {
                   AI 블러가 실패했어요. 수동 블러로 바로 수정해주세요.
                 </p>
               ) : (
-                <p className={styles.modalInfoText}>가려짐이 충분하면 AI 블러를 그대로 사용하면 됩니다.</p>
+                <p className={styles.modalInfoText}>
+                  가려짐이 충분하면 AI 블러를 그대로 사용하면 됩니다.
+                </p>
               )}
 
               <div className={styles.modalButtonColumn}>
@@ -1122,7 +1190,7 @@ export default function Upload() {
                   className={styles.modalSecondaryButton}
                   onClick={handleOpenManualEditor}
                 >
-                  직접 수정하기
+                  수동블러처리
                 </button>
 
                 <button
