@@ -176,19 +176,21 @@
 }
 
 .evaluationTrack {
-  @apply relative w-full h-[22px] rounded-[10px] overflow-hidden mb-0;
+  @apply relative w-full h-[22px] rounded-[10px] overflow-hidden mb-4;
   background: rgba(241, 241, 241, 0.95);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
 .evaluationLikeFill {
   @apply absolute left-0 top-0 h-full rounded-l-[10px];
-  background: linear-gradient(90deg, rgba(244, 125, 114, 0.78) 0%, #f47d72 100%);
+  background: linear-gradient(90deg, #f5b8af 0%, #ef9a8f 45%, #ea8a7e 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 .evaluationDislikeFill {
   @apply absolute right-0 top-0 h-full rounded-r-[10px];
-  background: linear-gradient(270deg, rgba(140, 149, 181, 0.78) 0%, #8c95b5 100%);
+  background: linear-gradient(270deg, #c6cde3 0%, #aab3d3 45%, #8c95b5 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
 .feedbackComposerCard {
@@ -215,6 +217,16 @@
   transform: translateY(0);
 }
 
+.feedbackComposerCardLike {
+  border-color: rgba(244, 125, 114, 0.42);
+  background: #fbfbfb;
+}
+
+.feedbackComposerCardDislike {
+  border-color: rgba(140, 149, 181, 0.42);
+  background: #fbfbfb;
+}
+
 .feedbackSelectGrid {
   @apply grid grid-cols-3 gap-[10px];
 }
@@ -225,6 +237,24 @@
 
 .selectChipSelected {
   @apply border-black bg-black text-white;
+}
+
+.selectChipSelectedLike {
+  color: #ffffff;
+  border-color: #ef8d82;
+  background: linear-gradient(180deg, #f6a79e 0%, #ef8d82 100%);
+  box-shadow:
+    0 6px 14px rgba(239, 141, 130, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.selectChipSelectedDislike {
+  color: #ffffff;
+  border-color: #8c95b5;
+  background: linear-gradient(180deg, #b8c1e2 0%, #8c95b5 100%);
+  box-shadow:
+    0 6px 14px rgba(140, 149, 181, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
 .feedbackHintText {

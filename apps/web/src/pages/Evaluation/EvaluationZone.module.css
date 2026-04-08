@@ -1,418 +1,229 @@
 .container {
-  @apply w-[375px] h-[812px] mx-auto overflow-hidden bg-white;
+  @apply w-[375px] h-[812px] mx-auto relative overflow-hidden bg-neutral-300 shadow-2xl;
 }
 
-.scrollArea {
-  @apply h-full overflow-y-auto bg-white;
+.viewport {
+  @apply w-full h-full overflow-y-auto snap-y snap-mandatory;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-.scrollArea::-webkit-scrollbar {
+.viewport::-webkit-scrollbar {
   display: none;
 }
 
-.loadingBox {
-  @apply mx-4 mt-10 rounded-[24px] bg-white px-5 py-8 text-center text-[15px] font-medium text-neutral-600 shadow-[0_8px_20px_rgba(0,0,0,0.05)];
+.slide {
+  @apply relative w-full h-[812px] snap-start;
 }
 
-.heroSection {
-  @apply relative w-full;
+.imageSection {
+  @apply absolute inset-0 bg-cover bg-center bg-no-repeat;
 }
 
-.heroMediaFrame {
-  @apply relative h-[460px] w-full overflow-hidden bg-neutral-200;
+.emptyPageSection {
+  @apply absolute inset-0 bg-neutral-300;
 }
 
-.heroImage {
-  @apply h-full w-full object-contain bg-neutral-100;
+.emptyPageCenterText {
+  @apply absolute left-6 right-6 top-1/2 -translate-y-1/2 text-center text-white text-[16px] font-semibold leading-[1.7];
+  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
 }
 
-.heroPlaceholder {
-  @apply flex h-full w-full items-center justify-center bg-neutral-200 px-6 text-center;
+.topGradient {
+  @apply absolute top-0 left-0 w-full h-28 bg-gradient-to-b from-black/45 to-transparent;
 }
 
-.heroPlaceholderText {
-  @apply text-[14px] leading-5 text-neutral-500;
+.bottomGradient {
+  @apply absolute bottom-0 left-0 w-full h-40 bg-gradient-to-t from-black/55 to-transparent;
 }
 
-.backButton {
-  @apply absolute left-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full text-white;
-  background: rgba(0, 0, 0, 0.42);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+.overlay {
+  @apply absolute inset-0 z-20 pointer-events-none;
 }
 
-.contentPanel {
-  @apply bg-white px-4 pb-8 pt-3;
+.closeButton {
+  @apply absolute top-[66px] right-4 flex items-center justify-center bg-transparent border-0 p-0 cursor-pointer active:scale-95 transition-transform pointer-events-auto;
 }
 
-.sheetHeader {
-  @apply mb-4;
+.title {
+  @apply absolute top-[68px] left-4 text-white text-2xl font-bold leading-8;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
 }
 
-.sheetHeaderCopy {
-  @apply min-w-0;
+.slideIndicator {
+  @apply absolute top-[360px] right-4 flex flex-col gap-2 items-center;
 }
 
-.titleRow {
-  @apply mb-3 flex items-center justify-between gap-3;
+.slideIndicatorActive {
+  @apply w-2 h-7 rounded-full bg-white;
 }
 
-.mainTitle {
-  @apply text-[20px] font-bold leading-7 text-neutral-900;
+.slideIndicatorDot {
+  @apply w-2 h-2 rounded-full bg-white/35;
 }
 
-.sheetActions {
-  @apply flex items-center gap-2 shrink-0;
-  overflow: visible;
+.helperText {
+  @apply absolute left-6 right-6 bottom-[132px] text-center text-white text-[14px] leading-[1.6] pointer-events-none;
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
 }
 
-.miniActionButton {
-  @apply rounded-[8px] border-0 p-0 flex items-center justify-center shrink-0;
-  width: 24px;
-  height: 24px;
+.voteGraphArea {
+  @apply absolute left-1/2 -translate-x-1/2 z-30 w-full flex justify-center pointer-events-none;
+  bottom: 58px;
 }
 
-.bookmarkActionButton {
-  background: #ffffff;
-  color: #6f6f6f;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  transition:
-    transform 0.16s ease,
-    box-shadow 0.16s ease,
-    background 0.16s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.bookmarkActionButton:active {
-  transform: scale(0.9);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-
-.reportActionButton {
-  color: #ff5b5d;
-  background: rgba(255, 91, 93, 0.08);
-  border: 1px solid rgba(255, 91, 93, 0.16);
+.voteGraphShell {
+  @apply relative w-[334px] rounded-[999px] px-[10px] py-[7px];
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   box-shadow:
-    0 0 0 1px rgba(255, 91, 93, 0.08),
-    0 0 8px rgba(255, 91, 93, 0.18);
+    0 4px 10px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
-.bookmarkFilled {
-  color: #5f5f5f;
-}
-
-.bookmarkDefault {
-  color: #8c8c8c;
-}
-
-.authorName {
-  @apply text-[22px] leading-7 font-bold text-neutral-900 mb-2;
-}
-
-.contentText {
-  @apply text-[14px] leading-[20px] text-neutral-700 whitespace-pre-line;
-}
-
-.keywordLaneSection {
-  @apply mb-4;
-}
-
-.keywordLane {
-  @apply flex items-center gap-2 overflow-x-auto;
-  padding: 2px 0;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-.keywordLane::-webkit-scrollbar {
-  display: none;
-}
-
-.keywordChip {
-  @apply shrink-0 px-3 h-7 rounded-[999px] text-[11px] leading-[27px] font-medium text-neutral-700;
-  background: #dedede;
-}
-
-.sectionDivider {
-  @apply w-full h-px mb-4;
-  background: rgba(0, 0, 0, 0.12);
-}
-
-.sectionBlock {
-  @apply mb-0;
-}
-
-.sectionHeaderRow {
-  @apply flex items-center justify-between gap-2 mb-3;
-}
-
-.sectionTitle {
-  @apply text-[18px] leading-[22px] font-bold text-neutral-900;
-}
-
-.sectionMetaText {
-  @apply text-[12px] leading-4 text-neutral-500;
-}
-
-.evaluationSummaryRow {
-  @apply flex items-center justify-between mb-2;
-}
-
-.evaluationSummaryItem {
-  @apply inline-flex items-center gap-1 text-[12px] leading-4 font-semibold;
-}
-
-.evaluationSummaryLike {
-  color: #f47d72;
-}
-
-.evaluationSummaryDislike {
-  color: #8c95b5;
-}
-
-.evaluationTrack {
-  @apply relative w-full h-[22px] rounded-[10px] overflow-hidden mb-0;
-  background: rgba(241, 241, 241, 0.95);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
-}
-
-.evaluationLikeFill {
-  @apply absolute left-0 top-0 h-full rounded-l-[10px];
-  background: linear-gradient(90deg, rgba(244, 125, 114, 0.78) 0%, #f47d72 100%);
-}
-
-.evaluationDislikeFill {
-  @apply absolute right-0 top-0 h-full rounded-r-[10px];
-  background: linear-gradient(270deg, rgba(140, 149, 181, 0.78) 0%, #8c95b5 100%);
-}
-
-.feedbackComposerCard {
-  @apply rounded-[16px] border border-[#e6e6e6] bg-[#fbfbfb] px-[14px] py-[14px];
-  transition:
-    box-shadow 0.22s ease,
-    transform 0.22s ease,
-    border-color 0.22s ease,
-    background 0.22s ease;
-}
-
-.feedbackComposerCardRaised {
-  box-shadow:
-    0 14px 28px rgba(0, 0, 0, 0.14),
-    0 4px 10px rgba(0, 0, 0, 0.07),
-    inset 0 1px 0 rgba(255, 255, 255, 0.96);
-  transform: translateY(-1px);
-}
-
-.feedbackComposerCardFlat {
-  box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.94);
-  transform: translateY(0);
-}
-
-.feedbackSelectGrid {
-  @apply grid grid-cols-3 gap-[10px];
-}
-
-.selectChip {
-  @apply min-h-[36px] rounded-[12px] border border-neutral-400 bg-white px-3 py-2 text-[14px] font-medium leading-5 text-neutral-500 transition-all duration-200;
-}
-
-.selectChipSelected {
-  @apply border-black bg-black text-white;
-}
-
-.feedbackHintText {
-  @apply mt-3 text-[12px] font-normal leading-4 text-neutral-400;
-}
-
-.feedbackSavedText {
-  @apply mt-3 text-[13px] font-medium leading-5 text-neutral-700;
-}
-
-.feedbackErrorText {
-  @apply mt-3 text-[13px] font-normal leading-5 text-red-500;
-}
-
-.feedbackEmptyBox {
-  @apply rounded-[14px] bg-neutral-100 px-4 py-4 text-[13px] font-normal leading-5 text-neutral-500;
-}
-
-.feedbackCompleteInset {
-  @apply mt-4 rounded-[14px] p-[2px];
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.12) 0%, rgba(255, 255, 255, 0.45) 100%);
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.14);
-}
-
-.feedbackCompleteButton {
-  @apply flex h-[42px] w-full items-center justify-center rounded-[12px] bg-black text-[15px] font-semibold text-white transition-all duration-200;
-  box-shadow:
-    0 3px 6px rgba(0, 0, 0, 0.22),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
-}
-
-.feedbackCompleteButtonDisabled {
-  @apply cursor-not-allowed bg-neutral-300 text-white;
-  box-shadow: none;
-}
-
-.feedbackPanelsWrap {
-  @apply mt-5 mb-4 grid grid-cols-2 gap-3;
-}
-
-.feedbackPanel {
-  @apply rounded-[16px] p-0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}
-
-.feedbackPanelHeader {
-  @apply flex items-center justify-between gap-2 mb-3;
-}
-
-.feedbackPanelTitle {
-  @apply text-[16px] leading-5 font-bold text-neutral-900;
-}
-
-.feedbackPanelCount {
-  @apply text-[11px] leading-4 text-neutral-500 shrink-0;
-}
-
-.feedbackRows {
-  @apply flex flex-col gap-3;
-}
-
-.feedbackRow {
-  @apply flex flex-col gap-1.5;
-}
-
-.feedbackRowHead {
-  @apply flex items-center justify-between gap-2;
-}
-
-.feedbackRowLabel {
-  @apply text-[10px] leading-4 text-neutral-500 min-w-0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.feedbackRowPercent {
-  @apply text-[10px] leading-4 font-semibold text-black shrink-0;
-}
-
-.feedbackRowTrack {
-  @apply w-full h-[8px] rounded-full overflow-hidden;
-  background: rgba(0, 0, 0, 0.08);
-}
-
-.feedbackRowFill {
-  @apply h-full rounded-full;
-}
-
-.feedbackRowFillLike {
-  background: linear-gradient(90deg, #f5b8af 0%, #ef8a7d 100%);
-}
-
-.feedbackRowFillDislike {
-  background: linear-gradient(90deg, #c4cbe2 0%, #98a2c8 100%);
-}
-
-.feedbackEmptyText {
-  @apply text-[11px] leading-4 text-neutral-400;
-}
-
-.outfitHeaderRow {
-  @apply flex items-center mb-3;
-}
-
-.outfitTitle {
-  @apply text-[18px] leading-[22px] font-bold text-neutral-900;
-}
-
-.itemScroll {
-  @apply flex overflow-x-auto;
-  gap: 12px;
-  padding: 2px 0 16px 0;
-  margin-bottom: 2px;
-  scroll-snap-type: x proximity;
-  scroll-padding-left: 0;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(140, 149, 181, 0.8) rgba(0, 0, 0, 0.08);
-}
-
-.itemScroll::-webkit-scrollbar {
-  display: block;
-  height: 6px;
-}
-
-.itemScroll::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.08);
+.voteGraphShell::after {
+  content: '';
+  @apply absolute left-1/2 -translate-x-1/2;
+  bottom: -9px;
+  width: 235px;
+  height: 16px;
   border-radius: 999px;
+  background: rgba(0, 0, 0, 0.14);
+  filter: blur(12px);
+  z-index: -1;
 }
 
-.itemScroll::-webkit-scrollbar-thumb {
-  background: rgba(140, 149, 181, 0.8);
-  border-radius: 999px;
+.progressTrack {
+  @apply relative w-full h-[18px] rounded-full overflow-hidden;
+  background: rgba(255, 255, 255, 0.08);
 }
 
-.itemScroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(140, 149, 181, 0.95);
+.likeFill {
+  @apply absolute left-0 top-0 h-full rounded-l-full;
+  background: linear-gradient(90deg, rgba(234, 138, 120, 0.92) 0%, rgba(239, 154, 139, 0.9) 100%);
 }
 
-.outfitCard {
-  @apply shrink-0 rounded-[16px];
-  width: 168px;
-  padding: 10px;
-  background: #f5f5f5;
-  border: 1px solid #e7e7e7;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  scroll-snap-align: start;
-  margin-bottom: 4px;
+.dislikeFill {
+  @apply absolute right-0 top-0 h-full rounded-r-full;
+  background: linear-gradient(90deg, rgba(143, 150, 200, 0.92) 0%, rgba(119, 129, 188, 0.9) 100%);
 }
 
-.outfitField {
-  @apply w-full h-10 rounded-[12px] border border-[#dddddd] px-3 flex items-center bg-white;
+.leftPercent {
+  @apply absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-white text-[10px] font-semibold;
 }
 
-.outfitCard .outfitField + .outfitField {
-  margin-top: 8px;
+.rightPercent {
+  @apply absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-white text-[10px] font-semibold;
 }
 
-.outfitCategoryField {
-  background: #f4efe9;
-  border-color: #e2d6cb;
+.leftPercent :global(svg),
+.rightPercent :global(svg) {
+  @apply w-[11px] h-[11px];
 }
 
-.outfitCategoryInner {
-  @apply flex items-center gap-2 min-w-0 w-full;
+.bottomActionArea {
+  @apply absolute left-4 right-4 bottom-11 h-16;
 }
 
-.outfitCategoryIcon {
-  @apply shrink-0;
-  color: #7b5f4c;
+.circleButton {
+  @apply absolute top-[5px] h-[54px] w-[54px] rounded-full flex items-center justify-center shadow-[0px_4px_18px_rgba(0,0,0,0.25)] transition-all duration-200 active:scale-95 pointer-events-auto z-20;
 }
 
-.outfitFieldValue {
-  @apply text-[12px] leading-4 min-w-0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: #6b6b6b;
+.leftButton {
+  @apply left-0;
 }
 
-.outfitCategoryField .outfitFieldValue {
-  color: #7b5f4c;
-  font-weight: 700;
+.rightButton {
+  @apply right-0;
 }
 
-.emptyText {
-  @apply text-[13px] text-neutral-500;
+.circleButtonInactive {
+  @apply bg-black/50 backdrop-blur-[10px];
+}
+
+.circleButtonPassive {
+  @apply bg-black/50 backdrop-blur-[10px] opacity-65;
+}
+
+.circleButtonActive {
+  @apply bg-white;
+}
+
+.dragTrack {
+  @apply absolute top-0 h-16 rounded-full bg-black/55 backdrop-blur-[12px] shadow-[0px_4px_18px_rgba(0,0,0,0.25)] overflow-hidden pointer-events-auto;
+}
+
+.dragTrackFromLeft {
+  left: 0;
+  right: 82px;
+}
+
+.dragTrackFromRight {
+  left: 82px;
+  right: 0;
+}
+
+.trackText {
+  @apply absolute inset-0 flex items-center justify-center text-white text-base font-medium whitespace-nowrap;
+}
+
+.trackHintRight {
+  @apply absolute right-5 top-1/2 -translate-y-1/2 flex items-center gap-0;
+}
+
+.trackHintLeft {
+  @apply absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-0;
+}
+
+.dragThumb {
+  @apply absolute top-[7px] rounded-full bg-white flex items-center justify-center cursor-grab active:cursor-grabbing shadow-md z-10;
+}
+
+.dragThumb:active {
+  cursor: grabbing;
+}
+
+.loadingState {
+  @apply absolute inset-0 bg-neutral-900 flex flex-col items-center justify-center;
+}
+
+.loadingTitle {
+  @apply text-white text-2xl font-bold mb-4;
+}
+
+.emptyState {
+  @apply absolute inset-0 bg-neutral-900;
+}
+
+.statusText {
+  @apply absolute left-6 right-6 top-1/2 -translate-y-1/2 text-center text-white text-[14px] leading-[1.7];
+}
+
+.emptyModalBackdrop {
+  @apply absolute inset-0 z-40 flex items-center justify-center px-6;
+  background: rgba(0, 0, 0, 0.34);
+  pointer-events: auto;
+}
+
+.emptyModalCard {
+  @apply w-full max-w-[290px] rounded-[26px] px-6 pt-7 pb-5 text-center;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.emptyModalTitle {
+  @apply text-[20px] font-bold leading-7 text-black;
+}
+
+.emptyModalDescription {
+  @apply mt-3 text-[14px] leading-[1.65] text-neutral-600;
+}
+
+.emptyModalButton {
+  @apply mt-6 w-full h-12 rounded-full text-[15px] font-semibold text-white border-0;
+  background: linear-gradient(90deg, #111111 0%, #2a2a2a 100%);
 }

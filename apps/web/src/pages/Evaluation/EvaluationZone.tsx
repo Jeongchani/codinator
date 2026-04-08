@@ -88,7 +88,7 @@ const ChevronLeftDouble = () => (
 const ThumbUpIcon = ({ dark = false }: { dark?: boolean }) => (
   <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
     <path
-      d="M17.5245 8.16619L17.9165 5.78503C18.0193 5.15641 17.9511 4.51172 17.7191 3.9185C17.4871 3.32529 17.0998 2.80539 16.5979 2.41328C16.0959 2.02117 15.4977 1.77129 14.866 1.68982C14.2342 1.60834 13.5922 1.69828 13.0072 1.95019C12.1986 2.31304 11.5491 2.95677 11.179 3.76203L9.00317 8.16619H3.5C2.57174 8.16619 1.6815 8.53494 1.02513 9.19132C0.368749 9.8477 0 10.7379 0 11.6662L0 22.1662C0 23.0945 0.368749 23.9847 1.02513 24.6411C1.6815 25.2974 2.57174 25.6662 3.5 25.6662H25.6877L28 12.7897L28.0187 8.16619H17.5245ZM2.33333 22.1662V11.6662C2.33333 11.3568 2.45625 11.06 2.67504 10.8412C2.89383 10.6224 3.19058 10.4995 3.5 10.4995H8.16667V23.3329H3.5C3.19058 23.3329 2.89383 23.2099 2.67504 22.9912C2.45625 22.7724 2.33333 22.4756 2.33333 22.1662ZM25.6667 12.4829L23.7183 23.3329H10.5V10.3934L13.3222 4.67669C13.4177 4.50378 13.553 4.35602 13.7168 4.24556C13.8805 4.13509 14.0682 4.06508 14.2643 4.04128C14.4605 4.01747 14.6594 4.04056 14.8449 4.10863C15.0304 4.17671 15.197 4.28783 15.3312 4.43286C15.4458 4.56615 15.5296 4.72309 15.5766 4.89249C15.6236 5.06189 15.6326 5.23957 15.603 5.41286L14.7642 10.4995H25.6667V12.4829Z"
+      d="M17.5245 8.16619L17.9165 5.78503C18.0193 5.15641 17.9511 4.51172 17.7191 3.9185C17.4871 3.32529 17.0998 2.80539 16.5979 2.41328C16.0959 2.02117 15.4977 1.77129 14.866 1.68982C14.2342 1.60834 13.5922 1.69828 13.0072 1.95019C12.1986 2.31304 11.5491 2.95677 11.179 3.76203L9.00317 8.16619H3.5C2.57174 8.16619 1.6815 8.53494 1.02513 9.19132C0.368749 9.8477 0 10.7379 0 11.6662L0 22.1662C0 23.0945 0.368749 23.9847 1.02513 24.6411C1.6815 25.2974 2.57174 25.6662 3.5 25.6662H25.6877L28 12.7897L28.0187 8.16619H17.5245ZM2.33333 22.1662V11.6662C2.33333 11.3568 2.45625 11.06 2.67504 10.8412C2.89383 10.6224 3.19058 10.4995 3.5 10.4995H8.16667V23.3329H3.5C3.19058 23.3329 2.89383 23.2099 2.67504 22.9912C2.45625 22.7724 2.33333 22.4756 2.33333 22.1662ZM25.6667 12.4829L23.7183 23.3329H10.5V10.3934L13.3222 4.67669C13.4177 4.50378 13.553 4.35602 13.7168 4.24556C13.8805 4.13509 14.0682 4.06508 14.2643 4.04128C14.4605 4.01747 14.6594 4.04056 14.8449 4.10863C15.0304 4.17671 15.197 4.28783 15.3312 4.43286C15.4458 4.56615 15.5296 4.72309 15.5766 4.89249C15.6236 5.06189 and 15.6326 5.23957 15.603 5.41286L14.7642 10.4995H25.6667V12.4829Z"
       fill={dark ? 'black' : 'white'}
     />
   </svg>
@@ -174,7 +174,10 @@ const EvaluationZone: React.FC = () => {
     ];
   }, [posts]);
 
-  const currentPage = useMemo(() => pages[currentIndex] ?? pages[0] ?? { type: 'empty' }, [pages, currentIndex]);
+  const currentPage = useMemo(
+    () => pages[currentIndex] ?? pages[0] ?? { type: 'empty' },
+    [pages, currentIndex],
+  );
 
   const currentPost = useMemo(() => {
     return currentPage.type === 'post' ? currentPage.post : null;
@@ -521,24 +524,26 @@ const EvaluationZone: React.FC = () => {
 
         {!isEmptyLastPage && hasCurrentVoteSaved && (
           <div className={styles.voteGraphArea}>
-            <div className={styles.progressTrack}>
-              <div
-                className={styles.likeFill}
-                style={{ width: `${likePercent}%` }}
-              />
-              <div
-                className={styles.dislikeFill}
-                style={{ width: `${dislikePercent}%` }}
-              />
+            <div className={styles.voteGraphShell}>
+              <div className={styles.progressTrack}>
+                <div
+                  className={styles.likeFill}
+                  style={{ width: `${likePercent}%` }}
+                />
+                <div
+                  className={styles.dislikeFill}
+                  style={{ width: `${dislikePercent}%` }}
+                />
 
-              <div className={styles.leftPercent}>
-                <ThumbUpIcon />
-                <span>{likePercent}%</span>
-              </div>
+                <div className={styles.leftPercent}>
+                  <ThumbUpIcon />
+                  <span>{likePercent}%</span>
+                </div>
 
-              <div className={styles.rightPercent}>
-                <ThumbDownIcon />
-                <span>{dislikePercent}%</span>
+                <div className={styles.rightPercent}>
+                  <ThumbDownIcon />
+                  <span>{dislikePercent}%</span>
+                </div>
               </div>
             </div>
           </div>
@@ -571,48 +576,72 @@ const EvaluationZone: React.FC = () => {
             )}
 
             {isActionActive && hasCurrentVoteSaved && (
-              <div
-                ref={trackRef}
-                className={`${styles.dragTrack} ${
-                  isLikeSelected ? styles.dragTrackFromLeft : styles.dragTrackFromRight
-                }`}
-              >
-                <div className={styles.trackText}>상세보기</div>
-
+              <>
                 {isLikeSelected && (
-                  <div className={styles.trackHintRight}>
-                    <ChevronRightDouble />
-                  </div>
+                  <button
+                    type="button"
+                    className={`${styles.circleButton} ${styles.circleButtonPassive} ${styles.rightButton}`}
+                    aria-label="싫어요 비활성화"
+                    disabled
+                  >
+                    <ThumbDownIcon />
+                  </button>
                 )}
 
                 {isDislikeSelected && (
-                  <div className={styles.trackHintLeft}>
-                    <ChevronLeftDouble />
-                  </div>
+                  <button
+                    type="button"
+                    className={`${styles.circleButton} ${styles.circleButtonPassive} ${styles.leftButton}`}
+                    aria-label="좋아요 비활성화"
+                    disabled
+                  >
+                    <ThumbUpIcon />
+                  </button>
                 )}
 
-                <motion.div
-                  className={styles.dragThumb}
-                  drag="x"
-                  dragMomentum={false}
-                  dragElastic={0}
-                  dragConstraints={
-                    isLikeSelected
-                      ? { left: 0, right: maxDrag }
-                      : { left: -maxDrag, right: 0 }
-                  }
-                  style={{
-                    x: dragX,
-                    left: isLikeSelected ? 4 : 'auto',
-                    right: isDislikeSelected ? 4 : 'auto',
-                    width: `${THUMB_SIZE}px`,
-                    height: `${THUMB_SIZE}px`,
-                  }}
-                  onDragEnd={handleDragEnd}
+                <div
+                  ref={trackRef}
+                  className={`${styles.dragTrack} ${
+                    isLikeSelected ? styles.dragTrackFromLeft : styles.dragTrackFromRight
+                  }`}
                 >
-                  {isLikeSelected ? <ThumbUpIcon dark /> : <ThumbDownIcon dark />}
-                </motion.div>
-              </div>
+                  <div className={styles.trackText}>상세보기</div>
+
+                  {isLikeSelected && (
+                    <div className={styles.trackHintRight}>
+                      <ChevronRightDouble />
+                    </div>
+                  )}
+
+                  {isDislikeSelected && (
+                    <div className={styles.trackHintLeft}>
+                      <ChevronLeftDouble />
+                    </div>
+                  )}
+
+                  <motion.div
+                    className={styles.dragThumb}
+                    drag="x"
+                    dragMomentum={false}
+                    dragElastic={0}
+                    dragConstraints={
+                      isLikeSelected
+                        ? { left: 0, right: maxDrag }
+                        : { left: -maxDrag, right: 0 }
+                    }
+                    style={{
+                      x: dragX,
+                      left: isLikeSelected ? 4 : 'auto',
+                      right: isDislikeSelected ? 4 : 'auto',
+                      width: `${THUMB_SIZE}px`,
+                      height: `${THUMB_SIZE}px`,
+                    }}
+                    onDragEnd={handleDragEnd}
+                  >
+                    {isLikeSelected ? <ThumbUpIcon dark /> : <ThumbDownIcon dark />}
+                  </motion.div>
+                </div>
+              </>
             )}
           </div>
         )}

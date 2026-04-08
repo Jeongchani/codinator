@@ -675,6 +675,12 @@ const EvaluationDetailFeedback: React.FC = () => {
                 savedKeywordIds.length > 0
                   ? styles.feedbackComposerCardFlat
                   : styles.feedbackComposerCardRaised
+              } ${
+                voteChoice === 'LIKE'
+                  ? styles.feedbackComposerCardLike
+                  : voteChoice === 'DISLIKE'
+                    ? styles.feedbackComposerCardDislike
+                    : ''
               }`}
             >
               {canWriteFeedback ? (
@@ -697,6 +703,14 @@ const EvaluationDetailFeedback: React.FC = () => {
                             disabled={savedKeywordIds.length > 0 || isMaxReached}
                             className={`${styles.selectChip} ${
                               isSelected ? styles.selectChipSelected : ''
+                            } ${
+                              isSelected && voteChoice === 'LIKE'
+                                ? styles.selectChipSelectedLike
+                                : ''
+                            } ${
+                              isSelected && voteChoice === 'DISLIKE'
+                                ? styles.selectChipSelectedDislike
+                                : ''
                             }`}
                           >
                             {keyword.label}
