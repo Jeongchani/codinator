@@ -1,0 +1,72 @@
+.wrapper {
+  @apply fixed top-0 left-1/2 -translate-x-1/2 w-[375px] h-[812px] z-[9999] overflow-hidden;
+  transition: opacity 0.28s ease;
+}
+
+.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.closed {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.overlay {
+  @apply absolute inset-0;
+  background: rgba(0, 0, 0, 0.2);
+  transition: opacity 0.28s ease;
+}
+
+.panel {
+  @apply absolute right-0 top-0 w-[293px] h-full bg-white;
+  transition: transform 0.32s ease;
+  will-change: transform;
+}
+
+.panelOpen {
+  transform: translateX(0);
+}
+
+.panelClosed {
+  transform: translateX(100%);
+}
+
+.closeButton {
+  @apply absolute right-5 top-[59px] -translate-y-1/2
+    w-6 h-6 flex items-center justify-center
+    text-[#7a7a7a] bg-transparent p-0 border-0;
+}
+
+.mainOptions {
+  @apply absolute left-0 top-[150px] w-full flex flex-col items-center gap-[5px];
+}
+
+.otherTitle {
+  @apply absolute left-[33px] top-[469px]
+    text-black text-sm font-normal leading-5 tracking-[0.08em];
+}
+
+.otherOptions {
+  @apply absolute left-0 top-[513px] w-full flex flex-col items-center gap-[5px];
+}
+
+.menuItem {
+  @apply w-full h-14 bg-white
+    flex items-center gap-5
+    pl-8 pr-6
+    text-left transition-colors duration-150;
+}
+
+.menuItem:hover {
+  @apply bg-neutral-50;
+}
+
+.iconWrap {
+  @apply w-5 h-5 flex items-center justify-center text-black shrink-0;
+}
+
+.menuLabel {
+  @apply text-black text-base font-bold leading-6;
+}

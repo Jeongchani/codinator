@@ -1,300 +1,418 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import styles from './RankingZone.module.css';
-import Footer from '../../components/Footer';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Bookmark, ThumbsDown, ThumbsUp } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import styles from "./RankingZone.module.css";
 import {
   clearAuthTokens,
   fetcher,
   getAuthHeaders,
-  getRefreshToken,
   resolveAssetUrl,
-} from '../../lib/api';
-import type { GetRankingsResponse, LogoutResponse, RankingItem } from '@codinator/contracts';
+  fetchMyBookmarkMap,
+  isAuthError,
+  subscribeBookmarkUpdated,
+  togglePostBookmark,
+} from "../../lib/api";
+import type { GetRankingsResponse, RankingItem } from "@codinator/contracts";
+import Header from "../../components/Header";
+import Footer from "../../components/Footer";
 
-type RankingSection = {
-  id: string;
+type RankingCardItem = {
+  id: number;
   title: string;
-  period: 'WEEKLY' | 'MONTHLY';
-  items: RankingItem[];
+  likeCount: number;
+  dislikeCount: number;
+  bookmarked?: boolean;
+  imageUrl?: string;
+  postId?: number;
+  period?: "WEEKLY" | "MONTHLY";
 };
 
-const RankingZone: React.FC = () => {
+type RankingSectionData = {
+  id: string;
+  title: string;
+  items: RankingCardItem[];
+};
+
+type RankingCardProps = {
+  item: RankingCardItem;
+  onCardClick: (item: RankingCardItem) => void;
+  onToggleBookmark: (
+    e: React.MouseEvent<HTMLButtonElement>,
+    postId: number
+  ) => void;
+  isBookmarkLoading: boolean;
+  isBookmarkPressed: boolean;
+};
+
+function RankingCard({
+  item,
+  onCardClick,
+  onToggleBookmark,
+  isBookmarkLoading,
+  isBookmarkPressed,
+}: RankingCardProps) {
+  return (
+    <article
+      className={`${styles.card} ${isBookmarkPressed ? styles.cardPressed : ""}`}
+      onClick={() => onCardClick(item)}
+    >
+      <div
+        className={`${styles.thumbnail} ${
+          isBookmarkPressed ? styles.thumbnailPressed : ""
+        }`}
+      >
+        {item.imageUrl ? (
+          <img
+            src={item.imageUrl}
+            alt={`ranking-${item.id}`}
+            className={styles.cardImage}
+          />
+        ) : (
+          <div className={styles.cardImageFallback}>이미지 없음</div>
+        )}
+
+        <div className={styles.thumbnailGradient} />
+
+        <button
+          type="button"
+          className={`${styles.bookmarkButton} ${
+            isBookmarkPressed ? styles.bookmarkButtonPressed : ""
+          }`}
+          aria-label={item.bookmarked ? "북마크 해제" : "북마크 추가"}
+          onClick={(e) => onToggleBookmark(e, item.postId ?? item.id)}
+          disabled={isBookmarkLoading}
+        >
+          <Bookmark
+            size={12}
+            strokeWidth={2.2}
+            className={
+              item.bookmarked ? styles.bookmarkFilled : styles.bookmarkDefault
+            }
+            fill={item.bookmarked ? "currentColor" : "none"}
+          />
+        </button>
+      </div>
+
+      <p className={styles.cardTitle}>
+        {item.title.split("\n").map((line, index, arr) => (
+          <React.Fragment key={`${item.id}-${index}`}>
+            {line}
+            {index < arr.length - 1 && <br />}
+          </React.Fragment>
+        ))}
+      </p>
+
+      <div className={styles.statsRow}>
+        <div className={styles.statItem}>
+          <ThumbsUp size={13} strokeWidth={2} className={styles.statIcon} />
+          <span className={styles.statText}>
+            {String(item.likeCount).padStart(3, "0")}
+          </span>
+        </div>
+
+        <div className={styles.statItem}>
+          <ThumbsDown size={13} strokeWidth={2} className={styles.statIcon} />
+          <span className={styles.statText}>
+            {String(item.dislikeCount).padStart(3, "0")}
+          </span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+type RankingSectionProps = {
+  title: string;
+  items: RankingCardItem[];
+  bookmarkLoadingIds: number[];
+  bookmarkPressedIds: number[];
+  onCardClick: (item: RankingCardItem) => void;
+  onToggleBookmark: (
+    e: React.MouseEvent<HTMLButtonElement>,
+    postId: number
+  ) => void;
+};
+
+function RankingSection({
+  title,
+  items,
+  bookmarkLoadingIds,
+  bookmarkPressedIds,
+  onCardClick,
+  onToggleBookmark,
+}: RankingSectionProps) {
+  return (
+    <section className={styles.section}>
+      <h2 className={styles.sectionTitle}>{title}</h2>
+
+      <div className={styles.horizontalScroll}>
+        {items.map((item) => {
+          const targetId = item.postId ?? item.id;
+
+          return (
+            <RankingCard
+              key={item.id}
+              item={item}
+              onCardClick={onCardClick}
+              onToggleBookmark={onToggleBookmark}
+              isBookmarkLoading={bookmarkLoadingIds.includes(targetId)}
+              isBookmarkPressed={bookmarkPressedIds.includes(targetId)}
+            />
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+export default function RankingZone() {
   const navigate = useNavigate();
 
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [weeklyRankings, setWeeklyRankings] = useState<RankingItem[]>([]);
   const [monthlyRankings, setMonthlyRankings] = useState<RankingItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const [bookmarks, setBookmarks] = useState<Record<number, boolean>>({});
+  const [bookmarkLoadingIds, setBookmarkLoadingIds] = useState<number[]>([]);
+  const [bookmarkPressedIds, setBookmarkPressedIds] = useState<number[]>([]);
 
-  const [bookmarks, setBookmarks] = useState<Record<string, boolean>>(() => {
-    const saved = localStorage.getItem('codinator_bookmarks');
-    return saved ? (JSON.parse(saved) as Record<string, boolean>) : {};
-  });
+  const bookmarkAnimTimeoutMap = useRef<Record<number, number>>({});
+
+  const moveToLogin = useCallback(() => {
+    clearAuthTokens();
+    navigate("/login", { replace: true });
+  }, [navigate]);
+
+  const loadBookmarks = useCallback(async () => {
+    try {
+      const nextMap = await fetchMyBookmarkMap();
+      setBookmarks(nextMap);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "북마크 정보를 불러오지 못했습니다.";
+
+      if (isAuthError(message)) {
+        moveToLogin();
+      }
+    }
+  }, [moveToLogin]);
 
   useEffect(() => {
-    const syncBookmarks = () => {
-      const saved = localStorage.getItem('codinator_bookmarks');
-      setBookmarks(saved ? (JSON.parse(saved) as Record<string, boolean>) : {});
-    };
-
-    syncBookmarks();
-    window.addEventListener('storage', syncBookmarks);
-
-    return () => {
-      window.removeEventListener('storage', syncBookmarks);
-    };
-  }, []);
+    void loadBookmarks();
+  }, [loadBookmarks]);
 
   useEffect(() => {
+    const unsubscribe = subscribeBookmarkUpdated((detail) => {
+      if (!detail) {
+        void loadBookmarks();
+        return;
+      }
+
+      setBookmarks((prev) => ({
+        ...prev,
+        [detail.postId]: detail.bookmarked,
+      }));
+    });
+
+    return unsubscribe;
+  }, [loadBookmarks]);
+
+  useEffect(() => {
+    let cancelled = false;
+
     const loadRankings = async () => {
       try {
         setLoading(true);
-        setError('');
+        setError("");
 
         const [weeklyData, monthlyData] = await Promise.all([
-          fetcher<GetRankingsResponse>('/rankings?period=WEEKLY', {
+          fetcher<GetRankingsResponse>("/rankings?period=WEEKLY", {
             headers: getAuthHeaders(),
           }),
-          fetcher<GetRankingsResponse>('/rankings?period=MONTHLY', {
+          fetcher<GetRankingsResponse>("/rankings?period=MONTHLY", {
             headers: getAuthHeaders(),
           }),
         ]);
 
+        if (cancelled) return;
+
         setWeeklyRankings(weeklyData.items ?? []);
         setMonthlyRankings(monthlyData.items ?? []);
       } catch (err) {
-        console.error('랭킹 불러오기 실패:', err);
-
         const message =
-          err instanceof Error ? err.message : '랭킹 데이터를 불러오지 못했습니다.';
-        setError(message);
+          err instanceof Error
+            ? err.message
+            : "랭킹 데이터를 불러오지 못했습니다.";
 
-        if (
-          message.includes('Unauthorized') ||
-          message.includes('유효하지 않거나 만료된 토큰') ||
-          message.includes('로그인이 필요합니다')
-        ) {
-          clearAuthTokens();
-          navigate('/login');
+        if (isAuthError(message)) {
+          moveToLogin();
           return;
         }
 
-        setWeeklyRankings([]);
-        setMonthlyRankings([]);
+        if (!cancelled) {
+          setError(message);
+          setWeeklyRankings([]);
+          setMonthlyRankings([]);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     void loadRankings();
-  }, [navigate]);
 
-  const handleLogout = async () => {
-    if (!window.confirm('로그아웃 하시겠습니까?')) return;
+    return () => {
+      cancelled = true;
+    };
+  }, [moveToLogin]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(bookmarkAnimTimeoutMap.current).forEach((timeoutId) => {
+        window.clearTimeout(timeoutId);
+      });
+    };
+  }, []);
+
+  const triggerBookmarkPress = (postId: number) => {
+    const prevTimeout = bookmarkAnimTimeoutMap.current[postId];
+    if (prevTimeout) {
+      window.clearTimeout(prevTimeout);
+    }
+
+    setBookmarkPressedIds((prev) => {
+      if (prev.includes(postId)) return prev;
+      return [...prev, postId];
+    });
+
+    bookmarkAnimTimeoutMap.current[postId] = window.setTimeout(() => {
+      setBookmarkPressedIds((prev) => prev.filter((id) => id !== postId));
+      delete bookmarkAnimTimeoutMap.current[postId];
+    }, 240);
+  };
+
+  const toggleBookmark = async (
+    e: React.MouseEvent<HTMLButtonElement>,
+    postId: number
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (bookmarkLoadingIds.includes(postId)) {
+      return;
+    }
+
+    triggerBookmarkPress(postId);
+
+    const isBookmarked = Boolean(bookmarks[postId]);
+
+    setBookmarkLoadingIds((prev) => [...prev, postId]);
+    setBookmarks((prev) => ({
+      ...prev,
+      [postId]: !isBookmarked,
+    }));
 
     try {
-      const refreshToken = getRefreshToken();
-
-      if (refreshToken) {
-        await fetcher<LogoutResponse>('/auth/logout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken }),
-        });
-      }
+      const nextValue = await togglePostBookmark(postId, isBookmarked);
+      setBookmarks((prev) => ({
+        ...prev,
+        [postId]: nextValue,
+      }));
     } catch (err) {
-      console.error('로그아웃 요청 실패:', err);
+      const message =
+        err instanceof Error ? err.message : "북마크 처리에 실패했습니다.";
+
+      setBookmarks((prev) => ({
+        ...prev,
+        [postId]: isBookmarked,
+      }));
+
+      if (isAuthError(message)) {
+        moveToLogin();
+        return;
+      }
+
+      window.alert(message);
     } finally {
-      clearAuthTokens();
-      navigate('/login');
+      setBookmarkLoadingIds((prev) => prev.filter((id) => id !== postId));
     }
   };
 
-  const handleMovePage = (path: string) => {
-    setIsMenuOpen(false);
-    navigate(path);
+  const handleCardClick = (item: RankingCardItem) => {
+    if (!item.postId || !item.period) return;
+    navigate(`/rankingDetail/${item.postId}?period=${item.period}`);
   };
 
-  const toggleBookmark = (e: React.MouseEvent, postId: string) => {
-    e.stopPropagation();
-
-    setBookmarks((prev) => {
-      const next = { ...prev, [postId]: !prev[postId] };
-      localStorage.setItem('codinator_bookmarks', JSON.stringify(next));
-      return next;
-    });
+  const convertRankingItem = (
+    post: RankingItem,
+    period: "WEEKLY" | "MONTHLY"
+  ): RankingCardItem => {
+    return {
+      id: post.postId,
+      title: "게시글 컨셉 글\n최대 두줄 혹은 닉네임?",
+      likeCount: post.likeCount ?? 0,
+      dislikeCount: post.dislikeCount ?? 0,
+      bookmarked: Boolean(bookmarks[post.postId]),
+      imageUrl: resolveAssetUrl(post.thumbnailUrl),
+      postId: post.postId,
+      period,
+    };
   };
 
-  const sections: RankingSection[] = useMemo(
+  const sections: RankingSectionData[] = useMemo(
     () => [
-      { id: 'week', title: 'This Week', period: 'WEEKLY', items: weeklyRankings },
-      { id: 'month', title: 'This Month', period: 'MONTHLY', items: monthlyRankings },
+      {
+        id: "week",
+        title: "This Week",
+        items: weeklyRankings.map((post) => convertRankingItem(post, "WEEKLY")),
+      },
+      {
+        id: "month",
+        title: "This Month",
+        items: monthlyRankings.map((post) =>
+          convertRankingItem(post, "MONTHLY")
+        ),
+      },
     ],
-    [weeklyRankings, monthlyRankings],
+    [weeklyRankings, monthlyRankings, bookmarks]
   );
 
   return (
     <div className={styles.container}>
-      <div className={`${styles.drawer} ${isMenuOpen ? styles.drawerOpen : ''}`}>
-        <div className={styles.drawerHeader}>
-          <div className={styles.profileSection}>
-            <div className={styles.profileCircle} />
-            <span className={styles.profileName}>내 프로필</span>
-          </div>
-
-          <button
-            type="button"
-            className={styles.closeBtn}
-            onClick={() => setIsMenuOpen(false)}
-          >
-            ✕
-          </button>
-        </div>
-
-        <nav className={styles.drawerNav}>
-          <div className={styles.navItem} onClick={() => handleMovePage('/myFeeds')}>
-            내 피드
-          </div>
-
-          <div className={styles.navItem} onClick={() => handleMovePage('/postUpload')}>
-            게시글 작성
-          </div>
-
-          <div className={styles.navItem} onClick={() => handleMovePage('/evaluationZone')}>
-            평가 존
-          </div>
-
-          <div className={`${styles.navItem} ${styles.logoutBtn}`} onClick={handleLogout}>
-            로그아웃
-          </div>
-        </nav>
-      </div>
-
-      {isMenuOpen && <div className={styles.overlay} onClick={() => setIsMenuOpen(false)} />}
+      <Header />
 
       <div className={styles.contentArea}>
-        <header className={styles.header}>
-          <div className={styles.logo}>C:dinator</div>
-
-          <button
-            type="button"
-            className={styles.menuBtn}
-            onClick={() => setIsMenuOpen(true)}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M4 6H20" stroke="black" strokeWidth="2" strokeLinecap="round" />
-              <path d="M4 12H20" stroke="black" strokeWidth="2" strokeLinecap="round" />
-              <path d="M4 18H20" stroke="black" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </button>
-        </header>
-
-        <div className={styles.divider} />
-
         {loading ? (
-          <div className={styles.loadingBox}>데이터 불러오는 중...</div>
+          <div className={styles.messageBox}>데이터 불러오는 중...</div>
         ) : error ? (
-          <div className={styles.loadingBox}>{error}</div>
+          <div className={styles.messageBox}>{error}</div>
         ) : (
-          sections.map((section) => (
-            <section key={section.id} className={styles.section}>
-              <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>{section.title}</h2>
-              </div>
-
-              <div className={styles.horizontalScroll}>
-                {section.items.length > 0 ? (
-                  section.items.map((post) => {
-                    const postId = String(post.postId);
-                    const isBookmarked = !!bookmarks[postId];
-                    const imageUrl = resolveAssetUrl(post.thumbnailUrl);
-
-                    return (
-                      <div
-                        key={`${section.period}-${post.postId}`}
-                        className={styles.card}
-                        onClick={() =>
-                          navigate(`/rankingDetail/${post.postId}?period=${section.period}`)
-                        }
-                        style={{
-                          position: 'relative',
-                          overflow: 'hidden',
-                          borderRadius: '24px',
-                          cursor: 'pointer',
-                          backgroundColor: '#f4f4f4',
-                        }}
-                      >
-                        {imageUrl ? (
-                          <img
-                            src={imageUrl}
-                            alt={`ranking-${post.rank}`}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                              display: 'block',
-                            }}
-                          />
-                        ) : (
-                          <div
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: '#999',
-                              fontSize: '12px',
-                              background: '#f3f3f3',
-                            }}
-                          >
-                            이미지 없음
-                          </div>
-                        )}
-
-                        <button
-                          type="button"
-                          className={styles.heartIcon}
-                          onClick={(e) => toggleBookmark(e, postId)}
-                          aria-label="북마크"
-                          style={{
-                            position: 'absolute',
-                            top: '10px',
-                            right: '10px',
-                            width: '24px',
-                            height: '24px',
-                            border: 'none',
-                            background: 'transparent',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            padding: 0,
-                          }}
-                        >
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                            <path
-                              d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.03L12 21.35Z"
-                              fill={isBookmarked ? '#FF3B30' : '#D1D5DB'}
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className={styles.loadingBox}>표시할 랭킹이 없습니다.</div>
-                )}
-              </div>
-            </section>
-          ))
+          <>
+            <RankingSection
+              title="This Week"
+              items={sections[0].items}
+              bookmarkLoadingIds={bookmarkLoadingIds}
+              bookmarkPressedIds={bookmarkPressedIds}
+              onCardClick={handleCardClick}
+              onToggleBookmark={toggleBookmark}
+            />
+            <RankingSection
+              title="This Month"
+              items={sections[1].items}
+              bookmarkLoadingIds={bookmarkLoadingIds}
+              bookmarkPressedIds={bookmarkPressedIds}
+              onCardClick={handleCardClick}
+              onToggleBookmark={toggleBookmark}
+            />
+          </>
         )}
       </div>
 
-      <Footer />
+      <div className={styles.footerWrap}>
+        <Footer />
+      </div>
     </div>
   );
-};
-
-export default RankingZone;
+}

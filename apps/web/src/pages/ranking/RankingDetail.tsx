@@ -2,11 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import styles from './RankingDetail.module.css';
 import { motion, useAnimation, type PanInfo } from 'framer-motion';
+import { Bookmark } from 'lucide-react';
 import {
   clearAuthTokens,
   fetcher,
   getAuthHeaders,
   getPrimaryPostImageUrl,
+  fetchMyBookmarkMap,
+  isAuthError,
+  subscribeBookmarkUpdated,
+  togglePostBookmark,
 } from '../../lib/api';
 import type { GetRankingPostDetailResponse } from '@codinator/contracts';
 
@@ -21,6 +26,7 @@ const RankingDetail: React.FC = () => {
   const [postData, setPostData] = useState<GetRankingPostDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [bookmarkLoading, setBookmarkLoading] = useState(false);
   const [sheetPosition, setSheetPosition] = useState<SheetPosition>('collapsed');
 
   const EXPANDED_Y = 350;
@@ -28,58 +34,76 @@ const RankingDetail: React.FC = () => {
   const HIDDEN_Y = 860;
 
   const period = searchParams.get('period') === 'MONTHLY' ? 'MONTHLY' : 'WEEKLY';
+  const numericPostId = postId ? Number(postId) : undefined;
 
   useEffect(() => {
-    if (!postId) return;
+    let cancelled = false;
 
-    const saved = localStorage.getItem('codinator_bookmarks');
-    if (saved) {
-      const parsed = JSON.parse(saved) as Record<string, boolean>;
-      setIsBookmarked(!!parsed[String(postId)]);
-    } else {
-      setIsBookmarked(false);
-    }
-  }, [postId]);
-
-  useEffect(() => {
     const loadDetail = async () => {
+      if (!postId || !numericPostId) {
+        setLoading(false);
+        setPostData(null);
+        return;
+      }
+
       try {
         setLoading(true);
 
-        const data = await fetcher<GetRankingPostDetailResponse>(
-          `/rankings/posts/${postId}?period=${period}`,
-          {
-            headers: getAuthHeaders(),
-          },
-        );
+        const [data, bookmarkMap] = await Promise.all([
+          fetcher<GetRankingPostDetailResponse>(
+            `/rankings/posts/${postId}?period=${period}`,
+            {
+              headers: getAuthHeaders(),
+            },
+          ),
+          fetchMyBookmarkMap(),
+        ]);
+
+        if (cancelled) return;
 
         setPostData(data);
+        setIsBookmarked(Boolean(bookmarkMap[numericPostId]));
       } catch (err) {
-        console.error('랭킹 상세 불러오기 실패:', err);
+        const message =
+          err instanceof Error ? err.message : '상세 데이터를 불러오지 못했습니다.';
 
-        const message = err instanceof Error ? err.message : '상세 데이터를 불러오지 못했습니다.';
-
-        if (message.includes('Unauthorized') || message.includes('로그인이 필요합니다')) {
+        if (isAuthError(message)) {
           clearAuthTokens();
           navigate('/login');
           return;
         }
 
-        setPostData(null);
+        console.error('랭킹 상세 불러오기 실패:', err);
+
+        if (!cancelled) {
+          setPostData(null);
+        }
       } finally {
-        setLoading(false);
-        setSheetPosition('collapsed');
-        controls.start({ y: COLLAPSED_Y });
+        if (!cancelled) {
+          setLoading(false);
+          setSheetPosition('collapsed');
+          controls.start({ y: COLLAPSED_Y });
+        }
       }
     };
 
-    if (postId) {
-      void loadDetail();
-    } else {
-      setLoading(false);
-      setPostData(null);
-    }
-  }, [postId, period, navigate, controls]);
+    void loadDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [postId, numericPostId, period, navigate, controls]);
+
+  useEffect(() => {
+    if (!numericPostId) return;
+
+    const unsubscribe = subscribeBookmarkUpdated((detail) => {
+      if (!detail || detail.postId !== numericPostId) return;
+      setIsBookmarked(detail.bookmarked);
+    });
+
+    return unsubscribe;
+  }, [numericPostId]);
 
   const snapTo = (position: SheetPosition) => {
     setSheetPosition(position);
@@ -140,17 +164,33 @@ const RankingDetail: React.FC = () => {
     snapTo(sheetPosition);
   };
 
-  const handleToggleBookmark = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleToggleBookmark = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
+    if (!numericPostId || bookmarkLoading) return;
 
-    const next = !isBookmarked;
-    setIsBookmarked(next);
+    const previous = isBookmarked;
+    setBookmarkLoading(true);
+    setIsBookmarked(!previous);
 
-    if (postId) {
-      const saved = localStorage.getItem('codinator_bookmarks');
-      const parsed = saved ? (JSON.parse(saved) as Record<string, boolean>) : {};
-      parsed[String(postId)] = next;
-      localStorage.setItem('codinator_bookmarks', JSON.stringify(parsed));
+    try {
+      const nextValue = await togglePostBookmark(numericPostId, previous);
+      setIsBookmarked(nextValue);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : '북마크 처리에 실패했습니다.';
+
+      setIsBookmarked(previous);
+
+      if (isAuthError(message)) {
+        clearAuthTokens();
+        navigate('/login');
+        return;
+      }
+
+      console.error('북마크 처리 실패:', err);
+      window.alert(message);
+    } finally {
+      setBookmarkLoading(false);
     }
   };
 
@@ -243,14 +283,17 @@ const RankingDetail: React.FC = () => {
                 type="button"
                 className={styles.bookmarkBtn}
                 onClick={handleToggleBookmark}
-                aria-label="북마크"
+                aria-label={isBookmarked ? '북마크 해제' : '북마크 추가'}
+                disabled={bookmarkLoading}
               >
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.03L12 21.35Z"
-                    fill={isBookmarked ? '#FF3B30' : '#D9D9D9'}
-                  />
-                </svg>
+                <Bookmark
+                  size={16}
+                  strokeWidth={2.2}
+                  className={
+                    isBookmarked ? styles.bookmarkFilled : styles.bookmarkDefault
+                  }
+                  fill={isBookmarked ? 'currentColor' : 'none'}
+                />
               </button>
 
               <div className={styles.likeBadge}>

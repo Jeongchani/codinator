@@ -1,17 +1,58 @@
-import React from 'react';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Menu, Search } from "lucide-react";
+import SideMenu from "../components/SideMenu";
+import styles from "./Header.module.css";
 
 type HeaderProps = {
   title?: string;
-  rightSlot?: React.ReactNode;
 };
 
-const Header: React.FC<HeaderProps> = ({ title = 'C:dinator', rightSlot }) => {
+export default function Header({
+  title = "C:Dinator",
+}: HeaderProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleOpenMenu = () => {
+    setMenuOpen(true);
+  };
+
+  const handleCloseMenu = () => {
+    setMenuOpen(false);
+  };
+
+  const handleOpenSearch = () => {
+    navigate("/search");
+  };
+
   return (
-    <header className="flex items-center justify-between px-5 py-4">
-      <h1 className="text-lg font-semibold text-neutral-900">{title}</h1>
-      <div>{rightSlot}</div>
-    </header>
-  );
-};
+    <>
+      <header className={styles.header}>
+        <div className={styles.inner}>
+          <button
+            type="button"
+            className={styles.searchButton}
+            onClick={handleOpenSearch}
+            aria-label="검색 열기"
+          >
+            <Search size={23} strokeWidth={2.2} />
+          </button>
 
-export default Header;
+          <h1 className={styles.title}>{title}</h1>
+
+          <button
+            type="button"
+            className={styles.menuButton}
+            onClick={handleOpenMenu}
+            aria-label="메뉴 열기"
+          >
+            <Menu size={25} strokeWidth={2.2} />
+          </button>
+        </div>
+      </header>
+
+      <SideMenu isOpen={menuOpen} onClose={handleCloseMenu} />
+    </>
+  );
+}

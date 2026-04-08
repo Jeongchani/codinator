@@ -1,0 +1,197 @@
+.container {
+  @apply w-[375px] h-[812px] bg-white mx-auto overflow-hidden relative flex flex-col;
+}
+
+.header {
+  @apply w-full h-[93px] shrink-0 bg-white;
+}
+
+.headerInner {
+  @apply relative w-full h-full px-5;
+}
+
+.headerIconButton {
+  @apply absolute left-5 w-6 h-6 flex items-center justify-center bg-transparent border-0 p-0 text-black;
+  top: 59px;
+  transform: translateY(-50%);
+}
+
+.menuButton {
+  @apply absolute right-5 w-6 h-6 flex items-center justify-center text-[#7a7a7a] bg-transparent border-0 p-0;
+  top: 59px;
+  transform: translateY(-50%);
+}
+
+.title {
+  @apply absolute left-1/2 -translate-x-1/2 text-[18px] leading-[22px] font-bold text-black whitespace-nowrap;
+  top: 59px;
+  transform: translate(-50%, -50%);
+}
+
+.contentArea {
+  @apply w-full flex-1 px-4 pt-[26px] pb-[170px] overflow-y-auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.contentArea::-webkit-scrollbar {
+  display: none;
+}
+
+.nicknameSection {
+  @apply flex flex-col items-center mb-[30px];
+}
+
+.nicknameMeasure {
+  @apply absolute pointer-events-none opacity-0 text-[36px] leading-10 font-medium whitespace-pre;
+  left: -9999px;
+  top: -9999px;
+}
+
+.nicknameTopRow {
+  @apply inline-flex items-start justify-center gap-3;
+}
+
+.nicknameTextWrap {
+  @apply inline-flex flex-col items-start;
+}
+
+.nicknameInput {
+  @apply bg-transparent border-0 outline-none p-0 text-center text-[36px] leading-10 font-medium text-black;
+  min-width: 48px;
+  max-width: 220px;
+}
+
+.nicknameInputInactive {
+  cursor: default;
+  caret-color: transparent;
+}
+
+.nicknameInputActive {
+  cursor: text;
+}
+
+.nicknameUnderline {
+  @apply h-px bg-black mt-[2px];
+}
+
+.nicknameEditButton {
+  @apply self-center;
+}
+
+.fieldList {
+  @apply flex flex-col gap-[12px];
+}
+
+.fieldGroup {
+  @apply flex flex-col;
+}
+
+.fieldCard {
+  @apply w-full min-h-[54px] rounded-[10px] border border-black bg-white px-[14px] flex items-center justify-between gap-4;
+}
+
+.fieldText {
+  @apply flex-1 text-[16px] leading-6 font-bold text-black;
+}
+
+.fieldInput {
+  @apply flex-1 bg-transparent border-0 outline-none p-0 text-[16px] leading-6 font-bold text-black;
+}
+
+.readonlyInput {
+  @apply cursor-default;
+}
+
+.iconButton {
+  @apply w-6 h-6 shrink-0 flex items-center justify-center bg-transparent border-0 p-0 text-[#9a9a9a];
+}
+
+.actionButton {
+  @apply h-7 px-3 rounded-[8px] bg-black text-white text-[11px] leading-4 font-medium border-0 shrink-0;
+}
+
+.actionButton:disabled {
+  @apply opacity-40 cursor-not-allowed;
+}
+
+.editorBlock {
+  @apply pt-[10px] pb-[2px];
+}
+
+.editorField {
+  @apply w-full mb-[12px];
+}
+
+.editorField:last-of-type {
+  margin-bottom: 0;
+}
+
+.fieldHeader {
+  @apply w-full flex items-center justify-between;
+}
+
+.editorLabel {
+  @apply block text-[12px] leading-4 font-medium text-neutral-900 mb-[4px];
+}
+
+.editorInput {
+  @apply w-full bg-transparent border-0 outline-none p-0 text-neutral-900 text-[17px] font-normal leading-6;
+  border-bottom: 1px solid #111111;
+  padding-bottom: 8px;
+  border-radius: 0;
+}
+
+.editorInput::placeholder {
+  @apply text-neutral-300 text-[17px];
+}
+
+.helperText {
+  @apply min-h-[18px] text-[12px] leading-[18px] text-neutral-500 mt-2;
+}
+
+.helperTextError {
+  @apply text-red-500;
+}
+
+.checkButton {
+  @apply h-7 px-3 rounded-full border border-neutral-300 text-[12px] font-medium text-neutral-700 bg-white;
+}
+
+.checkButton:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+.checkButtonDone {
+  @apply bg-black text-white border-black;
+}
+
+.phoneRow {
+  @apply w-full flex items-center justify-between mt-1;
+}
+
+.phoneInput {
+  @apply h-9 rounded-[10px] border border-neutral-300 bg-white
+    text-center text-[15px] leading-5 font-medium text-neutral-900 outline-none;
+  width: 92px;
+}
+
+.phoneInput:first-of-type {
+  width: 88px;
+}
+
+.phoneDash {
+  @apply w-3 text-center text-neutral-500 text-base font-medium shrink-0;
+}
+
+.finalSubmitWrap {
+  @apply absolute left-4 right-4 bottom-[88px] z-10 bg-white pt-3;
+}
+
+.finalSubmitButton {
+  @apply w-full h-14 rounded-[100px] bg-black text-white text-base font-normal leading-5 flex items-center justify-center transition;
+}
+
+.buttonDisabled {
+  @apply opacity-40 cursor-not-allowed;
+}

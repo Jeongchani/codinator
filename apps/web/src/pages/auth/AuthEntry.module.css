@@ -1,0 +1,94 @@
+.container {
+  @apply w-[375px] h-[812px] mx-auto relative overflow-hidden bg-slate-50;
+  background: #f3f3ee;
+}
+
+.topArea {
+  @apply absolute inset-x-0 top-0;
+  height: 401px;
+  background: linear-gradient(180deg, #f6f6f2 0%, #efefe9 100%);
+}
+
+.colorPanel {
+  @apply absolute inset-0 px-7 pt-9 pb-8 flex flex-col;
+}
+
+.colorMeta {
+  @apply text-[12px] font-semibold tracking-[0.22em] text-neutral-400;
+}
+
+.colorName {
+  @apply mt-5 text-[42px] leading-[46px] font-semibold text-neutral-900;
+}
+
+.colorCode {
+  @apply mt-3 text-[18px] font-medium text-neutral-500;
+}
+
+.colorSwatch {
+  @apply mt-auto w-full rounded-[32px];
+  height: 130px;
+  background: linear-gradient(180deg, #fbfbf8 0%, #efefe9 100%);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 14px 28px rgba(17, 24, 39, 0.06);
+}
+
+.bottomSheet {
+  @apply absolute left-0 top-[401px] w-full rounded-tl-[32px] rounded-tr-[32px] px-6 pt-10 pb-8;
+  height: 411px;
+  background: white;
+  box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.06);
+}
+
+.title {
+  @apply text-center text-neutral-900 text-[30px] leading-9 font-semibold;
+}
+
+/* Login.module.css 기준 위치값과 동일 */
+.loginButton {
+  @apply absolute left-1/2 -translate-x-1/2 top-[527px]
+    w-[288px] h-14 rounded-[100px] bg-black
+    flex items-center justify-center
+    text-white text-base font-normal leading-5;
+}
+
+.orWrap {
+  @apply absolute left-4 top-[608px] w-[343px] flex items-center justify-between;
+}
+
+.orLine {
+  @apply w-[141px] h-px bg-neutral-200;
+}
+
+.orText {
+  @apply text-neutral-400 text-sm font-medium leading-5 tracking-tight;
+}
+
+.socialRow {
+  @apply absolute left-1/2 -translate-x-1/2 top-[652px] flex items-center gap-5;
+}
+
+.socialButton {
+  @apply w-[42px] h-[42px] rounded-full border border-[#999999] bg-white flex items-center justify-center text-neutral-600;
+}
+
+.socialLogo {
+  width: 20px;
+  height: 20px;
+  display: block;
+  flex-shrink: 0;
+}
+
+.bottomText {
+  @apply absolute left-1/2 -translate-x-1/2 top-[734px] inline-flex items-center gap-[5px] whitespace-nowrap;
+}
+
+.bottomMuted {
+  @apply text-neutral-400 text-sm font-medium leading-5;
+}
+
+.bottomLink {
+  @apply bg-transparent border-0 p-0 text-neutral-900 text-sm font-medium leading-5 cursor-pointer;
+}
