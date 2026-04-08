@@ -6,7 +6,6 @@ import RankingDetail from "./pages/ranking/RankingDetail";
 import RankingZone from "./pages/ranking/RankingZone";
 import Splash from "./pages/splash/Splash";
 import UserFeedDetail from "./pages/feeds/UserFeedDetail";
-import MyFeedEdit from "./pages/feeds/MyFeedEdit";
 import MyFeeds from "./pages/feeds/MyFeeds";
 import UserFeeds from "./pages/feeds/UserFeeds";
 import MyFeedDetail from "./pages/feeds/MyFeedDetail";
@@ -32,10 +31,7 @@ function AppRoutes() {
       <Route path="/evaluationDetailFeedback/:postId" element={<EvaluationDetailFeedback />} />
       <Route path="/postUpload" element={<Upload />} />
       <Route path="/rankingDetail/:postId" element={<RankingDetail />} />
-      <Route path="/myFeedEdit" element={<MyFeedEdit />} />
-      <Route path="/user/:userId/feed/:postId" element={<UserFeedDetail />} />
       <Route path="/myPage" element={<MyPage />} />
-      
 
       <Route path="/test" element={<TestPage />} />
 
@@ -46,8 +42,7 @@ function AppRoutes() {
         <Route path="/myFeedDetail/:postId" element={<MyFeedDetail />} />
         <Route path="/bookmark" element={<Bookmark />} />
         <Route path="/search" element={<Search />} />
-
-
+        <Route path="/user/:userId/feed/:postId" element={<UserFeedDetail />} />
       </Route>
     </Routes>
   );
