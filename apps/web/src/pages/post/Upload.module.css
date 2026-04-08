@@ -13,49 +13,58 @@
 }
 
 .heroSection {
-  @apply relative w-full h-[460px] overflow-hidden bg-neutral-200;
+  @apply relative w-full;
+}
+
+.heroMediaFrame {
+  @apply relative h-[460px] w-full overflow-hidden bg-neutral-200;
 }
 
 .heroImage {
-  @apply w-full h-full object-contain bg-neutral-100;
+  @apply h-full w-full object-contain bg-neutral-100;
 }
 
 .heroPlaceholder {
-  @apply flex h-full w-full items-center justify-center bg-neutral-300;
+  @apply flex h-full w-full items-center justify-center bg-neutral-200;
 }
 
 .heroPlaceholderText {
-  @apply text-sm text-neutral-600;
+  @apply text-[12px] text-neutral-500;
+}
+
+.headerCircleButton,
+.editCircleButton {
+  @apply absolute z-10 flex items-center justify-center rounded-full text-white;
+  background: rgba(0, 0, 0, 0.42);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 .headerCircleButton {
-  @apply absolute top-7 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+  @apply left-3 top-3 h-8 w-8;
 }
 
 .editCircleButton {
-  @apply absolute bottom-4 right-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+  @apply bottom-3 right-3 h-8 w-8;
+}
+
+.manualTopBackButton,
+.modalCloseButton {
+  @apply flex h-8 w-8 items-center justify-center rounded-full bg-white text-neutral-700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .hiddenInput {
   display: none;
 }
 
+.hiddenCanvas {
+  display: none;
+}
+
 .contentSection {
-  @apply px-4 pt-4 pb-8;
-}
-
-.titleBlock {
-  @apply mb-3;
-}
-
-.title {
-  @apply text-[22px] font-bold leading-[30px] text-neutral-900;
-}
-
-.description {
-  @apply mt-1 text-[13px] leading-[18px] text-neutral-500;
+  @apply px-4 pt-3 pb-4;
 }
 
 .divider {
@@ -67,35 +76,27 @@
 }
 
 .keywordHeader {
-  @apply mb-3 flex items-center justify-between;
+  @apply mb-1 flex items-center justify-between;
 }
 
-.keywordGuide {
-  @apply text-[12px] font-medium text-neutral-500;
+.keywordMetaText {
+  @apply mb-3 text-[11px] text-neutral-400;
 }
 
 .keywordGrid {
-  @apply flex flex-wrap gap-x-2 gap-y-2;
+  @apply flex flex-wrap gap-2;
 }
 
 .keywordChip {
-  @apply flex min-h-[38px] items-center gap-1.5 rounded-full border border-neutral-300 bg-white py-1.5 pl-2 pr-3 transition;
+  @apply flex min-h-[30px] items-center justify-center rounded-full border border-neutral-300 bg-white px-3 py-1.5 transition;
 }
 
 .keywordChipSelected {
   @apply border-black bg-black;
 }
 
-.keywordThumb {
-  @apply h-5 w-5 shrink-0 rounded-full bg-neutral-300;
-}
-
-.keywordThumbSelected {
-  @apply bg-white;
-}
-
 .keywordLabel {
-  @apply text-[13px] leading-5 text-black;
+  @apply text-[12px] leading-4 text-neutral-700;
 }
 
 .keywordChipSelected .keywordLabel {
@@ -103,59 +104,169 @@
 }
 
 .itemSection {
-  @apply pt-1;
+  @apply pt-0;
+}
+
+.sectionHeaderRow {
+  @apply mb-3 flex items-center justify-between;
 }
 
 .sectionTitle {
-  @apply mb-4 text-[16px] font-semibold leading-6 text-neutral-900;
-}
-
-.itemGrid {
-  @apply grid grid-cols-2 gap-x-4 gap-y-5;
-}
-
-.itemCard {
-  @apply overflow-hidden rounded-[18px] bg-white;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-}
-
-.itemImage {
-  @apply h-[110px] w-full object-cover;
-}
-
-.itemImagePlaceholder {
-  @apply h-[110px] w-full bg-neutral-400;
-}
-
-.itemInfo {
-  @apply flex flex-col gap-2 px-3 py-3;
-}
-
-.itemSelect {
-  @apply w-full rounded-md border border-neutral-200 bg-white px-2 py-2 text-[12px] leading-4 text-neutral-900 outline-none;
-}
-
-.itemInput {
-  @apply w-full rounded-md border border-neutral-200 bg-white px-2 py-2 text-[12px] leading-4 text-neutral-900 outline-none placeholder:text-neutral-500;
-}
-
-.submitArea {
-  @apply mt-8 pb-4;
-}
-
-.submitButton {
-  @apply flex h-[46px] w-full items-center justify-center rounded-full bg-black text-[18px] font-semibold text-white;
-}
-.contentInputSection {
-  @apply flex flex-col gap-3;
-}
-
-.contentLabel {
   @apply text-[15px] font-semibold leading-6 text-neutral-900;
 }
 
+/* 추가 버튼 */
+.addItemButton {
+  @apply inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-neutral-300 bg-white px-3 text-[12px] font-semibold text-neutral-700;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.addItemPlusIcon {
+  @apply shrink-0 text-neutral-800;
+}
+
+.addItemText {
+  @apply inline-flex items-center leading-none;
+}
+
+.itemGrid {
+  @apply grid grid-cols-2 gap-3;
+}
+
+.itemCard {
+  @apply rounded-[12px] border border-neutral-200 bg-white;
+  position: relative;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+}
+
+.itemCardOpen {
+  z-index: 30;
+}
+
+.itemInfo {
+  @apply flex flex-col gap-1.5 p-2;
+}
+
+/* 커스텀 드롭다운 */
+.selectWrap {
+  position: relative;
+}
+
+.itemSelectButton {
+  @apply flex h-9 w-full items-center justify-between border bg-white text-left outline-none transition;
+  border-radius: 12px;
+  border-color: #d4d4d8;
+  padding: 0 12px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.itemSelectButtonOpen {
+  border-color: #171717;
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.05),
+    0 8px 20px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.itemSelectText {
+  @apply block truncate text-[11px] leading-4 text-neutral-900;
+  padding-right: 10px;
+}
+
+.itemSelectPlaceholder {
+  @apply text-neutral-500;
+}
+
+.itemSelectChevron {
+  @apply shrink-0 text-neutral-700 transition-transform duration-200;
+}
+
+.itemSelectChevronOpen {
+  transform: rotate(180deg);
+}
+
+.selectMenu {
+  @apply absolute left-0 right-0 overflow-hidden border bg-white;
+  top: calc(100% + 6px);
+  z-index: 50;
+  border-radius: 14px;
+  border-color: #d4d4d8;
+  box-shadow:
+    0 14px 28px rgba(15, 23, 42, 0.12),
+    0 4px 10px rgba(15, 23, 42, 0.06);
+}
+
+.selectOption {
+  @apply flex w-full items-center bg-white text-left transition;
+  min-height: 38px;
+  padding: 0 12px;
+}
+
+.selectOption + .selectOption {
+  border-top: 1px solid #f1f5f9;
+}
+
+.selectOptionLabel {
+  @apply text-[12px] leading-4 text-neutral-800;
+}
+
+.selectOption:hover {
+  background: #f5f5f5;
+}
+
+.selectOptionActive {
+  background: #111111;
+}
+
+.selectOptionActive .selectOptionLabel {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.selectOptionPlaceholder .selectOptionLabel {
+  color: #737373;
+}
+
+/* 입력칸 */
+.itemInput {
+  @apply h-9 w-full border bg-white text-[11px] leading-4 text-neutral-900 outline-none placeholder:text-neutral-400;
+  border-radius: 12px;
+  border-color: #e5e5e5;
+  padding: 0 12px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.itemInput:focus {
+  border-color: #171717;
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.submitArea {
+  @apply mt-5 pb-0;
+}
+
+.submitButton {
+  @apply flex h-[44px] w-full items-center justify-center rounded-[8px] bg-black text-[15px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+.contentInputSection {
+  @apply flex flex-col gap-2;
+}
+
+.contentLabel {
+  @apply text-[14px] font-semibold leading-6 text-neutral-900;
+}
+
 .contentTextarea {
-  @apply min-h-[120px] w-full resize-none rounded-2xl border border-neutral-200 bg-white px-4 py-4 text-[14px] leading-6 text-neutral-900 outline-none placeholder:text-neutral-400;
+  @apply min-h-[100px] w-full resize-none rounded-[8px] border border-neutral-200 bg-white px-3 py-3 text-[13px] leading-5 text-neutral-900 outline-none placeholder:text-neutral-400;
 }
 
 .textMetaRow {
@@ -163,17 +274,192 @@
 }
 
 .helperText {
-  @apply text-[12px] text-neutral-500;
+  @apply text-[11px] text-neutral-500;
 }
 
 .lengthText {
-  @apply text-[12px] text-neutral-400;
+  @apply text-[11px] text-neutral-400;
 }
 
 .statusMessage {
-  @apply mt-4 text-[13px] leading-5 text-neutral-500;
+  @apply mt-4 text-[12px] leading-5 text-neutral-500;
 }
 
-.submitButton {
-  @apply flex h-[46px] w-full items-center justify-center rounded-full bg-black text-[18px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60;
+/* modal */
+.modalOverlay {
+  @apply fixed inset-0 z-[2000] flex items-center justify-center bg-black/70 px-3 py-4;
+}
+
+.modalCard {
+  @apply max-h-full w-full max-w-[360px] overflow-y-auto rounded-[28px] bg-[#f7f7f7] px-4 py-4;
+}
+
+.modalHeaderRow {
+  @apply mb-3 flex items-center justify-between;
+}
+
+.modalTitle {
+  @apply text-[24px] font-bold leading-8 text-neutral-900;
+}
+
+.modalInfoText {
+  @apply mt-3 text-[13px] leading-5 text-neutral-600;
+}
+
+.modalWarningText {
+  @apply mt-3 text-[13px] leading-5 text-red-500;
+}
+
+.modalButtonColumn {
+  @apply mt-4 flex items-center gap-2;
+}
+
+.modalPrimaryButton,
+.modalSecondaryButton {
+  @apply flex h-[44px] flex-1 items-center justify-center whitespace-nowrap rounded-full px-2 text-[14px] font-semibold;
+}
+
+.modalPrimaryButton {
+  @apply bg-black text-white disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.modalSecondaryButton {
+  @apply border border-neutral-300 bg-white text-neutral-900;
+}
+
+/* compare */
+.compareStack {
+  @apply flex flex-col;
+}
+
+.compareImageWrap {
+  @apply flex flex-col items-start gap-2;
+}
+
+.compareFloatingLabel {
+  @apply inline-flex items-center gap-1.5 whitespace-nowrap text-[14px] font-bold leading-5 text-neutral-900;
+}
+
+.compareOnlyImage {
+  @apply block w-full rounded-[24px] bg-neutral-100 object-contain;
+  height: 260px;
+}
+
+.compareDivider {
+  @apply my-4 h-px w-full bg-neutral-300;
+}
+
+.comparePlaceholder {
+  @apply flex h-[260px] w-full items-center justify-center rounded-[24px] bg-red-50 text-[13px] text-red-500;
+}
+
+/* manual editor */
+.manualEditorWrap {
+  @apply flex flex-col gap-3;
+}
+
+.manualHeaderRow {
+  @apply mb-1 flex items-start justify-between gap-3;
+}
+
+.manualHeaderText {
+  @apply min-w-0 flex-1;
+}
+
+.manualTitle {
+  @apply text-[24px] font-bold leading-8 text-neutral-900;
+}
+
+.manualSubText {
+  @apply mt-1 text-[13px] leading-5 text-neutral-500;
+}
+
+.manualToolbar {
+  @apply flex items-center gap-2;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.toolButton {
+  @apply h-[38px] shrink-0 rounded-full border border-transparent bg-white px-3 text-[13px] font-semibold text-neutral-700 transition;
+  min-width: 58px;
+}
+
+.toolButtonBlue {
+  @apply bg-blue-600 text-white;
+}
+
+.toolButtonRed {
+  @apply bg-red-500 text-white;
+}
+
+.sizeGroup {
+  @apply flex h-[38px] min-w-0 flex-1 items-center justify-center rounded-full bg-white px-2;
+}
+
+.sizeDots {
+  @apply flex items-center gap-1;
+}
+
+.sizeDotButton {
+  @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-transparent transition;
+}
+
+.sizeDotButtonActive {
+  @apply bg-neutral-100;
+}
+
+.sizeDot {
+  @apply block rounded-full;
+}
+
+.undoIconButton {
+  @apply flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full border border-neutral-300 bg-white text-neutral-700 disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.editorError {
+  @apply rounded-2xl bg-red-50 px-4 py-3 text-[13px] leading-5 text-red-500;
+}
+
+.editorLoading {
+  @apply flex h-[220px] items-center justify-center rounded-[24px] bg-neutral-100 text-[13px] text-neutral-400;
+}
+
+.editorCanvasFrame {
+  @apply overflow-hidden rounded-[24px] border-2 bg-neutral-50;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+.editorCanvasInner {
+  @apply relative overflow-hidden;
+  line-height: 0;
+  touch-action: none;
+}
+
+.editorCanvas {
+  @apply block h-auto w-full;
+  touch-action: none;
+}
+
+.editorCursor {
+  @apply pointer-events-none absolute rounded-full border-2;
+}
+
+.editorBottomActions {
+  @apply mt-1;
+}
+
+.editorApplyButton {
+  @apply flex h-[50px] w-full items-center justify-center rounded-full bg-black px-4 text-[15px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.blurActionArea {
+  @apply flex flex-col gap-2;
+}
+
+.blurCheckButton {
+  @apply flex h-[40px] w-full items-center justify-center rounded-[10px] bg-black text-[14px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60;
 }
