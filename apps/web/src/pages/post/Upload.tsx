@@ -200,6 +200,7 @@ function ImgCompare({
     </div>
   );
 }
+
 function buildPixelatedCanvas(sourceCanvas: HTMLCanvasElement, block: number) {
   const width = sourceCanvas.width;
   const height = sourceCanvas.height;
@@ -830,6 +831,22 @@ export default function Upload() {
     );
   };
 
+  const handleAddWearItem = () => {
+    setWearItems((prev) => {
+      const nextId = prev.length > 0 ? Math.max(...prev.map((item) => item.id)) + 1 : 1;
+
+      return [
+        ...prev,
+        {
+          id: nextId,
+          type: "",
+          brand: "",
+          name: "",
+        },
+      ];
+    });
+  };
+
   const handleApproveAutoBlur = () => {
     if (!uploadedImage) return;
 
@@ -990,7 +1007,7 @@ export default function Upload() {
             onClick={handleBack}
             aria-label="뒤로가기"
           >
-            <ChevronLeft size={22} strokeWidth={2.2} />
+            <span className={styles.backTextIcon}>&lt;</span>
           </button>
 
           <button
@@ -1012,15 +1029,6 @@ export default function Upload() {
         </section>
 
         <section className={styles.contentSection}>
-          <div className={styles.titleBlock}>
-            <h1 className={styles.title}>코디 업로드</h1>
-            <p className={styles.description}>
-              사진 선택 후 블러 결과를 확인하고 업로드를 진행하세요.
-            </p>
-          </div>
-
-          <div className={styles.divider} />
-
           {approvedBlurMode && (
             <>
               <div className={styles.blurApprovedText}>
@@ -1052,14 +1060,14 @@ export default function Upload() {
               id="post-content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="게시글 설명을 입력해주세요."
+              placeholder="코디 컨셉을 타이핑"
               className={styles.contentTextarea}
               maxLength={300}
             />
 
             <div className={styles.textMetaRow}>
               <span className={styles.helperText}>이미지 1장과 설명은 필수입니다.</span>
-              <span className={styles.lengthText}>{content.length}/300</span>
+              <span className={styles.lengthText}>{content.length}/300자</span>
             </div>
           </section>
 
@@ -1067,8 +1075,10 @@ export default function Upload() {
 
           <section className={styles.keywordSection}>
             <div className={styles.keywordHeader}>
-              <span className={styles.keywordGuide}>키워드 선택 {selectedKeywords.length}/3</span>
+              <span className={styles.sectionTitle}>이 코디의 키워드를 선택해주세요</span>
             </div>
+
+            <div className={styles.keywordMetaText}>최대 3개 까지만 선택해주세요</div>
 
             <div className={styles.keywordGrid}>
               {keywordOptions.length > 0 ? (
@@ -1082,7 +1092,6 @@ export default function Upload() {
                       className={cls(styles.keywordChip, selected && styles.keywordChipSelected)}
                       onClick={() => toggleKeyword(keyword.id)}
                     >
-                      <span className={cls(styles.keywordThumb, selected && styles.keywordThumbSelected)} />
                       <span className={styles.keywordLabel}>{keyword.label}</span>
                     </button>
                   );
@@ -1096,17 +1105,22 @@ export default function Upload() {
           <div className={styles.divider} />
 
           <section className={styles.itemSection}>
-            <h2 className={styles.sectionTitle}>착용 아이템</h2>
+            <div className={styles.sectionHeaderRow}>
+              <h2 className={styles.sectionTitle}>착용 아이템</h2>
+
+              <button
+                type="button"
+                className={styles.addItemButton}
+                onClick={handleAddWearItem}
+              >
+                <span className={styles.addItemPlus}>+</span>
+                <span>추가</span>
+              </button>
+            </div>
 
             <div className={styles.itemGrid}>
               {wearItems.map((item) => (
                 <article key={item.id} className={styles.itemCard}>
-                  {item.imageUrl ? (
-                    <img src={item.imageUrl} alt={item.name || "착용 아이템"} className={styles.itemImage} />
-                  ) : (
-                    <div className={styles.itemImagePlaceholder} />
-                  )}
-
                   <div className={styles.itemInfo}>
                     <select
                       value={item.type}
@@ -1150,7 +1164,7 @@ export default function Upload() {
               onClick={handleSubmit}
               disabled={submitting}
             >
-              {submitting ? "처리 중..." : "게시글 작성 완료"}
+              {submitting ? "처리 중..." : "수정 완료"}
             </button>
           </div>
         </section>

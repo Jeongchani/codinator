@@ -13,28 +13,34 @@
 }
 
 .heroSection {
-  @apply relative w-full h-[460px] overflow-hidden bg-neutral-200;
+  @apply relative w-full h-[258px] overflow-hidden bg-neutral-200;
 }
 
 .heroImage {
-  @apply w-full h-full object-contain bg-neutral-100;
+  @apply h-full w-full object-cover bg-neutral-100;
 }
 
 .heroPlaceholder {
-  @apply flex h-full w-full items-center justify-center bg-neutral-300;
+  @apply flex h-full w-full items-center justify-center bg-neutral-200;
 }
 
 .heroPlaceholderText {
-  @apply text-sm text-neutral-600;
+  @apply text-[12px] text-neutral-500;
 }
 
 .headerCircleButton {
-  @apply absolute top-7 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white text-black;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+  @apply absolute left-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full text-black;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+}
+
+.backTextIcon {
+  @apply text-[22px] font-semibold leading-none text-black;
+  transform: translateX(-1px);
 }
 
 .editCircleButton {
-  @apply absolute bottom-4 right-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white;
+  @apply absolute bottom-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white text-black;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
 }
 
@@ -47,7 +53,7 @@
 }
 
 .contentSection {
-  @apply px-4 pt-4 pb-8;
+  @apply px-4 pt-3 pb-4;
 }
 
 .titleBlock {
@@ -71,7 +77,7 @@
 }
 
 .blurCheckButton {
-  @apply flex h-[44px] w-full items-center justify-center rounded-full bg-black text-[15px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60;
+  @apply flex h-[40px] w-full items-center justify-center rounded-[10px] bg-black text-[14px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60;
 }
 
 .blurApprovedText {
@@ -83,7 +89,11 @@
 }
 
 .keywordHeader {
-  @apply mb-3 flex items-center justify-between;
+  @apply mb-1 flex items-center justify-between;
+}
+
+.keywordMetaText {
+  @apply mb-3 text-[11px] text-neutral-400;
 }
 
 .keywordGuide {
@@ -91,11 +101,11 @@
 }
 
 .keywordGrid {
-  @apply flex flex-wrap gap-x-2 gap-y-2;
+  @apply flex flex-wrap gap-2;
 }
 
 .keywordChip {
-  @apply flex min-h-[38px] items-center gap-1.5 rounded-full border border-neutral-300 bg-white py-1.5 pl-2 pr-3 transition;
+  @apply flex min-h-[30px] items-center justify-center rounded-full border border-neutral-300 bg-white px-3 py-1.5 transition;
 }
 
 .keywordChipSelected {
@@ -103,15 +113,15 @@
 }
 
 .keywordThumb {
-  @apply h-5 w-5 shrink-0 rounded-full bg-neutral-300;
+  display: none;
 }
 
 .keywordThumbSelected {
-  @apply bg-white;
+  display: none;
 }
 
 .keywordLabel {
-  @apply text-[13px] leading-5 text-black;
+  @apply text-[12px] leading-4 text-neutral-700;
 }
 
 .keywordChipSelected .keywordLabel {
@@ -119,60 +129,72 @@
 }
 
 .itemSection {
-  @apply pt-1;
+  @apply pt-0;
+}
+
+.sectionHeaderRow {
+  @apply mb-3 flex items-center justify-between;
 }
 
 .sectionTitle {
-  @apply mb-4 text-[16px] font-semibold leading-6 text-neutral-900;
-}
-
-.itemGrid {
-  @apply grid grid-cols-2 gap-x-4 gap-y-5;
-}
-
-.itemCard {
-  @apply overflow-hidden rounded-[18px] bg-white;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-}
-
-.itemImage {
-  @apply h-[110px] w-full object-cover;
-}
-
-.itemImagePlaceholder {
-  @apply h-[110px] w-full bg-neutral-400;
-}
-
-.itemInfo {
-  @apply flex flex-col gap-2 px-3 py-3;
-}
-
-.itemSelect {
-  @apply w-full rounded-md border border-neutral-200 bg-white px-2 py-2 text-[12px] leading-4 text-neutral-900 outline-none;
-}
-
-.itemInput {
-  @apply w-full rounded-md border border-neutral-200 bg-white px-2 py-2 text-[12px] leading-4 text-neutral-900 outline-none placeholder:text-neutral-500;
-}
-
-.submitArea {
-  @apply mt-8 pb-4;
-}
-
-.submitButton {
-  @apply flex h-[46px] w-full items-center justify-center rounded-full bg-black text-[18px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60;
-}
-
-.contentInputSection {
-  @apply flex flex-col gap-3;
-}
-
-.contentLabel {
   @apply text-[15px] font-semibold leading-6 text-neutral-900;
 }
 
+.addItemButton {
+  @apply flex h-8 items-center gap-1 rounded-full border border-neutral-300 bg-white px-3 text-[12px] font-semibold text-neutral-700;
+}
+
+.addItemPlus {
+  @apply text-[16px] leading-none;
+}
+
+.itemGrid {
+  @apply grid grid-cols-2 gap-3;
+}
+
+.itemCard {
+  @apply rounded-[8px] border border-neutral-200 bg-white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.itemImage {
+  display: none;
+}
+
+.itemImagePlaceholder {
+  display: none;
+}
+
+.itemInfo {
+  @apply flex flex-col gap-1.5 p-2;
+}
+
+.itemSelect {
+  @apply h-8 w-full rounded-[6px] border border-neutral-200 bg-white px-2 text-[11px] leading-4 text-neutral-900 outline-none;
+}
+
+.itemInput {
+  @apply h-8 w-full rounded-[6px] border border-neutral-200 bg-white px-2 text-[11px] leading-4 text-neutral-900 outline-none placeholder:text-neutral-400;
+}
+
+.submitArea {
+  @apply mt-5 pb-0;
+}
+
+.submitButton {
+  @apply flex h-[44px] w-full items-center justify-center rounded-[8px] bg-black text-[15px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+.contentInputSection {
+  @apply flex flex-col gap-2;
+}
+
+.contentLabel {
+  @apply text-[14px] font-semibold leading-6 text-neutral-900;
+}
+
 .contentTextarea {
-  @apply min-h-[120px] w-full resize-none rounded-2xl border border-neutral-200 bg-white px-4 py-4 text-[14px] leading-6 text-neutral-900 outline-none placeholder:text-neutral-400;
+  @apply min-h-[100px] w-full resize-none rounded-[8px] border border-neutral-200 bg-white px-3 py-3 text-[13px] leading-5 text-neutral-900 outline-none placeholder:text-neutral-400;
 }
 
 .textMetaRow {
@@ -180,15 +202,15 @@
 }
 
 .helperText {
-  @apply text-[12px] text-neutral-500;
+  @apply text-[11px] text-neutral-500;
 }
 
 .lengthText {
-  @apply text-[12px] text-neutral-400;
+  @apply text-[11px] text-neutral-400;
 }
 
 .statusMessage {
-  @apply mt-4 text-[13px] leading-5 text-neutral-500;
+  @apply mt-4 text-[12px] leading-5 text-neutral-500;
 }
 
 /* modal */
@@ -240,6 +262,7 @@
 .compareImageWrap {
   @apply flex flex-col items-start gap-2;
 }
+
 .compareFloatingLabel {
   @apply inline-flex items-center gap-1.5 whitespace-nowrap text-[14px] font-bold leading-5 text-neutral-900;
 }
@@ -248,9 +271,11 @@
   @apply block w-full rounded-[24px] bg-neutral-100 object-contain;
   height: 260px;
 }
+
 .compareDivider {
   @apply my-4 h-px w-full bg-neutral-300;
 }
+
 .comparePlaceholder {
   @apply flex w-full items-center justify-center rounded-[24px] bg-red-50 text-[13px] text-red-500;
   height: 260px;
