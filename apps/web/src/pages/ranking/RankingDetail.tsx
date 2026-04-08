@@ -9,7 +9,6 @@ import {
 import {
   Bookmark,
   ChevronsUp,
-  MoveHorizontal,
   Siren,
   Tag,
   ThumbsDown,
@@ -707,19 +706,6 @@ const RankingDetail: React.FC = () => {
               )}
             </div>
 
-            <div className={styles.outfitHeaderRow}>
-              <h3 className={styles.outfitTitle}>착용 아이템</h3>
-
-              {outfitItems.length > 1 && (
-                <div className={styles.scrollHint}>
-                  <MoveHorizontal size={13} strokeWidth={2} />
-                  <span>좌우로 넘겨보세요</span>
-                </div>
-              )}
-            </div>
-
-            <div className={styles.sectionDivider} />
-
             {keywordChips.length > 0 && (
               <div className={styles.outfitKeywordRow}>
                 {keywordChips.map((keyword) => (
@@ -729,6 +715,12 @@ const RankingDetail: React.FC = () => {
                 ))}
               </div>
             )}
+
+            <div className={styles.outfitHeaderRow}>
+              <h3 className={styles.outfitTitle}>착용 아이템</h3>
+            </div>
+
+            <div className={styles.sectionDivider} />
 
             <div className={styles.itemScroll}>
               {outfitItems.length > 0 ? (

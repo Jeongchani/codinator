@@ -329,37 +329,46 @@
   background: linear-gradient(90deg, #b9c2df 0%, #8c95b5 100%);
 }
 
+.outfitKeywordRow {
+  @apply flex flex-wrap gap-2 mb-3;
+}
+
 .outfitHeaderRow {
-  @apply flex items-center justify-between gap-3 mb-3;
+  @apply flex items-center mb-3;
 }
 
 .outfitTitle {
   @apply text-[18px] leading-[22px] font-bold text-neutral-900;
 }
 
-.scrollHint {
-  @apply inline-flex items-center gap-1 rounded-[999px] px-2.5 py-1 text-[11px] leading-4 font-medium whitespace-nowrap;
-  color: #ef7f72;
-  background: rgba(244, 125, 114, 0.12);
-}
-
-.outfitKeywordRow {
-  @apply flex flex-wrap gap-2 mb-4;
-}
-
 .itemScroll {
   @apply flex overflow-x-auto;
   gap: 14px;
-  padding: 4px 8px 12px 2px;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  padding: 4px 2px 12px 2px;
   scroll-snap-type: x proximity;
   scroll-padding-left: 2px;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 149, 181, 0.8) rgba(0, 0, 0, 0.08);
 }
 
 .itemScroll::-webkit-scrollbar {
-  display: none;
+  display: block;
+  height: 6px;
+}
+
+.itemScroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+}
+
+.itemScroll::-webkit-scrollbar-thumb {
+  background: rgba(140, 149, 181, 0.8);
+  border-radius: 999px;
+}
+
+.itemScroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 149, 181, 0.95);
 }
 
 .outfitCard {
@@ -372,7 +381,7 @@
 .outfitCardBox {
   @apply rounded-[18px] bg-white overflow-hidden;
   border: 1px solid #ececec;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+  box-shadow: -6px 8px 0 rgba(0, 0, 0, 0.06);
 }
 
 .outfitCategoryBox {
