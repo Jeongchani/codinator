@@ -6,6 +6,7 @@ export * from './feeds';
 export * from './health';
 export * from './keywords';
 export * from './posts';
+export * from './search';
 export * from './rankings';
 export * from './tags';
 export * from './uploads';
