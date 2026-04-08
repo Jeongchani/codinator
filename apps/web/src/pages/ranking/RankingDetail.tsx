@@ -1,8 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import styles from './RankingDetail.module.css';
-import { motion, useAnimation, type PanInfo } from 'framer-motion';
-import { Bookmark } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  motion,
+  useAnimation,
+  useDragControls,
+  type PanInfo,
+} from "framer-motion";
+import {
+  Bookmark,
+  ChevronsUp,
+  Siren,
+  Tag,
+  ThumbsDown,
+  ThumbsUp,
+  X,
+} from "lucide-react";
+import styles from "./RankingDetail.module.css";
 import {
   clearAuthTokens,
   fetcher,
@@ -12,28 +25,321 @@ import {
   isAuthError,
   subscribeBookmarkUpdated,
   togglePostBookmark,
-} from '../../lib/api';
-import type { GetRankingPostDetailResponse } from '@codinator/contracts';
+} from "../../lib/api";
+import type { GetRankingPostDetailResponse } from "@codinator/contracts";
 
-type SheetPosition = 'expanded' | 'collapsed' | 'hidden';
+type SheetPosition = "expanded" | "collapsed" | "hidden";
+
+type StructuredFeedbackRow = {
+  label: string;
+  count: number;
+  percent: number;
+  side: "LIKE" | "DISLIKE";
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function toSafeString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function toSafeNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+
+  return undefined;
+}
+
+function normalizeVoteChoice(
+  value: unknown
+): "LIKE" | "DISLIKE" | undefined {
+  const text = String(value ?? "").toUpperCase();
+
+  if (
+    text.includes("LIKE") &&
+    !text.includes("DISLIKE") &&
+    !text.includes("UNLIKE")
+  ) {
+    return "LIKE";
+  }
+
+  if (text.includes("DISLIKE") || text.includes("NEGATIVE")) {
+    return "DISLIKE";
+  }
+
+  return undefined;
+}
+
+function formatKeywordLabel(keyword: string) {
+  return keyword.startsWith("#") ? keyword : `#${keyword}`;
+}
+
+function formatCount(value: number) {
+  return Math.max(0, value).toLocaleString("ko-KR");
+}
+
+function formatCategoryLabel(value: unknown) {
+  const raw = toSafeString(value);
+  if (!raw) return "의류 종류 미등록";
+
+  const key = raw.trim().toUpperCase();
+
+  const categoryMap: Record<string, string> = {
+    TOP: "상의",
+    TOPS: "상의",
+    SHIRT: "상의",
+    TSHIRT: "상의",
+    T_SHIRT: "상의",
+    BLOUSE: "상의",
+    KNIT: "상의",
+    SWEATSHIRT: "상의",
+
+    BOTTOM: "하의",
+    BOTTOMS: "하의",
+    PANTS: "하의",
+    SKIRT: "하의",
+    JEANS: "하의",
+    SHORTS: "하의",
+
+    OUTER: "아우터",
+    JACKET: "아우터",
+    COAT: "아우터",
+    CARDIGAN: "아우터",
+    HOODIE: "아우터",
+
+    DRESS: "원피스",
+    ONEPIECE: "원피스",
+    ONE_PIECE: "원피스",
+
+    SHOES: "신발",
+    SNEAKERS: "신발",
+    BOOTS: "신발",
+
+    BAG: "가방",
+    BAGS: "가방",
+
+    ACC: "액세서리",
+    ACCESSORY: "액세서리",
+    ACCESSORIES: "액세서리",
+    HAT: "모자",
+    CAP: "모자",
+  };
+
+  return categoryMap[key] ?? raw;
+}
+
+function extractKeywordLabels(
+  data: GetRankingPostDetailResponse | null
+): string[] {
+  if (!data) return [];
+
+  const raw = data as unknown as Record<string, unknown>;
+  const candidates = [
+    raw.keywords,
+    raw.keywordLabels,
+    raw.tags,
+    raw.postKeywords,
+  ];
+
+  const labels: string[] = [];
+
+  candidates.forEach((candidate) => {
+    if (!Array.isArray(candidate)) return;
+
+    candidate.forEach((item) => {
+      if (typeof item === "string" && item.trim()) {
+        labels.push(item.trim());
+        return;
+      }
+
+      if (isRecord(item)) {
+        const label =
+          toSafeString(item.label) ??
+          toSafeString(item.name) ??
+          toSafeString(item.keyword) ??
+          toSafeString(item.keywordLabel);
+
+        if (label) labels.push(label);
+      }
+    });
+  });
+
+  return [...new Set(labels)].slice(0, 5);
+}
+
+function extractStructuredFeedback(
+  data: GetRankingPostDetailResponse | null
+): {
+  likeRows: StructuredFeedbackRow[];
+  dislikeRows: StructuredFeedbackRow[];
+} {
+  if (!data) {
+    return {
+      likeRows: [],
+      dislikeRows: [],
+    };
+  }
+
+  const raw = data as unknown as Record<string, unknown>;
+  const feedbackSummary = Array.isArray(raw.feedbackSummary)
+    ? raw.feedbackSummary
+    : [];
+
+  const parsedRows = feedbackSummary
+    .map((item) => {
+      if (!isRecord(item)) return null;
+
+      const label =
+        toSafeString(item.label) ??
+        toSafeString(item.name) ??
+        toSafeString(item.keyword) ??
+        toSafeString(item.feedbackLabel);
+
+      const voteChoice =
+        normalizeVoteChoice(item.voteChoice) ??
+        normalizeVoteChoice(item.side) ??
+        normalizeVoteChoice(item.type);
+
+      const count =
+        toSafeNumber(item.count) ??
+        toSafeNumber(item.totalCount) ??
+        toSafeNumber(item.voteCount) ??
+        0;
+
+      if (!label || !voteChoice || count <= 0) return null;
+
+      return {
+        label,
+        count,
+        side: voteChoice,
+      };
+    })
+    .filter(
+      (item): item is { label: string; count: number; side: "LIKE" | "DISLIKE" } =>
+        Boolean(item)
+    );
+
+  const likeList = parsedRows
+    .filter((item) => item.side === "LIKE")
+    .sort((a, b) => b.count - a.count);
+
+  const dislikeList = parsedRows
+    .filter((item) => item.side === "DISLIKE")
+    .sort((a, b) => b.count - a.count);
+
+  const likeTotal = likeList.reduce((sum, item) => sum + item.count, 0);
+  const dislikeTotal = dislikeList.reduce((sum, item) => sum + item.count, 0);
+
+  const likeRows: StructuredFeedbackRow[] = likeList
+    .slice(0, 5)
+    .map((item) => ({
+      ...item,
+      percent: likeTotal > 0 ? Math.round((item.count / likeTotal) * 100) : 0,
+    }));
+
+  const dislikeRows: StructuredFeedbackRow[] = dislikeList
+    .slice(0, 5)
+    .map((item) => ({
+      ...item,
+      percent:
+        dislikeTotal > 0 ? Math.round((item.count / dislikeTotal) * 100) : 0,
+    }));
+
+  return {
+    likeRows,
+    dislikeRows,
+  };
+}
+
+type FeedbackPanelProps = {
+  title: string;
+  side: "LIKE" | "DISLIKE";
+  count: number;
+  rows: StructuredFeedbackRow[];
+};
+
+function FeedbackPanel({
+  title,
+  side,
+  count,
+  rows,
+}: FeedbackPanelProps) {
+  return (
+    <div className={styles.feedbackPanel}>
+      <div className={styles.feedbackPanelHeader}>
+        <h4 className={styles.feedbackPanelTitle}>{title}</h4>
+        <span className={styles.feedbackPanelCount}>
+          {formatCount(count)}표 받음
+        </span>
+      </div>
+
+      <div className={styles.feedbackRows}>
+        {rows.length > 0 ? (
+          rows.map((row) => (
+            <div
+              key={`${side}-${row.label}`}
+              className={styles.feedbackRow}
+            >
+              <div className={styles.feedbackRowHead}>
+                <span className={styles.feedbackRowLabel}>{row.label}</span>
+                <span className={styles.feedbackRowPercent}>{row.percent}%</span>
+              </div>
+
+              <div className={styles.feedbackRowTrack}>
+                <div
+                  className={`${styles.feedbackRowFill} ${
+                    side === "LIKE"
+                      ? styles.feedbackRowFillLike
+                      : styles.feedbackRowFillDislike
+                  }`}
+                  style={{ width: `${Math.max(row.percent, 6)}%` }}
+                />
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className={styles.feedbackEmptyText}>아직 피드백이 없습니다.</p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const RankingDetail: React.FC = () => {
   const { postId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const controls = useAnimation();
+  const dragControls = useDragControls();
 
-  const [postData, setPostData] = useState<GetRankingPostDetailResponse | null>(null);
+  const [postData, setPostData] = useState<GetRankingPostDetailResponse | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
-  const [sheetPosition, setSheetPosition] = useState<SheetPosition>('collapsed');
+  const [sheetPosition, setSheetPosition] = useState<SheetPosition>("hidden");
 
-  const EXPANDED_Y = 350;
-  const COLLAPSED_Y = 700;
+  const EXPANDED_Y = 0;
+  const COLLAPSED_Y = 360;
   const HIDDEN_Y = 860;
 
-  const period = searchParams.get('period') === 'MONTHLY' ? 'MONTHLY' : 'WEEKLY';
+  const SHEET_TOTAL_HEIGHT = 812;
+  const HANDLE_HEIGHT = 34;
+  const EXPANDED_SCROLL_HEIGHT = SHEET_TOTAL_HEIGHT - HANDLE_HEIGHT;
+  const COLLAPSED_SCROLL_HEIGHT =
+    SHEET_TOTAL_HEIGHT - COLLAPSED_Y - HANDLE_HEIGHT;
+
+  const period =
+    searchParams.get("period") === "MONTHLY" ? "MONTHLY" : "WEEKLY";
   const numericPostId = postId ? Number(postId) : undefined;
 
   useEffect(() => {
@@ -54,7 +360,7 @@ const RankingDetail: React.FC = () => {
             `/rankings/posts/${postId}?period=${period}`,
             {
               headers: getAuthHeaders(),
-            },
+            }
           ),
           fetchMyBookmarkMap(),
         ]);
@@ -65,15 +371,17 @@ const RankingDetail: React.FC = () => {
         setIsBookmarked(Boolean(bookmarkMap[numericPostId]));
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : '상세 데이터를 불러오지 못했습니다.';
+          err instanceof Error
+            ? err.message
+            : "상세 데이터를 불러오지 못했습니다.";
 
         if (isAuthError(message)) {
           clearAuthTokens();
-          navigate('/login');
+          navigate("/login");
           return;
         }
 
-        console.error('랭킹 상세 불러오기 실패:', err);
+        console.error("랭킹 상세 불러오기 실패:", err);
 
         if (!cancelled) {
           setPostData(null);
@@ -81,8 +389,8 @@ const RankingDetail: React.FC = () => {
       } finally {
         if (!cancelled) {
           setLoading(false);
-          setSheetPosition('collapsed');
-          controls.start({ y: COLLAPSED_Y });
+          setSheetPosition("hidden");
+          controls.start({ y: HIDDEN_Y });
         }
       }
     };
@@ -105,41 +413,76 @@ const RankingDetail: React.FC = () => {
     return unsubscribe;
   }, [numericPostId]);
 
+  const likeCount = postData?.voteSummary.likeCount ?? 0;
+  const dislikeCount = postData?.voteSummary.dislikeCount ?? 0;
+  const totalCount = likeCount + dislikeCount;
+
+  const likePercent = useMemo(() => {
+    if (totalCount <= 0) return 0;
+    return Math.round((likeCount / totalCount) * 100);
+  }, [likeCount, totalCount]);
+
+  const dislikePercent = useMemo(() => {
+    if (totalCount <= 0) return 0;
+    return 100 - likePercent;
+  }, [likePercent, totalCount]);
+
+  const keywordChips = useMemo(() => extractKeywordLabels(postData), [postData]);
+
+  const structuredFeedback = useMemo(
+    () => extractStructuredFeedback(postData),
+    [postData]
+  );
+
+  const outfitItems = useMemo(() => {
+    return Array.isArray(postData?.outfitItems) ? postData.outfitItems : [];
+  }, [postData]);
+
+  const currentScrollAreaHeight =
+    sheetPosition === "expanded"
+      ? EXPANDED_SCROLL_HEIGHT
+      : sheetPosition === "collapsed"
+      ? COLLAPSED_SCROLL_HEIGHT
+      : 0;
+
   const snapTo = (position: SheetPosition) => {
     setSheetPosition(position);
 
     const nextY =
-      position === 'expanded'
+      position === "expanded"
         ? EXPANDED_Y
-        : position === 'collapsed'
-          ? COLLAPSED_Y
-          : HIDDEN_Y;
+        : position === "collapsed"
+        ? COLLAPSED_Y
+        : HIDDEN_Y;
 
     controls.start({
       y: nextY,
-      transition: { type: 'spring', stiffness: 300, damping: 30 },
+      transition: { type: "spring", stiffness: 340, damping: 34 },
     });
   };
 
   const expandSheet = () => {
-    snapTo('expanded');
+    snapTo("expanded");
   };
 
   const collapseSheet = () => {
-    snapTo('collapsed');
+    snapTo("collapsed");
   };
 
   const hideSheet = () => {
-    snapTo('hidden');
+    snapTo("hidden");
   };
 
-  const onDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+  const onDragEnd = (
+    _: MouseEvent | TouchEvent | PointerEvent,
+    info: PanInfo
+  ) => {
     const isDraggingUp = info.offset.y < -50 || info.velocity.y < -500;
     const isDraggingDown = info.offset.y > 50 || info.velocity.y > 500;
-    const isStrongDraggingDown = info.offset.y > 140 || info.velocity.y > 900;
+    const isStrongDraggingDown = info.offset.y > 160 || info.velocity.y > 1000;
 
     if (isDraggingUp) {
-      if (sheetPosition === 'hidden') {
+      if (sheetPosition === "hidden") {
         collapseSheet();
       } else {
         expandSheet();
@@ -153,7 +496,7 @@ const RankingDetail: React.FC = () => {
     }
 
     if (isDraggingDown) {
-      if (sheetPosition === 'expanded') {
+      if (sheetPosition === "expanded") {
         collapseSheet();
       } else {
         hideSheet();
@@ -164,7 +507,9 @@ const RankingDetail: React.FC = () => {
     snapTo(sheetPosition);
   };
 
-  const handleToggleBookmark = async (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleToggleBookmark = async (
+    e: React.MouseEvent<HTMLButtonElement>
+  ) => {
     e.stopPropagation();
     if (!numericPostId || bookmarkLoading) return;
 
@@ -177,34 +522,30 @@ const RankingDetail: React.FC = () => {
       setIsBookmarked(nextValue);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : '북마크 처리에 실패했습니다.';
+        err instanceof Error ? err.message : "북마크 처리에 실패했습니다.";
 
       setIsBookmarked(previous);
 
       if (isAuthError(message)) {
         clearAuthTokens();
-        navigate('/login');
+        navigate("/login");
         return;
       }
 
-      console.error('북마크 처리 실패:', err);
+      console.error("북마크 처리 실패:", err);
       window.alert(message);
     } finally {
       setBookmarkLoading(false);
     }
   };
 
-  const handleGoToUserFeed = () => {
-    if (!postData?.author?.userId) return;
-    navigate(`/user/${postData.author.userId}/feed`);
-  };
+  if (loading) {
+    return <div className={styles.loading}>데이터 로드 중...</div>;
+  }
 
-  const handleShowHiddenSheet = () => {
-    collapseSheet();
-  };
-
-  if (loading) return <div className={styles.loading}>데이터 로드 중...</div>;
-  if (!postData) return <div className={styles.loading}>게시글을 불러올 수 없습니다.</div>;
+  if (!postData) {
+    return <div className={styles.loading}>게시글을 불러올 수 없습니다.</div>;
+  }
 
   return (
     <div className={styles.container}>
@@ -213,9 +554,9 @@ const RankingDetail: React.FC = () => {
           className={styles.mainImage}
           style={{
             backgroundImage: `url(${getPrimaryPostImageUrl(postData)})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
           }}
         />
         <div className={styles.topGradient} />
@@ -223,44 +564,81 @@ const RankingDetail: React.FC = () => {
       </div>
 
       <div className={styles.headerTitle}>
-        {period === 'MONTHLY' ? 'this month' : 'this week'}
+        {period === "MONTHLY" ? "This Month" : "This Week"}
       </div>
 
-      <button onClick={() => navigate(-1)} className={styles.closeBtn}>
-        <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-          <path
-            d="M28.06 10.06L25.94 7.94L18 15.88L10.06 7.94L7.94 10.06L15.88 18L7.94 25.94L10.06 28.06L18 20.12L25.94 28.06L28.06 25.94L20.12 18L28.06 10.06Z"
-            fill="white"
-          />
-        </svg>
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className={styles.closeBtn}
+        aria-label="닫기"
+      >
+        <X size={18} strokeWidth={2.6} />
       </button>
 
-      {sheetPosition === 'hidden' && (
-        <button
-          type="button"
-          className={styles.hiddenPeekButton}
-          onClick={handleShowHiddenSheet}
-          aria-label="상세정보 다시 보기"
-        >
-          <div className={styles.hiddenPeekBar} />
-        </button>
-      )}
+      <div className={styles.floatingArea}>
+        {sheetPosition === "hidden" && (
+          <>
+            <button
+              type="button"
+              className={styles.detailButton}
+              onClick={collapseSheet}
+            >
+              <span className={styles.detailButtonText}>상세보기</span>
+              <ChevronsUp
+                size={16}
+                strokeWidth={2.4}
+                className={styles.detailButtonUpIcon}
+              />
+            </button>
+
+            <div className={styles.progressTrack}>
+              <div
+                className={styles.likeFill}
+                style={{ width: `${likePercent}%` }}
+              />
+              <div
+                className={styles.dislikeFill}
+                style={{ width: `${dislikePercent}%` }}
+              />
+
+              {totalCount > 0 && likePercent > 0 && (
+                <div className={styles.leftPercent}>
+                  <ThumbsUp size={12} strokeWidth={2} />
+                  <span>{likePercent}%</span>
+                </div>
+              )}
+
+              {totalCount > 0 && dislikePercent > 0 && (
+                <div className={styles.rightPercent}>
+                  <ThumbsDown size={12} strokeWidth={2} />
+                  <span>{dislikePercent}%</span>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
 
       <motion.div
         className={styles.bottomSheet}
         drag="y"
+        dragControls={dragControls}
+        dragListener={false}
         dragConstraints={{ top: EXPANDED_Y, bottom: HIDDEN_Y }}
         dragElastic={0}
-        initial={{ y: COLLAPSED_Y }}
+        dragMomentum={false}
+        initial={{ y: HIDDEN_Y }}
         animate={controls}
         onDragEnd={onDragEnd}
       >
         <div
           className={styles.handlerArea}
+          onPointerDown={(event) => dragControls.start(event)}
           onClick={() => {
-            if (sheetPosition === 'expanded') {
+            if (sheetPosition === "expanded") {
               collapseSheet();
-            } else if (sheetPosition === 'hidden') {
+            } else if (sheetPosition === "hidden") {
               collapseSheet();
             } else {
               expandSheet();
@@ -271,63 +649,164 @@ const RankingDetail: React.FC = () => {
         </div>
 
         <div
-          className={`${styles.sheetContent} ${
-            sheetPosition === 'expanded' ? styles.scroll : styles.noScroll
-          }`}
+          className={`${styles.sheetScrollArea} ${styles.scroll}`}
+          style={{ height: currentScrollAreaHeight }}
         >
-          <div className={styles.titleRow}>
-            <h2 className={styles.title}>{postData.content}</h2>
+          <div className={styles.sheetContent}>
+            <div className={styles.sheetHeader}>
+              <div className={styles.sheetHeaderCopy}>
+                <p className={styles.authorName}>
+                  {postData.author?.nickname ?? "닉네임"}
+                </p>
+                <p className={styles.contentText}>
+                  {postData.content || "코디 설명이 없습니다."}
+                </p>
+              </div>
 
-            <div className={styles.actionGroup}>
-              <button
-                type="button"
-                className={styles.bookmarkBtn}
-                onClick={handleToggleBookmark}
-                aria-label={isBookmarked ? '북마크 해제' : '북마크 추가'}
-                disabled={bookmarkLoading}
-              >
-                <Bookmark
-                  size={16}
-                  strokeWidth={2.2}
-                  className={
-                    isBookmarked ? styles.bookmarkFilled : styles.bookmarkDefault
-                  }
-                  fill={isBookmarked ? 'currentColor' : 'none'}
-                />
-              </button>
+              <div className={styles.sheetActions}>
+                <motion.button
+                  type="button"
+                  className={`${styles.miniActionButton} ${styles.bookmarkActionButton}`}
+                  onClick={handleToggleBookmark}
+                  aria-label={isBookmarked ? "북마크 해제" : "북마크 추가"}
+                  disabled={bookmarkLoading}
+                  whileTap={{ scale: 0.82, y: 1 }}
+                  transition={{ type: "spring", stiffness: 520, damping: 24 }}
+                >
+                  <Bookmark
+                    size={11}
+                    strokeWidth={2.1}
+                    className={
+                      isBookmarked
+                        ? styles.bookmarkFilled
+                        : styles.bookmarkDefault
+                    }
+                    fill={isBookmarked ? "currentColor" : "none"}
+                  />
+                </motion.button>
 
-              <div className={styles.likeBadge}>
-                <span className={styles.likeCount}>
-                  {postData.voteSummary.likeCount.toLocaleString()}
-                </span>
+                <button
+                  type="button"
+                  className={`${styles.miniActionButton} ${styles.reportActionButton}`}
+                  aria-label="신고"
+                >
+                  <Siren size={11} strokeWidth={2.1} />
+                </button>
               </div>
             </div>
-          </div>
 
-          <div className={styles.authorRow}>
-            <p className={styles.author}>작성자: {postData.author.nickname}</p>
-
-            <button
-              type="button"
-              className={styles.feedMoveBtn}
-              onClick={handleGoToUserFeed}
-            >
-              <span>피드보러가기</span>
-              <span className={styles.feedMoveIcon}>&gt;&gt;</span>
-            </button>
-          </div>
-
-          <div className={styles.divider} />
-
-          <h3 className={styles.subTitle}>착용 아이템</h3>
-          <div className={styles.itemScroll}>
-            {postData.outfitItems.map((item) => (
-              <div key={item.id} className={styles.outfitCard}>
-                <div className={styles.itemImg} />
-                <p className={styles.brandName}>{item.brand || item.category}</p>
-                <p className={styles.itemName}>{item.itemName || '아이템명 없음'}</p>
+            {keywordChips.length > 0 && (
+              <div className={styles.keywordLaneSection}>
+                <div className={styles.keywordLane}>
+                  {keywordChips.map((keyword) => (
+                    <span key={keyword} className={styles.keywordChip}>
+                      {formatKeywordLabel(keyword)}
+                    </span>
+                  ))}
+                </div>
               </div>
-            ))}
+            )}
+
+            <div className={styles.sectionDivider} />
+
+            <div className={styles.sectionHeaderRow}>
+              <h3 className={styles.sectionTitle}>평가</h3>
+              <span className={styles.sectionMetaText}>
+                {formatCount(totalCount)}명 참여
+              </span>
+            </div>
+
+            <div className={styles.evaluationSummaryRow}>
+              <div
+                className={`${styles.evaluationSummaryItem} ${styles.evaluationSummaryLike}`}
+              >
+                <ThumbsUp size={13} strokeWidth={2.2} />
+                <span>{likePercent}%</span>
+              </div>
+
+              <div
+                className={`${styles.evaluationSummaryItem} ${styles.evaluationSummaryDislike}`}
+              >
+                <ThumbsDown size={13} strokeWidth={2.2} />
+                <span>{dislikePercent}%</span>
+              </div>
+            </div>
+
+            <div className={styles.evaluationTrack}>
+              <div
+                className={styles.evaluationLikeFill}
+                style={{ width: `${likePercent}%` }}
+              />
+              <div
+                className={styles.evaluationDislikeFill}
+                style={{ width: `${dislikePercent}%` }}
+              />
+            </div>
+
+            <div className={styles.sectionDivider} />
+
+            <div className={styles.sectionHeaderRow}>
+              <h3 className={styles.sectionTitle}>피드백</h3>
+            </div>
+
+            <div className={styles.feedbackGrid}>
+              <FeedbackPanel
+                title="좋아요"
+                side="LIKE"
+                count={likeCount}
+                rows={structuredFeedback.likeRows}
+              />
+
+              <FeedbackPanel
+                title="싫어요"
+                side="DISLIKE"
+                count={dislikeCount}
+                rows={structuredFeedback.dislikeRows}
+              />
+            </div>
+
+            <div className={styles.sectionDivider} />
+
+            <div className={styles.outfitHeaderRow}>
+              <h3 className={styles.outfitTitle}>착용 아이템</h3>
+            </div>
+
+            <div className={styles.itemScroll}>
+              {outfitItems.length > 0 ? (
+                outfitItems.map((item, index) => (
+                  <div key={item.id ?? index} className={styles.outfitCard}>
+                    <div
+                      className={`${styles.outfitField} ${styles.outfitCategoryField}`}
+                    >
+                      <div className={styles.outfitCategoryInner}>
+                        <Tag
+                          size={13}
+                          strokeWidth={2}
+                          className={styles.outfitCategoryIcon}
+                        />
+                        <span className={styles.outfitFieldValue}>
+                          {formatCategoryLabel(item.category)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className={styles.outfitField}>
+                      <span className={styles.outfitFieldValue}>
+                        {item.brand || "브랜드 미등록"}
+                      </span>
+                    </div>
+
+                    <div className={styles.outfitField}>
+                      <span className={styles.outfitFieldValue}>
+                        {item.itemName || "상품 이름 미등록"}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className={styles.emptyText}>등록된 아이템이 없습니다.</div>
+              )}
+            </div>
           </div>
         </div>
       </motion.div>

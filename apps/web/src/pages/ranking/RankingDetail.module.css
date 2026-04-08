@@ -1,160 +1,433 @@
 .container {
-  @apply w-[375px] h-[812px] relative bg-white overflow-hidden mx-auto shadow-2xl;
+  @apply w-[375px] h-[812px] mx-auto relative overflow-hidden bg-black;
 }
 
 .loading {
-  @apply w-[375px] h-[812px] bg-white flex items-center justify-center mx-auto text-neutral-400;
+  @apply w-[375px] h-[812px] mx-auto flex items-center justify-center bg-white text-[14px] text-neutral-500;
 }
 
 .imageSection {
-  @apply w-full h-full absolute left-0 top-0 overflow-hidden bg-neutral-400;
+  @apply absolute inset-0;
 }
 
 .mainImage {
-  @apply w-full h-full bg-cover bg-center;
+  @apply absolute inset-0;
 }
 
 .topGradient {
-  @apply w-full h-24 absolute top-0 left-0 bg-gradient-to-b from-black/70 to-transparent z-10;
+  @apply absolute left-0 top-0 w-full h-36;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0) 100%);
 }
 
 .bottomGradient {
-  @apply w-full h-40 absolute bottom-0 left-0 bg-gradient-to-t from-black/70 to-transparent z-10;
+  @apply absolute left-0 bottom-0 w-full h-52;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.2) 100%);
 }
 
 .headerTitle {
-  @apply absolute left-[16px] top-[69px] text-white text-2xl font-bold z-10;
+  @apply absolute left-4 text-white text-[20px] font-semibold leading-7;
+  top: 66px;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
 }
 
 .closeBtn {
-  @apply absolute right-4 top-[68px] z-10 cursor-pointer active:scale-90 transition-transform;
-  background: none;
-  border: none;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  @apply absolute right-4 flex items-center justify-center rounded-[10px] border-0 p-0 text-white;
+  top: 63px;
+  width: 28px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.45);
 }
 
-.hiddenPeekButton {
-  @apply absolute left-1/2 bottom-4 z-30 -translate-x-1/2 w-[96px] h-[28px] flex items-center justify-center active:scale-95 transition-transform;
-  background: transparent;
-  border: none;
-  padding: 0;
+.floatingArea {
+  @apply absolute left-0 right-0 px-5;
+  bottom: 44px;
 }
 
-.hiddenPeekBar {
-  @apply w-[40px] h-[4px] bg-neutral-300 rounded-full;
+.detailButton {
+  @apply h-[30px] rounded-[999px] border-0 flex items-center justify-between text-white px-4 mb-4;
+  width: 118px;
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+  transition:
+    background 0.16s ease,
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.16s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.detailButton:hover {
+  background: rgba(0, 0, 0, 0.58);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.22);
+}
+
+.detailButton:active {
+  background: rgba(0, 0, 0, 0.68);
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+}
+
+.detailButtonText {
+  @apply text-[12px] font-semibold leading-4;
+}
+
+.detailButtonUpIcon {
+  @apply shrink-0 text-white;
+}
+
+.progressTrack {
+  @apply relative w-full h-5 rounded-[10px] overflow-hidden;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.likeFill {
+  @apply absolute left-0 top-0 h-full rounded-l-[10px];
+  background: linear-gradient(90deg, rgba(244, 125, 114, 0.72) 0%, #f47d72 100%);
+}
+
+.dislikeFill {
+  @apply absolute right-0 top-0 h-full rounded-r-[10px];
+  background: linear-gradient(270deg, rgba(140, 149, 181, 0.72) 0%, #8c95b5 100%);
+}
+
+.leftPercent {
+  @apply absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-white text-[10px] leading-3 font-medium;
+}
+
+.rightPercent {
+  @apply absolute right-3 top-1/2 flex items-center text-white text-[10px] leading-3 font-medium;
+  transform: translateY(-50%);
+  flex-direction: row-reverse;
+  gap: 4px;
 }
 
 .bottomSheet {
-  @apply absolute left-0 w-full bg-white rounded-t-[32px] shadow-[0px_-8px_20px_rgba(0,0,0,0.2)] z-20;
+  @apply absolute left-0 w-full rounded-t-[28px] flex flex-col overflow-hidden;
   top: 0;
   height: 812px;
+  background: #ffffff;
+  box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.14);
 }
 
 .handlerArea {
-  @apply w-full flex justify-center py-4;
+  @apply w-full flex justify-center items-center shrink-0 cursor-pointer;
+  height: 34px;
+  touch-action: none;
 }
 
 .handlerBar {
-  @apply w-[40px] h-[4px] bg-neutral-300 rounded-full;
+  @apply w-12 h-[5px] rounded-full;
+  background: rgba(0, 0, 0, 0.22);
 }
 
-.sheetContent {
-  @apply px-5 h-full pb-20;
-}
-
-.scroll {
-  @apply overflow-y-auto;
-}
-
-.noScroll {
-  @apply overflow-hidden;
-}
-
-.titleRow {
-  @apply flex justify-between items-start gap-3 mt-2;
-}
-
-.title {
-  @apply text-xl font-bold text-neutral-900 leading-8 flex-1 min-w-0;
-}
-
-.authorRow {
-  @apply mt-2 w-full flex items-center justify-between gap-3;
-}
-
-.author {
-  @apply text-stone-500 text-sm m-0 flex-1 min-w-0 truncate;
-}
-
-.feedMoveBtn {
-  @apply h-[30px] px-3 rounded-full bg-neutral-800 text-white text-[11px] font-bold shadow-md active:scale-95 transition-transform flex items-center gap-1 whitespace-nowrap shrink-0;
-  border: none;
-}
-
-.feedMoveIcon {
-  @apply text-[13px] font-bold leading-none;
-}
-
-.actionGroup {
-  @apply flex items-center gap-3 shrink-0;
-}
-
-.bookmarkBtn {
-  @apply shrink-0 flex items-center justify-center
-    w-7 h-7 rounded-full bg-black/45 border border-white/15
-    active:scale-95 transition-transform;
-}
-
-.bookmarkDefault {
-  @apply text-white;
-}
-
-.bookmarkFilled {
-  @apply text-white;
-}
-
-.likeBadge {
-  @apply bg-black px-4 py-2 rounded-full flex items-center justify-center;
-}
-
-.likeCount {
-  @apply text-white text-xs font-bold;
-}
-
-.divider {
-  @apply w-full h-[1px] bg-neutral-200 my-6;
-}
-
-.subTitle {
-  @apply text-base font-bold text-neutral-900 mb-4;
-}
-
-.itemScroll {
-  @apply flex gap-4 overflow-x-auto pb-4 flex-nowrap;
+.sheetScrollArea {
+  overflow-y: auto;
   -ms-overflow-style: none;
   scrollbar-width: none;
-  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  transition: height 0.24s ease;
 }
 
-.itemScroll::-webkit-scrollbar {
+.sheetScrollArea::-webkit-scrollbar {
   display: none;
 }
 
+.scroll {
+  overflow-y: auto;
+}
+
+.sheetContent {
+  @apply px-4 pt-3 pb-4;
+}
+
+.sheetHeader {
+  @apply flex items-start justify-between gap-3 mb-4;
+  min-height: 56px;
+  overflow: visible;
+}
+
+.sheetHeaderCopy {
+  @apply flex-1 min-w-0;
+}
+
+.authorName {
+  @apply text-[24px] leading-7 font-bold text-neutral-900 mb-2;
+}
+
+.contentText {
+  @apply text-[14px] leading-[20px] text-neutral-700 whitespace-pre-line;
+}
+
+.sheetActions {
+  @apply flex items-center gap-2 shrink-0;
+  padding-top: 6px;
+  overflow: visible;
+}
+
+.miniActionButton {
+  @apply rounded-[8px] border-0 p-0 flex items-center justify-center shrink-0;
+  width: 24px;
+  height: 24px;
+}
+
+.bookmarkActionButton {
+  background: #ffffff;
+  color: #6f6f6f;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bookmarkActionButton:active {
+  transform: scale(0.9);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.reportActionButton {
+  color: #ff5b5d;
+  background: rgba(255, 91, 93, 0.08);
+  border: 1px solid rgba(255, 91, 93, 0.16);
+  box-shadow:
+    0 0 0 1px rgba(255, 91, 93, 0.08),
+    0 0 8px rgba(255, 91, 93, 0.18);
+}
+
+.bookmarkFilled {
+  color: #5f5f5f;
+}
+
+.bookmarkDefault {
+  color: #8c8c8c;
+}
+
+.keywordLaneSection {
+  @apply mb-4;
+}
+
+.keywordLane {
+  @apply flex items-center gap-2 overflow-x-auto;
+  padding: 2px 0;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.keywordLane::-webkit-scrollbar {
+  display: none;
+}
+
+.keywordChip {
+  @apply shrink-0 px-3 h-7 rounded-[999px] text-[11px] leading-[27px] font-medium text-neutral-700;
+  background: #dedede;
+}
+
+.sectionDivider {
+  @apply w-full h-px mb-4;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.sectionHeaderRow {
+  @apply flex items-center justify-between gap-2 mb-3;
+}
+
+.sectionTitle {
+  @apply text-[18px] leading-[22px] font-bold text-neutral-900;
+}
+
+.sectionMetaText {
+  @apply text-[12px] leading-4 text-neutral-500;
+}
+
+.evaluationSummaryRow {
+  @apply flex items-center justify-between mb-2;
+}
+
+.evaluationSummaryItem {
+  @apply inline-flex items-center gap-1 text-[12px] leading-4 font-semibold;
+}
+
+.evaluationSummaryLike {
+  color: #f47d72;
+}
+
+.evaluationSummaryDislike {
+  color: #8c95b5;
+}
+
+.evaluationTrack {
+  @apply relative w-full h-[22px] rounded-[10px] overflow-hidden mb-5;
+  background: rgba(241, 241, 241, 0.95);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.evaluationLikeFill {
+  @apply absolute left-0 top-0 h-full rounded-l-[10px];
+  background: linear-gradient(90deg, rgba(244, 125, 114, 0.78) 0%, #f47d72 100%);
+}
+
+.evaluationDislikeFill {
+  @apply absolute right-0 top-0 h-full rounded-r-[10px];
+  background: linear-gradient(270deg, rgba(140, 149, 181, 0.78) 0%, #8c95b5 100%);
+}
+
+.feedbackGrid {
+  @apply grid grid-cols-2 gap-3 mb-5;
+}
+
+.feedbackPanel {
+  @apply rounded-[16px] p-0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.feedbackPanelHeader {
+  @apply flex items-center justify-between gap-2 mb-3;
+}
+
+.feedbackPanelTitle {
+  @apply text-[16px] leading-5 font-bold text-neutral-900;
+}
+
+.feedbackPanelCount {
+  @apply text-[11px] leading-4 text-neutral-500 shrink-0;
+}
+
+.feedbackRows {
+  @apply flex flex-col gap-3;
+}
+
+.feedbackRow {
+  @apply flex flex-col gap-1.5;
+}
+
+.feedbackRowHead {
+  @apply flex items-center justify-between gap-2;
+}
+
+.feedbackRowLabel {
+  @apply text-[10px] leading-4 text-neutral-500 min-w-0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feedbackRowPercent {
+  @apply text-[10px] leading-4 font-semibold text-black shrink-0;
+}
+
+.feedbackRowTrack {
+  @apply w-full h-[8px] rounded-full overflow-hidden;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.feedbackRowFill {
+  @apply h-full rounded-full;
+}
+
+.feedbackRowFillLike {
+  background: linear-gradient(90deg, #f5b8af 0%, #ef8a7d 100%);
+}
+
+.feedbackRowFillDislike {
+  background: linear-gradient(90deg, #c4cbe2 0%, #98a2c8 100%);
+}
+
+.feedbackEmptyText {
+  @apply text-[11px] leading-4 text-neutral-400;
+}
+
+.outfitHeaderRow {
+  @apply flex items-center mb-3;
+}
+
+.outfitTitle {
+  @apply text-[18px] leading-[22px] font-bold text-neutral-900;
+}
+
+.itemScroll {
+  @apply flex overflow-x-auto;
+  gap: 12px;
+  padding: 2px 0 16px 0;
+  margin-bottom: 2px;
+  scroll-snap-type: x proximity;
+  scroll-padding-left: 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 149, 181, 0.8) rgba(0, 0, 0, 0.08);
+}
+
+.itemScroll::-webkit-scrollbar {
+  display: block;
+  height: 6px;
+}
+
+.itemScroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+}
+
+.itemScroll::-webkit-scrollbar-thumb {
+  background: rgba(140, 149, 181, 0.8);
+  border-radius: 999px;
+}
+
+.itemScroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 149, 181, 0.95);
+}
+
 .outfitCard {
-  @apply flex-shrink-0 w-[144px] bg-white rounded-xl shadow-sm border p-2;
+  @apply shrink-0 rounded-[16px];
+  width: 168px;
+  padding: 10px;
+  background: #f5f5f5;
+  border: 1px solid #e7e7e7;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  scroll-snap-align: start;
+  margin-bottom: 4px;
 }
 
-.itemImg {
-  @apply w-full h-[100px] bg-neutral-100 rounded-lg mb-2;
+.outfitField {
+  @apply w-full h-10 rounded-[12px] border border-[#dddddd] px-3 flex items-center bg-white;
 }
 
-.brandName {
-  @apply text-xs font-bold text-neutral-900;
+.outfitCard .outfitField + .outfitField {
+  margin-top: 8px;
 }
 
-.itemName {
-  @apply text-[10px] text-neutral-500;
+.outfitCategoryField {
+  background: #f4efe9;
+  border-color: #e2d6cb;
+}
+
+.outfitCategoryInner {
+  @apply flex items-center gap-2 min-w-0 w-full;
+}
+
+.outfitCategoryIcon {
+  @apply shrink-0;
+  color: #7b5f4c;
+}
+
+.outfitFieldValue {
+  @apply text-[12px] leading-4 min-w-0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #6b6b6b;
+}
+
+.outfitCategoryField .outfitFieldValue {
+  color: #7b5f4c;
+  font-weight: 700;
+}
+
+.emptyText {
+  @apply text-[13px] text-neutral-500;
 }
