@@ -1,6 +1,14 @@
 import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronLeft, Plus, Sparkles, Undo2, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronLeft,
+  Plus,
+  Sparkles,
+  Tag,
+  Undo2,
+  X,
+} from "lucide-react";
 import type {
   CreatePostResponse,
   GarmentCategory,
@@ -204,14 +212,17 @@ function WearTypeDropdown({
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span
-          className={cls(
-            styles.itemSelectText,
-            !value && styles.itemSelectPlaceholder,
-          )}
-        >
-          {value || "의류 종류 선택"}
-        </span>
+        <div className={styles.itemSelectContent}>
+          <Tag size={14} strokeWidth={2.1} className={styles.itemSelectTagIcon} />
+          <span
+            className={cls(
+              styles.itemSelectText,
+              !value && styles.itemSelectPlaceholder,
+            )}
+          >
+            {value || "의류 종류 선택"}
+          </span>
+        </div>
 
         <ChevronDown
           size={16}
@@ -240,9 +251,12 @@ function WearTypeDropdown({
                   onClose();
                 }}
               >
-                <span className={styles.selectOptionLabel}>
-                  {type || "의류 종류 선택"}
-                </span>
+                <div className={styles.selectOptionContent}>
+                  <Tag size={14} strokeWidth={2.1} className={styles.selectOptionTagIcon} />
+                  <span className={styles.selectOptionLabel}>
+                    {type || "의류 종류 선택"}
+                  </span>
+                </div>
               </button>
             );
           })}

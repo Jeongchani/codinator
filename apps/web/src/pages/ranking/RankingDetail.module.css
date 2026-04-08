@@ -139,7 +139,7 @@
 }
 
 .sheetContent {
-  @apply px-4 pt-3 pb-12;
+  @apply px-4 pt-3 pb-4;
 }
 
 .sheetHeader {
@@ -153,7 +153,7 @@
 }
 
 .authorName {
-  @apply text-[24px] leading-7 font-bold text-neutral-900 mb-3;
+  @apply text-[24px] leading-7 font-bold text-neutral-900 mb-2;
 }
 
 .contentText {
@@ -212,7 +212,7 @@
 
 .keywordLane {
   @apply flex items-center gap-2 overflow-x-auto;
-  padding: 2px 0 2px 0;
+  padding: 2px 0;
   -ms-overflow-style: none;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
@@ -228,121 +228,119 @@
 }
 
 .sectionDivider {
-  @apply w-full h-px mb-5;
+  @apply w-full h-px mb-4;
   background: rgba(0, 0, 0, 0.12);
 }
 
-.feedbackHeader {
-  @apply flex items-center justify-between mb-3;
+.sectionHeaderRow {
+  @apply flex items-center justify-between gap-2 mb-3;
 }
 
-.feedbackTitle {
+.sectionTitle {
   @apply text-[18px] leading-[22px] font-bold text-neutral-900;
 }
 
+.sectionMetaText {
+  @apply text-[12px] leading-4 text-neutral-500;
+}
+
+.evaluationSummaryRow {
+  @apply flex items-center justify-between mb-2;
+}
+
+.evaluationSummaryItem {
+  @apply inline-flex items-center gap-1 text-[12px] leading-4 font-semibold;
+}
+
+.evaluationSummaryLike {
+  color: #f47d72;
+}
+
+.evaluationSummaryDislike {
+  color: #8c95b5;
+}
+
+.evaluationTrack {
+  @apply relative w-full h-[22px] rounded-[10px] overflow-hidden mb-5;
+  background: rgba(241, 241, 241, 0.95);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.evaluationLikeFill {
+  @apply absolute left-0 top-0 h-full rounded-l-[10px];
+  background: linear-gradient(90deg, rgba(244, 125, 114, 0.78) 0%, #f47d72 100%);
+}
+
+.evaluationDislikeFill {
+  @apply absolute right-0 top-0 h-full rounded-r-[10px];
+  background: linear-gradient(270deg, rgba(140, 149, 181, 0.78) 0%, #8c95b5 100%);
+}
+
+.feedbackGrid {
+  @apply grid grid-cols-2 gap-3 mb-5;
+}
+
 .feedbackPanel {
-  @apply rounded-[18px] p-3 mb-6;
-  background: #efefef;
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  @apply rounded-[16px] p-0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
-.feedbackSummaryRow {
-  @apply flex items-center justify-end mb-3;
+.feedbackPanelHeader {
+  @apply flex items-center justify-between gap-2 mb-3;
 }
 
-.totalVoteCount {
-  @apply text-[12px] leading-4 font-semibold;
-  color: #6a6a6a;
+.feedbackPanelTitle {
+  @apply text-[16px] leading-5 font-bold text-neutral-900;
 }
 
-.feedbackProgressTrack {
-  @apply relative w-full h-[22px] rounded-[12px] overflow-hidden;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+.feedbackPanelCount {
+  @apply text-[11px] leading-4 text-neutral-500 shrink-0;
 }
 
-.feedbackLikeFill {
-  @apply absolute left-0 top-0 h-full rounded-l-[12px];
-  background: linear-gradient(90deg, rgba(244, 125, 114, 0.72) 0%, #f47d72 100%);
-}
-
-.feedbackDislikeFill {
-  @apply absolute right-0 top-0 h-full rounded-r-[12px];
-  background: linear-gradient(270deg, rgba(140, 149, 181, 0.72) 0%, #8c95b5 100%);
-}
-
-.feedbackLeftPercent {
-  @apply absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-white text-[10px] leading-3 font-medium;
-}
-
-.feedbackRightPercent {
-  @apply absolute right-3 top-1/2 flex items-center text-white text-[10px] leading-3 font-medium;
-  transform: translateY(-50%);
-  flex-direction: row-reverse;
-  gap: 4px;
-}
-
-.structuredFeedbackGrid {
-  @apply grid grid-cols-2 gap-3;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.structuredFeedbackGridSingle {
-  @apply grid-cols-1;
-}
-
-.structuredFeedbackColumn {
-  @apply rounded-[14px] p-3;
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid rgba(0, 0, 0, 0.04);
-}
-
-.structuredFeedbackHeader {
-  @apply mb-3;
-}
-
-.structuredFeedbackTitle {
-  @apply text-[12px] leading-4 font-bold text-neutral-800;
-}
-
-.structuredFeedbackRows {
+.feedbackRows {
   @apply flex flex-col gap-3;
 }
 
-.structuredFeedbackRow {
+.feedbackRow {
   @apply flex flex-col gap-1.5;
 }
 
-.structuredFeedbackLabelRow {
+.feedbackRowHead {
   @apply flex items-center justify-between gap-2;
 }
 
-.structuredFeedbackLabel {
-  @apply text-[11px] leading-4 font-medium text-neutral-700;
-  word-break: keep-all;
+.feedbackRowLabel {
+  @apply text-[10px] leading-4 text-neutral-500 min-w-0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.structuredFeedbackPercent {
-  @apply text-[11px] leading-4 font-bold shrink-0;
+.feedbackRowPercent {
+  @apply text-[10px] leading-4 font-semibold text-black shrink-0;
 }
 
-.structuredFeedbackTrack {
+.feedbackRowTrack {
   @apply w-full h-[8px] rounded-full overflow-hidden;
   background: rgba(0, 0, 0, 0.08);
 }
 
-.structuredFeedbackFill {
+.feedbackRowFill {
   @apply h-full rounded-full;
 }
 
-.structuredFeedbackFillLike {
-  background: linear-gradient(90deg, #f7b7ae 0%, #ef7f72 100%);
+.feedbackRowFillLike {
+  background: linear-gradient(90deg, #f5b8af 0%, #ef8a7d 100%);
 }
 
-.structuredFeedbackFillDislike {
-  background: linear-gradient(90deg, #b9c2df 0%, #8c95b5 100%);
+.feedbackRowFillDislike {
+  background: linear-gradient(90deg, #c4cbe2 0%, #98a2c8 100%);
+}
+
+.feedbackEmptyText {
+  @apply text-[11px] leading-4 text-neutral-400;
 }
 
 .outfitHeaderRow {
@@ -355,10 +353,11 @@
 
 .itemScroll {
   @apply flex overflow-x-auto;
-  gap: 14px;
-  padding: 6px 10px 20px 10px;
+  gap: 12px;
+  padding: 2px 0 16px 0;
+  margin-bottom: 2px;
   scroll-snap-type: x proximity;
-  scroll-padding-left: 10px;
+  scroll-padding-left: 0;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: rgba(140, 149, 181, 0.8) rgba(0, 0, 0, 0.08);
@@ -384,55 +383,49 @@
 }
 
 .outfitCard {
-  @apply shrink-0;
+  @apply shrink-0 rounded-[16px];
   width: 168px;
-  padding-bottom: 8px;
-  background: transparent;
+  padding: 10px;
+  background: #f5f5f5;
+  border: 1px solid #e7e7e7;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   scroll-snap-align: start;
+  margin-bottom: 4px;
 }
 
-.outfitCardBox {
-  @apply rounded-[18px] bg-white overflow-hidden;
-  border: 1px solid #ececec;
-  box-shadow: -6px 8px 0 rgba(0, 0, 0, 0.06);
+.outfitField {
+  @apply w-full h-10 rounded-[12px] border border-[#dddddd] px-3 flex items-center bg-white;
 }
 
-.outfitCategoryBox {
-  @apply flex items-center gap-2 px-3 py-3;
-  background: #faf7f6;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+.outfitCard .outfitField + .outfitField {
+  margin-top: 8px;
+}
+
+.outfitCategoryField {
+  background: #f4efe9;
+  border-color: #e2d6cb;
+}
+
+.outfitCategoryInner {
+  @apply flex items-center gap-2 min-w-0 w-full;
 }
 
 .outfitCategoryIcon {
-  color: #ef7f72;
-  flex-shrink: 0;
+  @apply shrink-0;
+  color: #7b5f4c;
 }
 
-.outfitCategoryText {
-  @apply text-[12px] leading-4 font-semibold;
-  color: #ef7f72;
-  letter-spacing: 0.02em;
+.outfitFieldValue {
+  @apply text-[12px] leading-4 min-w-0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #6b6b6b;
 }
 
-.outfitInfoRow {
-  @apply px-3 py-3;
-  min-height: 62px;
-}
-
-.outfitInfoDivider {
-  @apply h-px mx-3;
-  background: rgba(0, 0, 0, 0.08);
-}
-
-.outfitInfoLabel {
-  @apply block text-[11px] leading-4 font-semibold mb-1;
-  color: #8d8d8d;
-}
-
-.outfitInfoValue {
-  @apply block text-[13px] leading-[18px] font-medium text-neutral-800;
-  word-break: keep-all;
-  overflow-wrap: anywhere;
+.outfitCategoryField .outfitFieldValue {
+  color: #7b5f4c;
+  font-weight: 700;
 }
 
 .emptyText {

@@ -82,10 +82,58 @@ function formatKeywordLabel(keyword: string) {
   return keyword.startsWith("#") ? keyword : `#${keyword}`;
 }
 
+function formatCount(value: number) {
+  return Math.max(0, value).toLocaleString("ko-KR");
+}
+
 function formatCategoryLabel(value: unknown) {
-  const text = toSafeString(value);
-  if (!text) return "ITEM";
-  return text.toUpperCase();
+  const raw = toSafeString(value);
+  if (!raw) return "의류 종류 미등록";
+
+  const key = raw.trim().toUpperCase();
+
+  const categoryMap: Record<string, string> = {
+    TOP: "상의",
+    TOPS: "상의",
+    SHIRT: "상의",
+    TSHIRT: "상의",
+    T_SHIRT: "상의",
+    BLOUSE: "상의",
+    KNIT: "상의",
+    SWEATSHIRT: "상의",
+
+    BOTTOM: "하의",
+    BOTTOMS: "하의",
+    PANTS: "하의",
+    SKIRT: "하의",
+    JEANS: "하의",
+    SHORTS: "하의",
+
+    OUTER: "아우터",
+    JACKET: "아우터",
+    COAT: "아우터",
+    CARDIGAN: "아우터",
+    HOODIE: "아우터",
+
+    DRESS: "원피스",
+    ONEPIECE: "원피스",
+    ONE_PIECE: "원피스",
+
+    SHOES: "신발",
+    SNEAKERS: "신발",
+    BOOTS: "신발",
+
+    BAG: "가방",
+    BAGS: "가방",
+
+    ACC: "액세서리",
+    ACCESSORY: "액세서리",
+    ACCESSORIES: "액세서리",
+    HAT: "모자",
+    CAP: "모자",
+  };
+
+  return categoryMap[key] ?? raw;
 }
 
 function extractKeywordLabels(
@@ -211,50 +259,55 @@ function extractStructuredFeedback(
   };
 }
 
-type StructuredFeedbackColumnProps = {
+type FeedbackPanelProps = {
   title: string;
   side: "LIKE" | "DISLIKE";
+  count: number;
   rows: StructuredFeedbackRow[];
 };
 
-function StructuredFeedbackColumn({
+function FeedbackPanel({
   title,
   side,
+  count,
   rows,
-}: StructuredFeedbackColumnProps) {
-  if (rows.length === 0) return null;
-
+}: FeedbackPanelProps) {
   return (
-    <div className={styles.structuredFeedbackColumn}>
-      <div className={styles.structuredFeedbackHeader}>
-        <h4 className={styles.structuredFeedbackTitle}>{title}</h4>
+    <div className={styles.feedbackPanel}>
+      <div className={styles.feedbackPanelHeader}>
+        <h4 className={styles.feedbackPanelTitle}>{title}</h4>
+        <span className={styles.feedbackPanelCount}>
+          {formatCount(count)}표 받음
+        </span>
       </div>
 
-      <div className={styles.structuredFeedbackRows}>
-        {rows.map((row) => (
-          <div
-            key={`${side}-${row.label}`}
-            className={styles.structuredFeedbackRow}
-          >
-            <div className={styles.structuredFeedbackLabelRow}>
-              <span className={styles.structuredFeedbackLabel}>{row.label}</span>
-              <span className={styles.structuredFeedbackPercent}>
-                {row.percent}%
-              </span>
-            </div>
+      <div className={styles.feedbackRows}>
+        {rows.length > 0 ? (
+          rows.map((row) => (
+            <div
+              key={`${side}-${row.label}`}
+              className={styles.feedbackRow}
+            >
+              <div className={styles.feedbackRowHead}>
+                <span className={styles.feedbackRowLabel}>{row.label}</span>
+                <span className={styles.feedbackRowPercent}>{row.percent}%</span>
+              </div>
 
-            <div className={styles.structuredFeedbackTrack}>
-              <div
-                className={`${styles.structuredFeedbackFill} ${
-                  side === "LIKE"
-                    ? styles.structuredFeedbackFillLike
-                    : styles.structuredFeedbackFillDislike
-                }`}
-                style={{ width: `${Math.max(row.percent, 6)}%` }}
-              />
+              <div className={styles.feedbackRowTrack}>
+                <div
+                  className={`${styles.feedbackRowFill} ${
+                    side === "LIKE"
+                      ? styles.feedbackRowFillLike
+                      : styles.feedbackRowFillDislike
+                  }`}
+                  style={{ width: `${Math.max(row.percent, 6)}%` }}
+                />
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        ) : (
+          <p className={styles.feedbackEmptyText}>아직 피드백이 없습니다.</p>
+        )}
       </div>
     </div>
   );
@@ -380,10 +433,6 @@ const RankingDetail: React.FC = () => {
     () => extractStructuredFeedback(postData),
     [postData]
   );
-
-  const hasStructuredFeedback =
-    structuredFeedback.likeRows.length > 0 ||
-    structuredFeedback.dislikeRows.length > 0;
 
   const outfitItems = useMemo(() => {
     return Array.isArray(postData?.outfitItems) ? postData.outfitItems : [];
@@ -529,44 +578,46 @@ const RankingDetail: React.FC = () => {
 
       <div className={styles.floatingArea}>
         {sheetPosition === "hidden" && (
-          <button
-            type="button"
-            className={styles.detailButton}
-            onClick={collapseSheet}
-          >
-            <span className={styles.detailButtonText}>상세보기</span>
-            <ChevronsUp
-              size={16}
-              strokeWidth={2.4}
-              className={styles.detailButtonUpIcon}
-            />
-          </button>
+          <>
+            <button
+              type="button"
+              className={styles.detailButton}
+              onClick={collapseSheet}
+            >
+              <span className={styles.detailButtonText}>상세보기</span>
+              <ChevronsUp
+                size={16}
+                strokeWidth={2.4}
+                className={styles.detailButtonUpIcon}
+              />
+            </button>
+
+            <div className={styles.progressTrack}>
+              <div
+                className={styles.likeFill}
+                style={{ width: `${likePercent}%` }}
+              />
+              <div
+                className={styles.dislikeFill}
+                style={{ width: `${dislikePercent}%` }}
+              />
+
+              {totalCount > 0 && likePercent > 0 && (
+                <div className={styles.leftPercent}>
+                  <ThumbsUp size={12} strokeWidth={2} />
+                  <span>{likePercent}%</span>
+                </div>
+              )}
+
+              {totalCount > 0 && dislikePercent > 0 && (
+                <div className={styles.rightPercent}>
+                  <ThumbsDown size={12} strokeWidth={2} />
+                  <span>{dislikePercent}%</span>
+                </div>
+              )}
+            </div>
+          </>
         )}
-
-        <div className={styles.progressTrack}>
-          <div
-            className={styles.likeFill}
-            style={{ width: `${likePercent}%` }}
-          />
-          <div
-            className={styles.dislikeFill}
-            style={{ width: `${dislikePercent}%` }}
-          />
-
-          {totalCount > 0 && likePercent > 0 && (
-            <div className={styles.leftPercent}>
-              <ThumbsUp size={12} strokeWidth={2} />
-              <span>{likePercent}%</span>
-            </div>
-          )}
-
-          {totalCount > 0 && dislikePercent > 0 && (
-            <div className={styles.rightPercent}>
-              <ThumbsDown size={12} strokeWidth={2} />
-              <span>{dislikePercent}%</span>
-            </div>
-          )}
-        </div>
       </div>
 
       <motion.div
@@ -607,7 +658,9 @@ const RankingDetail: React.FC = () => {
                 <p className={styles.authorName}>
                   {postData.author?.nickname ?? "닉네임"}
                 </p>
-                <p className={styles.contentText}>{postData.content}</p>
+                <p className={styles.contentText}>
+                  {postData.content || "코디 설명이 없습니다."}
+                </p>
               </div>
 
               <div className={styles.sheetActions}>
@@ -642,70 +695,6 @@ const RankingDetail: React.FC = () => {
               </div>
             </div>
 
-            <div className={styles.sectionDivider} />
-
-            <div className={styles.feedbackHeader}>
-              <h3 className={styles.feedbackTitle}>피드백</h3>
-            </div>
-
-            <div className={styles.feedbackPanel}>
-              <div className={styles.feedbackSummaryRow}>
-                <span className={styles.totalVoteCount}>총 {totalCount}표</span>
-              </div>
-
-              <div className={styles.feedbackProgressTrack}>
-                <div
-                  className={styles.feedbackLikeFill}
-                  style={{ width: `${likePercent}%` }}
-                />
-                <div
-                  className={styles.feedbackDislikeFill}
-                  style={{ width: `${dislikePercent}%` }}
-                />
-
-                {totalCount > 0 && likePercent > 0 && (
-                  <div className={styles.feedbackLeftPercent}>
-                    <ThumbsUp size={12} strokeWidth={2} />
-                    <span>{likePercent}%</span>
-                  </div>
-                )}
-
-                {totalCount > 0 && dislikePercent > 0 && (
-                  <div className={styles.feedbackRightPercent}>
-                    <ThumbsDown size={12} strokeWidth={2} />
-                    <span>{dislikePercent}%</span>
-                  </div>
-                )}
-              </div>
-
-              {hasStructuredFeedback && (
-                <div
-                  className={`${styles.structuredFeedbackGrid} ${
-                    structuredFeedback.likeRows.length === 0 ||
-                    structuredFeedback.dislikeRows.length === 0
-                      ? styles.structuredFeedbackGridSingle
-                      : ""
-                  }`}
-                >
-                  {structuredFeedback.likeRows.length > 0 && (
-                    <StructuredFeedbackColumn
-                      title="좋아요 피드백"
-                      side="LIKE"
-                      rows={structuredFeedback.likeRows}
-                    />
-                  )}
-
-                  {structuredFeedback.dislikeRows.length > 0 && (
-                    <StructuredFeedbackColumn
-                      title="싫어요 피드백"
-                      side="DISLIKE"
-                      rows={structuredFeedback.dislikeRows}
-                    />
-                  )}
-                </div>
-              )}
-            </div>
-
             {keywordChips.length > 0 && (
               <div className={styles.keywordLaneSection}>
                 <div className={styles.keywordLane}>
@@ -720,6 +709,64 @@ const RankingDetail: React.FC = () => {
 
             <div className={styles.sectionDivider} />
 
+            <div className={styles.sectionHeaderRow}>
+              <h3 className={styles.sectionTitle}>평가</h3>
+              <span className={styles.sectionMetaText}>
+                {formatCount(totalCount)}명 참여
+              </span>
+            </div>
+
+            <div className={styles.evaluationSummaryRow}>
+              <div
+                className={`${styles.evaluationSummaryItem} ${styles.evaluationSummaryLike}`}
+              >
+                <ThumbsUp size={13} strokeWidth={2.2} />
+                <span>{likePercent}%</span>
+              </div>
+
+              <div
+                className={`${styles.evaluationSummaryItem} ${styles.evaluationSummaryDislike}`}
+              >
+                <ThumbsDown size={13} strokeWidth={2.2} />
+                <span>{dislikePercent}%</span>
+              </div>
+            </div>
+
+            <div className={styles.evaluationTrack}>
+              <div
+                className={styles.evaluationLikeFill}
+                style={{ width: `${likePercent}%` }}
+              />
+              <div
+                className={styles.evaluationDislikeFill}
+                style={{ width: `${dislikePercent}%` }}
+              />
+            </div>
+
+            <div className={styles.sectionDivider} />
+
+            <div className={styles.sectionHeaderRow}>
+              <h3 className={styles.sectionTitle}>피드백</h3>
+            </div>
+
+            <div className={styles.feedbackGrid}>
+              <FeedbackPanel
+                title="좋아요"
+                side="LIKE"
+                count={likeCount}
+                rows={structuredFeedback.likeRows}
+              />
+
+              <FeedbackPanel
+                title="싫어요"
+                side="DISLIKE"
+                count={dislikeCount}
+                rows={structuredFeedback.dislikeRows}
+              />
+            </div>
+
+            <div className={styles.sectionDivider} />
+
             <div className={styles.outfitHeaderRow}>
               <h3 className={styles.outfitTitle}>착용 아이템</h3>
             </div>
@@ -728,33 +775,31 @@ const RankingDetail: React.FC = () => {
               {outfitItems.length > 0 ? (
                 outfitItems.map((item, index) => (
                   <div key={item.id ?? index} className={styles.outfitCard}>
-                    <div className={styles.outfitCardBox}>
-                      <div className={styles.outfitCategoryBox}>
+                    <div
+                      className={`${styles.outfitField} ${styles.outfitCategoryField}`}
+                    >
+                      <div className={styles.outfitCategoryInner}>
                         <Tag
                           size={13}
                           strokeWidth={2}
                           className={styles.outfitCategoryIcon}
                         />
-                        <span className={styles.outfitCategoryText}>
+                        <span className={styles.outfitFieldValue}>
                           {formatCategoryLabel(item.category)}
                         </span>
                       </div>
+                    </div>
 
-                      <div className={styles.outfitInfoRow}>
-                        <span className={styles.outfitInfoLabel}>상품명</span>
-                        <span className={styles.outfitInfoValue}>
-                          {item.itemName || "상품 이름 미등록"}
-                        </span>
-                      </div>
+                    <div className={styles.outfitField}>
+                      <span className={styles.outfitFieldValue}>
+                        {item.brand || "브랜드 미등록"}
+                      </span>
+                    </div>
 
-                      <div className={styles.outfitInfoDivider} />
-
-                      <div className={styles.outfitInfoRow}>
-                        <span className={styles.outfitInfoLabel}>브랜드</span>
-                        <span className={styles.outfitInfoValue}>
-                          {item.brand || "브랜드 미등록"}
-                        </span>
-                      </div>
+                    <div className={styles.outfitField}>
+                      <span className={styles.outfitFieldValue}>
+                        {item.itemName || "상품 이름 미등록"}
+                      </span>
                     </div>
                   </div>
                 ))
