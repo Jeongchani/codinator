@@ -68,46 +68,26 @@
 }
 
 .voteGraphArea {
-  @apply absolute left-1/2 -translate-x-1/2 z-30 w-full flex justify-center pointer-events-none;
-  bottom: 58px;
-}
-
-.voteGraphShell {
-  @apply relative w-[334px] rounded-[999px] px-[10px] py-[7px];
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow:
-    0 4px 10px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
-}
-
-.voteGraphShell::after {
-  content: '';
-  @apply absolute left-1/2 -translate-x-1/2;
-  bottom: -9px;
-  width: 235px;
-  height: 16px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.14);
-  filter: blur(12px);
-  z-index: -1;
+  @apply absolute left-1/2 -translate-x-1/2 z-30 w-[334px] pointer-events-none;
+  bottom: 118px;
 }
 
 .progressTrack {
   @apply relative w-full h-[18px] rounded-full overflow-hidden;
   background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .likeFill {
   @apply absolute left-0 top-0 h-full rounded-l-full;
-  background: linear-gradient(90deg, rgba(234, 138, 120, 0.92) 0%, rgba(239, 154, 139, 0.9) 100%);
+  background: linear-gradient(90deg, rgba(234, 138, 120, 0.72) 0%, rgba(239, 154, 139, 0.72) 100%);
 }
 
 .dislikeFill {
   @apply absolute right-0 top-0 h-full rounded-r-full;
-  background: linear-gradient(90deg, rgba(143, 150, 200, 0.92) 0%, rgba(119, 129, 188, 0.9) 100%);
+  background: linear-gradient(90deg, rgba(143, 150, 200, 0.72) 0%, rgba(119, 129, 188, 0.72) 100%);
 }
 
 .leftPercent {
