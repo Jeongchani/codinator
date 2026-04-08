@@ -718,11 +718,11 @@ const RankingDetail: React.FC = () => {
               </div>
             )}
 
+            <div className={styles.sectionDivider} />
+
             <div className={styles.outfitHeaderRow}>
               <h3 className={styles.outfitTitle}>착용 아이템</h3>
             </div>
-
-            <div className={styles.sectionDivider} />
 
             <div className={styles.itemScroll}>
               {outfitItems.length > 0 ? (
