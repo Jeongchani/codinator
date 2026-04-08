@@ -127,21 +127,45 @@ export const resolveAssetUrl = (url?: string | null): string => {
     return "";
   }
 
-  if (/^https?:\/\//.test(url) || url.startsWith("data:") || url.startsWith("blob:")) {
+  if (url.startsWith("data:") || url.startsWith("blob:")) {
     return url;
   }
 
-  const apiServerOrigin = resolveApiServerOrigin();
-
   if (url.startsWith("/uploads/")) {
+    if (import.meta.env.DEV) {
+      return url;
+    }
+
+    const apiServerOrigin = resolveApiServerOrigin();
     return `${apiServerOrigin}${url}`;
   }
 
+  if (/^https?:\/\//.test(url)) {
+    if (import.meta.env.DEV) {
+      try {
+        const parsed = new URL(url);
+
+        if (parsed.pathname.startsWith("/uploads/")) {
+          return parsed.pathname;
+        }
+      } catch {
+        return url;
+      }
+    }
+
+    return url;
+  }
+
   if (url.startsWith("/")) {
+    if (import.meta.env.DEV) {
+      return url;
+    }
+
     if (ASSET_BASE_URL) {
       return `${trimTrailingSlash(ASSET_BASE_URL)}${url}`;
     }
 
+    const apiServerOrigin = resolveApiServerOrigin();
     return `${apiServerOrigin}${url}`;
   }
 
