@@ -50,9 +50,9 @@ type BrushPreset = {
 };
 
 const BRUSH_PRESETS: BrushPreset[] = [
-  { id: "s", size: 28, dot: 10, block: 10 },
+  { id: "s", size: 28, dot: 10, block: 18 },
   { id: "m", size: 52, dot: 18, block: 18 },
-  { id: "l", size: 84, dot: 26, block: 26 },
+  { id: "l", size: 84, dot: 26, block: 18 },
 ];
 
 const wearTypeOptions: WearType[] = [
@@ -176,6 +176,9 @@ function ImgCompare({
   return (
     <div className={styles.compareStack}>
       <CompareImage label="원본" imageUrl={originalUrl} />
+
+      <div className={styles.compareDivider} />
+
       {aiUrl && !aiFailed ? (
         <CompareImage label="AI 블러" imageUrl={aiUrl} ai />
       ) : (
@@ -188,11 +191,15 @@ function ImgCompare({
         </div>
       )}
 
-      {manualPreview && <CompareImage label="수동 블러" imageUrl={manualPreview} />}
+      {manualPreview && (
+        <>
+          <div className={styles.compareDivider} />
+          <CompareImage label="수동 블러" imageUrl={manualPreview} />
+        </>
+      )}
     </div>
   );
 }
-
 function buildPixelatedCanvas(sourceCanvas: HTMLCanvasElement, block: number) {
   const width = sourceCanvas.width;
   const height = sourceCanvas.height;
@@ -584,7 +591,6 @@ function ManualBlurEditor({
         </button>
 
         <div className={styles.sizeGroup}>
-          <span className={styles.sizeGroupLabel}>블러 크기</span>
           <div className={styles.sizeDots}>
             {BRUSH_PRESETS.map((preset) => {
               const active = brushSize === preset.size;

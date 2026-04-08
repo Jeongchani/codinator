@@ -234,25 +234,23 @@
 
 /* compare */
 .compareStack {
-  @apply flex flex-col gap-4;
+  @apply flex flex-col;
 }
 
 .compareImageWrap {
-  @apply relative;
+  @apply flex flex-col items-start gap-2;
 }
-
 .compareFloatingLabel {
-  @apply absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold text-white;
-  background: rgba(0, 0, 0, 0.72);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  @apply inline-flex items-center gap-1.5 whitespace-nowrap text-[14px] font-bold leading-5 text-neutral-900;
 }
 
 .compareOnlyImage {
   @apply block w-full rounded-[24px] bg-neutral-100 object-contain;
   height: 260px;
 }
-
+.compareDivider {
+  @apply my-4 h-px w-full bg-neutral-300;
+}
 .comparePlaceholder {
   @apply flex w-full items-center justify-center rounded-[24px] bg-red-50 text-[13px] text-red-500;
   height: 260px;
@@ -276,11 +274,14 @@
 }
 
 .manualToolbar {
-  @apply flex flex-wrap items-center gap-2;
+  @apply flex items-center gap-2;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 
 .toolButton {
-  @apply h-[42px] rounded-full bg-white px-4 text-[14px] font-semibold text-neutral-700 transition border border-transparent;
+  @apply h-[38px] shrink-0 rounded-full border border-transparent bg-white px-3 text-[13px] font-semibold text-neutral-700 transition;
+  min-width: 58px;
 }
 
 .toolButtonBlue {
@@ -292,19 +293,15 @@
 }
 
 .sizeGroup {
-  @apply flex flex-1 min-w-0 items-center gap-2 rounded-full bg-white px-3 py-2;
-}
-
-.sizeGroupLabel {
-  @apply shrink-0 text-[12px] font-semibold text-neutral-500;
+  @apply flex h-[38px] min-w-0 flex-1 items-center justify-center rounded-full bg-white px-2;
 }
 
 .sizeDots {
-  @apply flex items-center gap-2;
+  @apply flex items-center gap-1;
 }
 
 .sizeDotButton {
-  @apply flex h-8 w-8 items-center justify-center rounded-full bg-transparent transition;
+  @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-transparent transition;
 }
 
 .sizeDotButtonActive {
@@ -316,7 +313,7 @@
 }
 
 .undoIconButton {
-  @apply flex h-[42px] w-[42px] items-center justify-center rounded-full border border-neutral-300 bg-white text-neutral-700 disabled:cursor-not-allowed disabled:opacity-50;
+  @apply flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full border border-neutral-300 bg-white text-neutral-700 disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 .editorError {
