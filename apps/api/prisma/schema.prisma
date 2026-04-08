@@ -9,8 +9,7 @@ datasource db {
 
 enum UserRole {
   USER
-  SUPER_ADMIN
-  OPERATOR_ADMIN
+  ADMIN
 }
 
 enum UserStatus {
@@ -75,42 +74,6 @@ enum ReportStatus {
   REJECTED
 }
 
-enum AdminActionTargetType {
-  POST
-  POST_REPORT
-  USER_REPORT
-  USER
-  USER_SANCTION
-}
-
-enum AdminActionType {
-  CREATED
-  RESOLVED
-  REJECTED
-  REOPENED
-
-  HIDDEN
-  UNHIDDEN
-  DELETED
-  RESTORED
-
-  SANCTION_UPDATED
-  SANCTION_ENDED
-  USER_STATUS_UPDATED
-}
-
-enum ReportTargetType {
-  POST_REPORT
-  USER_REPORT
-}
-
-enum ReportHistoryActionType {
-  CREATED
-  RESOLVED
-  REJECTED
-  REOPENED
-}
-
 enum BlurMethod {
   NONE
   AUTO
@@ -125,94 +88,11 @@ enum AiBlurStatus {
   FAILED
 }
 
-enum SocialProvider {
-  GOOGLE
-  KAKAO
-  NAVER
-}
-
-enum ThemeMode {
-  LIGHT
-  DARK
-}
-
-enum PushDevice {
-  IOS
-  ANDROID
-  WEB
-}
-
-enum PhoneVerificationPurpose {
-  SIGN_UP
-  PHONE_CHANGE
-  PASSWORD_RESET
-}
-
-enum PhoneVerificationStatus {
-  PENDING
-  VERIFIED
-  USED
-  EXPIRED
-  FAILED
-}
-
-enum SanctionType {
-  TEMP_SUSPENSION
-  PERMANENT_BAN
-  POST_RESTRICTION
-}
-
-enum ImageAssetSourceType {
-  POST
-  SEARCH_QUERY
-}
-
-enum ImageAnalysisPurpose {
-  POST_INDEX
-  SEARCH_QUERY
-  REINDEX
-}
-
-enum ImageAnalysisStatus {
-  PENDING
-  PROCESSING
-  SUCCEEDED
-  FAILED
-  SKIPPED
-  STALE
-}
-
-enum ImageVectorScope {
-  OUTFIT
-  GARMENT
-}
-
-enum AiGarmentCategory {
-  TOP
-  BOTTOM
-  OUTER
-  SHOES
-  BAG
-  ACCESSORY
-  DRESS
-  ETC
-}
-
-enum SearchHistoryType {
-  TEXT
-  IMAGE
-}
-
-enum ImageSearchMode {
-  FULL_OUTFIT
-  SINGLE_ITEM
-}
-
 model User {
   id           Int        @id @default(autoincrement())
   email        String     @unique @db.VarChar(100)
   nickname     String     @unique @db.VarChar(30)
-  passwordHash String?    @map("password_hash") @db.VarChar(255)
+  passwordHash String     @map("password_hash") @db.VarChar(255)
   gender       Gender
   birthDate    DateTime   @map("birth_date") @db.Date
   phoneNumber  String     @unique @map("phone_number") @db.VarChar(20)
@@ -222,28 +102,17 @@ model User {
   updatedAt    DateTime   @updatedAt @map("updated_at")
   deletedAt    DateTime?  @map("deleted_at")
 
-  posts               Post[]           @relation("PostAuthor")
-  hiddenPosts         Post[]           @relation("PostHiddenBy")
+  posts               Post[]       @relation("PostAuthor")
+  hiddenPosts         Post[]       @relation("PostHiddenBy")
   votes               Vote[]
   sessions            UserSession[]
-  closedEvaluations   Evaluation[]     @relation("EvaluationClosedBy")
+  closedEvaluations   Evaluation[] @relation("EvaluationClosedBy")
   bookmarks           Bookmark[]
-  reports             Report[]         @relation("ReportReporter")
-  reviewedReports     Report[]         @relation("ReportReviewedBy")
-  userReports         UserReport[]     @relation("UserReportReporter")
-  receivedUserReports UserReport[]     @relation("UserReportTarget")
-  reviewedUserReports UserReport[]     @relation("UserReportReviewedBy")
-  adminActionLogs     AdminActionLog[] @relation("AdminActionLogAdmin")
-  reportHistories     ReportHistory[]  @relation("ReportHistoryActor")
-
-  socialAccounts       SocialAccount[]
-  searchHistories      SearchHistory[]
-  imageAssets          ImageAsset[]
-  phoneVerifications   PhoneVerification[]
-  setting              Setting?
-  pushTokens           PushToken[]
-  sanctions            UserSanction[] @relation("SanctionedUser")
-  processedSanctions   UserSanction[] @relation("SanctionProcessor")
+  reports             Report[]     @relation("ReportReporter")
+  reviewedReports     Report[]     @relation("ReportReviewedBy")
+  userReports         UserReport[] @relation("UserReportReporter")
+  receivedUserReports UserReport[] @relation("UserReportTarget")
+  reviewedUserReports UserReport[] @relation("UserReportReviewedBy")
 
   @@index([status])
   @@map("users")
@@ -269,94 +138,6 @@ model UserSession {
   @@map("user_sessions")
 }
 
-model SocialAccount {
-  id             Int            @id @default(autoincrement())
-  userId         Int            @map("user_id")
-  provider       SocialProvider
-  providerUserId String         @map("provider_user_id") @db.VarChar(100)
-  providerEmail  String?        @map("provider_email") @db.VarChar(255)
-  createdAt      DateTime       @default(now()) @map("created_at")
-  updatedAt      DateTime       @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerUserId])
-  @@unique([userId, provider])
-  @@index([userId])
-  @@map("social_accounts")
-}
-
-model PhoneVerification {
-  id                       Int                      @id @default(autoincrement())
-  userId                   Int?                     @map("user_id")
-  phoneNumber              String                   @map("phone_number") @db.VarChar(20)
-  purpose                  PhoneVerificationPurpose
-  verificationCodeHash     String                   @map("verification_code_hash") @db.VarChar(255)
-  status                   PhoneVerificationStatus
-  expiresAt                DateTime                 @map("expires_at")
-  verifiedAt               DateTime?                @map("verified_at")
-  usedAt                   DateTime?                @map("used_at")
-  resendCount              Int                      @map("resend_count")
-  failedCount              Int                      @map("failed_count")
-  blockedUntil             DateTime?                @map("blocked_until")
-  createdAt                DateTime                 @default(now()) @map("created_at")
-  updatedAt                DateTime                 @updatedAt @map("updated_at")
-
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@index([phoneNumber, purpose, createdAt])
-  @@index([userId])
-  @@map("phone_verifications")
-}
-
-model Setting {
-  id                     Int       @id @default(autoincrement())
-  userId                 Int       @unique @map("user_id")
-  theme                  ThemeMode @default(LIGHT)
-  pushEnabled            Boolean   @default(true) @map("push_enabled")
-  servicePushEnabled     Boolean   @default(true) @map("service_push_enabled")
-  marketingPushEnabled   Boolean   @default(false) @map("marketing_push_enabled")
-  createdAt              DateTime  @default(now()) @map("created_at")
-  updatedAt              DateTime  @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("settings")
-}
-
-model PushToken {
-  id         Int          @id @default(autoincrement())
-  userId     Int          @map("user_id")
-  pushToken  String       @unique @map("push_token") @db.VarChar(255)
-  deviceOs   PushDevice   @map("device_os")
-  isActive   Boolean      @default(true) @map("is_active")
-  createdAt  DateTime     @default(now()) @map("created_at")
-  updatedAt  DateTime     @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, isActive])
-  @@map("push_tokens")
-}
-
-model UserSanction {
-  id                   Int            @id @default(autoincrement())
-  sanctionedUserId     Int            @map("sanctioned_user_id")
-  processedById        Int            @map("processed_by_id")
-  type                 SanctionType
-  reason               String         @db.VarChar(255)
-  startsAt             DateTime       @map("starts_at")
-  endsAt               DateTime?      @map("ends_at") 
-  createdAt            DateTime       @default(now()) @map("created_at")
-  updatedAt            DateTime       @updatedAt @map("updated_at")
-
-  sanctionedUser User @relation("SanctionedUser", fields: [sanctionedUserId], references: [id], onDelete: Cascade)
-  processedBy User @relation("SanctionProcessor", fields: [processedById], references: [id], onDelete: Restrict)
-
-  @@index([processedById])
-  @@map("user_sanctions")
-}
-
 model Post {
   id           Int        @id @default(autoincrement())
   authorId     Int        @map("author_id")
@@ -370,16 +151,15 @@ model Post {
   updatedAt    DateTime   @updatedAt @map("updated_at")
   deletedAt    DateTime?  @map("deleted_at")
 
-  author          User            @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Restrict)
-  hiddenBy        User?           @relation("PostHiddenBy", fields: [hiddenById], references: [id], onDelete: SetNull)
-  images          PostImage[]
-  outfitItems     PostOutfit[]
-  postKeywords    PostKeyword[]
-  bookmarks       Bookmark[]
-  reports         Report[]
-  evaluation      Evaluation?
-  rankingDetails  RankingDetail[]
-  postSearchIndex PostSearchIndex?
+  author         User            @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  hiddenBy       User?           @relation("PostHiddenBy", fields: [hiddenById], references: [id], onDelete: SetNull)
+  images         PostImage[]
+  outfitItems    PostOutfit[]
+  postKeywords   PostKeyword[]
+  bookmarks      Bookmark[]
+  reports        Report[]
+  evaluation     Evaluation?
+  rankingDetails RankingDetail[]
 
   @@index([authorId, status, createdAt])
   @@index([status, createdAt])
@@ -390,21 +170,23 @@ model Post {
 }
 
 model PostImage {
-  id           Int      @id @default(autoincrement())
-  postId       Int      @map("post_id")
-  imageAssetId Int      @map("image_asset_id")
-  sortOrder    Int      @default(0) @map("sort_order")
-  isPrimary    Boolean  @default(false) @map("is_primary")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id                Int          @id @default(autoincrement())
+  postId            Int          @map("post_id")
+  storageKey        String?      @map("storage_key") @db.VarChar(255)
+  originalImageUrl  String       @map("original_image_url") @db.VarChar(500)
+  thumbnailUrl      String?      @map("thumbnail_url") @db.VarChar(500)
+  sortOrder         Int          @default(0) @map("sort_order")
+  isPrimary         Boolean      @default(false) @map("is_primary")
+  processedImageUrl String?      @map("processed_image_url") @db.VarChar(500)
+  blurMethod        BlurMethod   @default(NONE) @map("blur_method")
+  aiBlurStatus      AiBlurStatus @default(NONE) @map("ai_blur_status")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
 
-  post       Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
-  imageAsset ImageAsset @relation(fields: [imageAssetId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@unique([postId, sortOrder])
-  @@unique([postId, imageAssetId])
   @@index([postId, isPrimary])
-  @@index([imageAssetId])
   @@map("post_images")
 }
 
@@ -484,7 +266,6 @@ model Report {
   status       ReportStatus @default(PENDING)
   reviewedAt   DateTime?    @map("reviewed_at")
   reviewedById Int?         @map("reviewed_by_id")
-  reviewReason String?      @map("review_reason") @db.VarChar(300)
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
@@ -511,7 +292,6 @@ model UserReport {
   status         ReportStatus @default(PENDING)
   reviewedAt     DateTime?    @map("reviewed_at")
   reviewedById   Int?         @map("reviewed_by_id")
-  reviewReason   String?      @map("review_reason") @db.VarChar(300)
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
@@ -524,41 +304,6 @@ model UserReport {
   @@index([reviewedById])
   @@index([reporterId, reportedUserId, status])
   @@map("user_reports")
-}
-
-model AdminActionLog {
-  id          Int                   @id @default(autoincrement())
-  adminId     Int                   @map("admin_id")
-  targetType  AdminActionTargetType @map("target_type")
-  targetId    Int                   @map("target_id")
-  actionType  AdminActionType       @map("action_type")
-  reason      String?               @db.VarChar(300)
-  metadataJson Json?                @map("metadata_json")
-  createdAt   DateTime              @default(now()) @map("created_at")
-
-  admin       User                  @relation("AdminActionLogAdmin", fields: [adminId], references: [id], onDelete: Restrict)
-
-  @@index([adminId, createdAt])
-  @@index([targetType, targetId, createdAt])
-  @@index([actionType, createdAt])
-  @@map("admin_action_logs")
-}
-
-model ReportHistory {
-  id          Int                     @id @default(autoincrement())
-  targetType  ReportTargetType        @map("target_type")
-  targetId    Int                     @map("target_id")
-  actorId     Int?                    @map("actor_id")
-  actionType  ReportHistoryActionType @map("action_type")
-  note        String?                 @db.VarChar(300)
-  createdAt   DateTime                @default(now()) @map("created_at")
-
-  actor       User?                   @relation("ReportHistoryActor", fields: [actorId], references: [id], onDelete: SetNull)
-
-  @@index([targetType, targetId, createdAt])
-  @@index([actorId, createdAt])
-  @@index([actionType, createdAt])
-  @@map("report_histories")
 }
 
 model Evaluation {
@@ -676,190 +421,4 @@ model RankingDetail {
   @@unique([rankingId, rank])
   @@index([postId])
   @@map("ranking_details")
-}
-
-model PostSearchIndex {
-  id                    Int      @id @default(autoincrement())
-  postId                Int      @unique @map("post_id")
-
-  authorNickname        String   @db.VarChar(30) @map("author_nickname")
-  searchText            String   @db.Text @map("search_text")
-
-  keywordCodes          String[] @default([]) @map("keyword_codes")
-  outfitCategories      String[] @default([]) @map("outfit_categories")
-  feedbackLikeCodes     String[] @default([]) @map("feedback_like_codes")
-  feedbackDislikeCodes  String[] @default([]) @map("feedback_dislike_codes")
-
-  likeRatio             Decimal  @db.Decimal(5, 4) @map("like_ratio")
-  isSearchable          Boolean  @default(false) @map("is_searchable")
-
-  createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @updatedAt @map("updated_at")
-  indexedAt             DateTime? @map("indexed_at")
-
-  post                  Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-
-  @@index([keywordCodes], type: Gin)
-  @@index([outfitCategories], type: Gin)
-  @@index([feedbackLikeCodes], type: Gin)
-  @@index([feedbackDislikeCodes], type: Gin)
-  @@map("post_search_index")
-}
-
-model ImageAsset {
-  id                Int                  @id @default(autoincrement())
-  ownerUserId       Int?                 @map("owner_user_id")
-
-  sourceType        ImageAssetSourceType @map("source_type")
-  storageKey        String?              @db.VarChar(255) @map("storage_key")
-
-  originalImageUrl  String               @db.VarChar(500) @map("original_image_url")
-  processedImageUrl String?              @db.VarChar(500) @map("processed_image_url")
-  thumbnailUrl      String?              @db.VarChar(500) @map("thumbnail_url")
-
-  mimeType          String?              @db.VarChar(100) @map("mime_type")
-  width             Int?
-  height            Int?
-
-  checksum          String?             @db.VarChar(128)
-  blurMethod        BlurMethod          @default(NONE) @map("blur_method")
-  aiBlurStatus      AiBlurStatus        @default(NONE) @map("ai_blur_status")
-
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-
-  ownerUser       User?              @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
-  postImages      PostImage[]
-  analysisRuns    ImageAnalysisRun[]
-  searchHistories SearchHistory[]
-
-  @@index([ownerUserId, sourceType, createdAt])
-  @@index([sourceType, createdAt])
-  @@index([checksum])
-  @@map("image_assets")
-}
-
-model ImageAnalysisRun {
-  id                  Int                  @id @default(autoincrement())
-  imageAssetId        Int                  @map("image_asset_id")
-  purpose             ImageAnalysisPurpose @default(POST_INDEX)
-  status              ImageAnalysisStatus  @default(PENDING)
-  isCurrent           Boolean              @default(true) @map("is_current")
-
-  pipelineVersion     String?              @map("pipeline_version") @db.VarChar(50)
-
-  parserModelName     String?              @map("parser_model_name") @db.VarChar(100)
-  parserModelVersion  String?              @map("parser_model_version") @db.VarChar(100)
-
-  embedModelName      String?              @map("embed_model_name") @db.VarChar(100)
-  embedModelVersion   String?              @map("embed_model_version") @db.VarChar(100)
-
-  captionModelName    String?              @map("caption_model_name") @db.VarChar(100)
-  captionModelVersion String?              @map("caption_model_version") @db.VarChar(100)
-
-  captionFallbackUsed Boolean              @default(false) @map("caption_fallback_used")
-  warnings            String[]             @default([])
-
-  imageWidth          Int?                 @map("image_width")
-  imageHeight         Int?                 @map("image_height")
-  faceDetected        Int?                 @map("face_detected")
-  blurred             Boolean?             @map("blurred")
-
-  caption             String?              @db.VarChar(500)
-  summaryTags         String[]             @default([]) @map("summary_tags")
-  rawResponseJson     Json?                @map("raw_response_json")
-
-  errorCode           String?              @map("error_code") @db.VarChar(100)
-  errorMessage        String?              @map("error_message") @db.VarChar(500)
-
-  startedAt           DateTime?            @map("started_at")
-  finishedAt          DateTime?            @map("finished_at")
-  createdAt           DateTime             @default(now()) @map("created_at")
-  updatedAt           DateTime             @updatedAt @map("updated_at")
-
-  imageAsset          ImageAsset           @relation(fields: [imageAssetId], references: [id], onDelete: Cascade)
-  garments            ImageGarment[]
-  vectors             ImageVector[]
-
-  @@index([imageAssetId, status])
-  @@index([imageAssetId, isCurrent])
-  @@map("image_analysis_runs")
-}
-
-model ImageGarment {
-  id                 Int               @id @default(autoincrement())
-  analysisRunId      Int               @map("analysis_run_id")
-  sortOrder          Int               @default(0) @map("sort_order")
-
-  parserLabel        String            @map("parser_label") @db.VarChar(50)
-  normalizedCategory AiGarmentCategory @map("normalized_category")
-
-  bboxJson           Json              @map("bbox_json")
-  confidence         Float
-  areaRatio          Float?            @map("area_ratio")
-
-  dominantColor      String?           @map("dominant_color") @db.VarChar(30)
-
-  colorTags          String[]          @default([]) @map("color_tags")
-  fitTags            String[]          @default([]) @map("fit_tags")
-  lengthTags         String[]          @default([]) @map("length_tags")
-  materialTags       String[]          @default([]) @map("material_tags")
-  styleTags          String[]          @default([]) @map("style_tags")
-  seasonTags         String[]          @default([]) @map("season_tags")
-  occasionTags       String[]          @default([]) @map("occasion_tags")
-
-  createdAt          DateTime          @default(now()) @map("created_at")
-  updatedAt          DateTime          @updatedAt @map("updated_at")
-
-  analysisRun        ImageAnalysisRun  @relation(fields: [analysisRunId], references: [id], onDelete: Cascade)
-  vectors            ImageVector[]
-
-  @@index([analysisRunId, sortOrder])
-  @@index([analysisRunId, normalizedCategory])
-  @@index([parserLabel])
-  @@map("image_garments")
-}
-
-model ImageVector {
-  id            Int              @id @default(autoincrement())
-  analysisRunId Int              @map("analysis_run_id")
-  garmentId     Int?             @map("garment_id")
-
-  targetScope   ImageVectorScope @map("target_scope")
-
-  modelName     String           @map("model_name") @db.VarChar(100)
-  modelVersion  String?          @map("model_version") @db.VarChar(100)
-
-  dimension     Int
-  vector        Unsupported("vector(512)")
-  isActive      Boolean          @default(true) @map("is_active")
-
-  createdAt     DateTime         @default(now()) @map("created_at")
-  updatedAt     DateTime         @updatedAt @map("updated_at")
-
-  analysisRun   ImageAnalysisRun @relation(fields: [analysisRunId], references: [id], onDelete: Cascade)
-  garment       ImageGarment?    @relation(fields: [garmentId], references: [id], onDelete: Cascade)
-
-  @@index([analysisRunId, targetScope])
-  @@index([garmentId])
-  @@map("image_vectors")
-}
-
-model SearchHistory {
-  id              Int               @id @default(autoincrement())
-  userId          Int               @map("user_id")
-  searchType      SearchHistoryType @map("search_type")
-  queryText       String?           @map("query_text") @db.VarChar(300)
-  imageAssetId    Int?              @map("image_asset_id")
-  imageSearchMode ImageSearchMode?  @map("image_search_mode")
-  resultCount     Int               @default(0) @map("result_count")
-  createdAt       DateTime          @default(now()) @map("created_at")
-
-  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  imageAsset      ImageAsset?       @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
-
-  @@index([userId, createdAt])
-  @@index([searchType, createdAt])
-  @@index([imageAssetId])
-  @@map("search_histories")
 }
