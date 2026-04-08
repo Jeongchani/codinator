@@ -1,6 +1,6 @@
 import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, Sparkles, Undo2 } from "lucide-react";
+import { ChevronLeft, Sparkles, Undo2, X } from "lucide-react";
 import type {
   CreatePostResponse,
   GarmentCategory,
@@ -718,6 +718,13 @@ export default function Upload() {
   const [approvedBlurMode, setApprovedBlurMode] = useState<"AUTO" | "MANUAL" | null>(null);
 
   const previewUrl = useMemo(() => approvedPreview || "", [approvedPreview]);
+  const visibleStatusMessage =
+  message &&
+  message !== "이미지와 설명을 입력하면 게시글을 등록할 수 있습니다." &&
+  message !== "AI 블러 결과가 적용되었습니다." &&
+  message !== "수동 블러가 적용되었습니다."
+    ? message
+    : "";
 
   const handleBack = () => {
     navigate(-1);
@@ -854,7 +861,7 @@ export default function Upload() {
     setApprovedPreview(resolveAssetUrl(uploadedImage.processedImageUrl || uploadedImage.originalImageUrl));
     setBlurDecisionOpen(false);
     setBlurStep("idle");
-    setMessage("AI 블러 결과가 적용되었습니다.");
+    setMessage("");
   };
 
   const handleOpenManualEditor = () => {
@@ -868,7 +875,7 @@ export default function Upload() {
     setApprovedPreview(previewDataUrl);
     setBlurDecisionOpen(false);
     setBlurStep("idle");
-    setMessage("수동 블러가 적용되었습니다.");
+    setMessage("");
   };
 
   const handleSubmit = async () => {
@@ -1007,9 +1014,9 @@ export default function Upload() {
             onClick={handleBack}
             aria-label="뒤로가기"
           >
-            <span className={styles.backTextIcon}>&lt;</span>
+            <ChevronLeft size={16} strokeWidth={2.8} />
           </button>
-
+          
           <button
             type="button"
             className={styles.editCircleButton}
@@ -1029,22 +1036,18 @@ export default function Upload() {
         </section>
 
         <section className={styles.contentSection}>
-          {approvedBlurMode && (
+          {uploadedImage && (
             <>
-              <div className={styles.blurApprovedText}>
-                현재 적용: {approvedBlurMode === "AUTO" ? "AI 자동 블러" : "수동 블러"}
-              </div>
               <div className={styles.blurActionArea}>
                 <button
                   type="button"
                   className={styles.blurCheckButton}
                   onClick={() => {
-                    if (!uploadedImage) return;
                     setBlurDecisionOpen(true);
                     setBlurStep("decision");
                   }}
                 >
-                  블러 결과 다시 보기
+                  블러 다시 처리하기
                 </button>
               </div>
               <div className={styles.divider} />
@@ -1155,7 +1158,6 @@ export default function Upload() {
             </div>
           </section>
 
-          <p className={styles.statusMessage}>{message}</p>
 
           <div className={styles.submitArea}>
             <button
@@ -1164,7 +1166,7 @@ export default function Upload() {
               onClick={handleSubmit}
               disabled={submitting}
             >
-              {submitting ? "처리 중..." : "수정 완료"}
+              {submitting ? "처리 중..." : "작성 완료"}
             </button>
           </div>
         </section>
@@ -1174,8 +1176,17 @@ export default function Upload() {
         <Modal onClose={() => setBlurDecisionOpen(false)}>
           {blurStep === "decision" && (
             <>
-              <div className={styles.modalHeaderCompact}>
+              <div className={styles.modalHeaderRow}>
                 <h3 className={styles.modalTitle}>블러 확인</h3>
+
+                <button
+                  type="button"
+                  className={styles.modalCloseButton}
+                  onClick={() => setBlurDecisionOpen(false)}
+                  aria-label="닫기"
+                >
+                  <X size={18} strokeWidth={2.4} />
+                </button>
               </div>
 
               <ImgCompare
@@ -1211,14 +1222,6 @@ export default function Upload() {
                   onClick={handleOpenManualEditor}
                 >
                   수동블러처리
-                </button>
-
-                <button
-                  type="button"
-                  className={styles.modalGhostButton}
-                  onClick={() => setBlurDecisionOpen(false)}
-                >
-                  닫기
                 </button>
               </div>
             </>

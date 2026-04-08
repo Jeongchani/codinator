@@ -13,13 +13,12 @@
 }
 
 .heroSection {
-  @apply relative w-full h-[258px] overflow-hidden bg-neutral-200;
+  @apply relative w-full h-[460px] overflow-hidden bg-neutral-200;
 }
 
 .heroImage {
-  @apply h-full w-full object-cover bg-neutral-100;
+  @apply h-full w-full object-contain bg-neutral-100;
 }
-
 .heroPlaceholder {
   @apply flex h-full w-full items-center justify-center bg-neutral-200;
 }
@@ -29,14 +28,13 @@
 }
 
 .headerCircleButton {
-  @apply absolute left-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full text-black;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+  @apply absolute left-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full text-white;
+  background: rgba(0, 0, 0, 0.42);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
 }
 
 .backTextIcon {
-  @apply text-[22px] font-semibold leading-none text-black;
-  transform: translateX(-1px);
+  display: none;
 }
 
 .editCircleButton {
@@ -382,4 +380,12 @@
 
 .editorBackButton {
   @apply flex h-[46px] w-full items-center justify-center gap-1 rounded-full bg-neutral-200 px-4 text-[14px] font-medium text-neutral-700;
+}
+.modalHeaderRow {
+  @apply mb-3 flex items-center justify-between;
+}
+
+.modalCloseButton {
+  @apply flex h-8 w-8 items-center justify-center rounded-full bg-white text-neutral-700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
