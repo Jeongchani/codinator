@@ -8,6 +8,7 @@ import {
 } from "framer-motion";
 import {
   Bookmark,
+  ChevronsRight,
   ChevronsUp,
   Siren,
   Tag,
@@ -541,6 +542,17 @@ const RankingDetail: React.FC = () => {
     }
   };
 
+  const handleGoToUserFeed = () => {
+    const authorUserId = postData?.author?.userId;
+
+    if (!authorUserId) {
+      window.alert("유저 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    navigate(`/user/${authorUserId}/feed`);
+  };
+
   if (loading) {
     return <div className={styles.loading}>데이터 로드 중...</div>;
   }
@@ -657,9 +669,12 @@ const RankingDetail: React.FC = () => {
           <div className={styles.sheetContent}>
             <div className={styles.sheetHeader}>
               <div className={styles.sheetHeaderCopy}>
-                <p className={styles.authorName}>
-                  {postData.author?.nickname ?? "닉네임"}
-                </p>
+                <div className={styles.authorMetaRow}>
+                  <p className={styles.authorName}>
+                    {postData.author?.nickname ?? "닉네임"}
+                  </p>
+                </div>
+
                 <p className={styles.contentText}>
                   {postData.content || "코디 설명이 없습니다."}
                 </p>
@@ -698,17 +713,34 @@ const RankingDetail: React.FC = () => {
               </div>
             </div>
 
-            {keywordChips.length > 0 && (
-              <div className={styles.keywordLaneSection}>
-                <div className={styles.keywordLane}>
-                  {keywordChips.map((keyword) => (
-                    <span key={keyword} className={styles.keywordChip}>
-                      {formatKeywordLabel(keyword)}
-                    </span>
-                  ))}
-                </div>
+            <div className={styles.keywordLaneSection}>
+              <div className={styles.keywordLaneRow}>
+                {keywordChips.length > 0 && (
+                  <div className={styles.keywordLane}>
+                    {keywordChips.map((keyword) => (
+                      <span key={keyword} className={styles.keywordChip}>
+                        {formatKeywordLabel(keyword)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  className={styles.feedLinkButton}
+                  onClick={handleGoToUserFeed}
+                >
+                  <span className={styles.feedLinkButtonText}>
+                    피드 보러가기
+                  </span>
+                  <ChevronsRight
+                    size={14}
+                    strokeWidth={2.5}
+                    className={styles.feedLinkButtonIcon}
+                  />
+                </button>
               </div>
-            )}
+            </div>
 
             <div className={styles.sectionDivider} />
 
@@ -820,7 +852,7 @@ const RankingDetail: React.FC = () => {
             defaultTab="post"
             postTarget={{
               id: postData.postId,
-              displayText: postData.content,
+              displayText: toSafeString(postData.content),
             }}
             userTarget={{
               id: postData.author.userId,

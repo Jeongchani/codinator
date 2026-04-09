@@ -1,9 +1,9 @@
 .container {
-  @apply w-[375px] h-[812px] mx-auto bg-[#f5f5f5] text-neutral-900 overflow-hidden shadow-sm;
+  @apply w-[375px] h-[812px] mx-auto overflow-hidden bg-white;
 }
 
 .scrollArea {
-  @apply h-full overflow-y-auto bg-[#f5f5f5];
+  @apply h-full overflow-y-auto bg-white;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -12,189 +12,574 @@
   display: none;
 }
 
+.loadingBox {
+  @apply mx-4 mt-10 rounded-[24px] bg-white px-5 py-8 text-center text-[15px] font-medium text-neutral-600 shadow-[0_8px_20px_rgba(0,0,0,0.05)];
+}
+
 .heroSection {
-  @apply relative;
+  @apply relative w-full;
+}
+
+.heroMediaFrame {
+  @apply relative h-[460px] w-full overflow-hidden bg-neutral-200;
 }
 
 .heroImage {
-  @apply relative w-full h-[430px] bg-[#cfcfcf];
+  @apply h-full w-full object-contain bg-neutral-100;
+}
+
+.heroPlaceholder {
+  @apply flex h-full w-full items-center justify-center bg-neutral-200 px-6 text-center;
+}
+
+.heroPlaceholderText {
+  @apply text-[14px] leading-5 text-neutral-500;
 }
 
 .backButton {
-  @apply absolute top-[18px] right-[18px] z-10
-    w-9 h-9 rounded-full bg-white shadow-md
-    flex items-center justify-center text-black;
+  @apply absolute left-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full text-white;
+  background: rgba(0, 0, 0, 0.42);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
-.imageEditButton {
-  @apply absolute bottom-[18px] right-[18px] z-10
-    w-12 h-12 rounded-full bg-white shadow-md
-    flex items-center justify-center text-black;
+.contentPanel {
+  @apply bg-white px-4 pt-3 pb-[140px];
 }
 
-.infoSection {
-  @apply px-4 pt-4 flex items-start justify-between gap-3 bg-[#f5f5f5];
+.sheetHeader {
+  @apply mb-4;
 }
 
-.infoText {
-  @apply flex-1 min-w-0;
+.sheetHeaderCopy {
+  @apply min-w-0;
 }
 
-.title {
-  @apply text-[20px] leading-7 font-semibold tracking-[-0.02em] text-neutral-900;
+.titleRow {
+  @apply mb-1 flex items-center justify-between gap-3;
 }
 
-.description {
-  @apply mt-1 text-[12px] leading-[18px] text-neutral-500 whitespace-pre-line;
+.mainTitle {
+  @apply text-[20px] font-bold leading-7 text-neutral-900;
 }
 
-.editButton {
-  @apply mt-1 min-w-[78px] h-9 px-4 rounded-full bg-black text-white
-    text-[12px] font-medium leading-none flex items-center justify-center;
+.dateText {
+  @apply mb-2 text-[12px] leading-4 text-neutral-400;
 }
 
-.keywordSection {
-  @apply px-4 pt-4;
+.contentText {
+  @apply text-[14px] leading-[20px] text-neutral-700 whitespace-pre-line;
 }
 
-.keywordRow {
-  @apply flex flex-wrap gap-[6px];
+.keywordLaneSection {
+  @apply mb-4;
 }
 
-.conceptChip {
-  @apply inline-flex items-center justify-center
-    h-6 px-2 rounded-full bg-[#e8e8e8]
-    text-[10px] leading-none text-neutral-700;
-}
-
-.divider {
-  @apply mx-4 mt-4 h-px bg-neutral-300;
-}
-
-.feedbackScoreSection {
-  @apply px-4 pt-4;
-}
-
-.sectionTitle {
-  @apply text-[15px] font-semibold leading-6 text-neutral-900;
-}
-
-.scoreBlock {
-  @apply mt-3;
-}
-
-.likeRow {
-  @apply flex items-end gap-3;
-}
-
-.likeBarTrack {
-  @apply flex-1 h-5 rounded-sm bg-[#d9d9d9] overflow-hidden;
-}
-
-.likeBarFill {
-  @apply h-full rounded-sm bg-neutral-900;
-}
-
-.likePercent {
-  @apply min-w-[64px] flex items-end justify-end leading-none;
-}
-
-.likePercentNumber {
-  @apply text-[36px] font-semibold tracking-[-0.03em] text-neutral-900;
-}
-
-.likePercentUnit {
-  @apply ml-[2px] mb-[4px] text-[15px] font-semibold text-neutral-900;
-}
-
-.dislikeRow {
-  @apply mt-4 flex items-center gap-3;
-}
-
-.dislikeBarTrack {
-  @apply w-[78%] h-5 rounded-sm bg-[#d9d9d9] overflow-hidden;
-}
-
-.dislikeBarFill {
-  @apply h-full rounded-sm bg-neutral-500;
-}
-
-.dislikePercent {
-  @apply text-[12px] font-semibold text-neutral-700;
-}
-
-.feedbackKeywordSection {
-  @apply px-4 pt-5;
-}
-
-.feedbackList {
-  @apply mt-3 flex flex-col gap-3;
-}
-
-.feedbackItem {
-  @apply flex items-center gap-3;
-}
-
-.feedbackIconWrap {
-  @apply w-8 h-8 rounded-full bg-white shadow-md
-    flex items-center justify-center text-black shrink-0;
-}
-
-.feedbackChips {
-  @apply flex flex-wrap gap-[6px];
-}
-
-.feedbackChip {
-  @apply inline-flex items-center justify-center
-    min-h-7 px-3 rounded-full bg-[#e3e3e3]
-    text-[10px] leading-none text-neutral-700;
-}
-
-.itemSection {
-  @apply px-4 pt-4 pb-8;
-}
-
-.itemHeader {
-  @apply flex items-center justify-between;
-}
-
-.moreButton {
-  @apply flex items-center gap-0.5 text-[11px] text-neutral-500 leading-none;
-}
-
-.itemScroller {
-  @apply mt-3 flex gap-3 overflow-x-auto pb-1;
+.keywordLane {
+  @apply flex items-center gap-2 overflow-x-auto;
+  padding: 2px 0;
   -ms-overflow-style: none;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
-.itemScroller::-webkit-scrollbar {
+.keywordLane::-webkit-scrollbar {
   display: none;
 }
 
+.keywordChip {
+  @apply shrink-0 px-3 h-7 rounded-[999px] text-[11px] leading-[27px] font-medium text-neutral-700;
+  background: #dedede;
+}
+
+.sectionDivider {
+  @apply w-full h-px mb-4;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.sectionBlock {
+  @apply mb-0;
+}
+
+.sectionHeaderRow {
+  @apply flex items-center justify-between gap-2 mb-3;
+}
+
+.sectionTitle {
+  @apply text-[18px] leading-[22px] font-bold text-neutral-900;
+}
+
+.sectionMetaText {
+  @apply text-[12px] leading-4 text-neutral-500;
+}
+
+.evaluationSummaryRow {
+  @apply flex items-center justify-between mb-2;
+}
+
+.evaluationSummaryItem {
+  @apply inline-flex items-center gap-1 text-[12px] leading-4 font-semibold;
+}
+
+.evaluationSummaryLike {
+  color: #f47d72;
+}
+
+.evaluationSummaryDislike {
+  color: #8c95b5;
+}
+
+.evaluationTrack {
+  @apply relative w-full h-[22px] rounded-[10px] overflow-hidden mb-4;
+  background: rgba(241, 241, 241, 0.95);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.evaluationLikeFill {
+  @apply absolute left-0 top-0 h-full rounded-l-[10px];
+  background: linear-gradient(90deg, #f5b8af 0%, #ef9a8f 45%, #ea8a7e 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.evaluationDislikeFill {
+  @apply absolute right-0 top-0 h-full rounded-r-[10px];
+  background: linear-gradient(270deg, #c6cde3 0%, #aab3d3 45%, #8c95b5 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.feedbackPanelsWrap {
+  @apply mt-1 mb-8 grid grid-cols-2 gap-3;
+}
+
+.feedbackPanel {
+  @apply rounded-[16px] p-0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.feedbackPanelHeader {
+  @apply flex items-center justify-between gap-2 mb-3;
+}
+
+.feedbackPanelTitle {
+  @apply text-[16px] leading-5 font-bold text-neutral-900;
+}
+
+.feedbackPanelCount {
+  @apply text-[11px] leading-4 text-neutral-500 shrink-0;
+}
+
+.feedbackRows {
+  @apply flex flex-col gap-3;
+}
+
+.feedbackRow {
+  @apply flex flex-col gap-1.5;
+}
+
+.feedbackRowHead {
+  @apply flex items-center justify-between gap-2;
+}
+
+.feedbackRowLabel {
+  @apply text-[10px] leading-4 text-neutral-500 min-w-0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feedbackRowPercent {
+  @apply text-[10px] leading-4 font-semibold text-black shrink-0;
+}
+
+.feedbackRowTrack {
+  @apply w-full h-[8px] rounded-full overflow-hidden;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.feedbackRowFill {
+  @apply h-full rounded-full;
+}
+
+.feedbackRowFillLike {
+  background: linear-gradient(90deg, #f5b8af 0%, #ef8a7d 100%);
+}
+
+.feedbackRowFillDislike {
+  background: linear-gradient(90deg, #c4cbe2 0%, #98a2c8 100%);
+}
+
+.feedbackEmptyText {
+  @apply text-[11px] leading-4 text-neutral-400;
+}
+
+.outfitHeaderRow {
+  @apply mb-3 flex items-center justify-between gap-3;
+}
+
+.outfitTitle {
+  @apply text-[18px] leading-[22px] font-bold text-neutral-900;
+}
+
+.outfitEditButton,
+.outfitCancelButton {
+  @apply shrink-0 inline-flex items-center gap-[6px] rounded-[999px] border bg-white px-3 py-[7px] text-[12px] font-semibold leading-4;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.outfitEditButton {
+  @apply border-[#d9d9d9] text-neutral-700;
+}
+
+.outfitCancelButton {
+  @apply border-[#e5b7b8] text-[#b94548];
+  background: #fff8f8;
+}
+
+.outfitEditActions {
+  @apply flex items-center gap-2 shrink-0;
+}
+
+.outfitDeleteButton {
+  @apply inline-flex items-center gap-[6px] rounded-[999px] border border-[#ead6d6] bg-white px-3 py-[7px] text-[12px] font-semibold leading-4 text-[#b84548] disabled:cursor-not-allowed disabled:opacity-45;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.outfitDeleteButtonActive {
+  background: #fff5f5;
+  border-color: #f0b9bb;
+}
+
+.deleteModeHint {
+  @apply mb-3 text-[12px] leading-5 text-[#b84548];
+}
+
+.addItemButton {
+  @apply inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-neutral-300 bg-white px-3 text-[12px] font-semibold text-neutral-700;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.addItemPlusIcon {
+  @apply shrink-0 text-neutral-800;
+}
+
+.addItemText {
+  @apply inline-flex items-center leading-none;
+}
+
+.itemGrid {
+  @apply grid grid-cols-2 gap-3;
+}
+
 .itemCard {
-  @apply w-[106px] min-w-[106px] bg-white rounded-2xl overflow-hidden shadow-[6px_6px_12px_rgba(0,0,0,0.06)];
+  @apply rounded-[12px] border border-neutral-200 bg-white;
+  position: relative;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
 }
 
-.itemImage {
-  @apply w-full h-[88px] bg-[#c9c9c9];
+.selectionTouchLayer {
+  @apply absolute inset-0 z-20 rounded-[12px] bg-transparent border-0 p-0;
 }
 
-.itemImageTag {
-  @apply w-full h-full object-cover;
+.itemCardOpen {
+  z-index: 30;
+}
+
+.itemCardDeleteMode {
+  cursor: pointer;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease,
+    transform 0.16s ease;
+}
+
+.itemCardDeleteMode:active {
+  transform: scale(0.98);
+}
+
+.itemCardSelectedForDelete {
+  border-color: #e58b8f;
+  background: #fff7f7;
+  box-shadow:
+    0 0 0 2px rgba(229, 139, 143, 0.18),
+    0 8px 18px rgba(229, 139, 143, 0.12);
+  transform: translateY(-1px);
 }
 
 .itemInfo {
-  @apply px-2.5 py-2;
+  @apply flex flex-col gap-1.5 p-2;
 }
 
-.itemBrand {
-  @apply text-[10px] leading-4 font-medium text-neutral-900;
+.selectWrap {
+  position: relative;
 }
 
-.itemName {
-  @apply mt-0.5 text-[10px] leading-4 text-neutral-700;
+.itemSelectButton {
+  @apply flex h-9 w-full items-center justify-between border bg-white text-left outline-none transition;
+  border-radius: 12px;
+  border-color: #d4d4d8;
+  padding: 0 12px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
-.heroImageTag {
-  @apply w-full h-full object-cover;
+
+.itemSelectButtonOpen {
+  border-color: #171717;
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.05),
+    0 8px 20px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.itemSelectContent {
+  @apply flex min-w-0 flex-1 items-center gap-1.5;
+}
+
+.itemSelectTagIcon {
+  @apply shrink-0 text-neutral-500;
+}
+
+.itemSelectText {
+  @apply block truncate text-[11px] leading-4 text-neutral-900;
+  padding-right: 10px;
+}
+
+.itemSelectPlaceholder {
+  @apply text-neutral-500;
+}
+
+.itemSelectChevron {
+  @apply shrink-0 text-neutral-700 transition-transform duration-200;
+}
+
+.itemSelectChevronOpen {
+  transform: rotate(180deg);
+}
+
+.selectMenu {
+  @apply absolute left-0 right-0 border bg-white;
+  top: calc(100% + 6px);
+  z-index: 50;
+  border-radius: 14px;
+  border-color: #d4d4d8;
+  box-shadow:
+    0 14px 28px rgba(15, 23, 42, 0.12),
+    0 4px 10px rgba(15, 23, 42, 0.06);
+  max-height: 188px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.selectMenu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.selectMenu::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 999px;
+}
+
+.selectMenu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.selectOption {
+  @apply flex w-full items-center bg-white text-left transition;
+  min-height: 38px;
+  padding: 0 12px;
+}
+
+.selectOption + .selectOption {
+  border-top: 1px solid #f1f5f9;
+}
+
+.selectOptionContent {
+  @apply flex min-w-0 items-center gap-1.5;
+}
+
+.selectOptionTagIcon {
+  @apply shrink-0 text-neutral-500;
+}
+
+.selectOptionLabel {
+  @apply truncate text-[12px] leading-4 text-neutral-800;
+}
+
+.selectOption:hover {
+  background: #f5f5f5;
+}
+
+.selectOptionActive {
+  background: #111111;
+}
+
+.selectOptionActive .selectOptionLabel {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.selectOptionActive .selectOptionTagIcon {
+  color: #ffffff;
+}
+
+.selectOptionPlaceholder .selectOptionLabel {
+  color: #737373;
+}
+
+.itemInput {
+  @apply h-9 w-full border bg-white text-[11px] leading-4 text-neutral-900 outline-none placeholder:text-neutral-400;
+  border-radius: 12px;
+  border-color: #e5e5e5;
+  padding: 0 12px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.itemInput:focus {
+  border-color: #171717;
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.itemInput:disabled,
+.itemSelectButton:disabled {
+  cursor: default;
+  background: #fafafa;
+  color: #9ca3af;
+}
+
+.submitArea {
+  @apply mt-5 pb-0;
+}
+
+.submitButton {
+  @apply flex h-[44px] w-full items-center justify-center rounded-[10px] bg-black text-[15px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+.itemScroll {
+  @apply flex overflow-x-auto;
+  gap: 12px;
+  padding: 2px 0 16px 0;
+  margin-bottom: 2px;
+  scroll-snap-type: x proximity;
+  scroll-padding-left: 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 149, 181, 0.8) rgba(0, 0, 0, 0.08);
+}
+
+.itemScroll::-webkit-scrollbar {
+  display: block;
+  height: 6px;
+}
+
+.itemScroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+}
+
+.itemScroll::-webkit-scrollbar-thumb {
+  background: rgba(140, 149, 181, 0.8);
+  border-radius: 999px;
+}
+
+.itemScroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 149, 181, 0.95);
+}
+
+.outfitCard {
+  @apply shrink-0 rounded-[16px];
+  width: 168px;
+  padding: 10px;
+  background: #f5f5f5;
+  border: 1px solid #e7e7e7;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  scroll-snap-align: start;
+  margin-bottom: 4px;
+}
+
+.outfitField {
+  @apply w-full h-10 rounded-[12px] border border-[#dddddd] px-3 flex items-center bg-white;
+}
+
+.outfitCard .outfitField + .outfitField {
+  margin-top: 8px;
+}
+
+.outfitCategoryField {
+  background: #f4efe9;
+  border-color: #e2d6cb;
+}
+
+.outfitCategoryInner {
+  @apply flex items-center gap-2 min-w-0 w-full;
+}
+
+.outfitCategoryIcon {
+  @apply shrink-0;
+  color: #7b5f4c;
+}
+
+.outfitFieldValue {
+  @apply text-[12px] leading-4 min-w-0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #6b6b6b;
+}
+
+.outfitCategoryField .outfitFieldValue {
+  color: #7b5f4c;
+  font-weight: 700;
+}
+
+.emptyText {
+  @apply text-[13px] text-neutral-500;
+}
+
+.errorText {
+  @apply mt-4 text-[13px] font-normal leading-5 text-red-500;
+}
+
+.confirmOverlay {
+  @apply fixed inset-0 z-[1200] flex items-center justify-center bg-black/55 px-5;
+}
+
+.confirmCard {
+  @apply w-full max-w-[300px] rounded-[20px] bg-white px-5 py-5;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.22);
+}
+
+.confirmTitle {
+  @apply text-[17px] font-bold leading-6 text-neutral-900;
+}
+
+.confirmText {
+  @apply mt-2 text-[13px] leading-5 text-neutral-500;
+}
+
+.confirmActions {
+  @apply mt-4 flex items-center gap-2;
+}
+
+.confirmCancelButton,
+.confirmDeleteButton {
+  @apply flex h-[42px] flex-1 items-center justify-center rounded-[12px] text-[14px] font-semibold;
+}
+
+.confirmCancelButton {
+  @apply border border-neutral-300 bg-white text-neutral-700;
+}
+
+.confirmDeleteButton {
+  @apply bg-[#d84d52] text-white;
 }

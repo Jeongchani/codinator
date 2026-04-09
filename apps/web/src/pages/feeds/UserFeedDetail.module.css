@@ -1,9 +1,9 @@
 .container {
-  @apply w-[375px] h-[812px] mx-auto bg-[#f5f5f5] text-neutral-900 overflow-hidden shadow-sm;
+  @apply w-[375px] h-[812px] mx-auto overflow-hidden bg-white;
 }
 
 .scrollArea {
-  @apply h-full overflow-y-auto bg-[#f5f5f5];
+  @apply h-full overflow-y-auto bg-white;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -12,194 +12,343 @@
   display: none;
 }
 
+.loadingBox {
+  @apply mx-4 mt-10 rounded-[24px] bg-white px-5 py-8 text-center text-[15px] font-medium text-neutral-600 shadow-[0_8px_20px_rgba(0,0,0,0.05)];
+}
+
 .heroSection {
-  @apply relative;
+  @apply relative w-full;
+}
+
+.heroMediaFrame {
+  @apply relative h-[460px] w-full overflow-hidden bg-neutral-200;
 }
 
 .heroImage {
-  @apply relative w-full h-[430px] bg-[#cfcfcf] overflow-hidden;
+  @apply h-full w-full object-contain bg-neutral-100;
+}
+
+.heroPlaceholder {
+  @apply flex h-full w-full items-center justify-center bg-neutral-200 px-6 text-center;
+}
+
+.heroPlaceholderText {
+  @apply text-[14px] leading-5 text-neutral-500;
 }
 
 .backButton {
-  @apply absolute top-[18px] right-[18px] z-10
-    w-9 h-9 rounded-full bg-white shadow-md
-    flex items-center justify-center text-black;
+  @apply absolute left-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full text-white;
+  background: rgba(0, 0, 0, 0.42);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
-.infoSection {
-  @apply px-4 pt-4 flex items-start justify-between gap-3 bg-[#f5f5f5];
+.contentPanel {
+  @apply bg-white px-4 pt-3 pb-[120px];
 }
 
-.infoText {
-  @apply flex-1 min-w-0;
+.sheetHeader {
+  @apply mb-4;
 }
 
-.title {
-  @apply text-[20px] leading-7 font-semibold tracking-[-0.02em] text-neutral-900;
+.sheetHeaderCopy {
+  @apply min-w-0;
 }
 
-.description {
-  @apply mt-1 text-[12px] leading-[18px] text-neutral-500 whitespace-pre-line;
+.titleRow {
+  @apply mb-1 flex items-center justify-between gap-3;
 }
 
-.bookmarkButton {
-  @apply mt-0.5 shrink-0 flex items-center justify-center
-    w-7 h-7 rounded-full bg-black/45 border border-white/15;
+.mainTitle {
+  @apply text-[20px] font-bold leading-7 text-neutral-900;
 }
 
-.bookmarkDefault {
-  @apply text-white;
+.sheetActions {
+  @apply flex items-center gap-2 shrink-0;
+  overflow: visible;
+}
+
+.miniActionButton {
+  @apply rounded-[8px] border-0 p-0 flex items-center justify-center shrink-0;
+  width: 24px;
+  height: 24px;
+}
+
+.bookmarkActionButton {
+  background: #ffffff;
+  color: #6f6f6f;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bookmarkActionButton:active {
+  transform: scale(0.9);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.reportActionButton {
+  color: #ff5b5d;
+  background: rgba(255, 91, 93, 0.08);
+  border: 1px solid rgba(255, 91, 93, 0.16);
+  box-shadow:
+    0 0 0 1px rgba(255, 91, 93, 0.08),
+    0 0 8px rgba(255, 91, 93, 0.18);
 }
 
 .bookmarkFilled {
-  @apply text-white;
+  color: #5f5f5f;
 }
 
-.keywordSection {
-  @apply px-4 pt-4;
+.bookmarkDefault {
+  color: #8c8c8c;
 }
 
-.keywordRow {
-  @apply flex flex-wrap gap-[6px];
+.dateText {
+  @apply mb-2 text-[12px] leading-4 text-neutral-400;
 }
 
-.conceptChip {
-  @apply inline-flex items-center justify-center
-    h-6 px-2 rounded-full bg-[#e8e8e8]
-    text-[10px] leading-none text-neutral-700;
+.contentText {
+  @apply text-[14px] leading-[20px] text-neutral-700 whitespace-pre-line;
 }
 
-.divider {
-  @apply mx-4 mt-4 h-px bg-neutral-300;
+.keywordLaneSection {
+  @apply mb-4;
 }
 
-.feedbackScoreSection {
-  @apply px-4 pt-4;
-}
-
-.sectionTitle {
-  @apply text-[15px] font-semibold leading-6 text-neutral-900;
-}
-
-.scoreBlock {
-  @apply mt-3;
-}
-
-.likeRow {
-  @apply flex items-end gap-3;
-}
-
-.likeBarTrack {
-  @apply flex-1 h-5 rounded-sm bg-[#d9d9d9] overflow-hidden;
-}
-
-.likeBarFill {
-  @apply h-full rounded-sm bg-neutral-900;
-}
-
-.likePercent {
-  @apply min-w-[64px] flex items-end justify-end leading-none;
-}
-
-.likePercentNumber {
-  @apply text-[36px] font-semibold tracking-[-0.03em] text-neutral-900;
-}
-
-.likePercentUnit {
-  @apply ml-[2px] mb-[4px] text-[15px] font-semibold text-neutral-900;
-}
-
-.dislikeRow {
-  @apply mt-4 flex items-center gap-3;
-}
-
-.dislikeBarTrack {
-  @apply w-[78%] h-5 rounded-sm bg-[#d9d9d9] overflow-hidden;
-}
-
-.dislikeBarFill {
-  @apply h-full rounded-sm bg-neutral-500;
-}
-
-.dislikePercent {
-  @apply text-[12px] font-semibold text-neutral-700;
-}
-
-.feedbackKeywordSection {
-  @apply px-4 pt-5;
-}
-
-.feedbackList {
-  @apply mt-3 flex flex-col gap-3;
-}
-
-.feedbackItem {
-  @apply flex items-center gap-3;
-}
-
-.feedbackIconWrap {
-  @apply w-8 h-8 rounded-full bg-white shadow-md
-    flex items-center justify-center text-black shrink-0;
-}
-
-.feedbackChips {
-  @apply flex flex-wrap gap-[6px];
-}
-
-.feedbackChip {
-  @apply inline-flex items-center justify-center
-    min-h-7 px-3 rounded-full bg-[#e3e3e3]
-    text-[10px] leading-none text-neutral-700;
-}
-
-.itemSection {
-  @apply px-4 pt-4 pb-8;
-}
-
-.itemHeader {
-  @apply flex items-center justify-between;
-}
-
-.moreButton {
-  @apply flex items-center gap-0.5 text-[11px] text-neutral-500 leading-none;
-}
-
-.itemScroller {
-  @apply mt-3 flex flex-nowrap gap-3 overflow-x-auto overflow-y-hidden pb-1;
+.keywordLane {
+  @apply flex items-center gap-2 overflow-x-auto;
+  padding: 2px 0;
   -ms-overflow-style: none;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-x;
 }
 
-.itemScroller::-webkit-scrollbar {
+.keywordLane::-webkit-scrollbar {
   display: none;
 }
 
-.itemCard {
-  @apply w-[106px] min-w-[106px] shrink-0 bg-white rounded-2xl overflow-hidden shadow-[6px_6px_12px_rgba(0,0,0,0.06)];
+.keywordChip {
+  @apply shrink-0 px-3 h-7 rounded-[999px] text-[11px] leading-[27px] font-medium text-neutral-700;
+  background: #dedede;
 }
 
-.itemImage {
-  @apply w-full h-[88px] bg-[#c9c9c9];
+.sectionDivider {
+  @apply w-full h-px mb-4;
+  background: rgba(0, 0, 0, 0.12);
 }
 
-.itemImageTag {
-  @apply w-full h-full object-cover;
+.sectionBlock {
+  @apply mb-0;
 }
 
-.itemInfo {
-  @apply px-2.5 py-2;
+.sectionHeaderRow {
+  @apply flex items-center justify-between gap-2 mb-3;
 }
 
-.itemBrand {
-  @apply text-[10px] leading-4 font-medium text-neutral-900;
+.sectionTitle {
+  @apply text-[18px] leading-[22px] font-bold text-neutral-900;
 }
 
-.itemName {
-  @apply mt-0.5 text-[10px] leading-4 text-neutral-700;
+.sectionMetaText {
+  @apply text-[12px] leading-4 text-neutral-500;
 }
 
-.heroImageTag {
-  @apply w-full h-full object-cover;
+.evaluationSummaryRow {
+  @apply flex items-center justify-between mb-2;
+}
+
+.evaluationSummaryItem {
+  @apply inline-flex items-center gap-1 text-[12px] leading-4 font-semibold;
+}
+
+.evaluationSummaryLike {
+  color: #f47d72;
+}
+
+.evaluationSummaryDislike {
+  color: #8c95b5;
+}
+
+.evaluationTrack {
+  @apply relative w-full h-[22px] rounded-[10px] overflow-hidden mb-4;
+  background: rgba(241, 241, 241, 0.95);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.evaluationLikeFill {
+  @apply absolute left-0 top-0 h-full rounded-l-[10px];
+  background: linear-gradient(90deg, #f5b8af 0%, #ef9a8f 45%, #ea8a7e 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.evaluationDislikeFill {
+  @apply absolute right-0 top-0 h-full rounded-r-[10px];
+  background: linear-gradient(270deg, #c6cde3 0%, #aab3d3 45%, #8c95b5 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.feedbackPanelsWrap {
+  @apply mt-1 mb-8 grid grid-cols-2 gap-3;
+}
+
+.feedbackPanel {
+  @apply rounded-[16px] p-0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.feedbackPanelHeader {
+  @apply flex items-center justify-between gap-2 mb-3;
+}
+
+.feedbackPanelTitle {
+  @apply text-[16px] leading-5 font-bold text-neutral-900;
+}
+
+.feedbackPanelCount {
+  @apply text-[11px] leading-4 text-neutral-500 shrink-0;
+}
+
+.feedbackRows {
+  @apply flex flex-col gap-3;
+}
+
+.feedbackRow {
+  @apply flex flex-col gap-1.5;
+}
+
+.feedbackRowHead {
+  @apply flex items-center justify-between gap-2;
+}
+
+.feedbackRowLabel {
+  @apply text-[10px] leading-4 text-neutral-500 min-w-0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feedbackRowPercent {
+  @apply text-[10px] leading-4 font-semibold text-black shrink-0;
+}
+
+.feedbackRowTrack {
+  @apply w-full h-[8px] rounded-full overflow-hidden;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.feedbackRowFill {
+  @apply h-full rounded-full;
+}
+
+.feedbackRowFillLike {
+  background: linear-gradient(90deg, #f5b8af 0%, #ef8a7d 100%);
+}
+
+.feedbackRowFillDislike {
+  background: linear-gradient(90deg, #c4cbe2 0%, #98a2c8 100%);
+}
+
+.feedbackEmptyText {
+  @apply text-[11px] leading-4 text-neutral-400;
+}
+
+.outfitHeaderRow {
+  @apply mb-3 flex items-center justify-between gap-3;
+}
+
+.outfitTitle {
+  @apply text-[18px] leading-[22px] font-bold text-neutral-900;
+}
+
+.itemScroll {
+  @apply flex overflow-x-auto;
+  gap: 12px;
+  padding: 2px 0 16px 0;
+  margin-bottom: 2px;
+  scroll-snap-type: x proximity;
+  scroll-padding-left: 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 149, 181, 0.8) rgba(0, 0, 0, 0.08);
+}
+
+.itemScroll::-webkit-scrollbar {
+  display: block;
+  height: 6px;
+}
+
+.itemScroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+}
+
+.itemScroll::-webkit-scrollbar-thumb {
+  background: rgba(140, 149, 181, 0.8);
+  border-radius: 999px;
+}
+
+.itemScroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 149, 181, 0.95);
+}
+
+.outfitCard {
+  @apply shrink-0 rounded-[16px];
+  width: 168px;
+  padding: 10px;
+  background: #f5f5f5;
+  border: 1px solid #e7e7e7;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  scroll-snap-align: start;
+  margin-bottom: 4px;
+}
+
+.outfitField {
+  @apply w-full h-10 rounded-[12px] border border-[#dddddd] px-3 flex items-center bg-white;
+}
+
+.outfitCard .outfitField + .outfitField {
+  margin-top: 8px;
+}
+
+.outfitCategoryField {
+  background: #f4efe9;
+  border-color: #e2d6cb;
+}
+
+.outfitCategoryInner {
+  @apply flex items-center gap-2 min-w-0 w-full;
+}
+
+.outfitCategoryIcon {
+  @apply shrink-0;
+  color: #7b5f4c;
+}
+
+.outfitFieldValue {
+  @apply text-[12px] leading-4 min-w-0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #6b6b6b;
+}
+
+.outfitCategoryField .outfitFieldValue {
+  color: #7b5f4c;
+  font-weight: 700;
+}
+
+.emptyText {
+  @apply text-[13px] text-neutral-500;
+}
+
+.errorText {
+  @apply mt-4 text-[13px] font-normal leading-5 text-red-500;
 }
