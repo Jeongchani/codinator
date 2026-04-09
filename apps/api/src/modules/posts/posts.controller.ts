@@ -30,6 +30,7 @@ import type {
   DeletePostResponse,
   GetPostDetailResponse,
   HidePostResponse,
+  UnhidePostResponse,
   UpdatePostResponse,
 } from '@codinator/contracts';
 import { AuthTokenService } from '../auth/auth-token.service';
@@ -235,15 +236,29 @@ export class PostsController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: '게시글 숨기기 (작성자)',
-    description:
-      'V2 정책: 작성자가 게시글을 직접 숨깁니다. post.status → HIDDEN, evaluation.status → CLOSED. 공개 피드/검색에서 제외되며 본인 피드에서는 계속 조회 가능합니다.',
+    description: [
+      'V2 정책: 작성자가 게시글을 직접 숨깁니다.',
+      '',
+      '숨김 가능 조건 (아래 셋 모두 만족):',
+      '① post.status === ACTIVE',
+      '② evaluation.status === ENDED — 평가 완료된 게시글만 허용 (OPEN 불가)',
+      '③ rankingDetails 에 READY 상태 랭킹 등재 1건 이상 존재',
+      '',
+      '처리 결과:',
+      '- post.status → HIDDEN (공개 피드/검색에서 제외)',
+      '- evaluation.status → 변경하지 않음 (ENDED 유지)',
+      '- 본인 피드에서는 계속 조회 가능',
+    ].join('\n'),
   })
   @ApiParam({ name: 'postId', type: Number, example: 12, description: '숨길 게시글 ID' })
   @ApiOkResponse({
     description: '게시글 숨기기 완료',
     schema: { example: { postId: 12, hidden: true } },
   })
-  @ApiBadRequestResponse({ description: '이미 숨긴 게시글입니다.' })
+  @ApiBadRequestResponse({
+    description:
+      '이미 숨긴 게시글 / 평가 완료(ENDED)가 아닌 게시글 / 랭킹 미등재 게시글',
+  })
   @ApiForbiddenResponse({ description: '본인 게시글만 숨길 수 있습니다.' })
   @ApiNotFoundResponse({ description: '게시글을 찾을 수 없습니다.' })
   async hidePost(
@@ -255,6 +270,43 @@ export class PostsController {
       { required: true },
     );
     return this.postsService.hidePost(userId!, postId);
+  }
+
+  // ─── PATCH /posts/:postId/unhide ─────────────────────────────────────────────
+
+  @Patch(':postId/unhide')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '게시글 숨김 취소 (작성자)',
+    description: [
+      'V2 정책: 작성자가 숨긴 게시글을 다시 공개합니다.',
+      '',
+      '숨김 취소 가능 조건:',
+      '- post.status === HIDDEN',
+      '',
+      '처리 결과:',
+      '- post.status → ACTIVE (공개 피드/검색에 다시 노출)',
+      '- evaluation.status → 변경하지 않음 (ENDED 유지)',
+    ].join('\n'),
+  })
+  @ApiParam({ name: 'postId', type: Number, example: 12, description: '숨김 취소할 게시글 ID' })
+  @ApiOkResponse({
+    description: '게시글 숨김 취소 완료',
+    schema: { example: { postId: 12, hidden: false } },
+  })
+  @ApiBadRequestResponse({ description: '숨김 상태가 아닌 게시글입니다.' })
+  @ApiForbiddenResponse({ description: '본인 게시글만 숨김 취소할 수 있습니다.' })
+  @ApiNotFoundResponse({ description: '게시글을 찾을 수 없습니다.' })
+  async unhidePost(
+    @Param('postId', ParseIntPipe) postId: number,
+    @Headers('authorization') authorization?: string,
+  ): Promise<UnhidePostResponse> {
+    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.postsService.unhidePost(userId!, postId);
   }
 
   // ─── DELETE /posts/:postId ────────────────────────────────────────────────────

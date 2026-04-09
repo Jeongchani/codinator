@@ -20,6 +20,15 @@
   @apply absolute inset-0 bg-cover bg-center bg-no-repeat;
 }
 
+.emptyPageSection {
+  @apply absolute inset-0 bg-neutral-300;
+}
+
+.emptyPageCenterText {
+  @apply absolute left-6 right-6 top-1/2 -translate-y-1/2 text-center text-white text-[16px] font-semibold leading-[1.7];
+  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+}
+
 .topGradient {
   @apply absolute top-0 left-0 w-full h-28 bg-gradient-to-b from-black/45 to-transparent;
 }
@@ -38,6 +47,7 @@
 
 .title {
   @apply absolute top-[68px] left-4 text-white text-2xl font-bold leading-8;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
 }
 
 .slideIndicator {
@@ -54,6 +64,43 @@
 
 .helperText {
   @apply absolute left-6 right-6 bottom-[132px] text-center text-white text-[14px] leading-[1.6] pointer-events-none;
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+}
+
+.voteGraphArea {
+  @apply absolute left-1/2 -translate-x-1/2 z-30 w-[334px] pointer-events-none;
+  bottom: 118px;
+}
+
+.progressTrack {
+  @apply relative w-full h-[18px] rounded-full overflow-hidden;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.likeFill {
+  @apply absolute left-0 top-0 h-full rounded-l-full;
+  background: linear-gradient(90deg, rgba(234, 138, 120, 0.72) 0%, rgba(239, 154, 139, 0.72) 100%);
+}
+
+.dislikeFill {
+  @apply absolute right-0 top-0 h-full rounded-r-full;
+  background: linear-gradient(90deg, rgba(143, 150, 200, 0.72) 0%, rgba(119, 129, 188, 0.72) 100%);
+}
+
+.leftPercent {
+  @apply absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-white text-[10px] font-semibold;
+}
+
+.rightPercent {
+  @apply absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-white text-[10px] font-semibold;
+}
+
+.leftPercent :global(svg),
+.rightPercent :global(svg) {
+  @apply w-[11px] h-[11px];
 }
 
 .bottomActionArea {
@@ -61,7 +108,7 @@
 }
 
 .circleButton {
-  @apply absolute top-0 h-16 w-16 rounded-full flex items-center justify-center shadow-[0px_4px_18px_rgba(0,0,0,0.25)] transition-all duration-200 active:scale-95 pointer-events-auto z-20;
+  @apply absolute top-[5px] h-[54px] w-[54px] rounded-full flex items-center justify-center shadow-[0px_4px_18px_rgba(0,0,0,0.25)] transition-all duration-200 active:scale-95 pointer-events-auto z-20;
 }
 
 .leftButton {
@@ -90,11 +137,11 @@
 
 .dragTrackFromLeft {
   left: 0;
-  right: 92px;
+  right: 82px;
 }
 
 .dragTrackFromRight {
-  left: 92px;
+  left: 82px;
   right: 0;
 }
 
@@ -111,7 +158,7 @@
 }
 
 .dragThumb {
-  @apply absolute top-1 rounded-full bg-white flex items-center justify-center cursor-grab active:cursor-grabbing shadow-md z-10;
+  @apply absolute top-[7px] rounded-full bg-white flex items-center justify-center cursor-grab active:cursor-grabbing shadow-md z-10;
 }
 
 .dragThumb:active {
@@ -132,4 +179,31 @@
 
 .statusText {
   @apply absolute left-6 right-6 top-1/2 -translate-y-1/2 text-center text-white text-[14px] leading-[1.7];
+}
+
+.emptyModalBackdrop {
+  @apply absolute inset-0 z-40 flex items-center justify-center px-6;
+  background: rgba(0, 0, 0, 0.34);
+  pointer-events: auto;
+}
+
+.emptyModalCard {
+  @apply w-full max-w-[290px] rounded-[26px] px-6 pt-7 pb-5 text-center;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.emptyModalTitle {
+  @apply text-[20px] font-bold leading-7 text-black;
+}
+
+.emptyModalDescription {
+  @apply mt-3 text-[14px] leading-[1.65] text-neutral-600;
+}
+
+.emptyModalButton {
+  @apply mt-6 w-full h-12 rounded-full text-[15px] font-semibold text-white border-0;
+  background: linear-gradient(90deg, #111111 0%, #2a2a2a 100%);
 }
