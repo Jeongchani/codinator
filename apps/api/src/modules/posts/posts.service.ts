@@ -11,6 +11,7 @@ import type {
   DeletePostResponse,
   GetPostDetailResponse,
   HidePostResponse,
+  UnhidePostResponse,
   UpdatePostRequest,
   UpdatePostResponse,
 } from '@codinator/contracts';
@@ -21,6 +22,7 @@ import {
   GarmentCategory,
   PostStatus,
   Prisma,
+  RankingStatus,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -262,9 +264,16 @@ export class PostsService {
   /**
    * PATCH /posts/:postId/hide
    * V2 정책: 작성자가 직접 게시글을 숨긴다.
-   *   - post.status → HIDDEN (공개 피드/검색에서 제외)
-   *   - evaluation.status → CLOSED (평가존 재노출 방지)
-   * 이미 숨겨진 게시글은 400 반환.
+   *
+   * 숨김 가능 조건 (아래 셋 모두 만족):
+   *   ① post.status === ACTIVE
+   *   ② evaluation.status === ENDED  — 평가 완료된 게시글만 허용 (OPEN 불가)
+   *   ③ rankingDetails 에 READY 상태 랭킹 등재 1건 이상 존재
+   *
+   * 처리 결과:
+   *   - post.status → HIDDEN (공개 피드/검색에서 제외, 본인 피드에서는 계속 조회 가능)
+   *   - hiddenAt 기록
+   *   - evaluation.status → 변경하지 않음 (ENDED 유지)
    */
   async hidePost(userId: number, postId: number): Promise<HidePostResponse> {
     return this.prisma.$transaction(async (tx) => {
@@ -272,6 +281,11 @@ export class PostsService {
         where: { id: postId },
         include: {
           evaluation: { select: { id: true, status: true } },
+          rankingDetails: {
+            where: { ranking: { status: RankingStatus.READY } },
+            take: 1,
+            select: { id: true },
+          },
         },
       });
 
@@ -287,21 +301,69 @@ export class PostsService {
         throw new BadRequestException('이미 숨긴 게시글입니다.');
       }
 
-      // post 상태를 HIDDEN 으로 변경
+      // ② 평가 완료(ENDED) 상태인지 확인 — OPEN 은 숨김 불가
+      if (!post.evaluation || post.evaluation.status !== EvaluationStatus.ENDED) {
+        throw new BadRequestException(
+          '평가가 완료(ENDED)된 게시글만 숨길 수 있습니다. 평가 중(OPEN)인 게시글은 숨길 수 없습니다.',
+        );
+      }
+
+      // ③ 랭킹 등재 확인
+      if (post.rankingDetails.length === 0) {
+        throw new BadRequestException(
+          '랭킹에 등재된 게시글만 숨길 수 있습니다.',
+        );
+      }
+
+      // post 상태를 HIDDEN 으로 변경 (evaluation.status 는 ENDED 유지)
       await tx.post.update({
         where: { id: postId },
         data: { status: PostStatus.HIDDEN, hiddenAt: new Date() },
       });
 
-      // evaluation 상태를 CLOSED 로 변경 (아직 CLOSED 가 아닌 경우)
-      if (post.evaluation && post.evaluation.status !== EvaluationStatus.CLOSED) {
-        await tx.evaluation.update({
-          where: { id: post.evaluation.id },
-          data: { status: EvaluationStatus.CLOSED },
-        });
+      return { postId, hidden: true };
+    });
+  }
+
+  // ─── 게시글 숨김 취소 (작성자) ───────────────────────────────────────────────────
+  /**
+   * PATCH /posts/:postId/unhide
+   * V2 정책: 작성자가 직접 숨긴 게시글을 다시 공개한다.
+   *
+   * 숨김 취소 가능 조건:
+   *   - post.status === HIDDEN
+   *
+   * 처리 결과:
+   *   - post.status → ACTIVE (공개 피드/검색에 다시 노출)
+   *   - hiddenAt → null
+   *   - evaluation.status → 변경하지 않음 (ENDED 유지)
+   */
+  async unhidePost(userId: number, postId: number): Promise<UnhidePostResponse> {
+    return this.prisma.$transaction(async (tx) => {
+      const post = await tx.post.findUnique({
+        where: { id: postId },
+        select: { id: true, authorId: true, status: true, deletedAt: true },
+      });
+
+      if (!post || post.status === PostStatus.DELETED || post.deletedAt) {
+        throw new NotFoundException('게시글을 찾을 수 없습니다.');
       }
 
-      return { postId, hidden: true };
+      if (post.authorId !== userId) {
+        throw new ForbiddenException('본인 게시글만 숨김 취소할 수 있습니다.');
+      }
+
+      if (post.status !== PostStatus.HIDDEN) {
+        throw new BadRequestException('숨김 상태의 게시글만 숨김 취소할 수 있습니다.');
+      }
+
+      // post 상태를 ACTIVE 로 복원 (evaluation.status 는 ENDED 유지)
+      await tx.post.update({
+        where: { id: postId },
+        data: { status: PostStatus.ACTIVE, hiddenAt: null },
+      });
+
+      return { postId, hidden: false };
     });
   }
 
