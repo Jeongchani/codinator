@@ -631,7 +631,7 @@ function makeFallbackKeywordText(query: string) {
 export default function Search({ initialRecentSearches }: SearchProps) {
   const navigate = useNavigate();
 
-  const historyStorageKey = getHistoryStorageKey();
+  const historyStorageKey = useMemo(() => getHistoryStorageKey(), []);
   const pageStateStorageKey = useMemo(
     () => getSearchPageStateKey(historyStorageKey),
     [historyStorageKey],

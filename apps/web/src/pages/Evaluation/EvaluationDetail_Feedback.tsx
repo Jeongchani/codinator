@@ -820,9 +820,6 @@ const EvaluationDetailFeedback: React.FC = () => {
             displayText: postDisplayText,
           }}
           allowUserReport={false}
-          onSubmitted={(response, payload) => {
-            console.log('신고 완료:', payload, response);
-          }}
         />
       )}
     </div>

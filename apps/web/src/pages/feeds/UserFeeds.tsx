@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Bookmark, ChevronLeft } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { GetUserFeedResponse } from "@codinator/contracts";
@@ -41,6 +41,10 @@ export default function UserFeed() {
   const [loading, setLoading] = useState(true);
   const [bookmarkLoadingIds, setBookmarkLoadingIds] = useState<number[]>([]);
   const [error, setError] = useState("");
+  const bookmarkLoadingIdSet = useMemo(
+    () => new Set(bookmarkLoadingIds),
+    [bookmarkLoadingIds],
+  );
 
   const moveToLogin = useCallback(() => {
     clearAuthTokens();
@@ -150,7 +154,7 @@ export default function UserFeed() {
     e.preventDefault();
     e.stopPropagation();
 
-    if (bookmarkLoadingIds.includes(postId)) {
+    if (bookmarkLoadingIdSet.has(postId)) {
       return;
     }
 
@@ -239,7 +243,7 @@ export default function UserFeed() {
           <div className={styles.feedGrid}>
             {items.map((item) => {
               const isBookmarked = Boolean(bookmarks[item.postId]);
-              const isBookmarkLoading = bookmarkLoadingIds.includes(item.postId);
+              const isBookmarkLoading = bookmarkLoadingIdSet.has(item.postId);
 
               return (
                 <article

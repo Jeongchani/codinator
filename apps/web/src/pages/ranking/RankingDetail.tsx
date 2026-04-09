@@ -858,9 +858,6 @@ const RankingDetail: React.FC = () => {
               id: postData.author.userId,
               displayText: postData.author.nickname,
             }}
-            onSubmitted={(response, payload) => {
-              console.log("신고 완료:", payload, response);
-            }}
           />
         )}
     </div>

@@ -20,6 +20,7 @@ import {
   clearAuthTokens,
   fetcher,
   getAuthHeaders,
+  isAuthError,
   resolveAssetUrl,
 } from "../../lib/api";
 import styles from "./MyFeeds.module.css";
@@ -49,14 +50,6 @@ type IndicatorStyle = {
 type MyFeedItem = GetMyFeedResponse["items"][number];
 
 const TAB_ORDER: TabType[] = ["all", "ongoing", "done", "hidden"];
-
-const isAuthError = (message: string) => {
-  return (
-    message.includes("Unauthorized") ||
-    message.includes("로그인이 필요합니다") ||
-    message.includes("401")
-  );
-};
 
 const isHiddenPost = (item: MyFeedItem) => item.postStatus === "HIDDEN";
 
@@ -94,8 +87,9 @@ async function loadAllMyFeedItems(): Promise<MyFeedItem[]> {
   const allItems: MyFeedItem[] = [];
   let cursor: number | null = null;
   let hasMore = true;
+  let guard = 0;
 
-  while (hasMore) {
+  while (hasMore && guard < 30) {
     const query = cursor ? `?cursor=${cursor}` : "";
     const endpoint = `/users/me/feed${query}`;
 
@@ -106,6 +100,7 @@ async function loadAllMyFeedItems(): Promise<MyFeedItem[]> {
     allItems.push(...(data.items ?? []));
     cursor = data.nextCursor ?? null;
     hasMore = Boolean(data.hasMore && cursor);
+    guard += 1;
   }
 
   return allItems;
@@ -172,6 +167,16 @@ export default function MyFeeds() {
   const activeItemsForSelection = useMemo(() => {
     return getItemsByTab(items, activeTab);
   }, [activeTab, items]);
+
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const activeItemIdSet = useMemo(
+    () => new Set(activeItemsForSelection.map((item) => item.postId)),
+    [activeItemsForSelection],
+  );
+  const incomingItems = useMemo(
+    () => (incomingTab ? getItemsByTab(items, incomingTab) : []),
+    [incomingTab, items],
+  );
 
   const moveToLogin = useCallback(() => {
     clearAuthTokens();
@@ -271,12 +276,8 @@ export default function MyFeeds() {
   }, [showOptionMenu]);
 
   useEffect(() => {
-    const visibleIds = new Set(
-      activeItemsForSelection.map((item) => item.postId)
-    );
-
-    setSelectedIds((prev) => prev.filter((id) => visibleIds.has(id)));
-  }, [activeItemsForSelection]);
+    setSelectedIds((prev) => prev.filter((id) => activeItemIdSet.has(id)));
+  }, [activeItemIdSet]);
 
   const toggleSelectedId = useCallback((postId: number) => {
     setSelectedIds((prev) =>
@@ -490,7 +491,7 @@ export default function MyFeeds() {
     ignoreNextClickRef.current = false;
 
     const nextMode: TouchDragMode =
-      startItemId && selectedIds.includes(startItemId) ? "deselect" : "select";
+      startItemId && selectedIdSet.has(startItemId) ? "deselect" : "select";
 
     setTouchDragMode(nextMode);
     setIsTouchDragging(true);
@@ -628,7 +629,7 @@ export default function MyFeeds() {
         ) : (
           <div className={styles.cardGrid}>
             {gridItems.map((item) => {
-              const isSelected = selectedIds.includes(item.postId);
+              const isSelected = selectedIdSet.has(item.postId);
               const imageUrl = resolveAssetUrl(item.thumbnailUrl);
               return (
                 <button
@@ -943,7 +944,7 @@ export default function MyFeeds() {
                 `${styles.animatedPane} ${styles.fadePane}`
               )}
               {renderGrid(
-                getItemsByTab(items, incomingTab),
+                incomingItems,
                 `next-${incomingTab}`,
                 incomingTab,
                 `${styles.animatedPane} ${nextPaneEnterClass}`

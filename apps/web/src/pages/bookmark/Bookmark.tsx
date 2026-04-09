@@ -8,33 +8,17 @@ import {
 } from "react";
 import { ChevronLeft, Check, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { clearAuthTokens, isAuthError, performApiRequest } from "../../lib/api";
+import type { BookmarkListItem } from "@codinator/contracts";
+import {
+  clearAuthTokens,
+  fetchAllMyBookmarks,
+  isAuthError,
+  resolveAssetUrl,
+  setPostBookmark,
+} from "../../lib/api";
 import styles from "./Bookmark.module.css";
 
 type TabType = "all" | "ongoing" | "done";
-
-type BookmarkApiItem = {
-  postId?: number;
-  content?: string | null;
-  thumbnailUrl?: string | null;
-  evaluationStatus?: string | null;
-  post?: {
-    id?: number;
-    postId?: number;
-    content?: string | null;
-    thumbnailUrl?: string | null;
-    evaluationStatus?: string | null;
-    status?: string | null;
-  };
-};
-
-type BookmarkListResponse =
-  | BookmarkApiItem[]
-  | {
-      items?: BookmarkApiItem[];
-      bookmarks?: BookmarkApiItem[];
-      data?: BookmarkApiItem[];
-    };
 
 type BookmarkItem = {
   id: number;
@@ -66,102 +50,20 @@ type SlideDirection = "left" | "right";
 
 const TAB_ORDER: TabType[] = ["all", "ongoing", "done"];
 
-async function api<T>(
-  method: string,
-  path: string,
-  body?: unknown
-): Promise<T> {
-  const headers: HeadersInit = {};
-
-  if (body !== undefined) {
-    headers["Content-Type"] = "application/json";
-  }
-
-  const res = await performApiRequest(path, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-
-  const text = await res.text();
-
-  let data: unknown;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = text;
-  }
-
-  if (!res.ok) {
-    const raw = data as Record<string, unknown> | null;
-    const message =
-      raw && typeof raw === "object" && "message" in raw
-        ? Array.isArray(raw.message)
-          ? (raw.message as string[]).join(", ")
-          : String(raw.message)
-        : text;
-
-    throw new Error(`[${res.status}] ${message}`);
-  }
-
-  return data as T;
-}
-
-const assetUrl = (url: string | null | undefined) => {
-  if (!url) return null;
-  if (url.startsWith("blob:") || url.startsWith("data:")) return url;
-
-  if (url.startsWith("/")) return url;
-
-  try {
-    const parsed = new URL(url);
-    if (parsed.pathname.startsWith("/uploads/")) {
-      return `${parsed.pathname}${parsed.search}`;
-    }
-    return url;
-  } catch {
-    return url;
-  }
-};
-
-function normalizeBookmarkItems(data: BookmarkListResponse): BookmarkApiItem[] {
-  if (Array.isArray(data)) return data;
-  if (data && Array.isArray(data.items)) return data.items;
-  if (data && Array.isArray(data.bookmarks)) return data.bookmarks;
-  if (data && Array.isArray(data.data)) return data.data;
-  return [];
-}
-
-async function fetchMyBookmarks(): Promise<BookmarkApiItem[]> {
-  const data = await api<BookmarkListResponse>("GET", "/users/me/bookmarks");
-  return normalizeBookmarkItems(data);
-}
-
-async function setBookmark(postId: number, shouldBookmark: boolean) {
-  return api(
-    shouldBookmark ? "POST" : "DELETE",
-    `/posts/${postId}/bookmarks`
-  );
-}
-
 function getItemsByTab(items: BookmarkItem[], tab: TabType) {
   if (tab === "all") return items;
   return items.filter((item) => item.status === tab);
 }
 
-function mapBookmarkItems(rawItems: BookmarkApiItem[]): BookmarkItem[] {
+function mapBookmarkItems(rawItems: BookmarkListItem[]): BookmarkItem[] {
   return rawItems
     .map((item): BookmarkItem | null => {
-      const postId = item.postId ?? item.post?.id ?? item.post?.postId;
+      const postId = item.postId;
       if (postId == null) return null;
 
-      const content = item.content ?? item.post?.content ?? null;
-      const thumbnailUrl = item.thumbnailUrl ?? item.post?.thumbnailUrl ?? null;
-      const evaluationStatus =
-        item.evaluationStatus ??
-        item.post?.evaluationStatus ??
-        item.post?.status ??
-        null;
+      const content = item.content ?? null;
+      const thumbnailUrl = item.thumbnailUrl ?? null;
+      const evaluationStatus = item.evaluationStatus ?? null;
 
       const status: BookmarkItem["status"] =
         evaluationStatus === "OPEN" ? "ongoing" : "done";
@@ -170,7 +72,7 @@ function mapBookmarkItems(rawItems: BookmarkApiItem[]): BookmarkItem[] {
         id: postId,
         postId,
         title: content?.trim() || `북마크 ${postId}`,
-        imageUrl: assetUrl(thumbnailUrl) ?? undefined,
+        imageUrl: resolveAssetUrl(thumbnailUrl) || undefined,
         status,
       };
     })
@@ -232,12 +134,19 @@ export default function Bookmark() {
     return getItemsByTab(items, activeTab);
   }, [items, activeTab]);
 
+  const incomingItems = useMemo(
+    () => (incomingTab ? getItemsByTab(items, incomingTab) : []),
+    [incomingTab, items],
+  );
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const itemIdSet = useMemo(() => new Set(items.map((item) => item.id)), [items]);
+
   const loadBookmarks = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
 
-      const data = await fetchMyBookmarks();
+      const data = await fetchAllMyBookmarks();
       setItems(mapBookmarkItems(data));
     } catch (err) {
       const message =
@@ -261,10 +170,8 @@ export default function Bookmark() {
   }, [loadBookmarks]);
 
   useEffect(() => {
-    setSelectedIds((prev) =>
-      prev.filter((id) => items.some((item) => item.id === id))
-    );
-  }, [items]);
+    setSelectedIds((prev) => prev.filter((id) => itemIdSet.has(id)));
+  }, [itemIdSet]);
 
   const getTabTextRef = useCallback((tab: TabType) => {
     if (tab === "all") return allTextRef.current;
@@ -435,7 +342,7 @@ export default function Bookmark() {
     setDeleteLoading(true);
 
     const results = await Promise.allSettled(
-      selectedIds.map((postId) => setBookmark(postId, false))
+      selectedIds.map((postId) => setPostBookmark(postId, false))
     );
 
     const failedMessages = results
@@ -489,7 +396,7 @@ export default function Bookmark() {
     skipClickRef.current = false;
 
     const nextMode: TouchDragMode =
-      startItemId && selectedIds.includes(startItemId) ? "deselect" : "select";
+      startItemId && selectedIdSet.has(startItemId) ? "deselect" : "select";
 
     setTouchDragMode(nextMode);
     setIsTouchDragging(true);
@@ -600,7 +507,7 @@ export default function Bookmark() {
         ) : (
           <div className={styles.cardGrid}>
             {paneItems.map((item) => {
-              const isSelected = selectedIds.includes(item.id);
+              const isSelected = selectedIdSet.has(item.id);
 
               return (
                 <button
@@ -769,7 +676,7 @@ export default function Bookmark() {
                 `${styles.animatedPane} ${styles.fadePane}`
               )}
               {renderGrid(
-                getItemsByTab(items, incomingTab),
+                incomingItems,
                 `next-${incomingTab}`,
                 `${styles.animatedPane} ${nextPaneEnterClass}`
               )}

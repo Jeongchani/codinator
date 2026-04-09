@@ -717,9 +717,6 @@ const UserFeedDetail: React.FC = () => {
           id: authorUserId,
           displayText: titleText,
         }}
-        onSubmitted={(response, payload) => {
-          console.log('신고 완료:', payload, response);
-        }}
       />
     </div>
   );

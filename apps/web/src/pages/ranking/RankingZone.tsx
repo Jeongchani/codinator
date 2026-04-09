@@ -141,6 +141,11 @@ function RankingSection({
   onCardClick,
   onToggleBookmark,
 }: RankingSectionProps) {
+  const bookmarkLoadingIdSet = useMemo(
+    () => new Set(bookmarkLoadingIds),
+    [bookmarkLoadingIds]
+  );
+
   return (
     <section className={styles.section}>
       <h2 className={styles.sectionTitle}>{title}</h2>
@@ -155,7 +160,7 @@ function RankingSection({
               item={item}
               onCardClick={onCardClick}
               onToggleBookmark={onToggleBookmark}
-              isBookmarkLoading={bookmarkLoadingIds.includes(targetId)}
+              isBookmarkLoading={bookmarkLoadingIdSet.has(targetId)}
               isBookmarkPressed={bookmarkPressedIds.includes(targetId)}
             />
           );
@@ -175,6 +180,10 @@ export default function RankingZone() {
   const [bookmarks, setBookmarks] = useState<Record<number, boolean>>({});
   const [bookmarkLoadingIds, setBookmarkLoadingIds] = useState<number[]>([]);
   const [bookmarkPressedIds, setBookmarkPressedIds] = useState<number[]>([]);
+  const bookmarkLoadingIdSet = useMemo(
+    () => new Set(bookmarkLoadingIds),
+    [bookmarkLoadingIds],
+  );
 
   const bookmarkAnimTimeoutMap = useRef<Record<number, number>>({});
 
@@ -300,7 +309,7 @@ export default function RankingZone() {
     e.preventDefault();
     e.stopPropagation();
 
-    if (bookmarkLoadingIds.includes(postId)) {
+    if (bookmarkLoadingIdSet.has(postId)) {
       return;
     }
 
