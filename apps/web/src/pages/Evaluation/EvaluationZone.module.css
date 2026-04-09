@@ -41,8 +41,18 @@
   @apply absolute inset-0 z-20 pointer-events-none;
 }
 
+.topActionGroup {
+  @apply absolute top-[66px] right-4 flex items-center gap-2 pointer-events-auto;
+}
+
+.reportButton {
+  @apply h-8 rounded-full border-0 px-3 text-[12px] font-semibold text-white backdrop-blur-[10px] active:scale-95 transition-transform;
+  background: rgba(0, 0, 0, 0.42);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+}
+
 .closeButton {
-  @apply absolute top-[66px] right-4 flex items-center justify-center bg-transparent border-0 p-0 cursor-pointer active:scale-95 transition-transform pointer-events-auto;
+  @apply flex items-center justify-center bg-transparent border-0 p-0 cursor-pointer active:scale-95 transition-transform;
 }
 
 .title {

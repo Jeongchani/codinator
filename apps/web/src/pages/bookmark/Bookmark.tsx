@@ -8,7 +8,7 @@ import {
 } from "react";
 import { ChevronLeft, Check, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { clearAuthTokens, isAuthError } from "../../lib/api";
+import { clearAuthTokens, isAuthError, performApiRequest } from "../../lib/api";
 import styles from "./Bookmark.module.css";
 
 type TabType = "all" | "ongoing" | "done";
@@ -65,24 +65,19 @@ type TouchDragMode = "select" | "deselect";
 type SlideDirection = "left" | "right";
 
 const TAB_ORDER: TabType[] = ["all", "ongoing", "done"];
-const BASE = "/api/v2";
-
-const tok = () => localStorage.getItem("accessToken") ?? "";
 
 async function api<T>(
   method: string,
   path: string,
   body?: unknown
 ): Promise<T> {
-  const headers: HeadersInit = {
-    Authorization: `Bearer ${tok()}`,
-  };
+  const headers: HeadersInit = {};
 
   if (body !== undefined) {
     headers["Content-Type"] = "application/json";
   }
 
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await performApiRequest(path, {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,

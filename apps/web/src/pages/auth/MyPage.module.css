@@ -195,3 +195,7 @@
 .buttonDisabled {
   @apply opacity-40 cursor-not-allowed;
 }
+
+.withdrawButton {
+  @apply mt-8 mx-auto block bg-transparent border-0 text-[13px] leading-5 text-red-500 underline underline-offset-4;
+}

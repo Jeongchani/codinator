@@ -520,10 +520,6 @@ const EvaluationDetailFeedback: React.FC = () => {
 
   const structuredFeedback = useMemo(() => extractStructuredFeedback(data), [data]);
 
-  const dataRecord = data as unknown as Record<string, unknown> | null;
-  const authorRecord = dataRecord && isRecord(dataRecord.author) ? dataRecord.author : null;
-  const authorNickname = toSafeString(authorRecord?.nickname) ?? '닉네임';
-  const authorUserId = toSafeNumber(authorRecord?.userId) ?? 0;
   const postDisplayText = data?.content || '코디 설명이 없습니다.';
 
   const saveButtonDisabled =
@@ -823,10 +819,7 @@ const EvaluationDetailFeedback: React.FC = () => {
             id: numericPostId ?? 0,
             displayText: postDisplayText,
           }}
-          userTarget={{
-            id: authorUserId,
-            displayText: authorNickname,
-          }}
+          allowUserReport={false}
           onSubmitted={(response, payload) => {
             console.log('신고 완료:', payload, response);
           }}

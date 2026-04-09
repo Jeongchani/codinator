@@ -2,6 +2,8 @@ import type {
   AddBookmarkResponse,
   BookmarkListItem,
   GetMyBookmarksResponse,
+  LogoutResponse,
+  RefreshTokenResponse,
   RemoveBookmarkResponse,
 } from "@codinator/contracts";
 
@@ -45,6 +47,8 @@ type PostWithImages = {
   images?: PostImageLike[] | null;
 };
 
+let refreshRequestPromise: Promise<string | null> | null = null;
+
 const trimTrailingSlash = (value: string): string => {
   return value.endsWith("/") ? value.slice(0, -1) : value;
 };
@@ -66,12 +70,54 @@ const resolveApiServerOrigin = (): string => {
   return trimTrailingSlash(API_ORIGIN);
 };
 
+const resolveApiUrl = (endpoint: string): string => {
+  if (/^https?:\/\//.test(endpoint)) {
+    return endpoint;
+  }
+
+  if (endpoint.startsWith("/")) {
+    return `${API_BASE_URL}${endpoint}`;
+  }
+
+  return `${API_BASE_URL}/${endpoint}`;
+};
+
+const normalizeHeaders = (headers?: HeadersInit): Headers => {
+  return new Headers(headers ?? undefined);
+};
+
+const withAccessToken = (headers: HeadersInit | undefined, accessToken: string | null): Headers => {
+  const nextHeaders = normalizeHeaders(headers);
+
+  if (accessToken) {
+    nextHeaders.set("Authorization", `Bearer ${accessToken}`);
+  } else {
+    nextHeaders.delete("Authorization");
+  }
+
+  return nextHeaders;
+};
+
+const cloneOptionsWithAccessToken = (
+  options?: RequestInit,
+  accessToken?: string | null,
+): RequestInit => {
+  return {
+    ...(options ?? {}),
+    headers: withAccessToken(options?.headers, accessToken ?? getAccessToken()),
+  };
+};
+
 export const getAccessToken = (): string | null => {
   return localStorage.getItem(ACCESS_TOKEN_KEY) ?? localStorage.getItem(LEGACY_ACCESS_TOKEN_KEY);
 };
 
 export const getRefreshToken = (): string | null => {
   return localStorage.getItem(REFRESH_TOKEN_KEY);
+};
+
+export const shouldKeepLoggedIn = (): boolean => {
+  return localStorage.getItem("keepLoggedIn") === "true";
 };
 
 export const saveAuthTokens = (accessToken: string, refreshToken?: string): void => {
@@ -97,6 +143,7 @@ export const clearAuthTokens = (): void => {
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_ID_KEY);
   localStorage.removeItem(USER_NICKNAME_KEY);
+  localStorage.removeItem("keepLoggedIn");
 };
 
 export const getAuthHeaders = (): HeadersInit => {
@@ -120,6 +167,77 @@ export const getAuthOnlyHeaders = (): HeadersInit => {
         Authorization: `Bearer ${accessToken}`,
       }
     : {};
+};
+
+export const refreshAccessToken = async (): Promise<string | null> => {
+  const refreshToken = getRefreshToken();
+
+  if (!refreshToken) {
+    return null;
+  }
+
+  if (refreshRequestPromise) {
+    return refreshRequestPromise;
+  }
+
+  refreshRequestPromise = (async () => {
+    const response = await fetch(resolveApiUrl("/auth/refresh"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!response.ok) {
+      clearAuthTokens();
+      throw new Error(await extractErrorMessage(response));
+    }
+
+    const payload = (await response.json()) as RefreshTokenResponse;
+    saveAuthTokens(payload.accessToken, refreshToken);
+    return payload.accessToken;
+  })()
+    .catch((error) => {
+      clearAuthTokens();
+      throw error;
+    })
+    .finally(() => {
+      refreshRequestPromise = null;
+    });
+
+  return refreshRequestPromise;
+};
+
+export const performApiRequest = async (
+  endpoint: string,
+  options?: RequestInit,
+  allowRefresh = true,
+): Promise<Response> => {
+  const requestOptions = cloneOptionsWithAccessToken(options);
+  let response = await fetch(resolveApiUrl(endpoint), requestOptions);
+
+  if (
+    response.status === 401 &&
+    allowRefresh &&
+    !endpoint.startsWith("/auth/refresh") &&
+    !endpoint.startsWith("/auth/logout") &&
+    getRefreshToken()
+  ) {
+    try {
+      const nextAccessToken = await refreshAccessToken();
+      if (nextAccessToken) {
+        response = await fetch(
+          resolveApiUrl(endpoint),
+          cloneOptionsWithAccessToken(options, nextAccessToken),
+        );
+      }
+    } catch {
+      return response;
+    }
+  }
+
+  return response;
 };
 
 export const resolveAssetUrl = (url?: string | null): string => {
@@ -220,7 +338,7 @@ const extractErrorMessage = async (response: Response): Promise<string> => {
 };
 
 export const fetcher = async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+  const response = await performApiRequest(endpoint, options);
 
   if (!response.ok) {
     throw new Error(await extractErrorMessage(response));
@@ -233,17 +351,48 @@ export const uploadPostImage = async (file: File): Promise<UploadedPostImageResp
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${API_BASE_URL}/uploads/post-image`, {
-    method: "POST",
-    headers: getAuthOnlyHeaders(),
-    body: formData,
-  });
+  const response = await performApiRequest(
+    "/uploads/post-image",
+    {
+      method: "POST",
+      headers: getAuthOnlyHeaders(),
+      body: formData,
+    },
+  );
 
   if (!response.ok) {
     throw new Error(await extractErrorMessage(response));
   }
 
   return response.json() as Promise<UploadedPostImageResponse>;
+};
+
+export const logoutWithServer = async (): Promise<void> => {
+  const refreshToken = getRefreshToken();
+
+  try {
+    if (refreshToken) {
+      const response = await performApiRequest(
+        "/auth/logout",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ refreshToken }),
+        },
+        false,
+      );
+
+      if (!response.ok) {
+        throw new Error(await extractErrorMessage(response));
+      }
+
+      await response.json().catch(() => ({ success: true } as LogoutResponse));
+    }
+  } finally {
+    clearAuthTokens();
+  }
 };
 
 export const isAuthError = (message: string): boolean => {

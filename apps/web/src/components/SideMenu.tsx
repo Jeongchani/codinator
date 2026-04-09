@@ -11,6 +11,7 @@ import {
   LogOut,
 } from "lucide-react";
 import styles from "./SideMenu.module.css";
+import { logoutWithServer } from "../lib/api";
 
 type SideMenuProps = {
   isOpen?: boolean;
@@ -43,12 +44,13 @@ export default function SideMenu({
     navigate(path);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("token");
-    onClose?.();
-    navigate("/login");
+  const handleLogout = async () => {
+    try {
+      await logoutWithServer();
+    } finally {
+      onClose?.();
+      navigate("/login", { replace: true });
+    }
   };
 
   return (
@@ -77,18 +79,18 @@ export default function SideMenu({
           <MenuItem
             icon={<ClipboardCheck size={20} strokeWidth={2.2} />}
             label="평가존"
-            onClick={() => handleMove("/evaluationzone")}
+            onClick={() => handleMove("/evaluationZone")}
           />
 
           <MenuItem
             icon={<Trophy size={20} strokeWidth={2.2} />}
             label="랭킹존"
-            onClick={() => handleMove("/rankingzone")}
+            onClick={() => handleMove("/rankingZone")}
           />
           <MenuItem
             icon={<Images size={20} strokeWidth={2.2} />}
             label="내 피드"
-            onClick={() => handleMove("/myfeeds")}
+            onClick={() => handleMove("/myFeeds")}
           />
 
           <MenuItem
@@ -107,7 +109,7 @@ export default function SideMenu({
           <MenuItem
             icon={<User size={20} strokeWidth={2.2} />}
             label="마이 페이지"
-            onClick={() => handleMove("/mypage")}
+            onClick={() => handleMove("/myPage")}
           />
           <MenuItem
             icon={<Settings size={20} strokeWidth={2.2} />}

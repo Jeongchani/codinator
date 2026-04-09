@@ -10,8 +10,8 @@ import MyFeeds from "./pages/feeds/MyFeeds";
 import UserFeeds from "./pages/feeds/UserFeeds";
 import MyFeedDetail from "./pages/feeds/MyFeedDetail";
 import AuthEntry from "./pages/auth/AuthEntry";
-import EvaluationZone from "./pages/evaluation/EvaluationZone";
-import EvaluationDetailFeedback from "./pages/evaluation/EvaluationDetail_Feedback";
+import EvaluationZone from "./pages/Evaluation/EvaluationZone";
+import EvaluationDetailFeedback from "./pages/Evaluation/EvaluationDetail_Feedback";
 import AppLayout from "./AppLayout";
 import TestPage from "./TestPage";
 import Bookmark from "./pages/bookmark/Bookmark";
@@ -32,6 +32,7 @@ function AppRoutes() {
       <Route path="/postUpload" element={<Upload />} />
       <Route path="/rankingDetail/:postId" element={<RankingDetail />} />
       <Route path="/myPage" element={<MyPage />} />
+      <Route path="/settings" element={<MyPage />} />
 
       <Route path="/test" element={<TestPage />} />
 

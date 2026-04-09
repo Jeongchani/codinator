@@ -8,7 +8,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, Menu, Pencil } from "lucide-react";
 import SideMenu from "../../components/SideMenu";
-import { fetcher, getAuthHeaders } from "../../lib/api";
+import { clearAuthTokens, fetcher, getAuthHeaders } from "../../lib/api";
 import styles from "./MyPage.module.css";
 
 type ActiveSection = "nickname" | "password" | "phone" | null;
@@ -352,6 +352,29 @@ export default function MyPage() {
     setActiveSection(null);
   };
 
+  const handleWithdraw = async () => {
+    const confirmed = window.confirm("정말 회원 탈퇴하시겠습니까? 탈퇴 후에는 다시 복구할 수 없습니다.");
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await fetcher<{ success: boolean; message: string }>("/users/me", {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+
+      clearAuthTokens();
+      navigate("/authEntry", { replace: true });
+    } catch (error) {
+      console.error("회원 탈퇴 실패:", error);
+      window.alert(
+        error instanceof Error ? error.message : "회원 탈퇴에 실패했습니다.",
+      );
+    }
+  };
+
   const handleSubmitAll = async () => {
     if (!canSubmitAll) return;
 
@@ -393,6 +416,7 @@ export default function MyPage() {
       if (pendingNickname !== null) {
         setOriginalNickname(pendingNickname);
         setNicknameDraft(pendingNickname);
+        localStorage.setItem("nickname", pendingNickname);
       }
 
       if (pendingPhoneDigits !== null) {
@@ -700,6 +724,14 @@ export default function MyPage() {
               )}
             </div>
           </section>
+
+          <button
+            type="button"
+            className={styles.withdrawButton}
+            onClick={handleWithdraw}
+          >
+            회원 탈퇴
+          </button>
         </main>
 
         <div className={styles.finalSubmitWrap}>

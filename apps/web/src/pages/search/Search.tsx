@@ -9,7 +9,7 @@ import {
   UserRound,
 } from "lucide-react";
 import Header from "../../components/Header";
-import { resolveAssetUrl } from "../../lib/api";
+import { getAccessToken, performApiRequest, resolveAssetUrl } from "../../lib/api";
 import styles from "./Search.module.css";
 
 type SearchType = "ALL" | "NICKNAME" | "KEYWORD" | "POST";
@@ -55,7 +55,6 @@ type SearchProps = {
   initialRecentSearches?: string[];
 };
 
-const BASE = "/api/v2";
 const HISTORY_KEY_PREFIX = "searchRecentKeywords";
 const DEFAULT_VISIBLE_COUNT = 6;
 const LOAD_MORE_STEP = 6;
@@ -67,7 +66,7 @@ const TYPE_OPTIONS: { value: SearchType; label: string; shortLabel: string }[] =
   { value: "POST", label: "게시글", shortLabel: "게시글" },
 ];
 
-const tok = () => localStorage.getItem("accessToken") ?? "";
+const tok = () => getAccessToken() ?? "";
 
 function getDefaultVisibleCounts(): Record<ExpandSectionKey, number> {
   return {
@@ -78,11 +77,10 @@ function getDefaultVisibleCounts(): Record<ExpandSectionKey, number> {
 }
 
 async function api<T>(method: string, path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await performApiRequest(path, {
     method,
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${tok()}`,
     },
   });
 

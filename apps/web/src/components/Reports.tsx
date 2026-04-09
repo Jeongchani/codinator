@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Siren, X } from "lucide-react";
 import styles from "./Reports.module.css";
+import { performApiRequest } from "../lib/api";
 
 type ReportTab = "post" | "user";
 type ReportReason = "SPAM" | "ABUSE" | "INAPPROPRIATE" | "ETC";
@@ -18,6 +19,7 @@ type ReportsProps = {
   defaultTab?: ReportTab;
   postTarget?: ReportTarget | null;
   userTarget?: ReportTarget | null;
+  allowUserReport?: boolean;
   onSubmitted?: (
     response: unknown,
     payload: {
@@ -30,9 +32,6 @@ type ReportsProps = {
   ) => void;
 };
 
-const BASE = "/api/v2";
-
-const getAccessToken = () => localStorage.getItem("accessToken") ?? "";
 
 const REASON_OPTIONS: { value: ReportReason; label: string }[] = [
   { value: "SPAM", label: "스팸" },
@@ -46,11 +45,10 @@ async function api<T>(
   path: string,
   body?: unknown
 ): Promise<T> {
-  const response = await fetch(`${BASE}${path}`, {
+  const response = await performApiRequest(path, {
     method,
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${getAccessToken()}`,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
@@ -102,10 +100,12 @@ export default function Reports({
   defaultTab = "post",
   postTarget = null,
   userTarget = null,
+  allowUserReport = true,
   onSubmitted,
 }: ReportsProps) {
   const hasPostTarget = hasValidTarget(postTarget);
-  const hasUserTarget = hasValidTarget(userTarget);
+  const hasUserTarget = allowUserReport && hasValidTarget(userTarget);
+  const showTabSwitch = hasPostTarget && hasUserTarget;
 
   const [tab, setTab] = useState<ReportTab>(
     getPreferredTab(defaultTab, hasPostTarget, hasUserTarget)
@@ -293,7 +293,8 @@ export default function Reports({
         </div>
 
         <div className={styles.content}>
-          <div className={styles.tabSwitch}>
+          {showTabSwitch ? (
+            <div className={styles.tabSwitch}>
             <div
               className={[
                 styles.tabIndicator,
@@ -328,7 +329,8 @@ export default function Reports({
             >
               사용자
             </button>
-          </div>
+            </div>
+          ) : null}
 
           <div className={styles.section}>
             <div className={styles.targetBox} title={activeTargetDisplay}>

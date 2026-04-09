@@ -18,6 +18,7 @@ import {
   clearAuthTokens,
   fetcher,
   getAuthHeaders,
+  performApiRequest,
   resolveAssetUrl,
   uploadPostImage,
   type UploadedPostImageResponse,
@@ -1078,11 +1079,8 @@ export default function Upload() {
         const formData = new FormData();
         formData.append("file", manualBlurFile);
 
-        const response = await fetch(`/api/v2/uploads/posts/${postId}/manual-blur`, {
+        const response = await performApiRequest(`/uploads/posts/${postId}/manual-blur`, {
           method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("accessToken") ?? ""}`,
-          },
           body: formData,
         });
 

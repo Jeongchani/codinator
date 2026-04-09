@@ -14,6 +14,7 @@ import {
   getAuthHeaders,
   resolveAssetUrl,
 } from '../../lib/api';
+import Reports from '../../components/Reports';
 import styles from './EvaluationZone.module.css';
 
 const THUMB_SIZE = 50;
@@ -164,6 +165,7 @@ const EvaluationZone: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [voteSummaryMap, setVoteSummaryMap] = useState<Record<number, VoteSummaryState>>({});
+  const [reportOpen, setReportOpen] = useState(false);
 
   const dragX = useMotionValue(0);
 
@@ -499,9 +501,22 @@ const EvaluationZone: React.FC = () => {
       </div>
 
       <div className={styles.overlay}>
-        <button className={styles.closeButton} onClick={handleClose} aria-label="닫기">
-          <CloseIcon />
-        </button>
+        <div className={styles.topActionGroup}>
+          {!isEmptyLastPage && currentPost ? (
+            <button
+              type="button"
+              className={styles.reportButton}
+              onClick={() => setReportOpen(true)}
+              aria-label="게시글 신고"
+            >
+              신고
+            </button>
+          ) : null}
+
+          <button className={styles.closeButton} onClick={handleClose} aria-label="닫기">
+            <CloseIcon />
+          </button>
+        </div>
 
         <div className={styles.title}>평가 존</div>
 
@@ -644,6 +659,18 @@ const EvaluationZone: React.FC = () => {
           </div>
         )}
       </div>
+      {currentPost ? (
+        <Reports
+          isOpen={reportOpen}
+          onClose={() => setReportOpen(false)}
+          defaultTab="post"
+          allowUserReport={false}
+          postTarget={{
+            id: currentPost.postId,
+            displayText: currentPost.content?.trim() || `게시글 #${currentPost.postId}`,
+          }}
+        />
+      ) : null}
     </div>
   );
 };

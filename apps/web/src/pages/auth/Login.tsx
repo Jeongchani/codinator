@@ -36,7 +36,7 @@ const Login: React.FC = () => {
 
   const [email, setEmail] = useState("alice@codinator.com");
   const [password, setPassword] = useState("1234");
-  const [isKeepLoggedIn, setIsKeepLoggedIn] = useState(false);
+  const [isKeepLoggedIn, setIsKeepLoggedIn] = useState(() => localStorage.getItem("keepLoggedIn") === "true");
   const [loading, setLoading] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
@@ -73,13 +73,14 @@ const Login: React.FC = () => {
       });
 
       clearAuthTokens();
-      saveAuthTokens(data.accessToken, data.refreshToken);
+      saveAuthTokens(
+        data.accessToken,
+        isKeepLoggedIn ? data.refreshToken : undefined,
+      );
       saveCurrentUser(data.user);
 
       if (isKeepLoggedIn) {
         localStorage.setItem("keepLoggedIn", "true");
-      } else {
-        localStorage.removeItem("keepLoggedIn");
       }
 
       navigate("/rankingZone", { replace: true });
