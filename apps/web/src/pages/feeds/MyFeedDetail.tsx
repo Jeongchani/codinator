@@ -452,7 +452,7 @@ function extractStructuredFeedback(data: GetFeedPostDetailResponse | null): {
 function buildEditableWearItems(source: unknown): EditableWearItem[] {
   const items = Array.isArray(source) ? source : [];
 
-  const mapped = items.map((item, index) => {
+  return items.map((item, index) => {
     const record = isRecord(item) ? item : null;
 
     return {
@@ -465,21 +465,25 @@ function buildEditableWearItems(source: unknown): EditableWearItem[] {
         '',
     };
   });
-
-  const minimumCount = Math.max(4, mapped.length);
-  const result = [...mapped];
-
-  while (result.length < minimumCount) {
-    result.push({
-      id: result.length > 0 ? Math.max(...result.map((item) => item.id)) + 1 : 1,
-      type: '',
-      brand: '',
-      name: '',
-    });
-  }
-
-  return result;
 }
+
+function normalizeEditableWearItem(item: EditableWearItem) {
+  return {
+    type: item.type,
+    brand: item.brand.trim(),
+    name: item.name.trim(),
+  };
+}
+
+function isSavableWearItem(item: EditableWearItem) {
+  const normalizedItem = normalizeEditableWearItem(item);
+
+  return (
+    mapWearTypeToCategory(normalizedItem.type) !== null &&
+    Boolean(normalizedItem.brand || normalizedItem.name)
+  );
+}
+
 
 type FeedbackPanelProps = {
   title: string;
@@ -656,6 +660,7 @@ const MyFeedDetail: React.FC = () => {
 
   const [isEditingOutfit, setIsEditingOutfit] = useState(false);
   const [editableWearItems, setEditableWearItems] = useState<EditableWearItem[]>([]);
+  const [initialWearItems, setInitialWearItems] = useState<EditableWearItem[]>([]);
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
   const [outfitSaving, setOutfitSaving] = useState(false);
   const [outfitError, setOutfitError] = useState('');
@@ -779,8 +784,76 @@ const MyFeedDetail: React.FC = () => {
 
   const outfitItems = Array.isArray(data?.outfitItems) ? data.outfitItems : [];
 
+  const changeSummary = useMemo(() => {
+    const initialItemMap = new Map(
+      initialWearItems.map((item) => [item.id, normalizeEditableWearItem(item)]),
+    );
+
+    let addedCount = 0;
+    let modifiedCount = 0;
+    let deletedCount = 0;
+
+    editableWearItems.forEach((item) => {
+      const currentItem = normalizeEditableWearItem(item);
+      const initialItem = initialItemMap.get(item.id);
+      if (!initialItem) {
+        if (!selectedDeleteIds.has(item.id) && isSavableWearItem(item)) {
+          addedCount += 1;
+        }
+        return;
+      }
+
+      const hadInitialValue = Boolean(
+        initialItem.type || initialItem.brand || initialItem.name,
+      );
+
+      if (selectedDeleteIds.has(item.id)) {
+        if (hadInitialValue) {
+          deletedCount += 1;
+        }
+        return;
+      }
+
+      if (!hadInitialValue) {
+        return;
+      }
+
+      const changed =
+        currentItem.type !== initialItem.type ||
+        currentItem.brand !== initialItem.brand ||
+        currentItem.name !== initialItem.name;
+
+      if (changed) {
+        modifiedCount += 1;
+      }
+    });
+
+    return {
+      addedCount,
+      modifiedCount,
+      deletedCount,
+    };
+  }, [editableWearItems, initialWearItems, selectedDeleteIds]);
+
   const handleStartOutfitEdit = () => {
-    setEditableWearItems(buildEditableWearItems(outfitItems));
+    const existingItems = buildEditableWearItems(outfitItems);
+    const nextId =
+      existingItems.length > 0
+        ? Math.max(...existingItems.map((item) => item.id)) + 1
+        : 1;
+
+    const nextItems: EditableWearItem[] = [
+      ...existingItems,
+      {
+        id: nextId,
+        type: '',
+        brand: '',
+        name: '',
+      },
+    ];
+
+    setEditableWearItems(nextItems);
+    setInitialWearItems(existingItems.map((item) => ({ ...item })));
     setOpenDropdownId(null);
     setOutfitError('');
     setDeleteMode(false);
@@ -792,6 +865,7 @@ const MyFeedDetail: React.FC = () => {
   const handleCancelOutfitEdit = () => {
     setIsEditingOutfit(false);
     setEditableWearItems([]);
+    setInitialWearItems([]);
     setOpenDropdownId(null);
     setOutfitError('');
     setDeleteMode(false);
@@ -842,24 +916,17 @@ const MyFeedDetail: React.FC = () => {
       setDeleteMode(true);
       setSelectedDeleteIds(new Set());
       setOpenDropdownId(null);
+      setConfirmDeleteOpen(false);
       return;
     }
 
-    if (selectedDeleteIds.size === 0) {
-      return;
-    }
-
-    setConfirmDeleteOpen(true);
-  };
-
-  const handleConfirmDeleteSelected = () => {
-    setEditableWearItems((prev) => prev.filter((item) => !selectedDeleteIds.has(item.id)));
-    setSelectedDeleteIds(new Set());
     setDeleteMode(false);
+    setSelectedDeleteIds(new Set());
     setConfirmDeleteOpen(false);
   };
 
   const handleCloseDeleteConfirm = () => {
+    if (outfitSaving) return;
     setConfirmDeleteOpen(false);
   };
 
@@ -877,14 +944,14 @@ const MyFeedDetail: React.FC = () => {
     });
   };
 
-  const handleCompleteOutfitEdit = async () => {
+  const saveOutfitItems = async (items: EditableWearItem[]) => {
     if (!resolvedPostId || outfitSaving || !data) return;
 
     try {
       setOutfitSaving(true);
       setOutfitError('');
 
-      const payloadOutfitItems = editableWearItems
+      const payloadOutfitItems = items
         .map((item) => ({
           category: mapWearTypeToCategory(item.type),
           brand: item.brand.trim() || null,
@@ -911,6 +978,7 @@ const MyFeedDetail: React.FC = () => {
       await loadDetail();
       setIsEditingOutfit(false);
       setEditableWearItems([]);
+      setInitialWearItems([]);
       setOpenDropdownId(null);
       setDeleteMode(false);
       setSelectedDeleteIds(new Set());
@@ -922,6 +990,16 @@ const MyFeedDetail: React.FC = () => {
     } finally {
       setOutfitSaving(false);
     }
+  };
+
+  const handleConfirmOutfitUpdate = async () => {
+    const nextItems = editableWearItems.filter((item) => !selectedDeleteIds.has(item.id));
+    await saveOutfitItems(nextItems);
+  };
+
+  const handleCompleteOutfitEdit = () => {
+    if (!resolvedPostId || outfitSaving || !data) return;
+    setConfirmDeleteOpen(true);
   };
 
   if (detailLoading) {
@@ -1074,10 +1152,9 @@ const MyFeedDetail: React.FC = () => {
                       deleteMode && styles.outfitDeleteButtonActive,
                     )}
                     onClick={handleToggleDeleteMode}
-                    disabled={deleteMode && selectedDeleteIds.size === 0}
                   >
                     <Trash2 size={14} strokeWidth={2.1} />
-                    <span>{deleteMode ? '삭제 적용' : '삭제'}</span>
+                    <span>삭제</span>
                   </button>
 
                   <button
@@ -1103,11 +1180,10 @@ const MyFeedDetail: React.FC = () => {
 
             {isEditingOutfit ? (
               <>
-                {deleteMode ? (
-                  <p className={styles.deleteModeHint}>
-                    삭제할 아이템 박스를 눌러 선택하세요. 여러 개 선택한 뒤 삭제 적용을 누르면 한 번에 삭제됩니다.
-                  </p>
-                ) : null}
+
+                <p className={styles.editSummaryText}>
+                  추가 {changeSummary.addedCount}건 · 수정 {changeSummary.modifiedCount}건 · 삭제 {changeSummary.deletedCount}건
+                </p>
 
                 <div className={styles.itemGrid}>
                   {editableWearItems.map((item) => {
@@ -1187,7 +1263,7 @@ const MyFeedDetail: React.FC = () => {
                     onClick={handleCompleteOutfitEdit}
                     disabled={outfitSaving}
                   >
-                    {outfitSaving ? '저장 중...' : '수정 완료'}
+                    {outfitSaving ? '수정 중...' : '수정완료'}
                   </button>
                 </div>
               </>
@@ -1237,9 +1313,25 @@ const MyFeedDetail: React.FC = () => {
             className={styles.confirmCard}
             onClick={(e) => e.stopPropagation()}
           >
-            <h4 className={styles.confirmTitle}>선택한 아이템을 삭제할까요?</h4>
+            <h4 className={styles.confirmTitle}>이대로 수정할까요?</h4>
+
+            <div className={styles.confirmSummaryList}>
+              <p className={styles.confirmSummaryRow}>
+                <span>추가</span>
+                <strong>{changeSummary.addedCount}건</strong>
+              </p>
+              <p className={styles.confirmSummaryRow}>
+                <span>수정</span>
+                <strong>{changeSummary.modifiedCount}건</strong>
+              </p>
+              <p className={styles.confirmSummaryRow}>
+                <span>삭제</span>
+                <strong>{changeSummary.deletedCount}건</strong>
+              </p>
+            </div>
+
             <p className={styles.confirmText}>
-              선택한 아이템 {selectedDeleteIds.size}개가 삭제됩니다.
+              선택한 변경사항이 최종 반영됩니다.
             </p>
 
             <div className={styles.confirmActions}>
@@ -1253,9 +1345,12 @@ const MyFeedDetail: React.FC = () => {
               <button
                 type="button"
                 className={styles.confirmDeleteButton}
-                onClick={handleConfirmDeleteSelected}
+                onClick={() => {
+                  void handleConfirmOutfitUpdate();
+                }}
+                disabled={outfitSaving}
               >
-                삭제
+                {outfitSaving ? '수정 중...' : '수정'}
               </button>
             </div>
           </div>

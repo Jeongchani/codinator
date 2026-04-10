@@ -60,16 +60,28 @@
   text-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
 }
 
-.slideIndicator {
-  @apply absolute top-[360px] right-4 flex flex-col gap-2 items-center;
+.swipeIndicator {
+  @apply absolute top-1/2 right-4 z-30 -translate-y-1/2 pointer-events-none;
 }
 
-.slideIndicatorActive {
-  @apply w-2 h-7 rounded-full bg-white;
+.swipeIndicatorStack {
+  @apply flex flex-col items-center;
+  gap: 8px;
 }
 
-.slideIndicatorDot {
-  @apply w-2 h-2 rounded-full bg-white/35;
+.swipeIndicatorActive {
+  width: 8px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.28);
+}
+
+.swipeIndicatorDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.32);
 }
 
 .helperText {

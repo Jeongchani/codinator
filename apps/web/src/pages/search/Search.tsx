@@ -7,8 +7,11 @@ import {
   Sparkles,
   ChevronDown,
   UserRound,
+  ChevronsUp,
 } from "lucide-react";
 import Header from "../../components/Header";
+import PostDetailBottomSheet from "../../components/postdetail/PostDetailBottomSheet";
+import RankingDetail from "../ranking/RankingDetail";
 import { getAccessToken, performApiRequest, resolveAssetUrl } from "../../lib/api";
 import styles from "./Search.module.css";
 
@@ -39,6 +42,13 @@ type SearchPostItem = {
   imageUrl: string;
   content: string;
   userId?: number;
+};
+
+type FocusPostState = {
+  postId: number;
+  userId: number;
+  imageUrl: string;
+  description: string;
 };
 
 type SearchPageSnapshot = {
@@ -672,6 +682,8 @@ export default function Search({ initialRecentSearches }: SearchProps) {
   const [visibleCounts, setVisibleCounts] = useState<Record<ExpandSectionKey, number>>(
     initialPageSnapshot?.visibleCounts ?? getDefaultVisibleCounts(),
   );
+  const [focusPost, setFocusPost] = useState<FocusPostState | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const filterRef = useRef<HTMLDivElement>(null);
   const contentAreaRef = useRef<HTMLDivElement>(null);
@@ -736,15 +748,41 @@ export default function Search({ initialRecentSearches }: SearchProps) {
 
   const shouldShowRecent = !searched && trimmedQuery.length === 0 && recentSearches.length > 0;
 
-  const shouldShowUserSection =
-    (searchType === "ALL" || searchType === "NICKNAME") && userResults.length > 0;
-  const shouldShowPostSection =
-    (searchType === "ALL" || searchType === "POST") && postResults.length > 0;
-  const shouldShowKeywordSection =
-    (searchType === "ALL" || searchType === "KEYWORD") && keywordResults.length > 0;
+  const allVisualResults = useMemo(() => {
+    if (searchType !== "ALL") {
+      return [] as Array<{
+        postId: number;
+        imageUrl: string;
+        userId?: number;
+        description: string;
+      }>;
+    }
+
+    const combined = [
+      ...keywordResults.map((item) => ({
+        postId: item.postId,
+        imageUrl: item.imageUrl,
+        userId: item.userId,
+        description: item.keywordsText,
+      })),
+      ...postResults.map((item) => ({
+        postId: item.postId,
+        imageUrl: item.imageUrl,
+        userId: item.userId,
+        description: item.content,
+      })),
+    ];
+
+    return Array.from(new Map(combined.map((item) => [item.postId, item])).values());
+  }, [keywordResults, postResults, searchType]);
+
+  const shouldShowAllVisualSection = searchType === "ALL" && allVisualResults.length > 0;
+  const shouldShowUserSection = searchType === "NICKNAME" && userResults.length > 0;
+  const shouldShowPostSection = searchType === "POST" && postResults.length > 0;
+  const shouldShowKeywordSection = searchType === "KEYWORD" && keywordResults.length > 0;
 
   const hasVisualResults =
-    shouldShowUserSection || shouldShowPostSection || shouldShowKeywordSection;
+    shouldShowAllVisualSection || shouldShowUserSection || shouldShowPostSection || shouldShowKeywordSection;
 
   const visibleUserResults = useMemo(
     () => userResults.slice(0, visibleCounts.users),
@@ -754,12 +792,17 @@ export default function Search({ initialRecentSearches }: SearchProps) {
     () => postResults.slice(0, visibleCounts.posts),
     [postResults, visibleCounts.posts],
   );
+  const visibleAllResults = useMemo(
+    () => allVisualResults.slice(0, visibleCounts.posts),
+    [allVisualResults, visibleCounts.posts],
+  );
   const visibleKeywordResults = useMemo(
     () => keywordResults.slice(0, visibleCounts.keywords),
     [keywordResults, visibleCounts.keywords],
   );
 
   const canLoadMoreUsers = userResults.length > visibleCounts.users;
+  const canLoadMoreAll = allVisualResults.length > visibleCounts.posts;
   const canLoadMorePosts = postResults.length > visibleCounts.posts;
   const canLoadMoreKeywords = keywordResults.length > visibleCounts.keywords;
 
@@ -831,6 +874,17 @@ export default function Search({ initialRecentSearches }: SearchProps) {
     window.addEventListener("mousedown", handleClickOutside);
     return () => window.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!focusPost) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [focusPost]);
 
   const pushRecentSearch = (value: string, type: SearchType, isAi = false) => {
     const nextItem: RecentSearchItem = {
@@ -942,26 +996,32 @@ export default function Search({ initialRecentSearches }: SearchProps) {
     }
   };
 
-  const openFeedDetail = (postId: number, userId?: number) => {
+  const openFeedDetail = (
+    postId: number,
+    imageUrl: string,
+    description: string,
+    userId?: number,
+  ) => {
     if (!userId) {
       setErrorMessage(
-        "검색 결과에 userId가 없어서 상세 페이지로 이동할 수 없어요. search API의 POST/KEYWORD 결과에 userId를 포함해줘야 해요.",
+        "검색 결과에 userId가 없어서 상세 페이지를 열 수 없어요. search API의 POST/KEYWORD 결과에 userId를 포함해줘야 해요.",
       );
       return;
     }
 
     persistSearchPageSnapshot();
-
-    navigate(`/user/${userId}/feed/${postId}`, {
-      state: {
-        from: "search",
-        userId,
-        post: {
-          postId,
-          authorId: userId,
-        },
-      },
+    setFocusPost({
+      postId,
+      userId,
+      imageUrl,
+      description,
     });
+    setSheetOpen(true);
+  };
+
+  const handleCloseFocus = () => {
+    setSheetOpen(false);
+    setFocusPost(null);
   };
 
   const handleInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -1194,6 +1254,47 @@ export default function Search({ initialRecentSearches }: SearchProps) {
 
           {!isLoading && searched && !errorMessage && hasVisualResults && (
             <div className={styles.resultWrap}>
+              {shouldShowAllVisualSection && (
+                <section className={styles.sectionBlock}>
+                  <div className={styles.sectionHeader}>
+                    <h3 className={styles.sectionTitle}>전체 검색</h3>
+
+                    <div className={styles.sectionHeaderRight}>
+                      <span className={styles.sectionCount}>{allVisualResults.length}</span>
+
+                      {canLoadMoreAll && (
+                        <button
+                          type="button"
+                          className={styles.moreButton}
+                          onClick={() => increaseVisibleCount("posts")}
+                        >
+                          더보기
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.feedGrid}>
+                    {visibleAllResults.map((item) => (
+                      <button
+                        key={`all-${item.postId}`}
+                        type="button"
+                        className={styles.feedCard}
+                        onClick={() => openFeedDetail(item.postId, item.imageUrl, item.description, item.userId)}
+                      >
+                        <div className={styles.feedThumbWrap}>
+                          <img
+                            src={item.imageUrl}
+                            alt={item.description}
+                            className={styles.feedThumb}
+                          />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+
               {shouldShowUserSection && (
                 <section className={styles.sectionBlock}>
                   <div className={styles.sectionHeader}>
@@ -1270,7 +1371,7 @@ export default function Search({ initialRecentSearches }: SearchProps) {
                         key={`post-${item.postId}`}
                         type="button"
                         className={styles.feedCard}
-                        onClick={() => openFeedDetail(item.postId, item.userId)}
+                        onClick={() => openFeedDetail(item.postId, item.imageUrl, item.content, item.userId)}
                       >
                         <div className={styles.feedThumbWrap}>
                           <img
@@ -1312,7 +1413,7 @@ export default function Search({ initialRecentSearches }: SearchProps) {
                         key={`keyword-${item.postId}`}
                         type="button"
                         className={styles.feedCard}
-                        onClick={() => openFeedDetail(item.postId, item.userId)}
+                        onClick={() => openFeedDetail(item.postId, item.imageUrl, item.keywordsText, item.userId)}
                       >
                         <div className={styles.feedThumbWrap}>
                           <img
@@ -1345,6 +1446,49 @@ export default function Search({ initialRecentSearches }: SearchProps) {
           )}
         </div>
       </div>
+
+      {focusPost ? (
+        <div className={styles.focusOverlay} role="dialog" aria-modal="true" aria-label="게시글 포커스 화면">
+          <div className={styles.focusFrame}>
+            <div
+              className={styles.focusImage}
+              style={{ backgroundImage: `url(${focusPost.imageUrl})` }}
+              aria-hidden="true"
+            />
+            <div className={styles.focusTopGradient} />
+            <div className={styles.focusBottomGradient} />
+
+            <button
+              type="button"
+              className={styles.focusCloseButton}
+              onClick={handleCloseFocus}
+              aria-label="포커스 화면 닫기"
+            >
+              <X size={18} strokeWidth={2.5} />
+            </button>
+
+            {!sheetOpen ? (
+              <div className={styles.focusFloatingArea}>
+                <button
+                  type="button"
+                  className={styles.focusDetailButton}
+                  onClick={() => setSheetOpen(true)}
+                >
+                  <span className={styles.focusDetailButtonText}>상세보기</span>
+                  <ChevronsUp size={16} strokeWidth={2.4} className={styles.focusDetailButtonIcon} />
+                </button>
+              </div>
+            ) : null}
+
+            <PostDetailBottomSheet
+              isOpen={sheetOpen}
+              onCloseRequest={() => setSheetOpen(false)}
+            >
+              <RankingDetail postId={focusPost.postId} />
+            </PostDetailBottomSheet>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

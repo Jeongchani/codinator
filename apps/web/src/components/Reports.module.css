@@ -239,17 +239,27 @@
 }
 
 .submitButton {
-  @apply h-12 w-full rounded-[12px] border-0 text-center text-xl font-medium leading-7 transition-colors;
+  @apply h-12 w-full rounded-[12px] border-0 text-center text-xl font-medium leading-7 transition-all duration-150;
   background: rgba(255, 255, 255, 0.96);
   color: #000000;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
-.submitButton:hover {
-  background: #ffffff;
+.submitButtonEnabled:active {
+  transform: scale(0.97);
 }
 
 .submitButtonDisabled {
   cursor: not-allowed;
   background: rgba(255, 255, 255, 0.14);
   color: rgba(255, 255, 255, 0.42);
+  pointer-events: none;
+  transform: none;
+  box-shadow: none;
+}
+
+.submitButton:disabled {
+  pointer-events: none;
 }

@@ -6,9 +6,13 @@ import {
   useRef,
   useState,
 } from "react";
-import { ChevronLeft, Check, Trash2 } from "lucide-react";
+import { ChevronLeft, Check, ChevronsUp, Trash2, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import type { BookmarkListItem } from "@codinator/contracts";
+import type {
+  BookmarkListItem,
+  RankingPeriod,
+  VoteChoice,
+} from "@codinator/contracts";
 import {
   clearAuthTokens,
   fetchAllMyBookmarks,
@@ -16,9 +20,14 @@ import {
   resolveAssetUrl,
   setPostBookmark,
 } from "../../lib/api";
+import PostDetailBottomSheet from "../../components/postdetail/PostDetailBottomSheet";
+import RankingDetail from "../ranking/RankingDetail";
+import EvaluationDetail_Feedback from "../evaluation/EvaluationDetail_Feedback";
 import styles from "./Bookmark.module.css";
 
 type TabType = "all" | "ongoing" | "done";
+type TouchDragMode = "select" | "deselect";
+type SlideDirection = "left" | "right";
 
 type BookmarkItem = {
   id: number;
@@ -26,6 +35,9 @@ type BookmarkItem = {
   title: string;
   imageUrl?: string;
   status: Exclude<TabType, "all">;
+  rankingPeriods: RankingPeriod[];
+  voteId: number | null;
+  voteChoice: VoteChoice | null;
 };
 
 type IndicatorStyle = {
@@ -45,14 +57,132 @@ type SelectionRect = {
   bottom: number;
 };
 
-type TouchDragMode = "select" | "deselect";
-type SlideDirection = "left" | "right";
-
 const TAB_ORDER: TabType[] = ["all", "ongoing", "done"];
+const LONG_PRESS_MS = 450;
+const LONG_PRESS_MOVE_THRESHOLD = 8;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function toSafeNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+
+  return null;
+}
+
+function normalizeVoteChoice(value: unknown): VoteChoice | null {
+  const text = String(value ?? "").toUpperCase();
+
+  if (text === "LIKE") return "LIKE";
+  if (text === "DISLIKE") return "DISLIKE";
+
+  return null;
+}
+
+function normalizeRankingPeriods(periods: unknown): RankingPeriod[] {
+  if (!Array.isArray(periods)) return [];
+
+  return periods
+    .map((period) => String(period).toUpperCase())
+    .filter((period): period is RankingPeriod => {
+      return period === "WEEKLY" || period === "MONTHLY";
+    });
+}
+
+function extractRankingPeriods(raw: Record<string, unknown>): RankingPeriod[] {
+  const candidates = [
+    raw.rankingPeriods,
+    raw.periods,
+    raw.rankingPeriod,
+    raw.period,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      const normalized = normalizeRankingPeriods(candidate);
+      if (normalized.length > 0) return normalized;
+    }
+
+    if (typeof candidate === "string") {
+      const normalized = normalizeRankingPeriods([candidate]);
+      if (normalized.length > 0) return normalized;
+    }
+  }
+
+  return [];
+}
+
+function extractVoteId(raw: Record<string, unknown>): number | null {
+  const directCandidates = [
+    raw.voteId,
+    raw.myVoteId,
+    raw.latestVoteId,
+    raw.selectedVoteId,
+  ];
+
+  for (const candidate of directCandidates) {
+    const parsed = toSafeNumber(candidate);
+    if (parsed !== null) return parsed;
+  }
+
+  const nestedCandidates = [raw.vote, raw.myVote, raw.latestVote];
+
+  for (const candidate of nestedCandidates) {
+    if (!isRecord(candidate)) continue;
+
+    const parsed = toSafeNumber(candidate.id);
+    if (parsed !== null) return parsed;
+  }
+
+  return null;
+}
+
+function extractVoteChoice(raw: Record<string, unknown>): VoteChoice | null {
+  const directCandidates = [
+    raw.voteChoice,
+    raw.myVoteChoice,
+    raw.selectedVoteChoice,
+  ];
+
+  for (const candidate of directCandidates) {
+    const normalized = normalizeVoteChoice(candidate);
+    if (normalized) return normalized;
+  }
+
+  const nestedCandidates = [raw.vote, raw.myVote, raw.latestVote];
+
+  for (const candidate of nestedCandidates) {
+    if (!isRecord(candidate)) continue;
+
+    const normalized =
+      normalizeVoteChoice(candidate.voteChoice) ??
+      normalizeVoteChoice(candidate.choice);
+
+    if (normalized) return normalized;
+  }
+
+  return null;
+}
 
 function getItemsByTab(items: BookmarkItem[], tab: TabType) {
   if (tab === "all") return items;
   return items.filter((item) => item.status === tab);
+}
+
+function getDefaultPeriod(periods: RankingPeriod[]): RankingPeriod | null {
+  if (periods.includes("WEEKLY")) return "WEEKLY";
+  if (periods.includes("MONTHLY")) return "MONTHLY";
+  return null;
+}
+
+function formatPeriodLabel(period: RankingPeriod) {
+  return period === "MONTHLY" ? "This Month" : "This Week";
 }
 
 function mapBookmarkItems(rawItems: BookmarkListItem[]): BookmarkItem[] {
@@ -64,6 +194,7 @@ function mapBookmarkItems(rawItems: BookmarkListItem[]): BookmarkItem[] {
       const content = item.content ?? null;
       const thumbnailUrl = item.thumbnailUrl ?? null;
       const evaluationStatus = item.evaluationStatus ?? null;
+      const raw = item as BookmarkListItem & Record<string, unknown>;
 
       const status: BookmarkItem["status"] =
         evaluationStatus === "OPEN" ? "ongoing" : "done";
@@ -74,9 +205,39 @@ function mapBookmarkItems(rawItems: BookmarkListItem[]): BookmarkItem[] {
         title: content?.trim() || `북마크 ${postId}`,
         imageUrl: resolveAssetUrl(thumbnailUrl) || undefined,
         status,
+        rankingPeriods: extractRankingPeriods(raw),
+        voteId: extractVoteId(raw),
+        voteChoice: extractVoteChoice(raw),
       };
     })
     .filter((item): item is BookmarkItem => item !== null);
+}
+
+function VerticalSwipeIndicator({
+  above,
+  below,
+}: {
+  above: number;
+  below: number;
+}) {
+  const visibleAbove = Math.min(Math.max(above, 0), 3);
+  const visibleBelow = Math.min(Math.max(below, 0), 3);
+
+  return (
+    <div className={styles.swipeIndicator} aria-hidden="true">
+      <div className={styles.swipeIndicatorStack}>
+        {Array.from({ length: visibleAbove }).map((_, index) => (
+          <div key={`above-${index}`} className={styles.swipeIndicatorDot} />
+        ))}
+
+        <div className={styles.swipeIndicatorActive} />
+
+        {Array.from({ length: visibleBelow }).map((_, index) => (
+          <div key={`below-${index}`} className={styles.swipeIndicatorDot} />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function Bookmark() {
@@ -102,10 +263,17 @@ export default function Bookmark() {
   const [isTouchDragging, setIsTouchDragging] = useState(false);
   const [touchDragMode, setTouchDragMode] =
     useState<TouchDragMode>("select");
+  const [pressingCardId, setPressingCardId] = useState<number | null>(null);
+
+  const [focusOpen, setFocusOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [focusIndex, setFocusIndex] = useState(0);
+  const [focusItems, setFocusItems] = useState<BookmarkItem[]>([]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const tabRowRef = useRef<HTMLDivElement | null>(null);
   const cardRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+  const focusScrollRef = useRef<HTMLDivElement | null>(null);
 
   const allTextRef = useRef<HTMLSpanElement | null>(null);
   const ongoingTextRef = useRef<HTMLSpanElement | null>(null);
@@ -114,8 +282,15 @@ export default function Bookmark() {
   const touchStartRef = useRef<Point | null>(null);
   const touchCurrentRef = useRef<Point | null>(null);
   const initialSelectedIdsRef = useRef<number[]>([]);
-  const skipClickRef = useRef(false);
   const animationTimerRef = useRef<number | null>(null);
+  const touchDraggedRef = useRef(false);
+  const ignoreNextClickRef = useRef(false);
+
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressStartPointRef = useRef<Point | null>(null);
+  const longPressTriggeredRef = useRef(false);
+  const ignoreNextCardClickRef = useRef(false);
+  const ignoreNextSelectionTouchEndRef = useRef<number | null>(null);
 
   const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({
     left: 0,
@@ -138,8 +313,24 @@ export default function Bookmark() {
     () => (incomingTab ? getItemsByTab(items, incomingTab) : []),
     [incomingTab, items],
   );
+
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const itemIdSet = useMemo(() => new Set(items.map((item) => item.id)), [items]);
+  const activeItemIdSet = useMemo(
+    () => new Set(activeItemsForSelection.map((item) => item.id)),
+    [activeItemsForSelection],
+  );
+
+  const focusedItem = focusItems[focusIndex] ?? null;
+  const focusedPeriod = useMemo(
+    () => (focusedItem ? getDefaultPeriod(focusedItem.rankingPeriods) : null),
+    [focusedItem],
+  );
+
+  const previousSwipeCount = Math.min(Math.max(focusIndex, 0), 3);
+  const nextSwipeCount = Math.min(
+    Math.max(focusItems.length - focusIndex - 1, 0),
+    3,
+  );
 
   const loadBookmarks = useCallback(async () => {
     try {
@@ -170,8 +361,8 @@ export default function Bookmark() {
   }, [loadBookmarks]);
 
   useEffect(() => {
-    setSelectedIds((prev) => prev.filter((id) => itemIdSet.has(id)));
-  }, [itemIdSet]);
+    setSelectedIds((prev) => prev.filter((id) => activeItemIdSet.has(id)));
+  }, [activeItemIdSet]);
 
   const getTabTextRef = useCallback((tab: TabType) => {
     if (tab === "all") return allTextRef.current;
@@ -223,6 +414,22 @@ export default function Bookmark() {
       }
     };
   }, [isAnimating, incomingTab]);
+
+  useEffect(() => {
+    if (!focusOpen) return;
+
+    const container = focusScrollRef.current;
+    if (!container) return;
+
+    const raf = window.requestAnimationFrame(() => {
+      container.scrollTo({
+        top: container.clientHeight * focusIndex,
+        behavior: "auto",
+      });
+    });
+
+    return () => window.cancelAnimationFrame(raf);
+  }, [focusIndex, focusOpen]);
 
   const getPointInContainer = useCallback((clientX: number, clientY: number) => {
     const container = containerRef.current;
@@ -292,16 +499,94 @@ export default function Bookmark() {
     setIsTouchDragging(false);
     touchStartRef.current = null;
     touchCurrentRef.current = null;
+    touchDraggedRef.current = false;
   }, []);
 
+  const clearLongPress = useCallback(() => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressStartPointRef.current = null;
+    setPressingCardId(null);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearLongPress();
+    };
+  }, [clearLongPress]);
+
+  const activateDeleteModeByLongPress = useCallback((itemId: number) => {
+    longPressTriggeredRef.current = true;
+    ignoreNextCardClickRef.current = true;
+    setPressingCardId(null);
+    ignoreNextSelectionTouchEndRef.current = itemId;
+    setDeleteMode(true);
+    setSelectedIds([itemId]);
+    setShowDeleteConfirm(false);
+    setSheetOpen(false);
+    setFocusOpen(false);
+  }, []);
+
+  const startCardLongPress = useCallback(
+    (clientX: number, clientY: number, itemId: number) => {
+      if (deleteMode || focusOpen) return;
+
+      clearLongPress();
+      longPressTriggeredRef.current = false;
+      setPressingCardId(itemId);
+
+      longPressStartPointRef.current = getPointInContainer(clientX, clientY);
+
+      longPressTimerRef.current = window.setTimeout(() => {
+        activateDeleteModeByLongPress(itemId);
+        longPressTimerRef.current = null;
+      }, LONG_PRESS_MS);
+    },
+    [
+      activateDeleteModeByLongPress,
+      clearLongPress,
+      deleteMode,
+      focusOpen,
+      getPointInContainer,
+    ],
+  );
+
+  const moveCardLongPress = useCallback(
+    (clientX: number, clientY: number) => {
+      if (deleteMode || focusOpen || longPressTriggeredRef.current) return;
+
+      const start = longPressStartPointRef.current;
+      if (!start || !longPressTimerRef.current) return;
+
+      const current = getPointInContainer(clientX, clientY);
+      const dx = Math.abs(current.x - start.x);
+      const dy = Math.abs(current.y - start.y);
+
+      if (dx > LONG_PRESS_MOVE_THRESHOLD || dy > LONG_PRESS_MOVE_THRESHOLD) {
+        clearLongPress();
+      }
+    },
+    [clearLongPress, deleteMode, focusOpen, getPointInContainer],
+  );
+
+  const endCardLongPress = useCallback(() => {
+    clearLongPress();
+  }, [clearLongPress]);
+
   const handleEnterDeleteMode = () => {
+    ignoreNextSelectionTouchEndRef.current = null;
     setDeleteMode(true);
     setSelectedIds([]);
     setShowDeleteConfirm(false);
+    setSheetOpen(false);
+    setFocusOpen(false);
     resetTouchDragging();
   };
 
   const handleCancelDeleteMode = () => {
+    ignoreNextSelectionTouchEndRef.current = null;
     setDeleteMode(false);
     setSelectedIds([]);
     setShowDeleteConfirm(false);
@@ -316,6 +601,7 @@ export default function Bookmark() {
     const direction: SlideDirection = nextIndex > currentIndex ? "right" : "left";
 
     setSlideDirection(direction);
+    ignoreNextSelectionTouchEndRef.current = null;
     setPrevTab(displayTab);
     setIncomingTab(tab);
     setIsAnimating(true);
@@ -323,6 +609,9 @@ export default function Bookmark() {
 
     setSelectedIds([]);
     setShowDeleteConfirm(false);
+    setDeleteMode(false);
+    setSheetOpen(false);
+    setFocusOpen(false);
     resetTouchDragging();
   };
 
@@ -342,17 +631,17 @@ export default function Bookmark() {
     setDeleteLoading(true);
 
     const results = await Promise.allSettled(
-      selectedIds.map((postId) => setPostBookmark(postId, false))
+      selectedIds.map((postId) => setPostBookmark(postId, false)),
     );
 
     const failedMessages = results
       .filter(
-        (result): result is PromiseRejectedResult => result.status === "rejected"
+        (result): result is PromiseRejectedResult => result.status === "rejected",
       )
       .map((result) =>
         result.reason instanceof Error
           ? result.reason.message
-          : "북마크 삭제에 실패했습니다."
+          : "북마크 삭제에 실패했습니다.",
       );
 
     const authFailed = failedMessages.some((message) => isAuthError(message));
@@ -365,13 +654,11 @@ export default function Bookmark() {
     }
 
     const succeededIds = selectedIds.filter(
-      (_, index) => results[index]?.status === "fulfilled"
+      (_, index) => results[index]?.status === "fulfilled",
     );
 
     if (succeededIds.length > 0) {
-      setItems((prev) =>
-        prev.filter((item) => !succeededIds.includes(item.postId))
-      );
+      setItems((prev) => prev.filter((item) => !succeededIds.includes(item.postId)));
     }
 
     if (failedMessages.length > 0) {
@@ -385,7 +672,19 @@ export default function Bookmark() {
     setDeleteLoading(false);
   };
 
-  const startTouchDrag = (clientX: number, clientY: number, startItemId?: number) => {
+  const toggleSelectedId = useCallback((id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id)
+        ? prev.filter((itemId) => itemId !== id)
+        : [...prev, id],
+    );
+  }, []);
+
+  const startTouchDrag = (
+    clientX: number,
+    clientY: number,
+    startItemId?: number,
+  ) => {
     if (!deleteMode) return;
 
     const startPoint = getPointInContainer(clientX, clientY);
@@ -393,7 +692,8 @@ export default function Bookmark() {
     touchStartRef.current = startPoint;
     touchCurrentRef.current = startPoint;
     initialSelectedIdsRef.current = [...selectedIds];
-    skipClickRef.current = false;
+    touchDraggedRef.current = false;
+    ignoreNextClickRef.current = false;
 
     const nextMode: TouchDragMode =
       startItemId && selectedIdSet.has(startItemId) ? "deselect" : "select";
@@ -415,24 +715,32 @@ export default function Bookmark() {
     const dy = Math.abs(currentPoint.y - start.y);
 
     if (dx > 4 || dy > 4) {
-      skipClickRef.current = true;
+      touchDraggedRef.current = true;
     }
 
     applyTouchDragSelection();
   };
 
-  const endTouchDrag = () => {
+  const endTouchDrag = (tappedItemId?: number) => {
     if (!deleteMode) return;
 
-    resetTouchDragging();
+    if (touchDraggedRef.current) {
+      applyTouchDragSelection();
+      ignoreNextClickRef.current = true;
+    } else if (tappedItemId !== undefined) {
+      toggleSelectedId(tappedItemId);
+      ignoreNextClickRef.current = true;
+    }
 
-    window.setTimeout(() => {
-      skipClickRef.current = false;
-    }, 0);
+    resetTouchDragging();
   };
 
   const handleContentTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     if (!deleteMode) return;
+
+    const target = e.target as HTMLElement;
+    if (target.closest("button")) return;
+
     const touch = e.touches[0];
     if (!touch) return;
 
@@ -444,17 +752,17 @@ export default function Bookmark() {
     const touch = e.touches[0];
     if (!touch) return;
 
-    e.preventDefault();
     moveTouchDrag(touch.clientX, touch.clientY);
   };
 
   const handleContentTouchEnd = () => {
+    if (!deleteMode) return;
     endTouchDrag();
   };
 
   const handleCardTouchStart = (
     e: React.TouchEvent<HTMLButtonElement>,
-    itemId: number
+    itemId: number,
   ) => {
     if (!deleteMode) return;
     const touch = e.touches[0];
@@ -469,96 +777,95 @@ export default function Bookmark() {
     const touch = e.touches[0];
     if (!touch) return;
 
-    e.preventDefault();
     e.stopPropagation();
     moveTouchDrag(touch.clientX, touch.clientY);
   };
 
-  const handleCardTouchEnd = (e: React.TouchEvent<HTMLButtonElement>) => {
+  const handleCardTouchEnd = (
+    e: React.TouchEvent<HTMLButtonElement>,
+    itemId: number,
+  ) => {
     if (!deleteMode) return;
     e.stopPropagation();
-    endTouchDrag();
+
+    if (ignoreNextSelectionTouchEndRef.current === itemId) {
+      ignoreNextSelectionTouchEndRef.current = null;
+      return;
+    }
+
+    endTouchDrag(itemId);
   };
 
-  const handleCardClick = (id: number) => {
-    if (!deleteMode) return;
-    if (skipClickRef.current) return;
+  const handleCardClick = (item: BookmarkItem, sourceItems: BookmarkItem[]) => {
+    if (ignoreNextCardClickRef.current) {
+      ignoreNextCardClickRef.current = false;
+      longPressTriggeredRef.current = false;
+      return;
+    }
 
-    setSelectedIds((prev) =>
-      prev.includes(id)
-        ? prev.filter((itemId) => itemId !== id)
-        : [...prev, id]
+    if (!deleteMode) {
+      const nextIndex = sourceItems.findIndex(
+        (sourceItem) => sourceItem.id === item.id,
+      );
+
+      setFocusItems(sourceItems);
+      setFocusIndex(nextIndex >= 0 ? nextIndex : 0);
+      setSheetOpen(true);
+      setFocusOpen(true);
+      return;
+    }
+
+    if (ignoreNextClickRef.current) {
+      ignoreNextClickRef.current = false;
+      return;
+    }
+
+    toggleSelectedId(item.id);
+  };
+
+  const handleFocusScroll = () => {
+    const container = focusScrollRef.current;
+    if (!container) return;
+
+    const pageHeight = container.clientHeight;
+    const nextIndex = Math.max(
+      0,
+      Math.min(Math.round(container.scrollTop / pageHeight), focusItems.length - 1),
     );
+
+    if (nextIndex !== focusIndex) {
+      setFocusIndex(nextIndex);
+    }
   };
 
-  const renderGrid = (
-    paneItems: BookmarkItem[],
-    paneKey: string,
-    extraClassName?: string
-  ) => {
+  const renderFocusedSheetContent = () => {
+    if (!focusedItem) return null;
+
+    if (focusedItem.status === "ongoing") {
+      return (
+        <EvaluationDetail_Feedback
+          embedded
+          postIdOverride={focusedItem.postId}
+          voteIdOverride={focusedItem.voteId}
+          voteChoiceOverride={focusedItem.voteChoice}
+          allowReadonlyDetail
+        />
+      );
+    }
+
     return (
-      <div className={`${styles.gridPane} ${extraClassName ?? ""}`} key={paneKey}>
-        {loading ? (
-          <div className={styles.emptyState}>불러오는 중...</div>
-        ) : error ? (
-          <div className={styles.emptyState}>{error}</div>
-        ) : paneItems.length === 0 ? (
-          <div className={styles.emptyState}>북마크한 게시글이 없습니다.</div>
-        ) : (
-          <div className={styles.cardGrid}>
-            {paneItems.map((item) => {
-              const isSelected = selectedIdSet.has(item.id);
-
-              return (
-                <button
-                  key={item.id}
-                  ref={(el) => {
-                    cardRefs.current[item.id] = el;
-                  }}
-                  type="button"
-                  className={`${styles.card} ${
-                    deleteMode && isSelected ? styles.cardSelected : ""
-                  }`}
-                  onTouchStart={(e) => handleCardTouchStart(e, item.id)}
-                  onTouchMove={handleCardTouchMove}
-                  onTouchEnd={handleCardTouchEnd}
-                  onClick={() => handleCardClick(item.id)}
-                  aria-label={item.title}
-                >
-                  {item.imageUrl ? (
-                    <img
-                      src={item.imageUrl}
-                      alt={item.title}
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                      }}
-                    />
-                  ) : null}
-
-                  {deleteMode && (
-                    <span
-                      className={`${styles.selectionDot} ${
-                        isSelected ? styles.selectionDotSelected : ""
-                      }`}
-                    >
-                      {isSelected && <Check size={12} strokeWidth={3} />}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      <RankingDetail
+        postId={focusedItem.postId}
+        period={focusedPeriod ?? undefined}
+        hideFeedLink
+      />
     );
   };
 
-  const nextPaneEnterClass =
-    slideDirection === "right" ? styles.enterFromRight : styles.enterFromLeft;
+  const handleOpenDetailSheet = () => {
+    if (!focusedItem) return;
+    setSheetOpen(true);
+  };
 
   return (
     <div
@@ -663,6 +970,7 @@ export default function Bookmark() {
         className={`${styles.contentArea} ${
           deleteMode ? styles.contentAreaDeleteMode : ""
         }`}
+        style={{ touchAction: deleteMode ? "none" : "pan-y" }}
         onTouchStart={handleContentTouchStart}
         onTouchMove={handleContentTouchMove}
         onTouchEnd={handleContentTouchEnd}
@@ -673,12 +981,12 @@ export default function Bookmark() {
               {renderGrid(
                 previousItems,
                 `prev-${prevTab}`,
-                `${styles.animatedPane} ${styles.fadePane}`
+                `${styles.animatedPane} ${styles.fadePane}`,
               )}
               {renderGrid(
                 incomingItems,
                 `next-${incomingTab}`,
-                `${styles.animatedPane} ${nextPaneEnterClass}`
+                `${styles.animatedPane} ${nextPaneEnterClass()}`,
               )}
             </>
           ) : (
@@ -686,6 +994,83 @@ export default function Bookmark() {
           )}
         </div>
       </main>
+
+      {focusOpen && focusedItem ? (
+        <div className={styles.focusOverlay}>
+          <div
+            ref={focusScrollRef}
+            className={styles.focusViewport}
+            onScroll={handleFocusScroll}
+          >
+            {focusItems.map((item) => (
+              <section key={item.postId} className={styles.focusSlide}>
+                {item.imageUrl ? (
+                  <div
+                    className={styles.focusMainImage}
+                    style={{ backgroundImage: `url(${item.imageUrl})` }}
+                  />
+                ) : (
+                  <div className={styles.focusImageFallback}>이미지 없음</div>
+                )}
+                <div className={styles.topGradient} />
+                <div className={styles.bottomGradient} />
+              </section>
+            ))}
+          </div>
+
+          {sheetOpen ? (
+            <button
+              type="button"
+              className={styles.focusSheetBackdrop}
+              onClick={() => setSheetOpen(false)}
+              aria-label="상세 닫기"
+            />
+          ) : null}
+
+          <div className={styles.headerTitle}>{getTabTitle()}</div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSheetOpen(false);
+              setFocusOpen(false);
+            }}
+            className={styles.closeBtn}
+            aria-label="닫기"
+          >
+            <X size={18} strokeWidth={2.6} />
+          </button>
+
+          {!sheetOpen ? (
+            <VerticalSwipeIndicator
+              above={previousSwipeCount}
+              below={nextSwipeCount}
+            />
+          ) : null}
+
+          <div className={styles.focusFloatingArea}>
+            <button
+              type="button"
+              className={styles.detailButton}
+              onClick={handleOpenDetailSheet}
+            >
+              <span className={styles.detailButtonText}>상세보기</span>
+              <ChevronsUp
+                size={16}
+                strokeWidth={2.4}
+                className={styles.detailButtonUpIcon}
+              />
+            </button>
+          </div>
+
+          <PostDetailBottomSheet
+            isOpen={sheetOpen}
+            onCloseRequest={() => setSheetOpen(false)}
+          >
+            {renderFocusedSheetContent()}
+          </PostDetailBottomSheet>
+        </div>
+      ) : null}
 
       {showDeleteConfirm && (
         <div className={styles.modalOverlay} onClick={handleDeleteConfirmClose}>
@@ -726,4 +1111,147 @@ export default function Bookmark() {
       )}
     </div>
   );
+
+  function renderGrid(
+    paneItems: BookmarkItem[],
+    paneKey: string,
+    extraClassName?: string,
+  ) {
+    return (
+      <div className={`${styles.gridPane} ${extraClassName ?? ""}`} key={paneKey}>
+        {loading ? (
+          <div className={styles.emptyState}>불러오는 중...</div>
+        ) : error ? (
+          <div className={styles.emptyState}>{error}</div>
+        ) : paneItems.length === 0 ? (
+          <div className={styles.emptyState}>북마크한 게시글이 없습니다.</div>
+        ) : (
+          <div className={styles.cardGrid}>
+            {paneItems.map((item) => {
+              const isSelected = selectedIdSet.has(item.id);
+              const isPressing = pressingCardId === item.id && !deleteMode;
+
+              return (
+                <button
+                  key={item.id}
+                  ref={(el) => {
+                    cardRefs.current[item.id] = el;
+                  }}
+                  type="button"
+                  className={`${styles.card} ${
+                    deleteMode && isSelected ? styles.cardSelected : ""
+                  }`}
+                  style={{
+                    transform: isPressing ? "scale(0.96)" : "scale(1)",
+                    filter: isPressing ? "brightness(0.9)" : "brightness(1)",
+                    transition:
+                      "transform 140ms ease, filter 140ms ease, box-shadow 140ms ease",
+                    touchAction: deleteMode ? "none" : "manipulation",
+                  }}
+                  onTouchStart={(e) => {
+                    if (deleteMode) {
+                      handleCardTouchStart(e, item.id);
+                      return;
+                    }
+
+                    const touch = e.touches[0];
+                    if (!touch) return;
+
+                    startCardLongPress(touch.clientX, touch.clientY, item.id);
+                  }}
+                  onTouchMove={(e) => {
+                    if (deleteMode) {
+                      handleCardTouchMove(e);
+                      return;
+                    }
+
+                    const touch = e.touches[0];
+                    if (!touch) return;
+
+                    moveCardLongPress(touch.clientX, touch.clientY);
+                  }}
+                  onTouchEnd={(e) => {
+                    if (deleteMode) {
+                      handleCardTouchEnd(e, item.id);
+                      return;
+                    }
+
+                    endCardLongPress();
+                  }}
+                  onTouchCancel={() => {
+                    if (!deleteMode) {
+                      endCardLongPress();
+                    }
+                  }}
+                  onMouseDown={(e) => {
+                    if (e.button !== 0 || deleteMode || focusOpen) return;
+                    startCardLongPress(e.clientX, e.clientY, item.id);
+                  }}
+                  onMouseMove={(e) => {
+                    if (deleteMode || focusOpen) return;
+                    moveCardLongPress(e.clientX, e.clientY);
+                  }}
+                  onMouseUp={() => {
+                    if (!deleteMode) {
+                      endCardLongPress();
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    if (!deleteMode) {
+                      endCardLongPress();
+                    }
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                  }}
+                  onClick={() => handleCardClick(item, paneItems)}
+                  aria-label={item.title}
+                >
+                  {item.imageUrl ? (
+                    <img
+                      src={item.imageUrl}
+                      alt={item.title}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  ) : (
+                    <div className={styles.cardImageFallback}>이미지 없음</div>
+                  )}
+
+                  {deleteMode && (
+                    <span
+                      className={`${styles.selectionDot} ${
+                        isSelected ? styles.selectionDotSelected : ""
+                      }`}
+                    >
+                      {isSelected && <Check size={12} strokeWidth={3} />}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function getTabTitle() {
+    return focusedItem?.status === "ongoing"
+      ? "평가 상세"
+      : focusedPeriod
+        ? formatPeriodLabel(focusedPeriod)
+        : "북마크";
+  }
+
+  function nextPaneEnterClass() {
+    return slideDirection === "right"
+      ? styles.enterFromRight
+      : styles.enterFromLeft;
+  }
 }

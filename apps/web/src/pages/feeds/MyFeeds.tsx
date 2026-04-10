@@ -6,14 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  ChevronLeft,
-  Check,
-  Eye,
-  EyeOff,
-  MoreVertical,
-  Trash2,
-} from "lucide-react";
+import { ChevronLeft, Check, Eye, EyeOff, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { GetMyFeedResponse } from "@codinator/contracts";
 import {
@@ -26,7 +19,7 @@ import {
 import styles from "./MyFeeds.module.css";
 
 type TabType = "all" | "ongoing" | "done" | "hidden";
-type ActionMode = "delete" | "hide" | "unhide" | null;
+type ActionType = "delete" | "hide" | "unhide";
 type SlideDirection = "left" | "right";
 type TouchDragMode = "select" | "deselect";
 
@@ -50,6 +43,8 @@ type IndicatorStyle = {
 type MyFeedItem = GetMyFeedResponse["items"][number];
 
 const TAB_ORDER: TabType[] = ["all", "ongoing", "done", "hidden"];
+const LONG_PRESS_MS = 450;
+const LONG_PRESS_MOVE_THRESHOLD = 8;
 
 const isHiddenPost = (item: MyFeedItem) => item.postStatus === "HIDDEN";
 
@@ -120,18 +115,19 @@ export default function MyFeeds() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [slideDirection, setSlideDirection] = useState<SlideDirection>("right");
 
-  const [actionMode, setActionMode] = useState<ActionMode>(null);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [showActionConfirm, setShowActionConfirm] = useState(false);
-  const [showOptionMenu, setShowOptionMenu] = useState(false);
+  const [pendingAction, setPendingAction] = useState<ActionType | null>(null);
   const [actionSubmitting, setActionSubmitting] = useState(false);
 
   const [isTouchDragging, setIsTouchDragging] = useState(false);
   const [touchDragMode, setTouchDragMode] = useState<TouchDragMode>("select");
+  const [pressingCardId, setPressingCardId] = useState<number | null>(null);
+  const [isSelectButtonPressed, setIsSelectButtonPressed] = useState(false);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const tabRowRef = useRef<HTMLDivElement | null>(null);
-  const optionMenuRef = useRef<HTMLDivElement | null>(null);
   const cardRefs = useRef<Record<number, HTMLButtonElement | null>>({});
 
   const allTextRef = useRef<HTMLSpanElement | null>(null);
@@ -146,15 +142,16 @@ export default function MyFeeds() {
   const touchDraggedRef = useRef(false);
   const ignoreNextClickRef = useRef(false);
 
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressStartPointRef = useRef<Point | null>(null);
+  const longPressTriggeredRef = useRef(false);
+  const ignoreNextCardClickRef = useRef(false);
+  const ignoreNextSelectionTouchEndRef = useRef<number | null>(null);
+
   const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({
     left: 0,
     width: 0,
   });
-
-  const isSelectionMode = actionMode !== null;
-  const isDeleteMode = actionMode === "delete";
-  const isHideMode = actionMode === "hide";
-  const isUnhideMode = actionMode === "unhide";
 
   const displayedItems = useMemo(() => {
     return getItemsByTab(items, displayTab);
@@ -171,12 +168,18 @@ export default function MyFeeds() {
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const activeItemIdSet = useMemo(
     () => new Set(activeItemsForSelection.map((item) => item.postId)),
-    [activeItemsForSelection],
+    [activeItemsForSelection]
   );
   const incomingItems = useMemo(
     () => (incomingTab ? getItemsByTab(items, incomingTab) : []),
-    [incomingTab, items],
+    [incomingTab, items]
   );
+
+  const canDelete = selectedIds.length > 0 && !actionSubmitting;
+  const canHide =
+    selectedIds.length > 0 && activeTab !== "hidden" && !actionSubmitting;
+  const canUnhide =
+    selectedIds.length > 0 && activeTab === "hidden" && !actionSubmitting;
 
   const moveToLogin = useCallback(() => {
     clearAuthTokens();
@@ -260,20 +263,6 @@ export default function MyFeeds() {
       }
     };
   }, [incomingTab, isAnimating]);
-
-  useEffect(() => {
-    if (!showOptionMenu) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (!optionMenuRef.current) return;
-      if (!optionMenuRef.current.contains(e.target as Node)) {
-        setShowOptionMenu(false);
-      }
-    };
-
-    window.addEventListener("mousedown", handleClickOutside);
-    return () => window.removeEventListener("mousedown", handleClickOutside);
-  }, [showOptionMenu]);
 
   useEffect(() => {
     setSelectedIds((prev) => prev.filter((id) => activeItemIdSet.has(id)));
@@ -361,11 +350,83 @@ export default function MyFeeds() {
     touchDraggedRef.current = false;
   }, []);
 
+  const clearLongPress = useCallback(() => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressStartPointRef.current = null;
+    setPressingCardId(null);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearLongPress();
+    };
+  }, [clearLongPress]);
+
+  const activateSelectionModeByLongPress = useCallback((postId: number) => {
+    longPressTriggeredRef.current = true;
+    ignoreNextCardClickRef.current = true;
+    setPressingCardId(null);
+    ignoreNextSelectionTouchEndRef.current = postId;
+    setIsSelectionMode(true);
+    setSelectedIds([postId]);
+    setShowActionConfirm(false);
+    setPendingAction(null);
+  }, []);
+
+  const startCardLongPress = useCallback(
+    (clientX: number, clientY: number, postId: number) => {
+      if (isSelectionMode) return;
+
+      clearLongPress();
+      longPressTriggeredRef.current = false;
+      setPressingCardId(postId);
+
+      longPressStartPointRef.current = getPointInContainer(clientX, clientY);
+
+      longPressTimerRef.current = window.setTimeout(() => {
+        activateSelectionModeByLongPress(postId);
+        longPressTimerRef.current = null;
+      }, LONG_PRESS_MS);
+    },
+    [
+      activateSelectionModeByLongPress,
+      clearLongPress,
+      getPointInContainer,
+      isSelectionMode,
+    ]
+  );
+
+  const moveCardLongPress = useCallback(
+    (clientX: number, clientY: number) => {
+      if (isSelectionMode || longPressTriggeredRef.current) return;
+
+      const start = longPressStartPointRef.current;
+      if (!start || !longPressTimerRef.current) return;
+
+      const current = getPointInContainer(clientX, clientY);
+      const dx = Math.abs(current.x - start.x);
+      const dy = Math.abs(current.y - start.y);
+
+      if (dx > LONG_PRESS_MOVE_THRESHOLD || dy > LONG_PRESS_MOVE_THRESHOLD) {
+        clearLongPress();
+      }
+    },
+    [clearLongPress, getPointInContainer, isSelectionMode]
+  );
+
+  const endCardLongPress = useCallback(() => {
+    clearLongPress();
+  }, [clearLongPress]);
+
   const exitSelectionMode = () => {
-    setActionMode(null);
+    ignoreNextSelectionTouchEndRef.current = null;
+    setIsSelectionMode(false);
     setSelectedIds([]);
     setShowActionConfirm(false);
-    setShowOptionMenu(false);
+    setPendingAction(null);
     resetTouchDragging();
   };
 
@@ -379,45 +440,37 @@ export default function MyFeeds() {
         nextIndex > currentIndex ? "right" : "left";
 
       setSlideDirection(direction);
+      ignoreNextSelectionTouchEndRef.current = null;
       setPrevTab(displayTab);
       setIncomingTab(tab);
       setIsAnimating(true);
       setActiveTab(tab);
       setSelectedIds([]);
       setShowActionConfirm(false);
+      setPendingAction(null);
       resetTouchDragging();
     },
     [activeTab, displayTab, resetTouchDragging]
   );
 
-  const enterMode = (mode: Exclude<ActionMode, null>, targetTab?: TabType) => {
-    setActionMode(mode);
-    setSelectedIds([]);
-    setShowActionConfirm(false);
-    setShowOptionMenu(false);
-    resetTouchDragging();
-
-    if (targetTab) {
-      changeTab(targetTab);
-    }
-  };
-
   const handleTabChange = (tab: TabType) => {
     changeTab(tab);
   };
 
-  const handleActionConfirmOpen = () => {
+  const handleActionConfirmOpen = (action: ActionType) => {
     if (selectedIds.length === 0 || actionSubmitting) return;
+    setPendingAction(action);
     setShowActionConfirm(true);
   };
 
   const handleActionConfirmClose = () => {
     if (actionSubmitting) return;
     setShowActionConfirm(false);
+    setPendingAction(null);
   };
 
   const handleApplyAction = async () => {
-    if (selectedIds.length === 0 || actionSubmitting) return;
+    if (selectedIds.length === 0 || actionSubmitting || !pendingAction) return;
 
     setActionSubmitting(true);
 
@@ -425,14 +478,14 @@ export default function MyFeeds() {
       const headers = getAuthHeaders();
       const results = await Promise.allSettled(
         selectedIds.map((postId) => {
-          if (isDeleteMode) {
+          if (pendingAction === "delete") {
             return fetcher(`/posts/${postId}`, {
               method: "DELETE",
               headers,
             });
           }
 
-          if (isHideMode) {
+          if (pendingAction === "hide") {
             return fetcher(`/posts/${postId}/hide`, {
               method: "PATCH",
               headers,
@@ -454,9 +507,9 @@ export default function MyFeeds() {
         const message =
           failed.reason instanceof Error
             ? failed.reason.message
-            : isDeleteMode
+            : pendingAction === "delete"
             ? "게시글 삭제에 실패했습니다."
-            : isHideMode
+            : pendingAction === "hide"
             ? "게시글 숨기기에 실패했습니다."
             : "게시글 숨기기 취소에 실패했습니다.";
 
@@ -547,7 +600,6 @@ export default function MyFeeds() {
     const touch = e.touches[0];
     if (!touch) return;
 
-    e.preventDefault();
     moveTouchDrag(touch.clientX, touch.clientY);
   };
 
@@ -573,7 +625,6 @@ export default function MyFeeds() {
     const touch = e.touches[0];
     if (!touch) return;
 
-    e.preventDefault();
     e.stopPropagation();
     moveTouchDrag(touch.clientX, touch.clientY);
   };
@@ -584,10 +635,22 @@ export default function MyFeeds() {
   ) => {
     if (!isSelectionMode) return;
     e.stopPropagation();
+
+    if (ignoreNextSelectionTouchEndRef.current === itemId) {
+      ignoreNextSelectionTouchEndRef.current = null;
+      return;
+    }
+
     endTouchDrag(itemId);
   };
 
   const handleCardClick = (item: MyFeedItem) => {
+    if (ignoreNextCardClickRef.current) {
+      ignoreNextCardClickRef.current = false;
+      longPressTriggeredRef.current = false;
+      return;
+    }
+
     if (isSelectionMode) {
       if (ignoreNextClickRef.current) {
         ignoreNextClickRef.current = false;
@@ -631,6 +694,8 @@ export default function MyFeeds() {
             {gridItems.map((item) => {
               const isSelected = selectedIdSet.has(item.postId);
               const imageUrl = resolveAssetUrl(item.thumbnailUrl);
+              const isPressing = pressingCardId === item.postId && !isSelectionMode;
+
               return (
                 <button
                   key={item.postId}
@@ -641,9 +706,69 @@ export default function MyFeeds() {
                   className={`${styles.card} ${
                     isSelectionMode && isSelected ? styles.cardSelected : ""
                   }`}
-                  onTouchStart={(e) => handleCardTouchStart(e, item.postId)}
-                  onTouchMove={handleCardTouchMove}
-                  onTouchEnd={(e) => handleCardTouchEnd(e, item.postId)}
+                  style={{
+                    transform: isPressing ? "scale(0.96)" : "scale(1)",
+                    filter: isPressing ? "brightness(0.9)" : "brightness(1)",
+                    transition:
+                      "transform 140ms ease, filter 140ms ease, box-shadow 140ms ease",
+                    touchAction: isSelectionMode ? "none" : "manipulation",
+                  }}
+                  onTouchStart={(e) => {
+                    if (isSelectionMode) {
+                      handleCardTouchStart(e, item.postId);
+                      return;
+                    }
+
+                    const touch = e.touches[0];
+                    if (!touch) return;
+
+                    startCardLongPress(touch.clientX, touch.clientY, item.postId);
+                  }}
+                  onTouchMove={(e) => {
+                    if (isSelectionMode) {
+                      handleCardTouchMove(e);
+                      return;
+                    }
+
+                    const touch = e.touches[0];
+                    if (!touch) return;
+
+                    moveCardLongPress(touch.clientX, touch.clientY);
+                  }}
+                  onTouchEnd={(e) => {
+                    if (isSelectionMode) {
+                      handleCardTouchEnd(e, item.postId);
+                      return;
+                    }
+
+                    endCardLongPress();
+                  }}
+                  onTouchCancel={() => {
+                    if (!isSelectionMode) {
+                      endCardLongPress();
+                    }
+                  }}
+                  onMouseDown={(e) => {
+                    if (e.button !== 0 || isSelectionMode) return;
+                    startCardLongPress(e.clientX, e.clientY, item.postId);
+                  }}
+                  onMouseMove={(e) => {
+                    if (isSelectionMode) return;
+                    moveCardLongPress(e.clientX, e.clientY);
+                  }}
+                  onMouseUp={() => {
+                    if (!isSelectionMode) {
+                      endCardLongPress();
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    if (!isSelectionMode) {
+                      endCardLongPress();
+                    }
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                  }}
                   onClick={() => handleCardClick(item)}
                   aria-label={item.content ?? `나의 피드 ${item.postId}`}
                 >
@@ -697,27 +822,29 @@ export default function MyFeeds() {
   const nextPaneEnterClass =
     slideDirection === "right" ? styles.enterFromRight : styles.enterFromLeft;
 
-  const confirmTitle = isDeleteMode
-    ? "선택한 피드를 삭제할까요?"
-    : isHideMode
-    ? "선택한 피드를 숨길까요?"
-    : "선택한 피드의 숨김을 취소할까요?";
+  const confirmTitle =
+    pendingAction === "delete"
+      ? "선택한 피드를 삭제할까요?"
+      : pendingAction === "hide"
+      ? "선택한 피드를 숨길까요?"
+      : "선택한 피드의 숨김을 취소할까요?";
 
-  const confirmDesc = isDeleteMode
-    ? `선택한 ${selectedIds.length}개의 게시글이 삭제됩니다.`
-    : isHideMode
-    ? `선택한 ${selectedIds.length}개의 게시글이 숨김 처리되고 숨김 탭으로 이동됩니다.`
-    : `선택한 ${selectedIds.length}개의 게시글이 다시 일반 탭에서 보이게 됩니다.`;
+  const confirmDesc =
+    pendingAction === "delete"
+      ? `선택한 ${selectedIds.length}개의 게시글이 삭제됩니다.`
+      : pendingAction === "hide"
+      ? `선택한 ${selectedIds.length}개의 게시글이 숨김 처리됩니다.`
+      : `선택한 ${selectedIds.length}개의 게시글이 다시 보이게 됩니다.`;
 
   const confirmActionLabel = actionSubmitting
-    ? isDeleteMode
+    ? pendingAction === "delete"
       ? "삭제 중..."
-      : isHideMode
+      : pendingAction === "hide"
       ? "숨기는 중..."
       : "취소 중..."
-    : isDeleteMode
+    : pendingAction === "delete"
     ? "삭제"
-    : isHideMode
+    : pendingAction === "hide"
     ? "숨기기"
     : "숨기기 취소";
 
@@ -739,118 +866,138 @@ export default function MyFeeds() {
 
           <h1 className={styles.title}>나의 피드</h1>
 
-          {isDeleteMode ? (
-            <button
-              type="button"
-              className={styles.deleteButtonRed}
-              onClick={handleActionConfirmOpen}
-              aria-label="선택 삭제"
-              disabled={selectedIds.length === 0 || actionSubmitting}
-            >
-              <Trash2 size={16} strokeWidth={2.3} />
-            </button>
-          ) : isHideMode ? (
-            <button
-              type="button"
-              className={styles.actionButtonDark}
-              onClick={handleActionConfirmOpen}
-              aria-label="선택 숨기기"
-              disabled={selectedIds.length === 0 || actionSubmitting}
-            >
-              <EyeOff size={16} strokeWidth={2.3} />
-            </button>
-          ) : isUnhideMode ? (
-            <button
-              type="button"
-              className={styles.actionButtonDark}
-              onClick={handleActionConfirmOpen}
-              aria-label="선택 숨기기 취소"
-              disabled={selectedIds.length === 0 || actionSubmitting}
-            >
-              <Eye size={16} strokeWidth={2.3} />
-            </button>
-          ) : (
-            <div ref={optionMenuRef} className={styles.optionMenuWrap}>
+          <div
+            style={{
+              position: "absolute",
+              right: 16,
+              top: 59,
+              transform: "translateY(-50%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              gap: 6,
+            }}
+          >
+            {isSelectionMode ? (
+              <>
+                <button
+                  type="button"
+                  className={styles.actionButtonDark}
+                  onClick={() => handleActionConfirmOpen("hide")}
+                  aria-label="선택 숨기기"
+                  disabled={!canHide}
+                  style={{
+                    position: "relative",
+                    inset: "auto",
+                    top: "auto",
+                    right: "auto",
+                    left: "auto",
+                    bottom: "auto",
+                    transform: "none",
+                    flexShrink: 0,
+                    opacity: canHide ? 1 : 0.45,
+                  }}
+                >
+                  <EyeOff size={16} strokeWidth={2.3} />
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.actionButtonDark}
+                  onClick={() => handleActionConfirmOpen("unhide")}
+                  aria-label="선택 숨기기 취소"
+                  disabled={!canUnhide}
+                  style={{
+                    position: "relative",
+                    inset: "auto",
+                    top: "auto",
+                    right: "auto",
+                    left: "auto",
+                    bottom: "auto",
+                    transform: "none",
+                    flexShrink: 0,
+                    opacity: canUnhide ? 1 : 0.45,
+                  }}
+                >
+                  <Eye size={16} strokeWidth={2.3} />
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.deleteButtonRed}
+                  onClick={() => handleActionConfirmOpen("delete")}
+                  aria-label="선택 삭제"
+                  disabled={!canDelete}
+                  style={{
+                    position: "relative",
+                    inset: "auto",
+                    top: "auto",
+                    right: "auto",
+                    left: "auto",
+                    bottom: "auto",
+                    transform: "none",
+                    flexShrink: 0,
+                    opacity: canDelete ? 1 : 0.45,
+                  }}
+                >
+                  <Trash2 size={16} strokeWidth={2.3} />
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
-                className={styles.headerIconButtonFilled}
-                onClick={() => setShowOptionMenu((prev) => !prev)}
-                aria-label="옵션 열기"
+                className={styles.actionButtonDark}
+                onClick={() => {
+                  ignoreNextSelectionTouchEndRef.current = null;
+                  setIsSelectionMode(true);
+                  setSelectedIds([]);
+                  setShowActionConfirm(false);
+                  setPendingAction(null);
+                  setIsSelectButtonPressed(false);
+                }}
+                onTouchStart={() => setIsSelectButtonPressed(true)}
+                onTouchEnd={() => setIsSelectButtonPressed(false)}
+                onTouchCancel={() => setIsSelectButtonPressed(false)}
+                onMouseDown={() => setIsSelectButtonPressed(true)}
+                onMouseUp={() => setIsSelectButtonPressed(false)}
+                onMouseLeave={() => setIsSelectButtonPressed(false)}
+                aria-label="선택 모드 시작"
+                style={{
+                  position: "relative",
+                  inset: "auto",
+                  top: "auto",
+                  right: "auto",
+                  left: "auto",
+                  bottom: "auto",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 48,
+                  height: 26,
+                  padding: "0 8px",
+                  whiteSpace: "nowrap",
+                  wordBreak: "keep-all",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  lineHeight: "11px",
+                  letterSpacing: "-0.2px",
+                  transform: isSelectButtonPressed ? "scale(0.96)" : "scale(1)",
+                  transition:
+                    "transform 140ms ease, background-color 140ms ease, opacity 140ms ease, box-shadow 140ms ease",
+                  flexShrink: 0,
+                  background: "rgba(0, 0, 0, 0.52)",
+                  border: "1px solid rgba(255, 255, 255, 0.16)",
+                  borderRadius: 999,
+                  boxShadow: isSelectButtonPressed
+                    ? "0 1px 3px rgba(0, 0, 0, 0.12)"
+                    : "0 4px 10px rgba(0, 0, 0, 0.1)",
+                  opacity: isSelectButtonPressed ? 0.9 : 1,
+                }}
               >
-                <MoreVertical size={16} strokeWidth={2.3} />
+                선택
               </button>
-
-              {showOptionMenu && (
-                <div className={styles.optionMenu}>
-                  <button
-                    type="button"
-                    className={styles.optionMenuItem}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      enterMode("delete");
-                    }}
-                    onTouchStart={(e) => {
-                      e.preventDefault();
-                      enterMode("delete");
-                    }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      enterMode("delete");
-                    }}
-                  >
-                    <span className={styles.optionMenuItemInner}>
-                      <Trash2 size={18} strokeWidth={2.1} />
-                      <span className={styles.optionMenuLabel}>삭제</span>
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={styles.optionMenuItem}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      enterMode("hide", activeTab === "hidden" ? "all" : undefined);
-                    }}
-                    onTouchStart={(e) => {
-                      e.preventDefault();
-                      enterMode("hide", activeTab === "hidden" ? "all" : undefined);
-                    }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      enterMode("hide", activeTab === "hidden" ? "all" : undefined);
-                    }}
-                  >
-                    <span className={styles.optionMenuItemInner}>
-                      <EyeOff size={18} strokeWidth={2.1} />
-                      <span className={styles.optionMenuLabel}>숨기기</span>
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={styles.optionMenuItem}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      enterMode("unhide", "hidden");
-                    }}
-                    onTouchStart={(e) => {
-                      e.preventDefault();
-                      enterMode("unhide", "hidden");
-                    }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      enterMode("unhide", "hidden");
-                    }}
-                  >
-                    <span className={styles.optionMenuItemInner}>
-                      <Eye size={18} strokeWidth={2.1} />
-                      <span className={styles.optionMenuLabel}>숨기기 취소</span>
-                    </span>
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </header>
 
@@ -885,6 +1032,7 @@ export default function MyFeeds() {
               평가 완료
             </span>
           </button>
+
           <button
             type="button"
             className={styles.tabButton}
@@ -899,7 +1047,6 @@ export default function MyFeeds() {
               평가 중
             </span>
           </button>
-
 
           <button
             type="button"
@@ -930,6 +1077,7 @@ export default function MyFeeds() {
         className={`${styles.contentArea} ${
           isSelectionMode ? styles.contentAreaSelectionMode : ""
         }`}
+        style={{ touchAction: isSelectionMode ? "none" : "pan-y" }}
         onTouchStart={handleContentTouchStart}
         onTouchMove={handleContentTouchMove}
         onTouchEnd={handleContentTouchEnd}
@@ -961,7 +1109,7 @@ export default function MyFeeds() {
         </div>
       </main>
 
-      {showActionConfirm && (
+      {showActionConfirm && pendingAction && (
         <div className={styles.modalOverlay} onClick={handleActionConfirmClose}>
           <div
             className={styles.modalCard}
@@ -969,9 +1117,9 @@ export default function MyFeeds() {
             role="dialog"
             aria-modal="true"
             aria-label={
-              isDeleteMode
+              pendingAction === "delete"
                 ? "나의 피드 삭제 확인"
-                : isHideMode
+                : pendingAction === "hide"
                 ? "나의 피드 숨기기 확인"
                 : "나의 피드 숨기기 취소 확인"
             }
@@ -991,7 +1139,7 @@ export default function MyFeeds() {
               <button
                 type="button"
                 className={`${styles.modalActionButton} ${
-                  isDeleteMode ? styles.modalDeleteButton : ""
+                  pendingAction === "delete" ? styles.modalDeleteButton : ""
                 }`}
                 onClick={handleApplyAction}
                 disabled={actionSubmitting}
