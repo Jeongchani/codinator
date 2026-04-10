@@ -20,6 +20,7 @@ import {
   BlurMethod,
   EvaluationStatus,
   GarmentCategory,
+  ImageAnalysisPurpose,
   ImageAssetSourceType,
   PostStatus,
 } from '@prisma/client';
@@ -40,10 +41,17 @@ import {
   POST_IMAGE_INCLUDE,
   POST_KEYWORD_ORDER_BY,
 } from './common/post-presenter.util';
+import { ImageIndexingService } from '../ai/image-indexing.service';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class PostsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(PostsService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly imageIndexingService: ImageIndexingService,
+  ) {}
 
   async createPost(
     authorId: number,
@@ -55,12 +63,14 @@ export class PostsService {
       throw new BadRequestException('게시글 내용(content)은 필수입니다.');
     }
 
+    const keywordIds = this.normalizeKeywordIds(body.keywordIds);
+    const validKeywordIds = await this.loadValidKeywordIds(keywordIds);
+
     const now = new Date();
     const endsAt = new Date(now);
     endsAt.setDate(endsAt.getDate() + 7);
 
-    const keywordIds = this.normalizeKeywordIds(body.keywordIds);
-    const validKeywordIds = await this.loadValidKeywordIds(keywordIds);
+    const linkedImageAssetId = await this.resolvePostImageAssetId(authorId, body);
 
     const post = await this.prisma.post.create({
       data: {
@@ -68,21 +78,9 @@ export class PostsService {
         content,
         images: {
           create: {
+            imageAssetId: linkedImageAssetId,
             sortOrder: 0,
             isPrimary: true,
-            imageAsset: {
-              create: {
-                ownerUserId: authorId,
-                sourceType: ImageAssetSourceType.POST,
-                storageKey: body.image.storageKey ?? null,
-                originalImageUrl: body.image.originalImageUrl,
-                processedImageUrl:
-                  body.image.processedImageUrl ?? body.image.originalImageUrl,
-                thumbnailUrl: body.image.thumbnailUrl ?? null,
-                blurMethod: body.image.blurMethod ?? BlurMethod.NONE,
-                aiBlurStatus: body.image.aiBlurStatus ?? AiBlurStatus.NONE,
-              },
-            },
           },
         },
         postKeywords: validKeywordIds.length
@@ -118,11 +116,67 @@ export class PostsService {
 
     await syncPostSearchIndex(this.prisma, post.id);
 
+    try {
+      await this.imageIndexingService.ensureCurrentAnalysisRun(
+        linkedImageAssetId,
+        ImageAnalysisPurpose.POST_INDEX,
+      );
+    } catch (error) {
+      this.logger.error(
+        `POST_INDEX 생성 실패 imageAssetId=${linkedImageAssetId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+
     return {
       postId: post.id,
       evaluationId: post.evaluation!.id,
       status: post.status,
     };
+  }
+
+
+  private async resolvePostImageAssetId(
+    authorId: number,
+    body: CreatePostRequest,
+  ): Promise<number> {
+    if (Number.isInteger(body.imageAssetId) && Number(body.imageAssetId) > 0) {
+      const existingAsset = await this.prisma.imageAsset.findFirst({
+        where: {
+          id: Number(body.imageAssetId),
+          ownerUserId: authorId,
+          sourceType: ImageAssetSourceType.POST,
+        },
+        select: { id: true },
+      });
+
+      if (!existingAsset) {
+        throw new BadRequestException('유효한 게시글 이미지 자산이 아닙니다.');
+      }
+
+      return existingAsset.id;
+    }
+
+    if (!body.image) {
+      throw new BadRequestException('imageAssetId 또는 image 정보가 필요합니다.');
+    }
+
+    const createdAsset = await this.prisma.imageAsset.create({
+      data: {
+        ownerUserId: authorId,
+        sourceType: ImageAssetSourceType.POST,
+        storageKey: body.image.storageKey ?? null,
+        originalImageUrl: body.image.originalImageUrl,
+        processedImageUrl: body.image.processedImageUrl ?? body.image.originalImageUrl,
+        thumbnailUrl: body.image.thumbnailUrl ?? null,
+        blurMethod: body.image.blurMethod ?? BlurMethod.NONE,
+        aiBlurStatus: body.image.aiBlurStatus ?? AiBlurStatus.NONE,
+      },
+      select: { id: true },
+    });
+
+    return createdAsset.id;
   }
 
   async updatePost(

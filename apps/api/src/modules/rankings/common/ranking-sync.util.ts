@@ -70,6 +70,7 @@ export async function syncCurrentRankingPeriod(
     where: {
       status: PostStatus.ACTIVE,
       deletedAt: null,
+      hiddenAt: null,
       publishedAt: {
         not: null,
         gte: window.rangeStartUtc,

@@ -1,6 +1,7 @@
 import type { AiBlurStatus, BlurMethod } from '../common/enums';
 
 export interface UploadPostImageResponse {
+  imageAssetId: number;
   originalImageUrl: string;
   processedImageUrl: string;
   thumbnailUrl?: string | null;

@@ -7,7 +7,12 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import type { ManualBlurResponse, UploadPostImageResponse } from '@codinator/contracts';
-import { AiBlurStatus, BlurMethod, PostStatus } from '@prisma/client';
+import {
+  AiBlurStatus,
+  BlurMethod,
+  ImageAssetSourceType,
+  PostStatus,
+} from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
 import { extname, join } from 'path';
@@ -24,7 +29,10 @@ export class UploadsService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async savePostImage(file: Express.Multer.File): Promise<UploadPostImageResponse> {
+  async savePostImage(
+    userId: number,
+    file: Express.Multer.File,
+  ): Promise<UploadPostImageResponse> {
     this.validateImage(file);
 
     const today = this.getDatePath();
@@ -45,6 +53,10 @@ export class UploadsService {
     const originalStorageKey = `posts/originals/${today}/${originalFilename}`;
     const originalImageUrl = `/uploads/${originalStorageKey}`;
 
+    let processedImageUrl = originalImageUrl;
+    let blurMethod: BlurMethod = BlurMethod.NONE;
+    let aiBlurStatus: AiBlurStatus = AiBlurStatus.FAILED;
+
     try {
       const processed = await this.aiService.blurFace(file);
       const processedExtension = processed.extension
@@ -55,30 +67,100 @@ export class UploadsService {
 
       await fs.writeFile(processedFullPath, processed.buffer);
 
-      const processedImageUrl = `/uploads/posts/processed/${today}/${processedFilename}`;
-
-      return {
-        originalImageUrl,
-        processedImageUrl,
-        thumbnailUrl: null,
-        storageKey: originalStorageKey,
-        blurMethod: processed.blurred ? 'AUTO' : 'NONE',
-        aiBlurStatus: 'DONE',
-      };
+      processedImageUrl = `/uploads/posts/processed/${today}/${processedFilename}`;
+      blurMethod = processed.blurred ? BlurMethod.AUTO : BlurMethod.NONE;
+      aiBlurStatus = AiBlurStatus.DONE;
     } catch (err) {
       this.logger.warn(
         `AI 블러 처리 실패 — 원본 이미지로 fallback 처리합니다. storageKey=${originalStorageKey}, error=${String(err)}`,
       );
+    }
 
-      return {
+    const asset = await this.prisma.imageAsset.create({
+      data: {
+        ownerUserId: userId,
+        sourceType: ImageAssetSourceType.POST,
+        storageKey: originalStorageKey,
+        originalImageUrl,
+        processedImageUrl,
+        thumbnailUrl: null,
+        mimeType: file.mimetype,
+        blurMethod,
+        aiBlurStatus,
+      },
+      select: {
+        id: true,
+        originalImageUrl: true,
+        processedImageUrl: true,
+        thumbnailUrl: true,
+        storageKey: true,
+        blurMethod: true,
+        aiBlurStatus: true,
+      },
+    });
+
+    return {
+      imageAssetId: asset.id,
+      originalImageUrl: asset.originalImageUrl,
+      processedImageUrl: asset.processedImageUrl ?? asset.originalImageUrl,
+      thumbnailUrl: asset.thumbnailUrl,
+      storageKey: asset.storageKey,
+      blurMethod: asset.blurMethod,
+      aiBlurStatus: asset.aiBlurStatus,
+    };
+  }
+
+  async saveSearchImage(
+    userId: number,
+    file: Express.Multer.File,
+  ): Promise<UploadPostImageResponse> {
+    this.validateImage(file);
+
+    const today = this.getDatePath();
+    const originalDir = join(this.uploadRoot, 'search', 'originals', today);
+    await fs.mkdir(originalDir, { recursive: true });
+
+    const originalExtension = extname(file.originalname) || '.jpg';
+    const originalFilename = `${randomUUID()}${originalExtension}`;
+    const originalFullPath = join(originalDir, originalFilename);
+
+    await fs.writeFile(originalFullPath, file.buffer);
+
+    const originalStorageKey = `search/originals/${today}/${originalFilename}`;
+    const originalImageUrl = `/uploads/${originalStorageKey}`;
+
+    const asset = await this.prisma.imageAsset.create({
+      data: {
+        ownerUserId: userId,
+        sourceType: ImageAssetSourceType.SEARCH_QUERY,
+        storageKey: originalStorageKey,
         originalImageUrl,
         processedImageUrl: originalImageUrl,
         thumbnailUrl: null,
-        storageKey: originalStorageKey,
-        blurMethod: 'NONE',
-        aiBlurStatus: 'FAILED',
-      };
-    }
+        mimeType: file.mimetype,
+        blurMethod: BlurMethod.NONE,
+        aiBlurStatus: AiBlurStatus.NONE,
+      },
+      select: {
+        id: true,
+        originalImageUrl: true,
+        processedImageUrl: true,
+        thumbnailUrl: true,
+        storageKey: true,
+        blurMethod: true,
+        aiBlurStatus: true,
+      },
+    });
+
+    return {
+      imageAssetId: asset.id,
+      originalImageUrl: asset.originalImageUrl,
+      processedImageUrl: asset.processedImageUrl ?? asset.originalImageUrl,
+      thumbnailUrl: asset.thumbnailUrl,
+      storageKey: asset.storageKey,
+      blurMethod: asset.blurMethod,
+      aiBlurStatus: asset.aiBlurStatus,
+    };
   }
 
   async applyManualBlur(

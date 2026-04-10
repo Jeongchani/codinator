@@ -53,24 +53,14 @@ export class UploadsController {
     },
   })
   @ApiOkResponse({
-    description: 'V2 이미지 구조 반환',
-    schema: {
-      example: {
-        originalImageUrl: '/uploads/posts/originals/20260325/abc.jpg',
-        processedImageUrl: '/uploads/posts/processed/20260325/processed-abc.jpg',
-        thumbnailUrl: null,
-        storageKey: 'posts/originals/20260325/abc.jpg',
-        blurMethod: 'NONE',
-        aiBlurStatus: 'NONE',
-      },
-    },
+    description: '게시글용 image asset 생성 결과',
   })
   @UseInterceptors(FileInterceptor('file'))
   async uploadPostImage(
     @UploadedFile() file: Express.Multer.File,
     @Headers('authorization') authorization?: string,
   ): Promise<UploadPostImageResponse> {
-    this.authTokenService.extractUserIdFromAuthorizationHeader(authorization, {
+    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(authorization, {
       required: true,
     });
 
@@ -78,10 +68,43 @@ export class UploadsController {
       throw new BadRequestException('이미지 파일이 필요합니다.');
     }
 
-    return this.uploadsService.savePostImage(file);
+    return this.uploadsService.savePostImage(userId!, file);
   }
 
-  // ─── PATCH /uploads/posts/:postId/manual-blur ─────────────────────────────────
+  @Post('search-image')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'AI 이미지 검색용 업로드' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+      required: ['file'],
+    },
+  })
+  @ApiOkResponse({
+    description: '검색용 image asset 생성 결과',
+  })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadSearchImage(
+    @UploadedFile() file: Express.Multer.File,
+    @Headers('authorization') authorization?: string,
+  ): Promise<UploadPostImageResponse> {
+    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(authorization, {
+      required: true,
+    });
+
+    if (!file) {
+      throw new BadRequestException('이미지 파일이 필요합니다.');
+    }
+
+    return this.uploadsService.saveSearchImage(userId!, file);
+  }
 
   @Patch('posts/:postId/manual-blur')
   @HttpCode(HttpStatus.OK)
@@ -99,7 +122,7 @@ export class UploadsController {
       '**처리 결과:**',
       '- `processedImageUrl` → 새 수동 블러 이미지 URL로 갱신',
       '- `blurMethod` → `MANUAL`로 변경',
-      '- `aiBlurStatus` → **변경하지 않음** (AI 처리 기록 보존)',
+      '- `aiBlurStatus` → 변경하지 않음 (AI 처리 기록 보존)',
     ].join('\n'),
   })
   @ApiParam({ name: 'postId', type: Number, example: 12, description: '게시글 ID' })
@@ -133,8 +156,7 @@ export class UploadsController {
   @ApiNotFoundResponse({ description: '게시글 또는 이미지를 찾을 수 없음' })
   @ApiUnprocessableEntityResponse({
     description:
-      '수동 블러 적용 불가 상태 — 허용: FAILED+NONE / DONE+AUTO / MANUAL 재처리. ' +
-      '예: PENDING, PROCESSING, DONE+NONE 등은 거부됨',
+      '수동 블러 적용 불가 상태 — 허용: FAILED+NONE / DONE+AUTO / MANUAL 재처리. 예: PENDING, PROCESSING, DONE+NONE 등은 거부됨',
   })
   @UseInterceptors(FileInterceptor('file'))
   async applyManualBlur(
@@ -142,10 +164,9 @@ export class UploadsController {
     @UploadedFile() file: Express.Multer.File,
     @Headers('authorization') authorization?: string,
   ): Promise<ManualBlurResponse> {
-    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(
-      authorization,
-      { required: true },
-    );
+    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(authorization, {
+      required: true,
+    });
 
     if (!file) {
       throw new BadRequestException('블러 처리된 이미지 파일이 필요합니다.');

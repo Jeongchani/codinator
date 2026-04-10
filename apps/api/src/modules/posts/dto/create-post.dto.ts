@@ -6,7 +6,7 @@ export class CreatePostImageDto {
     example: '/uploads/posts/originals/20260325/post-original.jpg',
     description: '원본 이미지 URL',
   })
-  originalImageUrl: string;
+  originalImageUrl!: string;
 
   @ApiPropertyOptional({
     example: '/uploads/posts/processed/20260325/post-processed.jpg',
@@ -47,7 +47,7 @@ export class CreatePostOutfitItemDto {
     enum: ['TOP', 'BOTTOM', 'OUTER', 'SHOES', 'BAG', 'ACCESSORY', 'ETC'],
     description: '의류 카테고리',
   })
-  category: GarmentCategory;
+  category!: GarmentCategory;
 
   @ApiPropertyOptional({ example: '화이트 셔츠', description: '아이템명' })
   itemName?: string | null;
@@ -58,10 +58,19 @@ export class CreatePostOutfitItemDto {
 
 export class CreatePostDto {
   @ApiProperty({ example: '봄 코디 평가 부탁드립니다.', description: '게시글 본문 (필수, 최대 500자)' })
-  content: string;
+  content!: string;
 
-  @ApiProperty({ type: CreatePostImageDto, description: 'V2 이미지 구조 1장' })
-  image: CreatePostImageDto;
+  @ApiPropertyOptional({
+    example: 101,
+    description: '업로드 완료된 게시글 이미지 asset ID. 신규 구현은 이 필드를 사용한다.',
+  })
+  imageAssetId?: number;
+
+  @ApiPropertyOptional({
+    type: CreatePostImageDto,
+    description: '구버전 호환용 이미지 입력. 가능하면 imageAssetId 사용.',
+  })
+  image?: CreatePostImageDto;
 
   @ApiPropertyOptional({
     type: [Number],

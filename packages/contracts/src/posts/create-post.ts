@@ -6,6 +6,10 @@ export interface CreateOutfitItemInput {
   brand?: string | null;
 }
 
+/**
+ * 구버전 호환용 입력.
+ * 신규 구현은 imageAssetId 사용이 우선이다.
+ */
 export interface CreatePostImageInput {
   originalImageUrl: string;
   processedImageUrl?: string | null;
@@ -16,8 +20,9 @@ export interface CreatePostImageInput {
 }
 
 export interface CreatePostRequest {
-  content: string; // V2 정책: 필수값
-  image: CreatePostImageInput;
+  content: string;
+  imageAssetId?: number;
+  image?: CreatePostImageInput;
   keywordIds?: number[];
   outfitItems?: CreateOutfitItemInput[];
 }

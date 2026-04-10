@@ -50,6 +50,7 @@ export class RankingsService {
           (detail) =>
             detail.post.status === PostStatus.ACTIVE &&
             detail.post.deletedAt === null &&
+            detail.post.hiddenAt === null &&
             detail.post.publishedAt !== null,
         )
         .map((detail) => ({
@@ -86,6 +87,7 @@ export class RankingsService {
         post: {
           status: PostStatus.ACTIVE,
           deletedAt: null,
+          hiddenAt: null,
           publishedAt: { not: null },
         },
       },
