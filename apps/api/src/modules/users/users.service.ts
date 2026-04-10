@@ -15,12 +15,11 @@ import type {
 import { UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
+import { syncAuthorSearchIndexes } from '../search/common/post-search-index.util';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
-
-  // ─── 내 정보 조회 ─────────────────────────────────────────────────────────────
 
   async getMe(userId: number): Promise<GetMeResponse> {
     const user = await this.prisma.user.findUnique({
@@ -55,8 +54,6 @@ export class UsersService {
     };
   }
 
-  // ─── 내 정보 수정 (nickname, phoneNumber) ─────────────────────────────────────
-
   async updateMe(userId: number, body: UpdateMeRequest): Promise<UpdateMeResponse> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -68,6 +65,7 @@ export class UsersService {
     }
 
     const dataToUpdate: { nickname?: string; phoneNumber?: string } = {};
+    let nicknameChanged = false;
 
     if (body.nickname !== undefined) {
       const trimmed = body.nickname.trim();
@@ -77,7 +75,6 @@ export class UsersService {
       if (trimmed.length > 30) {
         throw new BadRequestException('닉네임은 최대 30자입니다.');
       }
-      // 중복 검사 (본인 제외)
       const existing = await this.prisma.user.findFirst({
         where: { nickname: trimmed, NOT: { id: userId } },
         select: { id: true },
@@ -86,11 +83,11 @@ export class UsersService {
         throw new BadRequestException('이미 사용 중인 닉네임입니다.');
       }
       dataToUpdate.nickname = trimmed;
+      nicknameChanged = true;
     }
 
     if (body.phoneNumber !== undefined) {
       const normalized = this.normalizePhoneNumber(body.phoneNumber);
-      // 중복 검사 (본인 제외)
       const existing = await this.prisma.user.findFirst({
         where: { phoneNumber: normalized, NOT: { id: userId } },
         select: { id: true },
@@ -117,6 +114,10 @@ export class UsersService {
       },
     });
 
+    if (nicknameChanged) {
+      await syncAuthorSearchIndexes(this.prisma, userId);
+    }
+
     return {
       userId: updated.id,
       email: updated.email,
@@ -129,8 +130,6 @@ export class UsersService {
       updatedAt: updated.updatedAt.toISOString(),
     };
   }
-
-  // ─── 회원 탈퇴 (소프트 삭제 + 세션 전체 무효화) ─────────────────────────────
 
   async deleteMe(userId: number): Promise<DeleteMeResponse> {
     const user = await this.prisma.user.findUnique({
@@ -145,12 +144,10 @@ export class UsersService {
     const now = new Date();
 
     await this.prisma.$transaction([
-      // 활성 세션 전체 무효화
       this.prisma.userSession.updateMany({
         where: { userId, revokedAt: null },
         data: { revokedAt: now },
       }),
-      // 소프트 삭제
       this.prisma.user.update({
         where: { id: userId },
         data: { status: UserStatus.DELETED, deletedAt: now },
@@ -159,8 +156,6 @@ export class UsersService {
 
     return { success: true, message: '회원 탈퇴가 완료되었습니다.' };
   }
-
-  // ─── 비밀번호 변경 ────────────────────────────────────────────────────────────
 
   async updatePassword(
     userId: number,
@@ -175,14 +170,19 @@ export class UsersService {
       throw new NotFoundException('사용자를 찾을 수 없습니다.');
     }
 
+    if (!user.passwordHash) {
+      throw new BadRequestException('비밀번호 기반 계정이 아닙니다.');
+    }
+
     const isValid = await bcrypt.compare(body.currentPassword, user.passwordHash);
     if (!isValid) {
       throw new UnauthorizedException('현재 비밀번호가 올바르지 않습니다.');
     }
 
-    // 정책 확인 필요: 새 비밀번호 최소 길이 기준 미정 → 최소 4자 적용 (임시)
-    if (!body.newPassword || body.newPassword.length < 4) {
-      throw new BadRequestException('새 비밀번호는 최소 4자 이상이어야 합니다.');
+    if (!this.isValidPassword(body.newPassword)) {
+      throw new BadRequestException(
+        '새 비밀번호는 8자 이상이며 영문, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.',
+      );
     }
 
     const newHash = await bcrypt.hash(body.newPassword, 10);
@@ -195,7 +195,9 @@ export class UsersService {
     return { success: true, message: '비밀번호가 변경되었습니다.' };
   }
 
-  // ─── private helpers ──────────────────────────────────────────────────────────
+  private isValidPassword(password: string): boolean {
+    return /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(password);
+  }
 
   private normalizePhoneNumber(phoneNumber: string): string {
     const normalized = phoneNumber.replace(/[^0-9]/g, '');

@@ -21,6 +21,7 @@ import {
   mapPostKeywords,
   OUTFIT_ORDER_BY,
   pickPostThumbnail,
+  POST_IMAGE_INCLUDE,
   POST_KEYWORD_ORDER_BY,
 } from '../posts/common/post-presenter.util';
 
@@ -99,6 +100,7 @@ export class RankingsService {
             },
             images: {
               orderBy: IMAGE_ORDER_BY,
+              include: POST_IMAGE_INCLUDE,
             },
             outfitItems: {
               orderBy: OUTFIT_ORDER_BY,
@@ -196,6 +198,7 @@ export class RankingsService {
         startDate: window.startDate,
         endDate: window.endDate,
       },
+      orderBy: [{ generatedAt: 'desc' }, { id: 'desc' }],
       include: {
         details: {
           orderBy: { rank: 'asc' },
@@ -205,6 +208,7 @@ export class RankingsService {
                 images: {
                   orderBy: IMAGE_ORDER_BY,
                   take: 1,
+                  include: POST_IMAGE_INCLUDE,
                 },
               },
             },
@@ -224,6 +228,7 @@ export class RankingsService {
         startDate: window.startDate,
         endDate: window.endDate,
       },
+      orderBy: [{ generatedAt: 'desc' }, { id: 'desc' }],
       select: {
         id: true,
         period: true,

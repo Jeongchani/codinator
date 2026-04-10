@@ -6,44 +6,34 @@ import type {
   SearchType,
   UserSearchItem,
 } from '@codinator/contracts';
-import { EvaluationStatus, PostStatus, RankingStatus, UserStatus } from '@prisma/client';
+import { EvaluationStatus, PostStatus, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   IMAGE_ORDER_BY,
   pickPostThumbnail,
+  POST_IMAGE_INCLUDE,
+  POST_KEYWORD_ORDER_BY,
 } from '../posts/common/post-presenter.util';
 
-/**
- * 공개 가능 게시글 Where 조건 (V2 확정)
- *
- * 검색 결과에 포함되려면:
- *   1. Post.status = ACTIVE       (HIDDEN / DELETED 제외 — 작성자 숨김/관리자 숨김 게시글 제외)
- *   2. Post.deletedAt IS NULL
- *   3. evaluation.status = ENDED  (OPEN 평가중 제외 — 익명성 보호, CLOSED 제외 — 숨긴 게시글)
- *   4. rankingDetails 에 READY 상태 랭킹이 1건 이상 존재 (랭킹 미등재 게시글 제외)
- */
 function publicPostWhere() {
   return {
     status: PostStatus.ACTIVE,
     deletedAt: null,
+    hiddenAt: null,
+    publishedAt: { not: null },
     evaluation: {
       is: {
         status: EvaluationStatus.ENDED,
       },
     },
-    rankingDetails: {
-      some: {
-        ranking: { status: RankingStatus.READY },
+    postSearchIndex: {
+      is: {
+        isSearchable: true,
       },
     },
   } as const;
 }
 
-/**
- * 공개 가능 사용자 Where 조건
- *   1. User.status = ACTIVE   (SUSPENDED / DELETED 제외)
- *   2. User.deletedAt IS NULL
- */
 function publicUserWhere() {
   return {
     status: UserStatus.ACTIVE,
@@ -54,8 +44,6 @@ function publicUserWhere() {
 @Injectable()
 export class SearchService {
   constructor(private readonly prisma: PrismaService) {}
-
-  // ─── 진입점 ────────────────────────────────────────────────────────────────────
 
   async search(params: {
     q: string;
@@ -81,18 +69,12 @@ export class SearchService {
       case 'KEYWORD':
         return this.searchByKeyword(q, cursor, limit);
       case 'POST':
-        return this.searchByContent(q, cursor, limit);
+        return this.searchByText(q, cursor, limit);
       default:
-        // type 미지정 → ALL 검색 (cursor 미지원, 각 카테고리에서 limit건씩)
         return this.searchAll(q, limit);
     }
   }
 
-  // ─── NICKNAME 검색 ─────────────────────────────────────────────────────────────
-  /**
-   * 닉네임 부분 일치 검색.
-   * 정렬: id ASC (등록순) — 커서 방향: id > cursor (ASC 방향)
-   */
   private async searchByNickname(
     q: string,
     cursor: number | undefined,
@@ -109,16 +91,15 @@ export class SearchService {
       select: {
         id: true,
         nickname: true,
-        // 유저의 최근 랭킹 등재 게시글 대표 이미지 1장
         posts: {
           where: publicPostWhere(),
-          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
           take: 1,
           select: {
             images: {
               orderBy: IMAGE_ORDER_BY,
               take: 1,
-              select: { thumbnailUrl: true, processedImageUrl: true },
+              include: POST_IMAGE_INCLUDE,
             },
           },
         },
@@ -143,13 +124,6 @@ export class SearchService {
     };
   }
 
-  // ─── KEYWORD 검색 ─────────────────────────────────────────────────────────────
-  /**
-   * 게시글에 달린 키워드의 label이 검색어를 포함하는 게시글 검색.
-   * 정렬: [createdAt DESC, id DESC] — 커서 방향: id < cursor (DESC 방향)
-   * OPEN 평가 게시글 제외 (익명성 보호).
-   * 게시글 검색 결과에는 author를 반환하지 않는다 (익명성 정책).
-   */
   private async searchByKeyword(
     q: string,
     cursor: number | undefined,
@@ -167,19 +141,9 @@ export class SearchService {
         },
         ...(cursor !== undefined ? { id: { lt: cursor } } : {}),
       },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
-      select: {
-        id: true,
-        authorId: true,
-        content: true,
-        createdAt: true,
-        images: { orderBy: IMAGE_ORDER_BY, take: 1, select: { thumbnailUrl: true, processedImageUrl: true } },
-        postKeywords: {
-          orderBy: { sortOrder: 'asc' as const },
-          select: { keyword: { select: { id: true, label: true } } },
-        },
-      },
+      select: this.postSearchSelect(),
     });
 
     const hasMore = posts.length > limit;
@@ -194,14 +158,7 @@ export class SearchService {
     };
   }
 
-  // ─── POST(본문) 검색 ──────────────────────────────────────────────────────────
-  /**
-   * 게시글 본문(content) 부분 일치 검색.
-   * 정렬: [createdAt DESC, id DESC] — 커서 방향: id < cursor (DESC 방향)
-   * OPEN 평가 게시글 제외 (익명성 보호).
-   * 게시글 검색 결과에는 author를 반환하지 않는다 (익명성 정책).
-   */
-  private async searchByContent(
+  private async searchByText(
     q: string,
     cursor: number | undefined,
     limit: number,
@@ -209,22 +166,17 @@ export class SearchService {
     const posts = await this.prisma.post.findMany({
       where: {
         ...publicPostWhere(),
-        content: { contains: q, mode: 'insensitive' },
+        postSearchIndex: {
+          is: {
+            isSearchable: true,
+            searchText: { contains: q, mode: 'insensitive' },
+          },
+        },
         ...(cursor !== undefined ? { id: { lt: cursor } } : {}),
       },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
-      select: {
-        id: true,
-        authorId: true,
-        content: true,
-        createdAt: true,
-        images: { orderBy: IMAGE_ORDER_BY, take: 1, select: { thumbnailUrl: true, processedImageUrl: true } },
-        postKeywords: {
-          orderBy: { sortOrder: 'asc' as const },
-          select: { keyword: { select: { id: true, label: true } } },
-        },
-      },
+      select: this.postSearchSelect(),
     });
 
     const hasMore = posts.length > limit;
@@ -239,24 +191,8 @@ export class SearchService {
     };
   }
 
-  // ─── 전체(ALL) 검색 ────────────────────────────────────────────────────────────
-  /**
-   * type 미지정 시 닉네임 + 키워드 + 본문을 병합 검색.
-   *
-   * 정렬 규칙:
-   *   - users: id ASC (등록순)
-   *   - posts: [createdAt DESC, id DESC] (최신순)
-   *     게시글은 키워드 label 매칭 + 본문 매칭 결과를 OR 조건으로 단일 쿼리 처리,
-   *     postId 기준 중복 제거 (KEYWORD / POST 동시 매칭 게시글).
-   *
-   * cursor 미지원: ALL 타입에서는 nextCursor=null, hasMore=false 고정.
-   * 각 limit건씩 독립적으로 가져옴.
-   *
-   * 게시글 검색 결과에는 author를 반환하지 않는다 (익명성 정책).
-   */
   private async searchAll(q: string, limit: number): Promise<SearchResponse> {
     const [users, posts] = await Promise.all([
-      // 사용자 닉네임 검색
       this.prisma.user.findMany({
         where: {
           ...publicUserWhere(),
@@ -267,27 +203,32 @@ export class SearchService {
         select: {
           id: true,
           nickname: true,
-          // 유저의 최근 랭킹 등재 게시글 대표 이미지 1장
           posts: {
             where: publicPostWhere(),
-            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
             take: 1,
             select: {
               images: {
                 orderBy: IMAGE_ORDER_BY,
                 take: 1,
-                select: { thumbnailUrl: true, processedImageUrl: true },
+                include: POST_IMAGE_INCLUDE,
               },
             },
           },
         },
       }),
-
-      // 게시글 검색 (키워드 label OR 본문 포함)
       this.prisma.post.findMany({
         where: {
           ...publicPostWhere(),
           OR: [
+            {
+              postSearchIndex: {
+                is: {
+                  isSearchable: true,
+                  searchText: { contains: q, mode: 'insensitive' },
+                },
+              },
+            },
             {
               postKeywords: {
                 some: {
@@ -295,24 +236,11 @@ export class SearchService {
                 },
               },
             },
-            {
-              content: { contains: q, mode: 'insensitive' },
-            },
           ],
         },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
         take: limit,
-        select: {
-          id: true,
-          authorId: true,
-          content: true,
-          createdAt: true,
-          images: { orderBy: IMAGE_ORDER_BY, take: 1, select: { thumbnailUrl: true, processedImageUrl: true } },
-          postKeywords: {
-            orderBy: { sortOrder: 'asc' as const },
-            select: { keyword: { select: { id: true, label: true } } },
-          },
-        },
+        select: this.postSearchSelect(),
       }),
     ]);
 
@@ -331,21 +259,30 @@ export class SearchService {
     };
   }
 
-  // ─── 공통 헬퍼 ────────────────────────────────────────────────────────────────
+  private postSearchSelect() {
+    return {
+      id: true,
+      authorId: true,
+      content: true,
+      publishedAt: true,
+      images: { orderBy: IMAGE_ORDER_BY, take: 1, include: POST_IMAGE_INCLUDE },
+      postKeywords: {
+        orderBy: POST_KEYWORD_ORDER_BY,
+        select: { keyword: { select: { id: true, label: true } } },
+      },
+    } as const;
+  }
 
-  /**
-   * Prisma Post 결과를 PostSearchItem으로 변환.
-   * 닉네임은 익명성 정책에 따라 반환하지 않으나,
-   * userId는 피드 상세 페이지 이동에 필요하므로 포함한다.
-   */
   private mapPostItem(post: {
     id: number;
     authorId: number;
     content: string;
-    createdAt: Date;
+    publishedAt: Date | null;
     images: Array<{
-      thumbnailUrl: string | null;
-      processedImageUrl: string | null;
+      imageAsset: {
+        thumbnailUrl: string | null;
+        processedImageUrl: string | null;
+      };
     }>;
     postKeywords: Array<{
       keyword: { id: number; label: string };
@@ -361,7 +298,7 @@ export class SearchService {
       userId: post.authorId,
       thumbnailUrl: post.images.length > 0 ? pickPostThumbnail(post.images) : null,
       content: post.content,
-      createdAt: post.createdAt.toISOString(),
+      createdAt: (post.publishedAt ?? new Date()).toISOString(),
       keywords,
     };
   }

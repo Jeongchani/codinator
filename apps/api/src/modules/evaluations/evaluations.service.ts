@@ -15,6 +15,7 @@ import {
   mapPostKeywords,
   OUTFIT_ORDER_BY,
   pickPostThumbnail,
+  POST_IMAGE_INCLUDE,
   POST_KEYWORD_ORDER_BY,
 } from '../posts/common/post-presenter.util';
 
@@ -53,6 +54,7 @@ export class EvaluationsService {
             images: {
               orderBy: IMAGE_ORDER_BY,
               take: 1,
+              include: POST_IMAGE_INCLUDE,
             },
             postKeywords: {
               orderBy: POST_KEYWORD_ORDER_BY,
@@ -113,6 +115,7 @@ export class EvaluationsService {
       include: {
         images: {
           orderBy: IMAGE_ORDER_BY,
+          include: POST_IMAGE_INCLUDE,
         },
         outfitItems: {
           orderBy: OUTFIT_ORDER_BY,

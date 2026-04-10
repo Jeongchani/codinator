@@ -23,7 +23,7 @@ const userSeeds = [
     gender: Gender.MALE,
     birthDate: new Date('1990-01-01'),
     phoneNumber: '01000000000',
-    role: UserRole.ADMIN,
+    role: UserRole.SUPER_ADMIN,
   },
   {
     key: 'alice',
@@ -628,14 +628,19 @@ function buildImageCreate(filename) {
   const url = `${SEED_IMAGE_BASE_URL}/${resolvedFilename}`;
 
   return {
-    originalImageUrl: url,
-    processedImageUrl: url,
-    thumbnailUrl: url,
-    storageKey: `seeds/posts/${filename}`,
-    blurMethod: BlurMethod.NONE,
-    aiBlurStatus: AiBlurStatus.DONE,
     sortOrder: 0,
     isPrimary: true,
+    imageAsset: {
+      create: {
+        sourceType: 'POST',
+        storageKey: `seeds/posts/${filename}`,
+        originalImageUrl: url,
+        processedImageUrl: url,
+        thumbnailUrl: url,
+        blurMethod: BlurMethod.NONE,
+        aiBlurStatus: AiBlurStatus.DONE,
+      },
+    },
   };
 }
 
@@ -751,10 +756,16 @@ async function resetSampleData() {
   await prisma.bookmark.deleteMany();
   await prisma.report.deleteMany();
   await prisma.userReport.deleteMany();
+  await prisma.postSearchIndex.deleteMany();
+  await prisma.searchHistory.deleteMany();
+  await prisma.imageVector.deleteMany();
+  await prisma.imageGarment.deleteMany();
+  await prisma.imageAnalysisRun.deleteMany();
   await prisma.postKeyword.deleteMany();
   await prisma.postOutfit.deleteMany();
   await prisma.postImage.deleteMany();
   await prisma.post.deleteMany();
+  await prisma.imageAsset.deleteMany({ where: { sourceType: 'POST' } });
   await prisma.userSession.deleteMany();
 }
 
@@ -855,6 +866,113 @@ async function seedVotesAndFeedback(post, seed, now, userMap, tagMap) {
   return profile;
 }
 
+
+async function syncPostSearchIndexRecord(postId) {
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    include: {
+      author: { select: { nickname: true } },
+      postKeywords: {
+        orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+        include: { keyword: { select: { code: true, label: true } } },
+      },
+      outfitItems: {
+        orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+        select: { category: true, itemName: true, brand: true },
+      },
+      evaluation: {
+        include: {
+          votes: {
+            include: {
+              feedbacks: {
+                include: {
+                  tag: { select: { code: true, voteChoice: true } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!post) {
+    return;
+  }
+
+  const votes = post.evaluation?.votes ?? [];
+  const likeCount = votes.filter((vote) => vote.choice === VoteChoice.LIKE).length;
+  const totalCount = votes.length;
+  const likeRatio = totalCount === 0 ? 0 : likeCount / totalCount;
+
+  const keywordCodes = [...new Set(post.postKeywords.map((item) => item.keyword.code))];
+  const keywordLabels = [...new Set(post.postKeywords.map((item) => item.keyword.label))];
+  const outfitCategories = [
+    ...new Set(post.outfitItems.map((item) => String(item.category).trim().toUpperCase())),
+  ];
+
+  const feedbackLikeCodes = [
+    ...new Set(
+      votes
+        .flatMap((vote) => vote.feedbacks)
+        .filter((feedback) => feedback.tag.voteChoice === VoteChoice.LIKE)
+        .map((feedback) => feedback.tag.code),
+    ),
+  ];
+
+  const feedbackDislikeCodes = [
+    ...new Set(
+      votes
+        .flatMap((vote) => vote.feedbacks)
+        .filter((feedback) => feedback.tag.voteChoice === VoteChoice.DISLIKE)
+        .map((feedback) => feedback.tag.code),
+    ),
+  ];
+
+  const searchText = [
+    post.content,
+    post.author.nickname,
+    ...keywordLabels,
+    ...post.outfitItems.flatMap((item) => [item.category, item.itemName, item.brand]),
+  ]
+    .filter((value) => typeof value === 'string' && value.trim().length > 0)
+    .join(' ');
+
+  const isSearchable =
+    post.status === 'ACTIVE' &&
+    post.deletedAt === null &&
+    post.hiddenAt === null &&
+    post.publishedAt !== null &&
+    post.evaluation?.status === EvaluationStatus.ENDED;
+
+  await prisma.postSearchIndex.upsert({
+    where: { postId: post.id },
+    update: {
+      authorNickname: post.author.nickname,
+      searchText,
+      keywordCodes,
+      outfitCategories,
+      feedbackLikeCodes,
+      feedbackDislikeCodes,
+      likeRatio,
+      isSearchable,
+      indexedAt: new Date(),
+    },
+    create: {
+      postId: post.id,
+      authorNickname: post.author.nickname,
+      searchText,
+      keywordCodes,
+      outfitCategories,
+      feedbackLikeCodes,
+      feedbackDislikeCodes,
+      likeRatio,
+      isSearchable,
+      indexedAt: new Date(),
+    },
+  });
+}
+
 async function createSamplePosts(userMap, keywordMap, tagMap) {
   const now = new Date();
 
@@ -865,7 +983,9 @@ async function createSamplePosts(userMap, keywordMap, tagMap) {
 
   const openPosts = [];
   for (const seed of OPEN_POST_SEEDS) {
-    openPosts.push(await createOpenPost(seed, now, userMap, keywordMap));
+    const post = await createOpenPost(seed, now, userMap, keywordMap);
+    await syncPostSearchIndexRecord(post.id);
+    openPosts.push(post);
   }
 
   const weeklyPublishDates = buildDistributedDates(
@@ -884,6 +1004,7 @@ async function createSamplePosts(userMap, keywordMap, tagMap) {
   for (const [index, seed] of WEEKLY_RANKING_SEEDS.entries()) {
     const post = await createRankedPost(seed, weeklyPublishDates[index], userMap, keywordMap);
     const profile = await seedVotesAndFeedback(post, seed, now, userMap, tagMap);
+    await syncPostSearchIndexRecord(post.id);
 
     weeklyRankingPosts.push({
       post,
@@ -895,6 +1016,7 @@ async function createSamplePosts(userMap, keywordMap, tagMap) {
   for (const [index, seed] of MONTHLY_RANKING_SEEDS.entries()) {
     const post = await createRankedPost(seed, monthlyPublishDates[index], userMap, keywordMap);
     const profile = await seedVotesAndFeedback(post, seed, now, userMap, tagMap);
+    await syncPostSearchIndexRecord(post.id);
 
     monthlyRankingPosts.push({
       post,

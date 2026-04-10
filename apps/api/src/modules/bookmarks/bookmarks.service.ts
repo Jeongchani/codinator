@@ -6,7 +6,7 @@ import type {
 } from '@codinator/contracts';
 import { PostStatus, RankingStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { IMAGE_ORDER_BY, pickPostThumbnail } from '../posts/common/post-presenter.util';
+import { IMAGE_ORDER_BY, pickPostThumbnail, POST_IMAGE_INCLUDE } from '../posts/common/post-presenter.util';
 
 @Injectable()
 export class BookmarksService {
@@ -88,11 +88,7 @@ export class BookmarksService {
             images: {
               orderBy: IMAGE_ORDER_BY,
               take: 1,
-              select: {
-                thumbnailUrl: true,
-                processedImageUrl: true,
-                // originalImageUrl 는 블러 처리 전 원본 — 외부 노출 금지, select 제외
-              },
+              include: POST_IMAGE_INCLUDE,
             },
             // 평가 상태 포함
             evaluation: {

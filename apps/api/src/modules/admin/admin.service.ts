@@ -14,6 +14,7 @@ import type {
   ReviewReportResponse,
 } from '@codinator/contracts';
 import { PostStatus, ReportStatus, UserRole } from '@prisma/client';
+import { POST_IMAGE_INCLUDE } from '../posts/common/post-presenter.util';
 import type { ListReportsQueryDto } from './dto/list-reports-query.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -33,7 +34,7 @@ export class AdminService {
       throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
     }
 
-    if (user.role !== UserRole.ADMIN) {
+    if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.OPERATOR_ADMIN) {
       throw new ForbiddenException('관리자 권한이 필요합니다.');
     }
   }
@@ -223,8 +224,8 @@ export class AdminService {
             select: {
               images: {
                 where: { isPrimary: true },
-                select: { thumbnailUrl: true },
                 take: 1,
+                include: POST_IMAGE_INCLUDE,
               },
             },
           },
@@ -243,7 +244,10 @@ export class AdminService {
       items: items.map((r) => ({
         reportId: r.id,
         postId: r.postId,
-        postThumbnailUrl: r.post.images[0]?.thumbnailUrl ?? null,
+        postThumbnailUrl:
+          r.post.images[0]?.imageAsset.thumbnailUrl ??
+          r.post.images[0]?.imageAsset.processedImageUrl ??
+          null,
         reporterId: r.reporter.id,
         reporterNickname: r.reporter.nickname,
         title: r.title,

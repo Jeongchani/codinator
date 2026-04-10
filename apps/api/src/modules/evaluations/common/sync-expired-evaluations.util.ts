@@ -1,5 +1,6 @@
 import { EvaluationStatus } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { syncPostSearchIndex } from '../../search/common/post-search-index.util';
 
 export async function syncExpiredEvaluations(prisma: PrismaService): Promise<void> {
   const now = new Date();
@@ -43,4 +44,8 @@ export async function syncExpiredEvaluations(prisma: PrismaService): Promise<voi
       },
     }),
   ]);
+
+  for (const postId of postIds) {
+    await syncPostSearchIndex(prisma, postId);
+  }
 }

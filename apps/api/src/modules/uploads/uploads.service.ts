@@ -45,7 +45,6 @@ export class UploadsService {
     const originalStorageKey = `posts/originals/${today}/${originalFilename}`;
     const originalImageUrl = `/uploads/${originalStorageKey}`;
 
-    // AI 블러 처리 — 실패 시 원본 이미지로 fallback (업로드 자체는 성공 처리)
     try {
       const processed = await this.aiService.blurFace(file);
       const processedExtension = processed.extension
@@ -71,7 +70,6 @@ export class UploadsService {
         `AI 블러 처리 실패 — 원본 이미지로 fallback 처리합니다. storageKey=${originalStorageKey}, error=${String(err)}`,
       );
 
-      // 블러 실패 시 원본을 processedImageUrl 로 사용, 수동 블러 대기 상태로 저장
       return {
         originalImageUrl,
         processedImageUrl: originalImageUrl,
@@ -83,25 +81,6 @@ export class UploadsService {
     }
   }
 
-  // ─── 수동 블러 적용 ───────────────────────────────────────────────────────────
-  /**
-   * PATCH /uploads/posts/:postId/manual-blur
-   *
-   * 작성자가 직접 블러 처리한 이미지를 업로드하여 PostImage.processedImageUrl 을 교체.
-   * AI 실패(FAILED) 또는 AI 성공 후 부정확 판단(DONE+AUTO) 모두 허용.
-   *
-   * 허용 조건 (아래 셋 중 하나):
-   *   ① aiBlurStatus=FAILED  + blurMethod=NONE   — AI 실패, 미처리 상태
-   *   ② aiBlurStatus=DONE    + blurMethod=AUTO   — AI 성공이지만 결과 부정확 → override
-   *   ③                        blurMethod=MANUAL — 이미 수동 처리됨 → 재처리(덮어쓰기)
-   *
-   * 처리 결과:
-   *   - processedImageUrl → 새 수동 블러 이미지 URL 로 갱신
-   *   - blurMethod        → MANUAL 로 변경
-   *   - aiBlurStatus      → 기존 값 유지 (AI 처리 기록 보존)
-   *                         DONE+AUTO → override 후 DONE+MANUAL
-   *                         FAILED+NONE → 처리 후 FAILED+MANUAL
-   */
   async applyManualBlur(
     userId: number,
     postId: number,
@@ -109,7 +88,6 @@ export class UploadsService {
   ): Promise<ManualBlurResponse> {
     this.validateImage(file);
 
-    // 게시글 + 소유자 확인
     const post = await this.prisma.post.findUnique({
       where: { id: postId },
       select: { id: true, authorId: true, status: true, deletedAt: true },
@@ -122,13 +100,17 @@ export class UploadsService {
       throw new ForbiddenException('본인 게시글에만 수동 블러를 적용할 수 있습니다.');
     }
 
-    // primary 이미지 조회
     const postImage = await this.prisma.postImage.findFirst({
       where: { postId, isPrimary: true },
       select: {
         id: true,
-        aiBlurStatus: true,
-        blurMethod: true,
+        imageAssetId: true,
+        imageAsset: {
+          select: {
+            aiBlurStatus: true,
+            blurMethod: true,
+          },
+        },
       },
     });
 
@@ -136,24 +118,19 @@ export class UploadsService {
       throw new NotFoundException('게시글 이미지를 찾을 수 없습니다.');
     }
 
-    // 수동 블러 허용 조건:
-    //   ① FAILED + NONE  — AI 실패, 미처리 상태
-    //   ② DONE  + AUTO   — AI 성공이지만 결과 부정확 → 작성자 override
-    //   ③ 이미 MANUAL    — 재수동 처리(덮어쓰기) 허용
     const canManualBlur =
-      (postImage.aiBlurStatus === AiBlurStatus.FAILED && postImage.blurMethod === BlurMethod.NONE) ||
-      (postImage.aiBlurStatus === AiBlurStatus.DONE && postImage.blurMethod === BlurMethod.AUTO) ||
-      postImage.blurMethod === BlurMethod.MANUAL;
+      (postImage.imageAsset.aiBlurStatus === AiBlurStatus.FAILED &&
+        postImage.imageAsset.blurMethod === BlurMethod.NONE) ||
+      (postImage.imageAsset.aiBlurStatus === AiBlurStatus.DONE &&
+        postImage.imageAsset.blurMethod === BlurMethod.AUTO) ||
+      postImage.imageAsset.blurMethod === BlurMethod.MANUAL;
 
     if (!canManualBlur) {
       throw new UnprocessableEntityException(
-        `수동 블러를 적용할 수 없는 상태입니다. ` +
-        `허용: AI 실패(FAILED+NONE), AI 성공 후 작성자 override(DONE+AUTO), 수동 재처리(MANUAL). ` +
-        `현재: aiBlurStatus=${postImage.aiBlurStatus}, blurMethod=${postImage.blurMethod}`,
+        `수동 블러를 적용할 수 없는 상태입니다. 현재: aiBlurStatus=${postImage.imageAsset.aiBlurStatus}, blurMethod=${postImage.imageAsset.blurMethod}`,
       );
     }
 
-    // 파일 저장
     const today = this.getDatePath();
     const processedDir = join(this.uploadRoot, 'posts', 'processed', today);
     await fs.mkdir(processedDir, { recursive: true });
@@ -165,14 +142,13 @@ export class UploadsService {
 
     const processedImageUrl = `/uploads/posts/processed/${today}/${filename}`;
 
-    // DB 갱신
-    const updated = await this.prisma.postImage.update({
-      where: { id: postImage.id },
+    const updatedAsset = await this.prisma.imageAsset.update({
+      where: { id: postImage.imageAssetId },
       data: {
         processedImageUrl,
         blurMethod: BlurMethod.MANUAL,
       },
-      select: { id: true, updatedAt: true },
+      select: { updatedAt: true },
     });
 
     this.logger.log(
@@ -180,11 +156,11 @@ export class UploadsService {
     );
 
     return {
-      imageId: updated.id,
+      imageId: postImage.id,
       postId,
       processedImageUrl,
       blurMethod: 'MANUAL',
-      updatedAt: updated.updatedAt.toISOString(),
+      updatedAt: updatedAsset.updatedAt.toISOString(),
     };
   }
 

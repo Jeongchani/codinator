@@ -92,7 +92,9 @@ export class AuthService {
     const birthDate = this.normalizeBirthDate(dto.birthDate);
     const phoneNumber = this.normalizePhoneNumber(dto.phoneNumber);
 
-    // 여기: 비밀번호 사전 검증 로직은 넣지 않음
+    if (!this.isValidPassword(dto.password)) {
+      throw new BadRequestException('비밀번호는 8자 이상이며 영문, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.');
+    }
 
     const [existingEmailUser, existingNicknameUser, existingPhoneUser] = await Promise.all([
       this.prisma.user.findUnique({
@@ -157,6 +159,10 @@ export class AuthService {
 
     if (user.status === UserStatus.DELETED || user.status === UserStatus.SUSPENDED) {
       throw new UnauthorizedException('사용할 수 없는 계정입니다. 고객센터에 문의해 주세요.');
+    }
+
+    if (!user.passwordHash) {
+      throw new UnauthorizedException('비밀번호 로그인 계정이 아닙니다.');
     }
 
     const isValid = await bcrypt.compare(dto.password, user.passwordHash);
@@ -256,6 +262,10 @@ export class AuthService {
 
   private hashToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
+  }
+
+  private isValidPassword(password: string): boolean {
+    return /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(password);
   }
 
   private normalizePhoneNumber(phoneNumber: string): string {

@@ -15,6 +15,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { buildVoteSummary } from '../evaluations/common/evaluation-summary.util';
 import { syncExpiredEvaluations } from '../evaluations/common/sync-expired-evaluations.util';
 import { validateVoteChoice } from './common/vote-choice.util';
+import { syncPostSearchIndex } from '../search/common/post-search-index.util';
 
 @Injectable()
 export class VotesService {
@@ -98,6 +99,8 @@ export class VotesService {
     const refreshedVotes = await this.prisma.vote.findMany({
       where: { evaluationId: evaluationPost.evaluation.id },
     });
+
+    await syncPostSearchIndex(this.prisma, evaluationPost.id);
 
     return {
       postId: evaluationPost.id,
@@ -190,6 +193,8 @@ export class VotesService {
         },
       });
     });
+
+    await syncPostSearchIndex(this.prisma, vote.evaluation.post.id);
 
     return {
       postId: vote.evaluation.post.id,

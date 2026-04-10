@@ -21,6 +21,7 @@ import {
   mapPostKeywords,
   OUTFIT_ORDER_BY,
   pickPostThumbnail,
+  POST_IMAGE_INCLUDE,
   POST_KEYWORD_ORDER_BY,
 } from '../posts/common/post-presenter.util';
 
@@ -59,6 +60,7 @@ export class FeedsService {
         images: {
           orderBy: IMAGE_ORDER_BY,
           take: 1,
+          include: POST_IMAGE_INCLUDE,
         },
         evaluation: {
           select: {
@@ -148,14 +150,7 @@ export class FeedsService {
         publishedAt: { not: null },
         evaluation: {
           is: {
-            status: { in: [EvaluationStatus.ENDED, EvaluationStatus.CLOSED] },
-          },
-        },
-        rankingDetails: {
-          some: {
-            ranking: {
-              status: RankingStatus.READY,
-            },
+            status: EvaluationStatus.ENDED,
           },
         },
       },
@@ -164,6 +159,7 @@ export class FeedsService {
         images: {
           orderBy: IMAGE_ORDER_BY,
           take: 1,
+          include: POST_IMAGE_INCLUDE,
         },
       },
     });
@@ -211,7 +207,7 @@ export class FeedsService {
         author: {
           select: { id: true, nickname: true },
         },
-        images: { orderBy: IMAGE_ORDER_BY },
+        images: { orderBy: IMAGE_ORDER_BY, include: POST_IMAGE_INCLUDE },
         outfitItems: { orderBy: OUTFIT_ORDER_BY },
         postKeywords: {
           orderBy: POST_KEYWORD_ORDER_BY,
@@ -271,14 +267,7 @@ export class FeedsService {
         publishedAt: { not: null },
         evaluation: {
           is: {
-            status: { in: [EvaluationStatus.ENDED, EvaluationStatus.CLOSED] },
-          },
-        },
-        rankingDetails: {
-          some: {
-            ranking: {
-              status: RankingStatus.READY,
-            },
+            status: EvaluationStatus.ENDED,
           },
         },
       },
@@ -291,6 +280,7 @@ export class FeedsService {
         },
         images: {
           orderBy: IMAGE_ORDER_BY,
+          include: POST_IMAGE_INCLUDE,
         },
         outfitItems: {
           orderBy: OUTFIT_ORDER_BY,
