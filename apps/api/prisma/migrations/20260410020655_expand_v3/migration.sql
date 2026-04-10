@@ -2,7 +2,6 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
-
 -- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('USER', 'SUPER_ADMIN', 'OPERATOR_ADMIN');
 
@@ -704,6 +703,8 @@ CREATE INDEX "user_reports_reviewed_by_id_idx" ON "user_reports"("reviewed_by_id
 -- CreateIndex
 CREATE INDEX "user_reports_reporter_id_reported_user_id_status_idx" ON "user_reports"("reporter_id", "reported_user_id", "status");
 
+CREATE UNIQUE INDEX "user_reports_pending_unique" ON "user_reports" ("reporter_id", "reported_user_id") WHERE "status" = 'PENDING';
+
 -- CreateIndex
 CREATE INDEX "admin_action_logs_admin_id_created_at_idx" ON "admin_action_logs"("admin_id", "created_at");
 
@@ -954,8 +955,6 @@ ALTER TABLE "search_histories" ADD CONSTRAINT "search_histories_user_id_fkey" FO
 ALTER TABLE "search_histories" ADD CONSTRAINT "search_histories_image_asset_id_fkey" FOREIGN KEY ("image_asset_id") REFERENCES "image_assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 
-
-
 -- 2. ALTER TABLE / CHECK CONSTRAINT
 -- ImageVector scope / garment 체크 제약
 ALTER TABLE "image_vectors"
@@ -975,10 +974,7 @@ CHECK (
 
 
 -- 3. UNIQUE INDEX 및 비즈니스 로직 제약용 인덱스
--- 신고 제약 걸기
--- CREATE INDEX "user_reports_reporter_id_reported_user_id_status_idx" ON "user_reports"("reporter_id", "reported_user_id", "status");  --해당 코드 밑에 복붙
 
-CREATE UNIQUE INDEX "user_reports_pending_unique" ON "user_reports" ("reporter_id", "reported_user_id") WHERE "status" = 'PENDING';
 
 -- current analysis partial unique
 CREATE UNIQUE INDEX uq_image_analysis_runs_current
