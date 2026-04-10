@@ -33,7 +33,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(api_router, prefix="/api/v2")
+app.include_router(api_router, prefix="/api/v3")
 
 
 @app.get("/")
@@ -42,7 +42,7 @@ def root():
         "success": True,
         "message": "Codinator AI API is running.",
         "docs": "/docs",
-        "health": "/api/v2/health",
+        "health": "/api/v3/health",
     }
 
 

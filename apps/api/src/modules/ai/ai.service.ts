@@ -91,7 +91,7 @@ export class AiService {
   private readonly logger = new Logger(AiService.name);
 
   private readonly aiServerBaseUrl =
-    process.env.AI_SERVER_BASE_URL || 'http://127.0.0.1:8000/api/v2';
+    process.env.AI_SERVER_BASE_URL || 'http://127.0.0.1:8000/api/v3';
 
   private readonly aiTimeoutMs = Number(process.env.AI_SERVER_TIMEOUT_MS || 60000);
 

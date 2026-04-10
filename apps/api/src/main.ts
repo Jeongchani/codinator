@@ -22,7 +22,7 @@ async function bootstrap() {
     }),
   );
 
-  app.setGlobalPrefix('api/v2');
+  app.setGlobalPrefix('api/v3');
 
   const config = new DocumentBuilder()
     .setTitle('Codinator API')
@@ -40,7 +40,7 @@ async function bootstrap() {
   await app.listen(process.env.PORT || 3000);
 
   const appUrl = await app.getUrl();
-  console.log(`Application is running on: ${appUrl}/api/v2`);
-  console.log(`Swagger docs: ${appUrl}/api/v2/docs`);
+  console.log(`Application is running on: ${appUrl}/api/v3`);
+  console.log(`Swagger docs: ${appUrl}/api/v3/docs`);
 }
 bootstrap();

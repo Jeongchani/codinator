@@ -7,7 +7,7 @@ import { useState, useRef, useEffect } from 'react';
 
 // ─── API 헬퍼 ─────────────────────────────────────────────────────────────────
 
-const BASE = '/api/v2';
+const BASE = '/api/v3';
 const tok = () => localStorage.getItem('accessToken') ?? '';
 
 async function api<T>(method: string, path: string, body?: unknown): Promise<T> {

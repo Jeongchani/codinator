@@ -7,7 +7,7 @@ import type {
   RemoveBookmarkResponse,
 } from "@codinator/contracts";
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v2";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v3";
 export const ASSET_BASE_URL = import.meta.env.VITE_ASSET_BASE_URL || "";
 export const API_ORIGIN = import.meta.env.VITE_API_ORIGIN || "http://localhost:3000";
 

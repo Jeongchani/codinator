@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-const baseUrl = process.env.AI_SMOKE_BASE_URL || "http://127.0.0.1:8000/api/v2/analyze-image";
+const baseUrl = process.env.AI_SMOKE_BASE_URL || "http://127.0.0.1:8000/api/v3/analyze-image";
 const root = path.resolve(process.cwd());
 const projectRoot = path.resolve(root, "..", "..");
 const samples = [
