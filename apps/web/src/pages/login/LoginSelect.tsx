@@ -1,15 +1,16 @@
+import React from "react";
 import { useNavigate } from "react-router-dom";
-import styles from "./AuthEntry.module.css";
+import styles from "./LoginSelect.module.css";
 import { KakaoIcon, NaverIcon, GoogleIcon } from "../../components/icons/social";
 
-export default function AuthEntry() {
+export default function LoginSelect() {
   const navigate = useNavigate();
 
-  const handleNavigateToLogin = () => {
+  const handleLogin = () => {
     navigate("/login");
   };
 
-  const handleNavigateToSignup = () => {
+  const handleSignup = () => {
     navigate("/signup");
   };
 
@@ -28,7 +29,7 @@ export default function AuthEntry() {
         <h1 className={styles.title}>로그인</h1>
       </section>
 
-      <button type="button" className={styles.loginButton} onClick={handleNavigateToLogin}>
+      <button type="button" className={styles.loginButton} onClick={handleLogin}>
         로그인
       </button>
 
@@ -54,7 +55,7 @@ export default function AuthEntry() {
 
       <div className={styles.bottomText}>
         <span className={styles.bottomMuted}>계정이 없으신가요?</span>
-        <button type="button" className={styles.bottomLink} onClick={handleNavigateToSignup}>
+        <button type="button" className={styles.bottomLink} onClick={handleSignup}>
           회원가입
         </button>
       </div>

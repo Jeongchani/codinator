@@ -17,6 +17,7 @@ import type { GetRankingsResponse, RankingItem, RankingPeriod } from "@codinator
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import PostDetailBottomSheet from "../../components/postdetail/PostDetailBottomSheet";
+import RankingDetail from "./RankingDetail";
 
 type RankingCardItem = {
   id: number;
@@ -396,12 +397,9 @@ export default function RankingZone() {
             </div>
           </div>
 
-          <PostDetailBottomSheet
-            isOpen={sheetOpen}
-            onCloseRequest={() => setSheetOpen(false)}
-            postId={focusedItem.postId}
-            period={focusedItem.period}
-          />
+          <PostDetailBottomSheet isOpen={sheetOpen} onCloseRequest={() => setSheetOpen(false)}>
+            <RankingDetail postId={focusedItem.postId} period={focusedItem.period} />
+          </PostDetailBottomSheet>
         </div>
       )}
     </div>

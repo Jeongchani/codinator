@@ -1,7 +1,5 @@
 .container {
-  @apply mx-auto relative overflow-hidden bg-slate-50;
-  width: var(--app-width);
-  height: var(--app-height);
+  @apply w-[375px] h-[812px] mx-auto relative overflow-hidden bg-slate-50;
   background: #f3f3ee;
 }
 

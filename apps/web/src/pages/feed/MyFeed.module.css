@@ -1,7 +1,5 @@
 .container {
-  @apply mx-auto bg-white relative overflow-hidden;
-  width: var(--app-width);
-  height: var(--app-height);
+  @apply w-[375px] h-[812px] mx-auto bg-white relative overflow-hidden;
 }
 
 .selectionMode {
@@ -11,7 +9,7 @@
 .header {
   @apply absolute top-0 left-0 w-full bg-white;
   z-index: 40;
-  height: var(--app-header-height);
+  height: 93px;
 }
 
 .headerInner {

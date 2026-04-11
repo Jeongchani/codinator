@@ -366,7 +366,7 @@ export default function MyPage() {
       });
 
       clearAuthTokens();
-      navigate("/authEntry", { replace: true });
+      navigate("/loginSelect", { replace: true });
     } catch (error) {
       console.error("회원 탈퇴 실패:", error);
       window.alert(

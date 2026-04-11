@@ -20,7 +20,7 @@ import {
 } from '../../lib/api';
 import Reports from '../../components/Reports';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
-import styles from './EvaluationDetail_Feedback.module.css';
+import styles from './EvaluationDetailFeedback.module.css';
 
 type StructuredFeedbackRow = {
   tagId: number;
@@ -30,7 +30,7 @@ type StructuredFeedbackRow = {
   side: 'LIKE' | 'DISLIKE';
 };
 
-type Props = {
+type EvaluationDetailFeedbackProps = {
   embedded?: boolean;
   postIdOverride?: number | null;
   voteIdOverride?: number | null;
@@ -769,7 +769,7 @@ function EvaluationDetailFeedbackContent({
   );
 }
 
-const EvaluationDetail_Feedback: React.FC<Props> = ({
+const EvaluationDetailFeedback: React.FC<EvaluationDetailFeedbackProps> = ({
   embedded = false,
   postIdOverride,
   voteIdOverride,
@@ -815,4 +815,4 @@ const EvaluationDetail_Feedback: React.FC<Props> = ({
   );
 };
 
-export default EvaluationDetail_Feedback;
+export default EvaluationDetailFeedback;

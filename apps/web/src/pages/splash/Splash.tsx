@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import styles from './splash.module.css';
+import React, { useEffect, useState } from 'react';
+import styles from './Splash.module.css';
 
 interface SplashProps {
   onFinish: () => void;
@@ -7,10 +7,10 @@ interface SplashProps {
 
 const Splash: React.FC<SplashProps> = ({ onFinish }) => {
   useEffect(() => {
-    const finishTimeoutId = setTimeout(() => {
+    const timer = setTimeout(() => {
       onFinish(); // 1초 뒤 부모 컴포넌트에 알림
     }, 800);
-    return () => clearTimeout(finishTimeoutId);
+    return () => clearTimeout(timer);
   }, [onFinish]);
 
   return (

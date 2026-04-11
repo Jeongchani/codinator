@@ -23,7 +23,7 @@ import {
   uploadPostImage,
   type UploadedPostImageResponse,
 } from "../../lib/api";
-import styles from "./Upload.module.css";
+import styles from "./PostUpload.module.css";
 
 type KeywordItem = {
   id: number;
@@ -62,8 +62,6 @@ const BRUSH_PRESETS: BrushPreset[] = [
   { id: "m", size: 52, dot: 18, block: 18 },
   { id: "l", size: 84, dot: 26, block: 18 },
 ];
-
-const BRUSH_REFERENCE_CANVAS_WIDTH = 343;
 
 const wearTypeOptions: WearType[] = [
   "",
@@ -379,7 +377,7 @@ function ManualBlurEditor({
   const [imgLoaded, setImgLoaded] = useState(false);
   const [approving, setApproving] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
-  const [cursorPos, setCursorPos] = useState<{ x: number; y: number; size: number } | null>(null);
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
   const [imageLoadError, setImageLoadError] = useState("");
 
   const toolRef = useRef<BrushTool>("blur");
@@ -514,14 +512,6 @@ function ManualBlurEditor({
     };
   };
 
-  const getDisplayBrushSize = (canvas: HTMLCanvasElement) => {
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width <= 0) return brushRef.current;
-
-    const scale = rect.width / BRUSH_REFERENCE_CANVAS_WIDTH;
-    return brushRef.current * scale;
-  };
-
   const toCanvasRadius = (cssRadius: number, canvas: HTMLCanvasElement) => {
     const rect = canvas.getBoundingClientRect();
     return cssRadius * (canvas.width / rect.width);
@@ -595,7 +585,7 @@ function ManualBlurEditor({
       return;
     }
 
-    const canvasRadius = toCanvasRadius(getDisplayBrushSize(pending.canvas) / 2, pending.canvas);
+    const canvasRadius = toCanvasRadius(brushRef.current / 2, pending.canvas);
     interpolate(lastCvsPos.current, pending, canvasRadius, pending.canvas);
     lastCvsPos.current = { x: pending.x, y: pending.y };
     pendingPointRef.current = null;
@@ -615,7 +605,7 @@ function ManualBlurEditor({
 
     if (pendingPointRef.current && lastCvsPos.current) {
       const pending = pendingPointRef.current;
-      const canvasRadius = toCanvasRadius(getDisplayBrushSize(pending.canvas) / 2, pending.canvas);
+      const canvasRadius = toCanvasRadius(brushRef.current / 2, pending.canvas);
       interpolate(lastCvsPos.current, pending, canvasRadius, pending.canvas);
       lastCvsPos.current = { x: pending.x, y: pending.y };
       pendingPointRef.current = null;
@@ -639,11 +629,10 @@ function ManualBlurEditor({
     saveSnapshot();
 
     const pos = toCanvasPosition(e.clientX, e.clientY, canvas);
-    const displayBrushSize = getDisplayBrushSize(canvas);
-    const canvasRadius = toCanvasRadius(displayBrushSize / 2, canvas);
+    const canvasRadius = toCanvasRadius(brushRef.current / 2, canvas);
 
     lastCvsPos.current = pos;
-    setCursorPos({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY, size: displayBrushSize });
+    setCursorPos({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
 
     applyAt(pos.x, pos.y, canvasRadius, canvas);
   };
@@ -655,7 +644,6 @@ function ManualBlurEditor({
     setCursorPos({
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
-      size: getDisplayBrushSize(canvas),
     });
 
     if (!isDrawing.current || !lastCvsPos.current) return;
@@ -805,10 +793,10 @@ function ManualBlurEditor({
             <div
               className={styles.editorCursor}
               style={{
-                left: `${cursorPos.x - cursorPos.size / 2}px`,
-                top: `${cursorPos.y - cursorPos.size / 2}px`,
-                width: `${cursorPos.size}px`,
-                height: `${cursorPos.size}px`,
+                left: `${cursorPos.x - brushSize / 2}px`,
+                top: `${cursorPos.y - brushSize / 2}px`,
+                width: `${brushSize}px`,
+                height: `${brushSize}px`,
                 borderColor: toolColor,
                 background:
                   tool === "blur"
@@ -836,7 +824,7 @@ function ManualBlurEditor({
   );
 }
 
-export default function Upload() {
+export default function PostUpload() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);

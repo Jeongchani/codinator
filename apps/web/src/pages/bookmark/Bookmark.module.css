@@ -1,7 +1,5 @@
 .container {
-  @apply mx-auto bg-white relative overflow-hidden;
-  width: var(--app-width);
-  height: var(--app-height);
+  @apply w-[375px] h-[812px] mx-auto bg-white relative overflow-hidden;
 }
 
 .deleteMode {
@@ -10,7 +8,7 @@
 
 .header {
   @apply absolute top-0 left-0 w-full bg-white z-20;
-  height: var(--app-header-height);
+  height: 93px;
 }
 
 .headerInner {
@@ -234,8 +232,7 @@
 }
 
 .focusSlide {
-  @apply relative w-full snap-start;
-  height: var(--app-height);
+  @apply relative w-full h-[812px] snap-start;
 }
 
 .focusMainImage {

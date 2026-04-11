@@ -23,7 +23,7 @@ import {
   getPrimaryPostImageUrl,
   resolveAssetUrl,
 } from '../../lib/api';
-import styles from './MyFeedDetail.module.css';
+import styles from './MyPostDetailEdit.module.css';
 
 type RouteParams = {
   postId?: string;
@@ -641,7 +641,7 @@ function WearTypeDropdown({
   );
 }
 
-const MyFeedDetail: React.FC = () => {
+const MyPostDetailEdit: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { postId } = useParams<RouteParams>();
@@ -1360,4 +1360,4 @@ const MyFeedDetail: React.FC = () => {
   );
 };
 
-export default MyFeedDetail;
+export default MyPostDetailEdit;

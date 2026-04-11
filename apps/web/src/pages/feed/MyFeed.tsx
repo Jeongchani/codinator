@@ -16,7 +16,7 @@ import {
   isAuthError,
   resolveAssetUrl,
 } from "../../lib/api";
-import styles from "./MyFeeds.module.css";
+import styles from "./MyFeed.module.css";
 
 type TabType = "all" | "ongoing" | "done" | "hidden";
 type ActionType = "delete" | "hide" | "unhide";
@@ -101,7 +101,7 @@ async function loadAllMyFeedItems(): Promise<MyFeedItem[]> {
   return allItems;
 }
 
-export default function MyFeeds() {
+export default function MyFeed() {
   const navigate = useNavigate();
 
   const [items, setItems] = useState<MyFeedItem[]>([]);
@@ -661,7 +661,7 @@ export default function MyFeeds() {
       return;
     }
 
-    navigate(`/myFeedDetail/${item.postId}`, {
+    navigate(`/myPostDetailEdit/${item.postId}`, {
       state: {
         post: {
           id: item.postId,

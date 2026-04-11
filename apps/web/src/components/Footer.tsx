@@ -20,7 +20,7 @@ const footerItems: FooterItem[] = [
   { key: "ranking", label: "랭킹존", path: "/rankingZone", icon: Trophy },
   { key: "evaluation", label: "평가존", path: "/evaluationZone", icon: ClipboardCheck },
   { key: "write", label: "글작성", path: "/postUpload", icon: SquarePen },
-  { key: "myfeeds", label: "내피드", path: "/myFeeds", icon: Images },
+  { key: "myfeeds", label: "내피드", path: "/myFeed", icon: Images },
   { key: "bookmark", label: "북마크", path: "/bookmark", icon: Bookmark },
 ];
 

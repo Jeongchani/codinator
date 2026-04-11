@@ -16,7 +16,7 @@ import {
 } from '../../lib/api';
 import Reports from '../../components/Reports';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
-import EvaluationDetail_Feedback from './EvaluationDetail_Feedback';
+import EvaluationDetailFeedback from './EvaluationDetailFeedback';
 import styles from './EvaluationZone.module.css';
 
 const THUMB_SIZE = 50;
@@ -715,7 +715,7 @@ const EvaluationZone: React.FC = () => {
       {currentPost && detailSheetOpen ? (
         <PostDetailBottomSheet isOpen={detailSheetOpen} onCloseRequest={() => setDetailSheetOpen(false)}>
           <div ref={sheetContentRef}>
-            <EvaluationDetail_Feedback
+            <EvaluationDetailFeedback
               embedded
               postIdOverride={currentPost.postId}
               voteIdOverride={createdVoteId}

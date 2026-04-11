@@ -21,7 +21,8 @@ import {
   setPostBookmark,
 } from "../../lib/api";
 import PostDetailBottomSheet from "../../components/postdetail/PostDetailBottomSheet";
-import EvaluationDetail_Feedback from "../evaluation/EvaluationDetail_Feedback";
+import RankingDetail from "../ranking/RankingDetail";
+import EvaluationDetailFeedback from "../evaluation/EvaluationDetailFeedback";
 import styles from "./Bookmark.module.css";
 
 type TabType = "all" | "ongoing" | "done";
@@ -838,15 +839,25 @@ export default function Bookmark() {
   };
 
   const renderFocusedSheetContent = () => {
-    if (!focusedItem || focusedItem.status !== "ongoing") return null;
+    if (!focusedItem) return null;
+
+    if (focusedItem.status === "ongoing") {
+      return (
+        <EvaluationDetailFeedback
+          embedded
+          postIdOverride={focusedItem.postId}
+          voteIdOverride={focusedItem.voteId}
+          voteChoiceOverride={focusedItem.voteChoice}
+          allowReadonlyDetail
+        />
+      );
+    }
 
     return (
-      <EvaluationDetail_Feedback
-        embedded
-        postIdOverride={focusedItem.postId}
-        voteIdOverride={focusedItem.voteId}
-        voteChoiceOverride={focusedItem.voteChoice}
-        allowReadonlyDetail
+      <RankingDetail
+        postId={focusedItem.postId}
+        period={focusedPeriod ?? undefined}
+        hideFeedLink
       />
     );
   };
@@ -1055,17 +1066,6 @@ export default function Bookmark() {
           <PostDetailBottomSheet
             isOpen={sheetOpen}
             onCloseRequest={() => setSheetOpen(false)}
-            postId={
-              focusedItem && focusedItem.status !== "ongoing"
-                ? focusedItem.postId
-                : undefined
-            }
-            period={
-              focusedItem && focusedItem.status !== "ongoing"
-                ? (focusedPeriod ?? undefined)
-                : undefined
-            }
-            hideFeedLink={Boolean(focusedItem && focusedItem.status !== "ongoing")}
           >
             {renderFocusedSheetContent()}
           </PostDetailBottomSheet>
