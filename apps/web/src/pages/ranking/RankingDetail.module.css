@@ -1,13 +1,13 @@
 .container {
-  @apply w-full mx-auto relative overflow-hidden bg-black;
-  max-width: 375px;
-  height: min(100dvh, 812px);
+  @apply mx-auto relative overflow-hidden bg-black;
+  width: var(--app-width);
+  height: var(--app-height);
 }
 
 .loading {
-  @apply w-full mx-auto flex items-center justify-center bg-white text-[14px] text-neutral-500;
-  max-width: 375px;
-  height: min(100dvh, 812px);
+  @apply mx-auto flex items-center justify-center bg-white text-[14px] text-neutral-500;
+  width: var(--app-width);
+  height: var(--app-height);
 }
 
 .imageSection {
@@ -108,7 +108,7 @@
 .bottomSheet {
   @apply absolute left-0 w-full rounded-t-[28px] flex flex-col overflow-hidden;
   top: 0;
-  height: min(100dvh, 812px);
+  height: var(--app-height);
   background: #ffffff;
   box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.14);
 }

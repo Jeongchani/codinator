@@ -44,7 +44,7 @@ type SearchPostItem = {
   userId?: number;
 };
 
-type FocusPostState = {
+type FocusedPostState = {
   postId: number;
   userId: number;
   imageUrl: string;
@@ -76,7 +76,19 @@ const TYPE_OPTIONS: { value: SearchType; label: string; shortLabel: string }[] =
   { value: "POST", label: "게시글", shortLabel: "게시글" },
 ];
 
-const tok = () => getAccessToken() ?? "";
+const IMAGE_URL_KEYS = [
+  "thumbnailUrl",
+  "imageUrl",
+  "processedImageUrl",
+  "originalImageUrl",
+  "coverImageUrl",
+  "postImageUrl",
+] as const;
+
+const KEYWORD_RECORD_KEYS = ["keyword", "keywordName", "label", "name", "tag"] as const;
+const KEYWORD_ARRAY_KEYS = ["keywords", "feedbackKeywords", "tags"] as const;
+
+const getCurrentAccessToken = () => getAccessToken() ?? "";
 
 function getDefaultVisibleCounts(): Record<ExpandSectionKey, number> {
   return {
@@ -86,33 +98,33 @@ function getDefaultVisibleCounts(): Record<ExpandSectionKey, number> {
   };
 }
 
-async function api<T>(method: string, path: string): Promise<T> {
-  const res = await performApiRequest(path, {
+async function requestJson<T>(method: string, path: string): Promise<T> {
+  const response = await performApiRequest(path, {
     method,
     headers: {
       "Content-Type": "application/json",
     },
   });
 
-  const text = await res.text();
+  const responseText = await response.text();
   let data: unknown;
 
   try {
-    data = JSON.parse(text);
+    data = JSON.parse(responseText);
   } catch {
-    data = text;
+    data = responseText;
   }
 
-  if (!res.ok) {
+  if (!response.ok) {
     const raw = data as Record<string, unknown> | null;
-    const msg =
+    const errorMessage =
       raw && typeof raw === "object" && "message" in raw
         ? Array.isArray(raw.message)
           ? (raw.message as string[]).join(", ")
           : String(raw.message)
-        : text;
+        : responseText;
 
-    throw new Error(`[${res.status}] ${msg}`);
+    throw new Error(`[${response.status}] ${errorMessage}`);
   }
 
   return data as T;
@@ -145,7 +157,7 @@ function parseJwtPayload(token: string): Record<string, unknown> | null {
 }
 
 function getHistoryStorageKey() {
-  const accessToken = tok();
+  const accessToken = getCurrentAccessToken();
 
   if (!accessToken) {
     return `${HISTORY_KEY_PREFIX}:guest`;
@@ -327,41 +339,20 @@ function pickNestedNumber(
 }
 
 function pickImageUrl(record: Record<string, unknown>) {
-  const direct = pickString(record, [
-    "thumbnailUrl",
-    "imageUrl",
-    "processedImageUrl",
-    "originalImageUrl",
-    "coverImageUrl",
-    "postImageUrl",
-  ]);
+  const direct = pickString(record, [...IMAGE_URL_KEYS]);
 
   if (direct) return resolveAssetUrl(direct);
 
   const image = toRecord(record.image);
   if (image) {
-    const nestedDirect = pickString(image, [
-      "thumbnailUrl",
-      "imageUrl",
-      "processedImageUrl",
-      "originalImageUrl",
-      "coverImageUrl",
-      "postImageUrl",
-    ]);
+    const nestedDirect = pickString(image, [...IMAGE_URL_KEYS]);
 
     if (nestedDirect) return resolveAssetUrl(nestedDirect);
   }
 
   const post = toRecord(record.post);
   if (post) {
-    const postImage = pickString(post, [
-      "thumbnailUrl",
-      "imageUrl",
-      "processedImageUrl",
-      "originalImageUrl",
-      "coverImageUrl",
-      "postImageUrl",
-    ]);
+    const postImage = pickString(post, [...IMAGE_URL_KEYS]);
 
     if (postImage) return resolveAssetUrl(postImage);
   }
@@ -372,14 +363,7 @@ function pickImageUrl(record: Record<string, unknown>) {
       const imageRecord = toRecord(item);
       if (!imageRecord) continue;
 
-      const nested = pickString(imageRecord, [
-        "thumbnailUrl",
-        "imageUrl",
-        "processedImageUrl",
-        "originalImageUrl",
-        "coverImageUrl",
-        "postImageUrl",
-      ]);
+      const nested = pickString(imageRecord, [...IMAGE_URL_KEYS]);
 
       if (nested) return resolveAssetUrl(nested);
     }
@@ -414,7 +398,7 @@ function collectKeywordTexts(record: Record<string, unknown>) {
   const result: string[] = [];
 
   const directValues = [
-    pickString(record, ["keyword", "keywordName", "label", "name", "tag"]),
+    pickString(record, [...KEYWORD_RECORD_KEYS]),
     pickString(record, ["keywordsText", "keywordText"]),
   ].filter(Boolean);
 
@@ -422,13 +406,13 @@ function collectKeywordTexts(record: Record<string, unknown>) {
 
   const keywordRecord = pickNestedRecord(record, ["keywordInfo", "keywordItem"]);
   if (keywordRecord) {
-    const nestedValue = pickString(keywordRecord, ["keyword", "keywordName", "label", "name"]);
+    const nestedValue = pickString(keywordRecord, [...KEYWORD_RECORD_KEYS]);
     if (nestedValue) {
       pushKeywordPieces(nestedValue, result);
     }
   }
 
-  const arrayKeys = ["keywords", "feedbackKeywords", "tags"];
+  const arrayKeys = KEYWORD_ARRAY_KEYS;
 
   for (const key of arrayKeys) {
     const value = record[key];
@@ -444,13 +428,7 @@ function collectKeywordTexts(record: Record<string, unknown>) {
       const keywordObj = toRecord(item);
       if (!keywordObj) continue;
 
-      const nested = pickString(keywordObj, [
-        "keyword",
-        "keywordName",
-        "label",
-        "name",
-        "tag",
-      ]);
+      const nested = pickString(keywordObj, [...KEYWORD_RECORD_KEYS]);
 
       if (nested) {
         pushKeywordPieces(nested, result);
@@ -670,7 +648,7 @@ export default function Search({ initialRecentSearches }: SearchProps) {
       .map((item) => normalizeHistoryItem(item))
       .filter((item): item is RecentSearchItem => item !== null);
   });
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [searched, setSearched] = useState(initialPageSnapshot?.searched ?? false);
   const [searchResult, setSearchResult] = useState<unknown>(
@@ -682,12 +660,12 @@ export default function Search({ initialRecentSearches }: SearchProps) {
   const [visibleCounts, setVisibleCounts] = useState<Record<ExpandSectionKey, number>>(
     initialPageSnapshot?.visibleCounts ?? getDefaultVisibleCounts(),
   );
-  const [focusPost, setFocusPost] = useState<FocusPostState | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [focusedPost, setFocusedPost] = useState<FocusedPostState | null>(null);
+  const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
 
-  const filterRef = useRef<HTMLDivElement>(null);
-  const contentAreaRef = useRef<HTMLDivElement>(null);
-  const restoredScrollRef = useRef(false);
+  const filterDropdownRef = useRef<HTMLDivElement>(null);
+  const contentScrollRef = useRef<HTMLDivElement>(null);
+  const hasRestoredScrollRef = useRef(false);
 
   const trimmedQuery = useMemo(() => query.trim(), [query]);
   const loweredQuery = useMemo(() => trimmedQuery.toLowerCase(), [trimmedQuery]);
@@ -777,8 +755,7 @@ export default function Search({ initialRecentSearches }: SearchProps) {
   }, [keywordResults, postResults, searchType]);
 
   const shouldShowAllVisualSection = searchType === "ALL" && allVisualResults.length > 0;
-  const shouldShowUserSection =
-    (searchType === "NICKNAME" || searchType === "ALL") && userResults.length > 0;
+  const shouldShowUserSection = searchType === "NICKNAME" && userResults.length > 0;
   const shouldShowPostSection = searchType === "POST" && postResults.length > 0;
   const shouldShowKeywordSection = searchType === "KEYWORD" && keywordResults.length > 0;
 
@@ -807,7 +784,7 @@ export default function Search({ initialRecentSearches }: SearchProps) {
   const canLoadMorePosts = postResults.length > visibleCounts.posts;
   const canLoadMoreKeywords = keywordResults.length > visibleCounts.keywords;
 
-  const persistSearchPageSnapshot = (
+  const saveCurrentSearchPageSnapshot = (
     overrides?: Partial<SearchPageSnapshot>,
   ) => {
     saveSearchPageSnapshot(pageStateStorageKey, {
@@ -817,7 +794,7 @@ export default function Search({ initialRecentSearches }: SearchProps) {
       searchResult,
       errorMessage,
       visibleCounts,
-      scrollTop: contentAreaRef.current?.scrollTop ?? 0,
+      scrollTop: contentScrollRef.current?.scrollTop ?? 0,
       ...overrides,
     });
   };
@@ -838,7 +815,7 @@ export default function Search({ initialRecentSearches }: SearchProps) {
   }, [historyStorageKey, recentSearches]);
 
   useEffect(() => {
-    persistSearchPageSnapshot();
+    saveCurrentSearchPageSnapshot();
   }, [
     pageStateStorageKey,
     query,
@@ -850,15 +827,15 @@ export default function Search({ initialRecentSearches }: SearchProps) {
   ]);
 
   useEffect(() => {
-    if (restoredScrollRef.current) return;
-    restoredScrollRef.current = true;
+    if (hasRestoredScrollRef.current) return;
+    hasRestoredScrollRef.current = true;
 
     const nextScrollTop = initialPageSnapshot?.scrollTop ?? 0;
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        if (contentAreaRef.current) {
-          contentAreaRef.current.scrollTop = nextScrollTop;
+        if (contentScrollRef.current) {
+          contentScrollRef.current.scrollTop = nextScrollTop;
         }
       });
     });
@@ -866,9 +843,9 @@ export default function Search({ initialRecentSearches }: SearchProps) {
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (!filterRef.current) return;
-      if (!filterRef.current.contains(e.target as Node)) {
-        setIsFilterOpen(false);
+      if (!filterDropdownRef.current) return;
+      if (!filterDropdownRef.current.contains(e.target as Node)) {
+        setIsFilterDropdownOpen(false);
       }
     };
 
@@ -877,7 +854,7 @@ export default function Search({ initialRecentSearches }: SearchProps) {
   }, []);
 
   useEffect(() => {
-    if (!focusPost) return;
+    if (!focusedPost) return;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -885,9 +862,9 @@ export default function Search({ initialRecentSearches }: SearchProps) {
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [focusPost]);
+  }, [focusedPost]);
 
-  const pushRecentSearch = (value: string, type: SearchType, isAi = false) => {
+  const prependRecentSearch = (value: string, type: SearchType, isAi = false) => {
     const nextItem: RecentSearchItem = {
       query: value,
       type,
@@ -938,13 +915,13 @@ export default function Search({ initialRecentSearches }: SearchProps) {
     setVisibleCounts(getDefaultVisibleCounts());
 
     try {
-      let data: unknown;
+      let nextSearchResult: unknown;
 
       if (requestType === "ALL") {
         const [nicknameData, postData, keywordData] = await Promise.all([
-          api<unknown>("GET", buildSearchPath(finalQuery, "NICKNAME")),
-          api<unknown>("GET", buildSearchPath(finalQuery, "POST")),
-          api<unknown>("GET", buildSearchPath(finalQuery, "KEYWORD")),
+          requestJson<unknown>("GET", buildSearchPath(finalQuery, "NICKNAME")),
+          requestJson<unknown>("GET", buildSearchPath(finalQuery, "POST")),
+          requestJson<unknown>("GET", buildSearchPath(finalQuery, "KEYWORD")),
         ]);
 
         const normalizedKeywordPosts = normalizeKeywordPosts(keywordData);
@@ -960,17 +937,17 @@ export default function Search({ initialRecentSearches }: SearchProps) {
                 keywordsText: fallbackKeywordText,
               }));
 
-        data = {
+        nextSearchResult = {
           users: normalizeUsers(nicknameData),
           posts: normalizePosts(postData),
           keywordPosts: fallbackKeywordPosts,
         };
       } else {
-        data = await api<unknown>("GET", buildSearchPath(finalQuery, requestType));
+        nextSearchResult = await requestJson<unknown>("GET", buildSearchPath(finalQuery, requestType));
       }
 
-      setSearchResult(data);
-      pushRecentSearch(finalQuery, requestType, isAi);
+      setSearchResult(nextSearchResult);
+      prependRecentSearch(finalQuery, requestType, isAi);
       setQuery(finalQuery);
       setSearchType(requestType);
 
@@ -978,15 +955,15 @@ export default function Search({ initialRecentSearches }: SearchProps) {
         query: finalQuery,
         searchType: requestType,
         searched: true,
-        searchResult: data,
+        searchResult: nextSearchResult,
         errorMessage: "",
         visibleCounts: getDefaultVisibleCounts(),
         scrollTop: 0,
       });
 
       requestAnimationFrame(() => {
-        if (contentAreaRef.current) {
-          contentAreaRef.current.scrollTop = 0;
+        if (contentScrollRef.current) {
+          contentScrollRef.current.scrollTop = 0;
         }
       });
     } catch (error) {
@@ -997,7 +974,7 @@ export default function Search({ initialRecentSearches }: SearchProps) {
     }
   };
 
-  const openFeedDetail = (
+  const openFocusedPost = (
     postId: number,
     imageUrl: string,
     description: string,
@@ -1010,19 +987,19 @@ export default function Search({ initialRecentSearches }: SearchProps) {
       return;
     }
 
-    persistSearchPageSnapshot();
-    setFocusPost({
+    saveCurrentSearchPageSnapshot();
+    setFocusedPost({
       postId,
       userId,
       imageUrl,
       description,
     });
-    setSheetOpen(true);
+    setIsDetailSheetOpen(true);
   };
 
-  const handleCloseFocus = () => {
-    setSheetOpen(false);
-    setFocusPost(null);
+  const handleCloseFocusedPost = () => {
+    setIsDetailSheetOpen(false);
+    setFocusedPost(null);
   };
 
   const handleInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -1051,8 +1028,8 @@ export default function Search({ initialRecentSearches }: SearchProps) {
     });
 
     requestAnimationFrame(() => {
-      if (contentAreaRef.current) {
-        contentAreaRef.current.scrollTop = 0;
+      if (contentScrollRef.current) {
+        contentScrollRef.current.scrollTop = 0;
       }
     });
   };
@@ -1075,12 +1052,12 @@ export default function Search({ initialRecentSearches }: SearchProps) {
   };
 
   const handleAiSearch = () => {
-    setIsFilterOpen(false);
+    setIsFilterDropdownOpen(false);
     executeSearch(trimmedQuery || query, "ALL", true);
   };
 
-  const goToUserFeed = (userId: number) => {
-    persistSearchPageSnapshot();
+  const navigateToUserFeed = (userId: number) => {
+    saveCurrentSearchPageSnapshot();
     navigate(`/user/${userId}/feed`, {
       state: {
         from: "search",
@@ -1129,19 +1106,19 @@ export default function Search({ initialRecentSearches }: SearchProps) {
               </button>
             </div>
 
-            <div className={styles.filterWrap} ref={filterRef}>
+            <div className={styles.filterWrap} ref={filterDropdownRef}>
               <button
                 type="button"
                 aria-label="검색 필터"
                 className={styles.filterButton}
-                onClick={() => setIsFilterOpen((prev) => !prev)}
+                onClick={() => setIsFilterDropdownOpen((prev) => !prev)}
               >
                 <SlidersHorizontal size={16} strokeWidth={2.2} />
                 <span className={styles.filterButtonText}>{selectedTypeLabel}</span>
                 <ChevronDown size={13} strokeWidth={2.2} />
               </button>
 
-              {isFilterOpen && (
+              {isFilterDropdownOpen && (
                 <div className={styles.filterDropdown}>
                   {TYPE_OPTIONS.map((option) => {
                     const active = option.value === searchType;
@@ -1155,7 +1132,7 @@ export default function Search({ initialRecentSearches }: SearchProps) {
                         }`}
                         onClick={() => {
                           setSearchType(option.value);
-                          setIsFilterOpen(false);
+                          setIsFilterDropdownOpen(false);
                         }}
                       >
                         <span>{option.label}</span>
@@ -1186,7 +1163,7 @@ export default function Search({ initialRecentSearches }: SearchProps) {
 
         <div className={styles.divider} />
 
-        <div className={styles.contentArea} ref={contentAreaRef}>
+        <div className={styles.contentArea} ref={contentScrollRef}>
           {shouldShowRecent && (
             <>
               <div className={styles.historyActionRow}>
@@ -1281,7 +1258,7 @@ export default function Search({ initialRecentSearches }: SearchProps) {
                         key={`all-${item.postId}`}
                         type="button"
                         className={styles.feedCard}
-                        onClick={() => openFeedDetail(item.postId, item.imageUrl, item.description, item.userId)}
+                        onClick={() => openFocusedPost(item.postId, item.imageUrl, item.description, item.userId)}
                       >
                         <div className={styles.feedThumbWrap}>
                           <img
@@ -1322,7 +1299,7 @@ export default function Search({ initialRecentSearches }: SearchProps) {
                         key={user.userId}
                         type="button"
                         className={styles.userItem}
-                        onClick={() => goToUserFeed(user.userId)}
+                        onClick={() => navigateToUserFeed(user.userId)}
                       >
                         <div className={styles.userAvatar}>
                           {user.profileImageUrl ? (
@@ -1372,7 +1349,7 @@ export default function Search({ initialRecentSearches }: SearchProps) {
                         key={`post-${item.postId}`}
                         type="button"
                         className={styles.feedCard}
-                        onClick={() => openFeedDetail(item.postId, item.imageUrl, item.content, item.userId)}
+                        onClick={() => openFocusedPost(item.postId, item.imageUrl, item.content, item.userId)}
                       >
                         <div className={styles.feedThumbWrap}>
                           <img
@@ -1414,7 +1391,7 @@ export default function Search({ initialRecentSearches }: SearchProps) {
                         key={`keyword-${item.postId}`}
                         type="button"
                         className={styles.feedCard}
-                        onClick={() => openFeedDetail(item.postId, item.imageUrl, item.keywordsText, item.userId)}
+                        onClick={() => openFocusedPost(item.postId, item.imageUrl, item.keywordsText, item.userId)}
                       >
                         <div className={styles.feedThumbWrap}>
                           <img
@@ -1448,12 +1425,12 @@ export default function Search({ initialRecentSearches }: SearchProps) {
         </div>
       </div>
 
-      {focusPost ? (
+      {focusedPost ? (
         <div className={styles.focusOverlay} role="dialog" aria-modal="true" aria-label="게시글 포커스 화면">
           <div className={styles.focusFrame}>
             <div
               className={styles.focusImage}
-              style={{ backgroundImage: `url(${focusPost.imageUrl})` }}
+              style={{ backgroundImage: `url(${focusedPost.imageUrl})` }}
               aria-hidden="true"
             />
             <div className={styles.focusTopGradient} />
@@ -1462,27 +1439,18 @@ export default function Search({ initialRecentSearches }: SearchProps) {
             <button
               type="button"
               className={styles.focusCloseButton}
-              onClick={handleCloseFocus}
+              onClick={handleCloseFocusedPost}
               aria-label="포커스 화면 닫기"
             >
               <X size={18} strokeWidth={2.5} />
             </button>
 
-            {sheetOpen ? (
-              <button
-                type="button"
-                className={styles.focusSheetBackdrop}
-                onClick={() => setSheetOpen(false)}
-                aria-label="상세 닫기"
-              />
-            ) : null}
-
-            {!sheetOpen ? (
+            {!isDetailSheetOpen ? (
               <div className={styles.focusFloatingArea}>
                 <button
                   type="button"
                   className={styles.focusDetailButton}
-                  onClick={() => setSheetOpen(true)}
+                  onClick={() => setIsDetailSheetOpen(true)}
                 >
                   <span className={styles.focusDetailButtonText}>상세보기</span>
                   <ChevronsUp size={16} strokeWidth={2.4} className={styles.focusDetailButtonIcon} />
@@ -1491,10 +1459,10 @@ export default function Search({ initialRecentSearches }: SearchProps) {
             ) : null}
 
             <PostDetailBottomSheet
-              isOpen={sheetOpen}
-              onCloseRequest={() => setSheetOpen(false)}
+              isOpen={isDetailSheetOpen}
+              onCloseRequest={() => setIsDetailSheetOpen(false)}
             >
-              <RankingDetail postId={focusPost.postId} />
+              <RankingDetail postId={focusedPost.postId} />
             </PostDetailBottomSheet>
           </div>
         </div>

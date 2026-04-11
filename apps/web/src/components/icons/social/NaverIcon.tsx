@@ -1,10 +1,9 @@
-import React from "react";
 
-type Props = {
+type NaverIconProps = {
   className?: string;
 };
 
-export default function NaverIcon({ className }: Props) {
+export default function NaverIcon({ className }: NaverIconProps) {
   return (
     <svg
       viewBox="0 0 24 24"

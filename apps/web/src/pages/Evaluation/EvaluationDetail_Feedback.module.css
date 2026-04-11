@@ -1,7 +1,7 @@
 .container {
-  @apply w-full mx-auto overflow-hidden bg-white;
-  max-width: 375px;
-  height: min(100dvh, 812px);
+  @apply mx-auto overflow-hidden bg-white;
+  width: var(--app-width);
+  height: var(--app-height);
 }
 
 .scrollArea {

@@ -1,11 +1,13 @@
 .container {
-  @apply w-full bg-white mx-auto overflow-hidden relative flex flex-col;
-  max-width: 375px;
-  height: min(100dvh, 812px);
+  @apply bg-white mx-auto overflow-hidden relative flex flex-col;
+  width: var(--app-width);
+  height: var(--app-height);
 }
 
 .topBarArea {
-  @apply w-full h-[93px] shrink-0;
+  @apply shrink-0;
+  width: var(--app-width);
+  height: var(--app-header-height);
 }
 
 .contentArea {
@@ -169,7 +171,7 @@
 
 .focusSlide {
   @apply relative w-full snap-start;
-  height: min(100dvh, 812px);
+  height: var(--app-height);
 }
 
 .focusMainImage {

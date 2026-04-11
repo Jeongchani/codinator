@@ -1,5 +1,7 @@
 .header {
-  @apply w-full h-[93px] bg-white shrink-0;
+  @apply bg-white shrink-0;
+  width: var(--app-width);
+  height: var(--app-header-height);
 }
 
 .inner {

@@ -1,5 +1,7 @@
 .container {
-  @apply w-[375px] h-[812px] mx-auto bg-white overflow-hidden flex flex-col;
+  @apply mx-auto bg-white overflow-hidden flex flex-col;
+  width: var(--app-width);
+  height: var(--app-height);
 }
 
 .pageBody {
@@ -240,7 +242,9 @@
 }
 
 .focusFrame {
-  @apply relative h-[812px] w-[375px] overflow-hidden bg-black;
+  @apply relative overflow-hidden bg-black;
+  width: var(--app-width);
+  height: var(--app-height);
 }
 
 .focusImage {
@@ -262,10 +266,6 @@
   background: rgba(0, 0, 0, 0.32);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-}
-
-.focusSheetBackdrop {
-  @apply absolute inset-0 z-[15] border-0 p-0 bg-transparent;
 }
 
 .focusFloatingArea {

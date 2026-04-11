@@ -1,7 +1,7 @@
 .container {
-  @apply w-full mx-auto bg-white relative overflow-hidden px-4;
-  max-width: 375px;
-  min-height: 1180px;
+  @apply mx-auto bg-white relative overflow-hidden px-4;
+  width: var(--app-width);
+  height: 1180px;
 }
 
 .hero {

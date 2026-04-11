@@ -1,6 +1,6 @@
 .sheetRoot {
   @apply absolute left-0 top-0 z-[120] w-full rounded-t-[28px] flex flex-col overflow-hidden;
-  height: min(100dvh, 812px);
+  height: var(--app-height);
   min-height: 0;
   background: #ffffff;
   box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.14);

@@ -1,7 +1,7 @@
 .container {
-  @apply w-full mx-auto relative overflow-hidden bg-neutral-300 shadow-2xl;
-  max-width: 375px;
-  height: min(100dvh, 812px);
+  @apply mx-auto relative overflow-hidden bg-neutral-300 shadow-2xl;
+  width: var(--app-width);
+  height: var(--app-height);
 }
 
 .viewport {
@@ -16,7 +16,7 @@
 
 .slide {
   @apply relative w-full snap-start;
-  height: min(100dvh, 812px);
+  height: var(--app-height);
 }
 
 .imageSection {

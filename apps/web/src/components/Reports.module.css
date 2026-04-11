@@ -7,7 +7,7 @@
 
 .card {
   @apply flex max-h-[90vh] max-w-full flex-col overflow-hidden rounded-[28px];
-  width: min(100%, 375px);
+  width: min(100%, var(--app-width));
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(18, 18, 18, 0.22);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);

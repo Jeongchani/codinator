@@ -1,11 +1,12 @@
 .container {
-  @apply w-full bg-white mx-auto overflow-hidden relative flex flex-col;
-  max-width: 375px;
-  height: min(100dvh, 812px);
+  @apply bg-white mx-auto overflow-hidden relative flex flex-col;
+  width: var(--app-width);
+  height: var(--app-height);
 }
 
 .header {
-  @apply w-full h-[93px] shrink-0 bg-white;
+  @apply w-full shrink-0 bg-white;
+  height: var(--app-header-height);
 }
 
 .headerInner {
