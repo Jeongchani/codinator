@@ -21,7 +21,6 @@ import {
   setPostBookmark,
 } from "../../lib/api";
 import PostDetailBottomSheet from "../../components/postdetail/PostDetailBottomSheet";
-import RankingDetail from "../ranking/RankingDetail";
 import EvaluationDetail_Feedback from "../evaluation/EvaluationDetail_Feedback";
 import styles from "./Bookmark.module.css";
 
@@ -839,25 +838,15 @@ export default function Bookmark() {
   };
 
   const renderFocusedSheetContent = () => {
-    if (!focusedItem) return null;
-
-    if (focusedItem.status === "ongoing") {
-      return (
-        <EvaluationDetail_Feedback
-          embedded
-          postIdOverride={focusedItem.postId}
-          voteIdOverride={focusedItem.voteId}
-          voteChoiceOverride={focusedItem.voteChoice}
-          allowReadonlyDetail
-        />
-      );
-    }
+    if (!focusedItem || focusedItem.status !== "ongoing") return null;
 
     return (
-      <RankingDetail
-        postId={focusedItem.postId}
-        period={focusedPeriod ?? undefined}
-        hideFeedLink
+      <EvaluationDetail_Feedback
+        embedded
+        postIdOverride={focusedItem.postId}
+        voteIdOverride={focusedItem.voteId}
+        voteChoiceOverride={focusedItem.voteChoice}
+        allowReadonlyDetail
       />
     );
   };
@@ -1066,6 +1055,17 @@ export default function Bookmark() {
           <PostDetailBottomSheet
             isOpen={sheetOpen}
             onCloseRequest={() => setSheetOpen(false)}
+            postId={
+              focusedItem && focusedItem.status !== "ongoing"
+                ? focusedItem.postId
+                : undefined
+            }
+            period={
+              focusedItem && focusedItem.status !== "ongoing"
+                ? (focusedPeriod ?? undefined)
+                : undefined
+            }
+            hideFeedLink={Boolean(focusedItem && focusedItem.status !== "ongoing")}
           >
             {renderFocusedSheetContent()}
           </PostDetailBottomSheet>

@@ -777,7 +777,8 @@ export default function Search({ initialRecentSearches }: SearchProps) {
   }, [keywordResults, postResults, searchType]);
 
   const shouldShowAllVisualSection = searchType === "ALL" && allVisualResults.length > 0;
-  const shouldShowUserSection = searchType === "NICKNAME" && userResults.length > 0;
+  const shouldShowUserSection =
+    (searchType === "NICKNAME" || searchType === "ALL") && userResults.length > 0;
   const shouldShowPostSection = searchType === "POST" && postResults.length > 0;
   const shouldShowKeywordSection = searchType === "KEYWORD" && keywordResults.length > 0;
 

@@ -13,7 +13,6 @@ import {
   togglePostBookmark,
 } from "../../lib/api";
 import PostDetailBottomSheet from "../../components/postdetail/PostDetailBottomSheet";
-import RankingDetail from "../ranking/RankingDetail";
 import styles from "./UserFeed.module.css";
 
 type FeedListItem = GetUserFeedResponse["items"][number];
@@ -526,12 +525,13 @@ export default function UserFeed() {
           <PostDetailBottomSheet
             isOpen={sheetOpen}
             onCloseRequest={() => setSheetOpen(false)}
+            postId={focusedPeriod ? focusedItem.postId : undefined}
+            period={focusedPeriod ?? undefined}
+            hideFeedLink
           >
-            {focusedPeriod ? (
-              <RankingDetail postId={focusedItem.postId} period={focusedPeriod} hideFeedLink />
-            ) : (
+            {!focusedPeriod ? (
               <div className={styles.sheetFallback}>랭킹 상세가 없는 게시글입니다.</div>
-            )}
+            ) : undefined}
           </PostDetailBottomSheet>
         </div>
       ) : null}
