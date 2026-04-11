@@ -1,5 +1,7 @@
 .container {
-  @apply w-[375px] h-[812px] mx-auto bg-white relative overflow-hidden;
+  @apply w-full mx-auto bg-white relative overflow-hidden;
+  max-width: 375px;
+  height: min(100dvh, 812px);
 }
 
 .selectionMode {

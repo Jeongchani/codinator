@@ -1,5 +1,5 @@
 .header {
-  @apply w-[375px] h-[93px] bg-white shrink-0;
+  @apply w-full h-[93px] bg-white shrink-0;
 }
 
 .inner {

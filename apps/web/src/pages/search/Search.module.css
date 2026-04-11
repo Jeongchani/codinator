@@ -264,6 +264,10 @@
   -webkit-backdrop-filter: blur(10px);
 }
 
+.focusSheetBackdrop {
+  @apply absolute inset-0 z-[15] border-0 p-0 bg-transparent;
+}
+
 .focusFloatingArea {
   @apply absolute left-4 bottom-[58px] z-20;
 }

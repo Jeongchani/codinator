@@ -1,7 +1,9 @@
 /* splash.module.css */
 
 .container {
-  @apply w-96 h-[812px] relative bg-neutral-900 overflow-hidden mx-auto flex flex-col items-center justify-center;
+  @apply relative bg-neutral-900 overflow-hidden mx-auto flex flex-col items-center justify-center;
+  width: min(100%, 384px);
+  height: min(100dvh, 812px);
 }
 
 .circleBg {

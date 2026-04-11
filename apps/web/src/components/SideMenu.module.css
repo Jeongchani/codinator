@@ -1,5 +1,7 @@
 .wrapper {
-  @apply fixed top-0 left-1/2 -translate-x-1/2 w-[375px] h-[812px] z-[9999] overflow-hidden;
+  @apply fixed top-0 left-1/2 -translate-x-1/2 z-[9999] overflow-hidden;
+  width: min(100%, 375px);
+  height: min(100dvh, 812px);
   transition: opacity 0.28s ease;
 }
 

@@ -1,5 +1,7 @@
 .container {
-  @apply w-[375px] h-[812px] bg-white mx-auto overflow-hidden relative flex flex-col;
+  @apply w-full bg-white mx-auto overflow-hidden relative flex flex-col;
+  max-width: 375px;
+  height: min(100dvh, 812px);
 }
 
 .header {

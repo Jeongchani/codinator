@@ -1,5 +1,7 @@
 .container {
-  @apply w-[375px] h-[812px] mx-auto relative overflow-hidden bg-slate-50;
+  @apply w-full mx-auto relative overflow-hidden bg-slate-50;
+  max-width: 375px;
+  height: min(100dvh, 812px);
   background: #f3f3ee;
 }
 

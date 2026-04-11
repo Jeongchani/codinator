@@ -1468,6 +1468,15 @@ export default function Search({ initialRecentSearches }: SearchProps) {
               <X size={18} strokeWidth={2.5} />
             </button>
 
+            {sheetOpen ? (
+              <button
+                type="button"
+                className={styles.focusSheetBackdrop}
+                onClick={() => setSheetOpen(false)}
+                aria-label="상세 닫기"
+              />
+            ) : null}
+
             {!sheetOpen ? (
               <div className={styles.focusFloatingArea}>
                 <button
