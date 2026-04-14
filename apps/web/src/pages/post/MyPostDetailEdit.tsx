@@ -49,15 +49,7 @@ type StructuredFeedbackRow = {
   side: 'LIKE' | 'DISLIKE';
 };
 
-type WearType =
-  | ''
-  | '상의'
-  | '하의'
-  | '아우터'
-  | '신발'
-  | '가방'
-  | '악세사리'
-  | '기타';
+type WearType = '' | '상의' | '하의' | '아우터' | '신발' | '가방' | '악세사리' | '기타';
 
 type EditableWearItem = {
   id: number;
@@ -105,11 +97,7 @@ function toSafeNumber(value: unknown): number | undefined {
 function normalizeVoteChoice(value: unknown): 'LIKE' | 'DISLIKE' | undefined {
   const text = String(value ?? '').toUpperCase();
 
-  if (
-    text.includes('LIKE') &&
-    !text.includes('DISLIKE') &&
-    !text.includes('UNLIKE')
-  ) {
+  if (text.includes('LIKE') && !text.includes('DISLIKE') && !text.includes('UNLIKE')) {
     return 'LIKE';
   }
 
@@ -147,10 +135,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | undefined {
     if (parts.length < 2) return undefined;
 
     const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    const padded = base64.padEnd(
-      base64.length + ((4 - (base64.length % 4)) % 4),
-      '=',
-    );
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
 
     const decoded = atob(padded);
     const json = decodeURIComponent(
@@ -169,11 +154,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | undefined {
 function getStoredAccessToken(): string | undefined {
   if (typeof window === 'undefined') return undefined;
 
-  return (
-    window.localStorage.getItem('accessToken') ??
-    window.localStorage.getItem('token') ??
-    undefined
-  );
+  return window.localStorage.getItem('accessToken') ?? undefined;
 }
 
 function getCurrentUserId(): number | undefined {
@@ -326,12 +307,7 @@ function extractKeywordLabels(data: GetFeedPostDetailResponse | null): string[] 
   if (!data) return [];
 
   const raw = data as unknown as Record<string, unknown>;
-  const candidates = [
-    raw.keywords,
-    raw.keywordLabels,
-    raw.tags,
-    raw.postKeywords,
-  ];
+  const candidates = [raw.keywords, raw.keywordLabels, raw.tags, raw.postKeywords];
 
   const labels: string[] = [];
 
@@ -375,9 +351,7 @@ function extractStructuredFeedback(data: GetFeedPostDetailResponse | null): {
   }
 
   const raw = data as unknown as Record<string, unknown>;
-  const feedbackSummary = Array.isArray(raw.feedbackSummary)
-    ? raw.feedbackSummary
-    : [];
+  const feedbackSummary = Array.isArray(raw.feedbackSummary) ? raw.feedbackSummary : [];
 
   const parsedRows = feedbackSummary
     .map((item) => {
@@ -459,10 +433,7 @@ function buildEditableWearItems(source: unknown): EditableWearItem[] {
       id: toSafeNumber(record?.id) ?? index + 1,
       type: mapCategoryToWearType(record?.category),
       brand: toSafeString(record?.brand) ?? '',
-      name:
-        toSafeString(record?.itemName) ??
-        toSafeString(record?.name) ??
-        '',
+      name: toSafeString(record?.itemName) ?? toSafeString(record?.name) ?? '',
     };
   });
 }
@@ -483,7 +454,6 @@ function isSavableWearItem(item: EditableWearItem) {
     Boolean(normalizedItem.brand || normalizedItem.name)
   );
 }
-
 
 type FeedbackPanelProps = {
   title: string;
@@ -512,9 +482,7 @@ function FeedbackPanel({ title, side, count, rows }: FeedbackPanelProps) {
               <div className={styles.feedbackRowTrack}>
                 <div
                   className={`${styles.feedbackRowFill} ${
-                    side === 'LIKE'
-                      ? styles.feedbackRowFillLike
-                      : styles.feedbackRowFillDislike
+                    side === 'LIKE' ? styles.feedbackRowFillLike : styles.feedbackRowFillDislike
                   }`}
                   style={{ width: `${Math.max(row.percent, 6)}%` }}
                 />
@@ -589,12 +557,7 @@ function WearTypeDropdown({
       >
         <div className={styles.itemSelectContent}>
           <Tag size={14} strokeWidth={2.1} className={styles.itemSelectTagIcon} />
-          <span
-            className={cls(
-              styles.itemSelectText,
-              !value && styles.itemSelectPlaceholder,
-            )}
-          >
+          <span className={cls(styles.itemSelectText, !value && styles.itemSelectPlaceholder)}>
             {value || '의류 종류 선택'}
           </span>
         </div>
@@ -628,9 +591,7 @@ function WearTypeDropdown({
               >
                 <div className={styles.selectOptionContent}>
                   <Tag size={14} strokeWidth={2.1} className={styles.selectOptionTagIcon} />
-                  <span className={styles.selectOptionLabel}>
-                    {type || '의류 종류 선택'}
-                  </span>
+                  <span className={styles.selectOptionLabel}>{type || '의류 종류 선택'}</span>
                 </div>
               </button>
             );
@@ -649,8 +610,7 @@ const MyPostDetailEdit: React.FC = () => {
   const locationState = location.state as LocationState | undefined;
   const previewPost = locationState?.post;
 
-  const resolvedPostId =
-    toSafeNumber(postId) ?? previewPost?.id ?? previewPost?.postId;
+  const resolvedPostId = toSafeNumber(postId) ?? previewPost?.id ?? previewPost?.postId;
 
   const currentUserId = useMemo(() => getCurrentUserId(), []);
 
@@ -715,8 +675,7 @@ const MyPostDetailEdit: React.FC = () => {
           loaded = true;
           break;
         } catch (err) {
-          const message =
-            err instanceof Error ? err.message : '피드 상세를 불러오지 못했습니다.';
+          const message = err instanceof Error ? err.message : '피드 상세를 불러오지 못했습니다.';
 
           lastMessage = message;
 
@@ -768,13 +727,10 @@ const MyPostDetailEdit: React.FC = () => {
   const authorRecord = dataRecord && isRecord(dataRecord.author) ? dataRecord.author : null;
 
   const titleText =
-    toSafeString(authorRecord?.nickname) ??
-    toSafeString(previewPost?.nickname) ??
-    '내 피드';
+    toSafeString(authorRecord?.nickname) ?? toSafeString(previewPost?.nickname) ?? '내 피드';
 
   const createdAtText = formatDate(toSafeString(dataRecord?.createdAt));
-  const postDisplayText =
-    data?.content ?? previewPost?.content ?? '코디 설명이 없습니다.';
+  const postDisplayText = data?.content ?? previewPost?.content ?? '코디 설명이 없습니다.';
 
   const imageUrl = data?.images?.length
     ? getPrimaryPostImageUrl(data)
@@ -803,9 +759,7 @@ const MyPostDetailEdit: React.FC = () => {
         return;
       }
 
-      const hadInitialValue = Boolean(
-        initialItem.type || initialItem.brand || initialItem.name,
-      );
+      const hadInitialValue = Boolean(initialItem.type || initialItem.brand || initialItem.name);
 
       if (selectedDeleteIds.has(item.id)) {
         if (hadInitialValue) {
@@ -838,9 +792,7 @@ const MyPostDetailEdit: React.FC = () => {
   const handleStartOutfitEdit = () => {
     const existingItems = buildEditableWearItems(outfitItems);
     const nextId =
-      existingItems.length > 0
-        ? Math.max(...existingItems.map((item) => item.id)) + 1
-        : 1;
+      existingItems.length > 0 ? Math.max(...existingItems.map((item) => item.id)) + 1 : 1;
 
     const nextItems: EditableWearItem[] = [
       ...existingItems,
@@ -1087,9 +1039,7 @@ const MyPostDetailEdit: React.FC = () => {
                 <span>{likePercent}%</span>
               </div>
 
-              <div
-                className={`${styles.evaluationSummaryItem} ${styles.evaluationSummaryDislike}`}
-              >
+              <div className={`${styles.evaluationSummaryItem} ${styles.evaluationSummaryDislike}`}>
                 <ThumbsDown size={13} strokeWidth={2.2} />
                 <span>{dislikePercent}%</span>
               </div>
@@ -1180,9 +1130,9 @@ const MyPostDetailEdit: React.FC = () => {
 
             {isEditingOutfit ? (
               <>
-
                 <p className={styles.editSummaryText}>
-                  추가 {changeSummary.addedCount}건 · 수정 {changeSummary.modifiedCount}건 · 삭제 {changeSummary.deletedCount}건
+                  추가 {changeSummary.addedCount}건 · 수정 {changeSummary.modifiedCount}건 · 삭제{' '}
+                  {changeSummary.deletedCount}건
                 </p>
 
                 <div className={styles.itemGrid}>
@@ -1221,18 +1171,14 @@ const MyPostDetailEdit: React.FC = () => {
                             onClose={() => {
                               setOpenDropdownId((prev) => (prev === item.id ? null : prev));
                             }}
-                            onChange={(value) =>
-                              handleWearItemChange(item.id, 'type', value)
-                            }
+                            onChange={(value) => handleWearItemChange(item.id, 'type', value)}
                             disabled={deleteMode}
                           />
 
                           <input
                             type="text"
                             value={item.brand}
-                            onChange={(e) =>
-                              handleWearItemChange(item.id, 'brand', e.target.value)
-                            }
+                            onChange={(e) => handleWearItemChange(item.id, 'brand', e.target.value)}
                             placeholder="상품 브랜드"
                             className={styles.itemInput}
                             disabled={deleteMode}
@@ -1241,9 +1187,7 @@ const MyPostDetailEdit: React.FC = () => {
                           <input
                             type="text"
                             value={item.name}
-                            onChange={(e) =>
-                              handleWearItemChange(item.id, 'name', e.target.value)
-                            }
+                            onChange={(e) => handleWearItemChange(item.id, 'name', e.target.value)}
                             placeholder="상품 이름"
                             className={styles.itemInput}
                             disabled={deleteMode}
@@ -1274,11 +1218,7 @@ const MyPostDetailEdit: React.FC = () => {
                     <div key={item.id ?? index} className={styles.outfitCard}>
                       <div className={`${styles.outfitField} ${styles.outfitCategoryField}`}>
                         <div className={styles.outfitCategoryInner}>
-                          <Tag
-                            size={13}
-                            strokeWidth={2}
-                            className={styles.outfitCategoryIcon}
-                          />
+                          <Tag size={13} strokeWidth={2} className={styles.outfitCategoryIcon} />
                           <span className={styles.outfitFieldValue}>
                             {formatCategoryLabel(item.category)}
                           </span>
@@ -1286,7 +1226,9 @@ const MyPostDetailEdit: React.FC = () => {
                       </div>
 
                       <div className={styles.outfitField}>
-                        <span className={styles.outfitFieldValue}>{item.brand || '브랜드 미등록'}</span>
+                        <span className={styles.outfitFieldValue}>
+                          {item.brand || '브랜드 미등록'}
+                        </span>
                       </div>
 
                       <div className={styles.outfitField}>
@@ -1309,10 +1251,7 @@ const MyPostDetailEdit: React.FC = () => {
 
       {confirmDeleteOpen ? (
         <div className={styles.confirmOverlay} onClick={handleCloseDeleteConfirm}>
-          <div
-            className={styles.confirmCard}
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className={styles.confirmCard} onClick={(e) => e.stopPropagation()}>
             <h4 className={styles.confirmTitle}>이대로 수정할까요?</h4>
 
             <div className={styles.confirmSummaryList}>
@@ -1330,9 +1269,7 @@ const MyPostDetailEdit: React.FC = () => {
               </p>
             </div>
 
-            <p className={styles.confirmText}>
-              선택한 변경사항이 최종 반영됩니다.
-            </p>
+            <p className={styles.confirmText}>선택한 변경사항이 최종 반영됩니다.</p>
 
             <div className={styles.confirmActions}>
               <button
