@@ -61,7 +61,6 @@ def _florence_native_available() -> bool:
 @lru_cache(maxsize=1)
 def get_florence_processor():
     kwargs = {"token": AI_HF_TOKEN} if AI_HF_TOKEN else {}
-
     return AutoProcessor.from_pretrained(
         AI_FLORENCE_MODEL_ID,
         use_fast=False,
