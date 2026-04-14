@@ -1,7 +1,7 @@
 export interface ManualBlurResponse {
-  imageId: number;
+  imageAssetId: number;
   postId: number;
   processedImageUrl: string;
   blurMethod: 'MANUAL';
-  updatedAt: string; // ISO 8601
+  updatedAt: string;
 }
