@@ -25,10 +25,25 @@ COLOR_PALETTE: dict[str, tuple[int, int, int]] = {
 def _refine_mask(mask: np.ndarray) -> np.ndarray:
     if mask.dtype != np.uint8:
         mask = mask.astype(np.uint8)
+
+    mask = (mask > 0).astype(np.uint8)
+
     kernel = np.ones((5, 5), dtype=np.uint8)
-    refined = cv2.erode(mask, kernel, iterations=1)
+    opened = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
+    closed = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel, iterations=1)
+
+    if int(closed.sum()) == 0:
+        closed = mask
+
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(closed, connectivity=8)
+    if num_labels <= 1:
+        return closed
+
+    largest_label = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+    refined = (labels == largest_label).astype(np.uint8)
+
     if int(refined.sum()) == 0:
-        return mask
+        return closed
     return refined
 
 
@@ -39,6 +54,64 @@ def _robust_pixels(image_bgr: np.ndarray, mask: np.ndarray | None = None) -> np.
         if pixels.size > 0:
             return pixels.astype(np.uint8)
     return image_bgr.reshape(-1, 3).astype(np.uint8)
+
+
+def _rgb_to_lab_color(rgb: tuple[int, int, int]) -> np.ndarray:
+    arr = np.array([[rgb]], dtype=np.uint8)
+    return cv2.cvtColor(arr, cv2.COLOR_RGB2LAB)[0, 0].astype(np.float32)
+
+
+def _lab_distance_to_palette(lab_color: np.ndarray, names: list[str]) -> str:
+    def distance(name: str) -> float:
+        palette_lab = _rgb_to_lab_color(COLOR_PALETTE[name])
+        return float(np.linalg.norm(lab_color - palette_lab))
+
+    return min(names, key=distance)
+
+
+def _choose_representative_cluster(pixels: np.ndarray) -> np.ndarray:
+    if len(pixels) < 24:
+        return pixels.mean(axis=0).astype(np.float32)
+
+    sample = pixels.astype(np.float32)
+    k = min(3, len(sample))
+    criteria = (
+        cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,
+        20,
+        1.0,
+    )
+
+    try:
+        _compactness, labels, centers = cv2.kmeans(
+            sample,
+            k,
+            None,
+            criteria,
+            3,
+            cv2.KMEANS_PP_CENTERS,
+        )
+    except cv2.error:
+        return pixels.mean(axis=0).astype(np.float32)
+
+    labels = labels.reshape(-1)
+    counts = np.bincount(labels, minlength=k).astype(np.float32)
+
+    hsv_centers = cv2.cvtColor(centers.reshape(-1, 1, 3).astype(np.uint8), cv2.COLOR_BGR2HSV).reshape(-1, 3)
+
+    best_idx = 0
+    best_score = -1.0
+    for idx in range(k):
+        size_ratio = counts[idx] / max(1.0, counts.sum())
+        sat = float(hsv_centers[idx, 1]) / 255.0
+        val = float(hsv_centers[idx, 2]) / 255.0
+
+        # 군집 크기를 가장 중시하고, 채도/밝기를 약하게 가산
+        score = (size_ratio * 0.75) + (sat * 0.15) + (val * 0.10)
+        if score > best_score:
+            best_score = score
+            best_idx = idx
+
+    return centers[best_idx].astype(np.float32)
 
 
 def infer_dominant_color(image_bgr: np.ndarray, mask: np.ndarray | None = None) -> str:
@@ -52,61 +125,125 @@ def infer_dominant_color(image_bgr: np.ndarray, mask: np.ndarray | None = None) 
     hsv_pixels = cv2.cvtColor(pixels.reshape(-1, 1, 3), cv2.COLOR_BGR2HSV).reshape(-1, 3)
     lab_pixels = cv2.cvtColor(pixels.reshape(-1, 1, 3), cv2.COLOR_BGR2LAB).reshape(-1, 3)
 
-    median_h = float(np.median(hsv_pixels[:, 0]))
-    median_s = float(np.median(hsv_pixels[:, 1]))
-    median_v = float(np.median(hsv_pixels[:, 2]))
-    mean_l = float(np.mean(lab_pixels[:, 0]))
-    mean_a = float(np.mean(lab_pixels[:, 1]))
-    mean_b = float(np.mean(lab_pixels[:, 2]))
+    h = hsv_pixels[:, 0].astype(np.float32)
+    s = hsv_pixels[:, 1].astype(np.float32)
+    v = hsv_pixels[:, 2].astype(np.float32)
 
-    # neutrals / light tones first
-    if median_v < 42:
+    l = lab_pixels[:, 0].astype(np.float32)
+    a = lab_pixels[:, 1].astype(np.float32)
+    b = lab_pixels[:, 2].astype(np.float32)
+
+    # 극단적인 그림자/하이라이트 제거
+    valid_mask = (v >= 20) & (v <= 245)
+    if valid_mask.sum() >= max(20, int(len(v) * 0.2)):
+        pixels = pixels[valid_mask]
+        h = h[valid_mask]
+        s = s[valid_mask]
+        v = v[valid_mask]
+        l = l[valid_mask]
+        a = a[valid_mask]
+        b = b[valid_mask]
+
+    if len(v) == 0:
         return "black"
 
-    if median_s < 18:
-        if median_v >= 235:
+    median_v = float(np.median(v))
+    mean_b = float(np.mean(b))
+    neutral_mask = s < 40
+    neutral_ratio = float(np.mean(neutral_mask)) if len(s) > 0 else 0.0
+
+    if median_v < 45:
+        return "black"
+
+    # neutral 계열 우선 판정
+    if neutral_ratio >= 0.6:
+        if median_v >= 232:
             return "white"
-        if median_v >= 215:
-            if mean_b > 133:
+        if median_v >= 210:
+            if mean_b >= 140:
                 return "cream"
-            if 126 <= mean_b <= 133:
+            if mean_b >= 133:
                 return "ivory"
             return "white"
-        if median_v >= 190:
-            if mean_b >= 138:
+        if median_v >= 175:
+            if mean_b >= 142:
                 return "beige"
-            if mean_b >= 131:
+            if mean_b >= 134:
                 return "ivory"
             return "gray"
         return "gray"
 
-    if median_s < 42 and median_v >= 180:
-        if mean_b >= 142:
+    # 저채도 warm neutral 보정
+    low_sat_warm_ratio = float(np.mean((s < 65) & (v >= 150) & (b >= 138)))
+    if low_sat_warm_ratio >= 0.45:
+        if median_v >= 185:
             return "beige"
-        if mean_b >= 134:
-            return "cream"
-        if mean_b >= 129:
-            return "ivory"
-
-    if median_h < 10 or median_h >= 170:
-        return "red"
-    if median_h < 22:
-        return "orange"
-    if median_h < 34:
-        return "yellow"
-    if median_h < 85:
-        return "green"
-    if median_h < 130:
-        return "blue"
-    if median_h < 150:
-        return "purple"
-    if median_s < 75 and median_v < 190:
         return "brown"
 
-    mean_bgr = pixels.mean(axis=0)
-    mean_rgb = (float(mean_bgr[2]), float(mean_bgr[1]), float(mean_bgr[0]))
+    chroma_mask = s >= 40
+    if chroma_mask.sum() < max(10, int(len(s) * 0.15)):
+        rep_bgr = _choose_representative_cluster(pixels)
+        rep_rgb = np.array([[[rep_bgr[2], rep_bgr[1], rep_bgr[0]]]], dtype=np.uint8)
+        rep_lab = cv2.cvtColor(rep_rgb, cv2.COLOR_RGB2LAB)[0, 0].astype(np.float32)
+        return _lab_distance_to_palette(
+            rep_lab,
+            ["black", "white", "gray", "ivory", "cream", "beige", "brown"],
+        )
 
-    def distance(color: tuple[int, int, int]) -> float:
-        return ((mean_rgb[0] - color[0]) ** 2 + (mean_rgb[1] - color[1]) ** 2 + (mean_rgb[2] - color[2]) ** 2) ** 0.5
+    h_chroma = h[chroma_mask]
+    s_chroma = s[chroma_mask]
+    v_chroma = v[chroma_mask]
 
-    return min(COLOR_PALETTE.items(), key=lambda item: distance(item[1]))[0]
+    bins = {
+        "red": ((h_chroma < 10) | (h_chroma >= 170)),
+        "orange": ((h_chroma >= 10) & (h_chroma < 22)),
+        "yellow": ((h_chroma >= 22) & (h_chroma < 35)),
+        "green": ((h_chroma >= 35) & (h_chroma < 85)),
+        "blue": ((h_chroma >= 85) & (h_chroma < 130)),
+        "purple": ((h_chroma >= 130) & (h_chroma < 170)),
+    }
+
+    scores: dict[str, float] = {}
+    total = float(len(h_chroma))
+
+    for name, bin_mask in bins.items():
+        if not np.any(bin_mask):
+            scores[name] = 0.0
+            continue
+
+        ratio = float(np.sum(bin_mask)) / total
+        sat_weight = float(np.mean(s_chroma[bin_mask])) / 255.0
+        val_weight = float(np.mean(v_chroma[bin_mask])) / 255.0
+        scores[name] = ratio * (0.65 + 0.25 * sat_weight + 0.10 * val_weight)
+
+    dominant = max(scores.items(), key=lambda item: item[1])[0]
+
+    # warm 계열이 과하게 튀는 것 보정
+    if dominant in {"orange", "yellow"}:
+        warm_low_sat_ratio = float(np.mean((h >= 10) & (h < 35) & (s < 70)))
+        if warm_low_sat_ratio >= 0.45:
+            if median_v >= 175:
+                return "beige"
+            return "brown"
+
+    # blue / navy 분리
+    if dominant == "blue":
+        dark_blue_ratio = float(np.mean(((h >= 85) & (h < 130)) & (v < 120)))
+        if dark_blue_ratio >= 0.45:
+            return "navy"
+
+    rep_bgr = _choose_representative_cluster(pixels)
+    rep_rgb = np.array([[[rep_bgr[2], rep_bgr[1], rep_bgr[0]]]], dtype=np.uint8)
+    rep_lab = cv2.cvtColor(rep_rgb, cv2.COLOR_RGB2LAB)[0, 0].astype(np.float32)
+
+    candidate_groups = {
+        "red": ["red", "pink", "brown"],
+        "orange": ["orange", "brown", "beige"],
+        "yellow": ["yellow", "cream", "beige"],
+        "green": ["green"],
+        "blue": ["blue", "navy"],
+        "purple": ["purple", "pink"],
+    }
+
+    candidates = candidate_groups.get(dominant, list(COLOR_PALETTE.keys()))
+    return _lab_distance_to_palette(rep_lab, candidates)
