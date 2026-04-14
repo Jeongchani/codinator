@@ -638,7 +638,7 @@ function buildImageCreate(filename) {
         processedImageUrl: url,
         thumbnailUrl: url,
         blurMethod: BlurMethod.NONE,
-        aiBlurStatus: AiBlurStatus.DONE,
+        aiBlurStatus: AiBlurStatus.NONE,
       },
     },
   };
