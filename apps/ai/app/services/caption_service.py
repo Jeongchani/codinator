@@ -96,13 +96,18 @@ def generate_caption(rgb_image) -> dict[str, Any]:
 
         input_ids = inputs["input_ids"].to(device)
         pixel_values = inputs["pixel_values"].to(device, dtype)
+        attention_mask = inputs.get("attention_mask")
+        if attention_mask is not None:
+            attention_mask = attention_mask.to(device)
 
         generated_ids = model.generate(
             input_ids=input_ids,
             pixel_values=pixel_values,
+            attention_mask=attention_mask,
             max_new_tokens=AI_FLORENCE_MAX_NEW_TOKENS,
             do_sample=False,
             num_beams=3,
+            use_cache=False,
         )
 
         generated_text = processor.batch_decode(

@@ -70,7 +70,7 @@ AI_ENABLE_CAPTION = get_bool("AI_ENABLE_CAPTION", False)
 
 AI_PARSER_MODEL_ID = get_str("AI_PARSER_MODEL_ID", "fashn-ai/fashn-human-parser")
 AI_FASHION_CLIP_MODEL_ID = get_str("AI_FASHION_CLIP_MODEL_ID", "patrickjohncyh/fashion-clip")
-AI_FLORENCE_MODEL_ID = get_str("AI_FLORENCE_MODEL_ID", "microsoft/Florence-2-base")
+AI_FLORENCE_MODEL_ID = get_str("AI_FLORENCE_MODEL_ID", "florence-community/Florence-2-base")
 
 AI_PARSER_MIN_AREA_RATIO = get_float("AI_PARSER_MIN_AREA_RATIO", 0.005)
 AI_PARSER_MIN_BOX_SIDE_PX = get_int("AI_PARSER_MIN_BOX_SIDE_PX", 24)

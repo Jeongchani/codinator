@@ -6,6 +6,11 @@ from functools import lru_cache
 import torch
 from transformers import AutoModelForCausalLM, AutoProcessor, CLIPModel, CLIPProcessor
 
+try:
+    from transformers import Florence2ForConditionalGeneration
+except Exception:
+    Florence2ForConditionalGeneration = None
+
 from app.core.config import (
     AI_FASHION_CLIP_MODEL_ID,
     AI_FLORENCE_MODEL_ID,
@@ -49,28 +54,31 @@ def get_clip_model() -> CLIPModel:
     return model
 
 
+def _florence_native_available() -> bool:
+    return Florence2ForConditionalGeneration is not None
+
+
 @lru_cache(maxsize=1)
-def get_florence_processor() -> AutoProcessor:
-    kwargs = {
-        "trust_remote_code": True,
-        "use_fast": True,
-    }
-    if AI_HF_TOKEN:
-        kwargs["token"] = AI_HF_TOKEN
-    return AutoProcessor.from_pretrained(AI_FLORENCE_MODEL_ID, **kwargs)
+def get_florence_processor():
+    kwargs = {"token": AI_HF_TOKEN} if AI_HF_TOKEN else {}
+
+    return AutoProcessor.from_pretrained(
+        AI_FLORENCE_MODEL_ID,
+        use_fast=False,
+        **kwargs,
+    )
 
 
 @lru_cache(maxsize=1)
 def get_florence_model():
     kwargs = {
         "dtype": get_torch_dtype(),
-        "trust_remote_code": True,
         "attn_implementation": "eager",
     }
     if AI_HF_TOKEN:
         kwargs["token"] = AI_HF_TOKEN
 
-    model = AutoModelForCausalLM.from_pretrained(
+    model = Florence2ForConditionalGeneration.from_pretrained(
         AI_FLORENCE_MODEL_ID,
         **kwargs,
     )

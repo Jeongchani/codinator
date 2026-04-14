@@ -6,15 +6,13 @@ python-dotenv
 numpy
 torch
 pillow
-huggingface-hub<1
-transformers>=4.40.0,<5
+huggingface-hub==0.36.2
+transformers==4.57.6
 fashn-human-parser
 sentencepiece
 safetensors
 accelerate
-
 torchvision
-
 einops
 timm
 protobuf
