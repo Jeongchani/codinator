@@ -25,7 +25,9 @@ export default function Header({
   const handleOpenSearch = () => {
     navigate("/search");
   };
-
+  const handleGoRankingZone = () => {
+    navigate("/rankingZone");
+  };
   return (
     <>
       <header className={styles.header}>
@@ -39,7 +41,15 @@ export default function Header({
             <Search size={23} strokeWidth={2.2} />
           </button>
 
-          <h1 className={styles.title}>{title}</h1>
+          <h1
+            className={styles.title}
+            onClick={handleGoRankingZone}
+            role="button"
+            tabIndex={0}
+            aria-label="랭킹존으로 이동"
+          >
+            {title}
+          </h1>
 
           <button
             type="button"

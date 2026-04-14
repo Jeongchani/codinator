@@ -1,0 +1,50 @@
+.sheetRoot {
+  @apply absolute left-0 top-0 z-[120] w-full rounded-t-[28px] flex flex-col overflow-hidden;
+  height: var(--app-height);
+  min-height: 0;
+  background: #ffffff;
+  box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.14);
+}
+
+.open {
+  pointer-events: auto;
+}
+
+.closed {
+  pointer-events: none;
+}
+
+.handlerArea {
+  @apply w-full flex justify-center items-center shrink-0 cursor-pointer;
+  height: 34px;
+  touch-action: none;
+  user-select: none;
+}
+
+.handlerBar {
+  @apply w-12 h-[5px] rounded-full;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.sheetScrollArea {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: auto;
+  pointer-events: auto;
+}
+
+.sheetScrollArea::-webkit-scrollbar {
+  display: none;
+}
+
+.contentWrap {
+  min-height: calc(100% + 1px);
+  padding-bottom: var(--sheet-bottom-inset, 24px);
+}

@@ -21,7 +21,7 @@
 }
 
 .sectionTitle {
-  @apply text-[16px] leading-[20px] font-bold text-black mb-3;
+  @apply text-[20px] font-semibold text-black mb-[14px];
 }
 
 .horizontalScroll {
@@ -53,6 +53,11 @@
 .thumbnailGradient {
   @apply absolute inset-x-0 bottom-0 h-[54px];
   background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(0, 0, 0, 0.08) 100%);
+}
+
+.rankBadge {
+  @apply absolute left-[8px] top-[8px] z-10 min-w-[24px] h-6 px-2 rounded-full flex items-center justify-center text-[11px] font-bold text-white;
+  background: rgba(0, 0, 0, 0.45);
 }
 
 .bookmarkButton {
@@ -95,32 +100,12 @@
   @apply text-[10px] leading-[10px] text-black font-medium;
 }
 
-.cardWrap {
-  @apply w-[126px] shrink-0 flex flex-col cursor-pointer;
-}
-
 .cardImage {
   @apply w-full h-full object-cover block;
 }
 
 .cardImageFallback {
   @apply w-full h-full flex items-center justify-center text-[12px] text-neutral-400 bg-[#f3f3f3];
-}
-
-.sideMenuOverlay {
-  @apply absolute inset-0 z-[60] bg-black/30 flex justify-end;
-}
-
-.sideMenuDummy {
-  @apply w-[260px] h-full bg-white shadow-xl p-5 flex flex-col;
-}
-
-.sideMenuTitle {
-  @apply text-[18px] font-bold text-black;
-}
-
-.sideMenuCloseButton {
-  @apply mt-auto h-11 rounded-xl bg-black text-white text-sm font-medium;
 }
 
 .messageBox {
@@ -160,4 +145,139 @@
 
 .bookmarkButtonPressed {
   transform: scale(0.9);
+}
+
+.focusOverlay {
+  @apply absolute inset-0 z-[70] bg-black;
+}
+
+.focusSheetBackdrop {
+  @apply absolute inset-0 z-[55] border-0 p-0 bg-transparent;
+}
+
+.focusViewport {
+  @apply absolute inset-0 overflow-y-auto snap-y snap-mandatory;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.focusViewport::-webkit-scrollbar {
+  display: none;
+}
+
+.focusSlide {
+  @apply relative w-full h-[812px] snap-start;
+}
+
+.focusMainImage {
+  @apply absolute inset-0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.topGradient {
+  @apply absolute left-0 top-0 w-full h-36;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+.bottomGradient {
+  @apply absolute left-0 bottom-0 w-full h-52;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.2) 100%);
+}
+
+.headerTitle {
+  @apply absolute left-4 z-[60] text-white text-[20px] font-semibold leading-7;
+  top: 66px;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+}
+
+.closeBtn {
+  @apply absolute right-4 z-[60] flex items-center justify-center rounded-[10px] border-0 p-0 text-white;
+  top: 63px;
+  width: 28px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.focusFloatingArea {
+  @apply absolute left-0 right-0 px-5 z-[60];
+  bottom: 44px;
+}
+
+.detailButton {
+  @apply h-[30px] rounded-[999px] border-0 flex items-center justify-between text-white px-4 mb-4;
+  width: 118px;
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+  transition:
+    background 0.16s ease,
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.16s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.detailButton:active {
+  background: rgba(0, 0, 0, 0.68);
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+}
+
+.detailButtonText {
+  @apply text-[12px] font-semibold leading-4;
+}
+
+.detailButtonUpIcon {
+  @apply shrink-0 text-white;
+}
+
+.progressTrack {
+  @apply relative w-full h-5 rounded-[10px] overflow-hidden;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.likeFill {
+  @apply absolute left-0 top-0 h-full rounded-l-[10px];
+  background: linear-gradient(90deg, rgba(244, 125, 114, 0.72) 0%, #f47d72 100%);
+}
+
+.dislikeFill {
+  @apply absolute right-0 top-0 h-full rounded-r-[10px];
+  background: linear-gradient(270deg, rgba(140, 149, 181, 0.72) 0%, #8c95b5 100%);
+}
+
+.leftPercent {
+  @apply absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-white text-[10px] leading-3 font-medium;
+}
+
+.rightPercent {
+  @apply absolute right-3 top-1/2 flex items-center text-white text-[10px] leading-3 font-medium;
+  transform: translateY(-50%);
+  flex-direction: row-reverse;
+  gap: 4px;
+}
+
+.swipeIndicator {
+  @apply absolute top-1/2 right-4 z-[60] -translate-y-1/2 pointer-events-none;
+}
+
+.swipeIndicatorStack {
+  @apply flex flex-col items-center;
+  gap: 8px;
+}
+
+.swipeIndicatorActive {
+  width: 8px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.28);
+}
+
+.swipeIndicatorDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.32);
 }

@@ -32,7 +32,6 @@ type ReportsProps = {
   ) => void;
 };
 
-
 const REASON_OPTIONS: { value: ReportReason; label: string }[] = [
   { value: "SPAM", label: "스팸" },
   { value: "ABUSE", label: "욕설/비방" },
@@ -71,7 +70,7 @@ async function api<T>(
           : String(raw.message)
         : text || "신고 처리 중 오류가 발생했습니다.";
 
-    throw new Error(`[${response.status}] ${message}`);
+    throw new Error(message);
   }
 
   return data as T;
@@ -196,6 +195,10 @@ export default function Reports({
   };
 
   const handleSubmit = async () => {
+    if (submitDisabled) {
+      return;
+    }
+
     if (!activeTarget || !String(activeTarget.id).trim()) {
       setFeedback({
         type: "error",
@@ -205,10 +208,6 @@ export default function Reports({
     }
 
     if (!title.trim()) {
-      setFeedback({
-        type: "error",
-        message: "신고 제목을 입력해주세요.",
-      });
       return;
     }
 
@@ -279,7 +278,7 @@ export default function Reports({
             <span className={styles.titleIconWrap} aria-hidden="true">
               <Siren size={16} strokeWidth={2.2} className={styles.titleIcon} />
             </span>
-            <h2 className={styles.title}>신고 하기</h2>
+            <h2 className={styles.title}>신고</h2>
           </div>
 
           <button
@@ -295,40 +294,40 @@ export default function Reports({
         <div className={styles.content}>
           {showTabSwitch ? (
             <div className={styles.tabSwitch}>
-            <div
-              className={[
-                styles.tabIndicator,
-                tab === "user"
-                  ? styles.tabIndicatorUser
-                  : styles.tabIndicatorPost,
-              ].join(" ")}
-            />
+              <div
+                className={[
+                  styles.tabIndicator,
+                  tab === "user"
+                    ? styles.tabIndicatorUser
+                    : styles.tabIndicatorPost,
+                ].join(" ")}
+              />
 
-            <button
-              type="button"
-              className={[
-                styles.tabButton,
-                tab === "post" ? styles.tabButtonActive : "",
-                !hasPostTarget ? styles.tabButtonDisabled : "",
-              ].join(" ")}
-              onClick={() => hasPostTarget && setTab("post")}
-              disabled={!hasPostTarget}
-            >
-              게시글
-            </button>
+              <button
+                type="button"
+                className={[
+                  styles.tabButton,
+                  tab === "post" ? styles.tabButtonActive : "",
+                  !hasPostTarget ? styles.tabButtonDisabled : "",
+                ].join(" ")}
+                onClick={() => hasPostTarget && setTab("post")}
+                disabled={!hasPostTarget}
+              >
+                게시글
+              </button>
 
-            <button
-              type="button"
-              className={[
-                styles.tabButton,
-                tab === "user" ? styles.tabButtonActive : "",
-                !hasUserTarget ? styles.tabButtonDisabled : "",
-              ].join(" ")}
-              onClick={() => hasUserTarget && setTab("user")}
-              disabled={!hasUserTarget}
-            >
-              사용자
-            </button>
+              <button
+                type="button"
+                className={[
+                  styles.tabButton,
+                  tab === "user" ? styles.tabButtonActive : "",
+                  !hasUserTarget ? styles.tabButtonDisabled : "",
+                ].join(" ")}
+                onClick={() => hasUserTarget && setTab("user")}
+                disabled={!hasUserTarget}
+              >
+                사용자
+              </button>
             </div>
           ) : null}
 
@@ -416,10 +415,11 @@ export default function Reports({
             type="button"
             className={[
               styles.submitButton,
-              submitDisabled ? styles.submitButtonDisabled : "",
+              submitDisabled ? styles.submitButtonDisabled : styles.submitButtonEnabled,
             ].join(" ")}
             onClick={handleSubmit}
             disabled={submitDisabled}
+            aria-disabled={submitDisabled}
           >
             {submitting ? "신고 중..." : "신고 완료"}
           </button>

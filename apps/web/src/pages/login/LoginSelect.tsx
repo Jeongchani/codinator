@@ -1,9 +1,9 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import styles from "./AuthEntry.module.css";
+import styles from "./LoginSelect.module.css";
 import { KakaoIcon, NaverIcon, GoogleIcon } from "../../components/icons/social";
 
-export default function AuthEntry() {
+export default function LoginSelect() {
   const navigate = useNavigate();
 
   const handleLogin = () => {

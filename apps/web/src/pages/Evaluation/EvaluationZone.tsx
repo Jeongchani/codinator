@@ -15,6 +15,8 @@ import {
   resolveAssetUrl,
 } from '../../lib/api';
 import Reports from '../../components/Reports';
+import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
+import EvaluationDetailFeedback from './EvaluationDetailFeedback';
 import styles from './EvaluationZone.module.css';
 
 const THUMB_SIZE = 50;
@@ -151,10 +153,57 @@ const normalizeVoteSummary = (
   };
 };
 
+
+const VerticalSwipeIndicator = ({ above, below }: { above: number; below: number }) => {
+  const visibleAbove = Math.min(Math.max(above, 0), 3);
+  const visibleBelow = Math.min(Math.max(below, 0), 3);
+
+  return (
+    <div className={styles.swipeIndicator} aria-hidden="true">
+      <div className={styles.swipeIndicatorStack}>
+        {Array.from({ length: visibleAbove }).map((_, index) => (
+          <motion.div
+            key={`above-${index}`}
+            className={styles.swipeIndicatorDot}
+            animate={{ opacity: [0.2, 0.44, 0.2], y: [0, -1.5, 0] }}
+            transition={{
+              duration: 1.7,
+              repeat: Infinity,
+              ease: 'easeInOut',
+              delay: 0.1 * (visibleAbove - index),
+            }}
+          />
+        ))}
+
+        <motion.div
+          className={styles.swipeIndicatorActive}
+          animate={{ opacity: [1, 0.84, 1], scaleY: [1, 0.94, 1] }}
+          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+        />
+
+        {Array.from({ length: visibleBelow }).map((_, index) => (
+          <motion.div
+            key={`below-${index}`}
+            className={styles.swipeIndicatorDot}
+            animate={{ opacity: [0.2, 0.44, 0.2], y: [0, 1.5, 0] }}
+            transition={{
+              duration: 1.7,
+              repeat: Infinity,
+              ease: 'easeInOut',
+              delay: 0.1 * (index + 1),
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const EvaluationZone: React.FC = () => {
   const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
+  const sheetContentRef = useRef<HTMLDivElement | null>(null);
 
   const [selectedVote, setSelectedVote] = useState<VoteChoice | null>(null);
   const [createdVoteId, setCreatedVoteId] = useState<number | null>(null);
@@ -166,6 +215,7 @@ const EvaluationZone: React.FC = () => {
   const [error, setError] = useState('');
   const [voteSummaryMap, setVoteSummaryMap] = useState<Record<number, VoteSummaryState>>({});
   const [reportOpen, setReportOpen] = useState(false);
+  const [detailSheetOpen, setDetailSheetOpen] = useState(false);
 
   const dragX = useMotionValue(0);
 
@@ -274,18 +324,11 @@ const EvaluationZone: React.FC = () => {
     navigate('/rankingZone');
   };
 
-  const navigateToDetailFeedback = (
-    choice: VoteChoice,
-    voteId: number,
-    postId: number,
-  ) => {
-    navigate(`/evaluationDetailFeedback/${postId}?voteId=${voteId}&voteChoice=${choice}`);
-  };
-
   const resetCurrentActionState = () => {
     setSelectedVote(null);
     setCreatedVoteId(null);
     setError('');
+    setDetailSheetOpen(false);
     animate(dragX, 0, { duration: 0.15 });
   };
 
@@ -373,24 +416,6 @@ const EvaluationZone: React.FC = () => {
         [votedPostId]: getFallbackVoteSummary(choice),
       }));
       animate(dragX, 0, { duration: 0.2 });
-
-      try {
-        const detail = await fetcher<GetEvaluationPostDetailResponse>(
-          `/evaluations/posts/${votedPostId}`,
-          {
-            headers: getAuthHeaders(),
-          },
-        );
-
-        const normalizedSummary = normalizeVoteSummary(detail, choice);
-
-        setVoteSummaryMap((prev) => ({
-          ...prev,
-          [votedPostId]: normalizedSummary,
-        }));
-      } catch {
-        // fallback 그래프 유지
-      }
     } catch (err) {
       const message = err instanceof Error ? err.message : '투표에 실패했습니다.';
       setError(message);
@@ -429,7 +454,7 @@ const EvaluationZone: React.FC = () => {
     if (selectedVote === 'LIKE') {
       if (info.offset.x > maxDrag * 0.72) {
         animate(dragX, maxDrag, { duration: 0.15 }).then(() => {
-          navigateToDetailFeedback('LIKE', createdVoteId, currentPost.postId);
+          setDetailSheetOpen(true);
         });
       } else {
         animate(dragX, 0, { duration: 0.2 });
@@ -440,13 +465,49 @@ const EvaluationZone: React.FC = () => {
     if (selectedVote === 'DISLIKE') {
       if (info.offset.x < -maxDrag * 0.72) {
         animate(dragX, -maxDrag, { duration: 0.15 }).then(() => {
-          navigateToDetailFeedback('DISLIKE', createdVoteId, currentPost.postId);
+          setDetailSheetOpen(true);
         });
       } else {
         animate(dragX, 0, { duration: 0.2 });
       }
     }
   };
+
+  const previousSwipeCount = Math.min(Math.max(currentIndex, 0), 3);
+  const nextSwipeCount = Math.min(Math.max(posts.length - currentIndex - 1, 0), 3);
+
+  useEffect(() => {
+    if (!detailSheetOpen) return;
+
+    const handleDocumentPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+
+      const targetElement = target instanceof HTMLElement ? target : null;
+      const classText = String(targetElement?.className ?? '');
+
+      if (
+        classText.includes('handlerArea') ||
+        classText.includes('handlerBar') ||
+        classText.includes('bottomSheet') ||
+        classText.includes('sheetScrollArea')
+      ) {
+        return;
+      }
+
+      if (sheetContentRef.current?.contains(target)) {
+        return;
+      }
+
+      setDetailSheetOpen(false);
+    };
+
+    document.addEventListener('pointerdown', handleDocumentPointerDown, true);
+
+    return () => {
+      document.removeEventListener('pointerdown', handleDocumentPointerDown, true);
+    };
+  }, [detailSheetOpen]);
 
   const helperMessage = error
     ? error
@@ -501,6 +562,7 @@ const EvaluationZone: React.FC = () => {
       </div>
 
       <div className={styles.overlay}>
+
         <div className={styles.topActionGroup}>
           {!isEmptyLastPage && currentPost ? (
             <button
@@ -520,18 +582,9 @@ const EvaluationZone: React.FC = () => {
 
         <div className={styles.title}>평가 존</div>
 
-        <div className={styles.slideIndicator}>
-          {pages.map((_, idx) => (
-            <div
-              key={idx}
-              className={
-                idx === currentIndex
-                  ? styles.slideIndicatorActive
-                  : styles.slideIndicatorDot
-              }
-            />
-          ))}
-        </div>
+        {!detailSheetOpen && !isEmptyLastPage ? (
+          <VerticalSwipeIndicator above={previousSwipeCount} below={nextSwipeCount} />
+        ) : null}
 
         {helperMessage ? (
           <div className={styles.helperText}>{helperMessage}</div>
@@ -659,6 +712,19 @@ const EvaluationZone: React.FC = () => {
           </div>
         )}
       </div>
+      {currentPost && detailSheetOpen ? (
+        <PostDetailBottomSheet isOpen={detailSheetOpen} onCloseRequest={() => setDetailSheetOpen(false)}>
+          <div ref={sheetContentRef}>
+            <EvaluationDetailFeedback
+              embedded
+              postIdOverride={currentPost.postId}
+              voteIdOverride={createdVoteId}
+              voteChoiceOverride={selectedVote}
+            />
+          </div>
+        </PostDetailBottomSheet>
+      ) : null}
+
       {currentPost ? (
         <Reports
           isOpen={reportOpen}

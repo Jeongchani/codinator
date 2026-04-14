@@ -90,7 +90,7 @@ export default function SideMenu({
           <MenuItem
             icon={<Images size={20} strokeWidth={2.2} />}
             label="내 피드"
-            onClick={() => handleMove("/myFeeds")}
+            onClick={() => handleMove("/myFeed")}
           />
 
           <MenuItem

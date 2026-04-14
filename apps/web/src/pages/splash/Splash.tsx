@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import styles from './splash.module.css';
+import styles from './Splash.module.css';
 
 interface SplashProps {
   onFinish: () => void;

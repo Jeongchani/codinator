@@ -23,7 +23,7 @@ import {
   uploadPostImage,
   type UploadedPostImageResponse,
 } from "../../lib/api";
-import styles from "./Upload.module.css";
+import styles from "./PostUpload.module.css";
 
 type KeywordItem = {
   id: number;
@@ -824,7 +824,7 @@ function ManualBlurEditor({
   );
 }
 
-export default function Upload() {
+export default function PostUpload() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);

@@ -271,6 +271,10 @@
   @apply inline-flex items-center leading-none;
 }
 
+.editSummaryText {
+  @apply mb-3 text-[12px] font-medium leading-5 text-neutral-500;
+}
+
 .itemGrid {
   @apply grid grid-cols-2 gap-3;
 }
@@ -582,4 +586,25 @@
 
 .confirmDeleteButton {
   @apply bg-[#d84d52] text-white;
+}
+
+.confirmDeleteButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.confirmSummaryList {
+  @apply mt-4 rounded-[14px] bg-neutral-50 px-4 py-3;
+}
+
+.confirmSummaryRow {
+  @apply flex items-center justify-between text-[14px] leading-5 text-neutral-700;
+}
+
+.confirmSummaryRow + .confirmSummaryRow {
+  margin-top: 8px;
+}
+
+.confirmSummaryRow strong {
+  @apply font-semibold text-neutral-900;
 }

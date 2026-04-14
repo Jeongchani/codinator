@@ -1,10 +1,9 @@
-import React from "react";
 
-type Props = {
+type GoogleIconProps = {
   className?: string;
 };
 
-export default function GoogleIcon({ className }: Props) {
+export default function GoogleIcon({ className }: GoogleIconProps) {
   return (
     <svg
       viewBox="0 0 24 24"

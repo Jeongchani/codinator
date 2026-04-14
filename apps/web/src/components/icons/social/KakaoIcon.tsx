@@ -1,10 +1,9 @@
-import React from "react";
 
-type Props = {
+type KakaoIconProps = {
   className?: string;
 };
 
-export default function KakaoIcon({ className }: Props) {
+export default function KakaoIcon({ className }: KakaoIconProps) {
   return (
     <svg
       viewBox="0 0 24 24"
