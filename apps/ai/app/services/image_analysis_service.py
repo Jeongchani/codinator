@@ -3,7 +3,6 @@ import time
 from typing import Any
 
 import cv2
-import numpy as np
 
 from app.core.config import (
     AI_ENABLE_CAPTION,
@@ -107,7 +106,7 @@ def analyze_image(image_bytes: bytes, original_filename: str) -> dict[str, Any]:
         },
         "blur": {
             "facesDetected": len(faces),
-            "blurred": len(faces) > 0,
+            "blurred": False,
         },
         "analysis": {
             "caption": localized_caption,
@@ -138,6 +137,7 @@ def strip_internal_fields(garment: dict[str, Any]) -> dict[str, Any]:
         "seasonTags": garment["seasonTags"],
         "occasionTags": garment["occasionTags"],
     }
+
 
 def build_summary_tags(garments: list[dict[str, Any]]) -> list[str]:
     tags = {"daily"}

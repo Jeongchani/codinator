@@ -76,14 +76,38 @@ def detect_faces(image) -> list[tuple[int, int, int, int]]:
     detected = FACE_CASCADE.detectMultiScale(
         grayscale,
         scaleFactor=1.1,
-        minNeighbors=5,
-        minSize=(40, 40),
+        minNeighbors=7,
+        minSize=(60, 60),
     )
 
     if len(detected) == 0:
         return []
 
-    return [(int(x), int(y), int(w), int(h)) for (x, y, w, h) in detected]
+    height, width = image.shape[:2]
+    filtered: list[tuple[int, int, int, int]] = []
+
+    for (x, y, w, h) in detected:
+        x = int(x)
+        y = int(y)
+        w = int(w)
+        h = int(h)
+
+        center_y = y + (h / 2)
+        aspect_ratio = w / max(h, 1)
+        area_ratio = (w * h) / max(width * height, 1)
+
+        if center_y > height * 0.62:
+            continue
+
+        if aspect_ratio < 0.7 or aspect_ratio > 1.4:
+            continue
+
+        if area_ratio < 0.002:
+            continue
+
+        filtered.append((x, y, w, h))
+
+    return filtered
 
 
 def apply_face_blur(image, x: int, y: int, w: int, h: int) -> None:

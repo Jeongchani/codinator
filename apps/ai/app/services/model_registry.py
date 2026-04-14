@@ -53,6 +53,7 @@ def get_clip_model() -> CLIPModel:
 def get_florence_processor() -> AutoProcessor:
     kwargs = {
         "trust_remote_code": True,
+        "use_fast": True,
     }
     if AI_HF_TOKEN:
         kwargs["token"] = AI_HF_TOKEN
@@ -62,8 +63,9 @@ def get_florence_processor() -> AutoProcessor:
 @lru_cache(maxsize=1)
 def get_florence_model():
     kwargs = {
-        "torch_dtype": get_torch_dtype(),
+        "dtype": get_torch_dtype(),
         "trust_remote_code": True,
+        "attn_implementation": "eager",
     }
     if AI_HF_TOKEN:
         kwargs["token"] = AI_HF_TOKEN
