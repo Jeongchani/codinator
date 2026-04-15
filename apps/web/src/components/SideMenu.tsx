@@ -1,5 +1,5 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Menu,
   Images,
@@ -9,9 +9,11 @@ import {
   User,
   Settings,
   LogOut,
-} from "lucide-react";
-import styles from "./SideMenu.module.css";
-import { logoutWithServer } from "../lib/api";
+  ChevronRight,
+  Vote,
+} from 'lucide-react';
+import styles from './SideMenu.module.css';
+import { logoutWithServer } from '../lib/api';
 
 type SideMenuProps = {
   isOpen?: boolean;
@@ -22,21 +24,27 @@ type MenuItemProps = {
   icon: React.ReactNode;
   label: string;
   onClick?: () => void;
+  showArrow?: boolean;
 };
 
-function MenuItem({ icon, label, onClick }: MenuItemProps) {
+function MenuItem({ icon, label, onClick, showArrow = true }: MenuItemProps) {
   return (
     <button type="button" className={styles.menuItem} onClick={onClick}>
-      <span className={styles.iconWrap}>{icon}</span>
-      <span className={styles.menuLabel}>{label}</span>
+      <div className={styles.menuItemLeft}>
+        <span className={styles.iconWrap}>{icon}</span>
+        <span className={styles.menuLabel}>{label}</span>
+      </div>
+
+      {showArrow ? (
+        <span className={styles.arrowIcon}>
+          <ChevronRight size={18} strokeWidth={2.4} />
+        </span>
+      ) : null}
     </button>
   );
 }
 
-export default function SideMenu({
-  isOpen = false,
-  onClose,
-}: SideMenuProps) {
+export default function SideMenu({ isOpen = false, onClose }: SideMenuProps) {
   const navigate = useNavigate();
 
   const handleMove = (path: string) => {
@@ -49,7 +57,7 @@ export default function SideMenu({
       await logoutWithServer();
     } finally {
       onClose?.();
-      navigate("/login", { replace: true });
+      navigate('/login', { replace: true });
     }
   };
 
@@ -65,6 +73,9 @@ export default function SideMenu({
       <aside
         className={`${styles.panel} ${isOpen ? styles.panelOpen : styles.panelClosed}`}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="사이드 메뉴"
       >
         <button
           type="button"
@@ -75,52 +86,63 @@ export default function SideMenu({
           <Menu size={25} strokeWidth={2.2} />
         </button>
 
+        <div className={styles.mainTitle}>Main</div>
+
         <div className={styles.mainOptions}>
           <MenuItem
-            icon={<ClipboardCheck size={20} strokeWidth={2.2} />}
-            label="평가존"
-            onClick={() => handleMove("/evaluationZone")}
-          />
-
-          <MenuItem
-            icon={<Trophy size={20} strokeWidth={2.2} />}
-            label="랭킹존"
-            onClick={() => handleMove("/rankingZone")}
-          />
-          <MenuItem
-            icon={<Images size={20} strokeWidth={2.2} />}
+            icon={<Images size={25} strokeWidth={2.2} />}
             label="내 피드"
-            onClick={() => handleMove("/myFeed")}
+            onClick={() => handleMove('/myFeed')}
           />
 
           <MenuItem
-            icon={<Bookmark size={20} strokeWidth={2.2} />}
-            label="북마크"
-            onClick={() => handleMove("/bookmark")}
+            icon={<Bookmark size={25} strokeWidth={2.2} />}
+            label="내 북마크"
+            onClick={() => handleMove('/bookmark')}
           />
 
+          <MenuItem
+            icon={<ClipboardCheck size={25} strokeWidth={2.2} />}
+            label="진행중인 평가 기록"
+            onClick={() => handleMove('/ongoingEvaluationHistory')}
+          />
 
+          <MenuItem
+            icon={<Trophy size={25} strokeWidth={2.2} />}
+            label="랭킹존"
+            onClick={() => handleMove('/rankingZone')}
+          />
 
+          <MenuItem
+            icon={<Vote size={25} strokeWidth={2.2} />}
+            label="평가존"
+            onClick={() => handleMove('/evaluationZone')}
+          />
         </div>
 
-        <div className={styles.otherTitle}>OTHER</div>
+        <div className={styles.otherTitle}>Other</div>
 
         <div className={styles.otherOptions}>
           <MenuItem
-            icon={<User size={20} strokeWidth={2.2} />}
+            icon={<User size={25} strokeWidth={2.2} />}
             label="마이 페이지"
-            onClick={() => handleMove("/myPage")}
+            onClick={() => handleMove('/myPage')}
           />
+
           <MenuItem
-            icon={<Settings size={20} strokeWidth={2.2} />}
+            icon={<Settings size={25} strokeWidth={2.2} />}
             label="설정"
-            onClick={() => handleMove("/settings")}
+            onClick={() => handleMove('/settings')}
           />
-          <MenuItem
-            icon={<LogOut size={20} strokeWidth={2.2} />}
-            label="로그아웃"
-            onClick={handleLogout}
-          />
+        </div>
+
+        <div className={styles.logoutArea}>
+          <button type="button" className={styles.logoutButton} onClick={handleLogout}>
+            <span className={styles.logoutIcon}>
+              <LogOut size={20} strokeWidth={2.2} />
+            </span>
+            <span className={styles.logoutText}>로그아웃</span>
+          </button>
         </div>
       </aside>
     </div>
