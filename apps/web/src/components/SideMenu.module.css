@@ -17,14 +17,15 @@
 
 .overlay {
   @apply absolute inset-0;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.24);
   transition: opacity 0.28s ease;
 }
 
 .panel {
-  @apply absolute right-0 top-0 w-[293px] h-full bg-white;
-  transition: transform 0.32s ease;
+  @apply absolute right-0 top-0 h-full w-[293px] bg-white;
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
+  box-shadow: -10px 0 32px rgba(0, 0, 0, 0.12);
 }
 
 .panelOpen {
@@ -37,38 +38,84 @@
 
 .closeButton {
   @apply absolute right-5 top-[59px] -translate-y-1/2
-    w-6 h-6 flex items-center justify-center
-    text-[#7a7a7a] bg-transparent p-0 border-0;
+    flex h-6 w-6 items-center justify-center
+    border-0 bg-transparent p-0 text-[#7a7a7a]
+    transition-transform duration-150 active:scale-95;
+}
+
+.mainTitle {
+  @apply absolute left-4 top-[111px] text-[20px] font-bold leading-7 text-black;
 }
 
 .mainOptions {
-  @apply absolute left-0 top-[150px] w-full flex flex-col items-center gap-[5px];
+  @apply absolute left-0 top-[151px] w-full flex flex-col gap-[6px];
 }
 
 .otherTitle {
-  @apply absolute left-[33px] top-[469px]
-    text-black text-sm font-normal leading-5 tracking-[0.08em];
+  @apply absolute left-4 top-[507px] text-[20px] font-bold leading-7 text-black;
 }
 
 .otherOptions {
-  @apply absolute left-0 top-[513px] w-full flex flex-col items-center gap-[5px];
+  @apply absolute left-0 top-[547px] w-full flex flex-col gap-[6px];
 }
 
 .menuItem {
-  @apply w-full h-14 bg-white
-    flex items-center gap-5
-    pl-8 pr-6
-    text-left transition-colors duration-150;
+  @apply flex h-14 w-full items-center justify-between
+    bg-white pl-7 pr-6 text-left
+    transition-all duration-150;
 }
 
 .menuItem:hover {
   @apply bg-neutral-50;
 }
 
+.menuItem:active {
+  @apply scale-[0.985] bg-neutral-100;
+}
+
+.menuItemLeft {
+  @apply flex min-w-0 items-center gap-3;
+}
+
 .iconWrap {
-  @apply w-5 h-5 flex items-center justify-center text-black shrink-0;
+  @apply flex h-5 w-5 shrink-0 items-center justify-center text-black;
 }
 
 .menuLabel {
-  @apply text-black text-base font-bold leading-6;
+  @apply truncate text-[15px] font-bold leading-5 text-black;
+}
+
+.arrowIcon {
+  @apply flex shrink-0 items-center justify-center text-black;
+}
+
+.logoutArea {
+  @apply absolute right-6 bottom-10 flex justify-end;
+}
+
+.logoutButton {
+  @apply inline-flex items-center gap-3 border-0 bg-transparent p-0 text-right transition-transform duration-150;
+}
+
+.logoutButton:active {
+  @apply scale-[0.97];
+}
+
+.logoutIcon {
+  @apply flex h-[25px] w-[25px] items-center justify-center text-black;
+}
+
+.logoutText {
+  @apply text-[15px] font-bold leading-5 text-black;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wrapper,
+  .overlay,
+  .panel,
+  .closeButton,
+  .menuItem,
+  .logoutButton {
+    transition: none;
+  }
 }

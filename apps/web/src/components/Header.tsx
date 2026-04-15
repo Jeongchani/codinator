@@ -1,16 +1,14 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Menu, Search } from "lucide-react";
-import SideMenu from "../components/SideMenu";
-import styles from "./Header.module.css";
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Menu, Search } from 'lucide-react';
+import styles from './Header.module.css';
+import SideMenu from './SideMenu';
 
 type HeaderProps = {
   title?: string;
 };
 
-export default function Header({
-  title = "C:Dinator",
-}: HeaderProps) {
+export default function Header({ title = 'C:Dinator' }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -23,10 +21,10 @@ export default function Header({
   };
 
   const handleOpenSearch = () => {
-    navigate("/search");
+    navigate('/search');
   };
   const handleGoRankingZone = () => {
-    navigate("/rankingZone");
+    navigate('/rankingZone');
   };
   return (
     <>
