@@ -15,7 +15,6 @@ import {
 } from "../../lib/api";
 import type { GetRankingsResponse, RankingItem, RankingPeriod } from "@codinator/contracts";
 import Header from "../../components/Header";
-import Footer from "../../components/Footer";
 import PostDetailBottomSheet from "../../components/postdetail/PostDetailBottomSheet";
 import RankingDetail from "./RankingDetail";
 
@@ -348,7 +347,6 @@ export default function RankingZone() {
         )}
       </div>
 
-      <div className={styles.footerWrap}><Footer /></div>
 
       {focusOpen && focusedItem && (
         <div className={styles.focusOverlay}>

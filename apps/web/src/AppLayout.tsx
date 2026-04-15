@@ -11,7 +11,13 @@ export default function AppLayout() {
         <Outlet />
       </div>
 
-      <div className="absolute left-1/2 -translate-x-1/2 bottom-4 z-50">
+      <div
+        className="absolute left-1/2 z-50 -translate-x-1/2"
+        style={{
+          bottom: "calc(var(--footer-offset) + env(safe-area-inset-bottom))",
+          pointerEvents: "none",
+        }}
+      >
         <Footer />
       </div>
     </div>

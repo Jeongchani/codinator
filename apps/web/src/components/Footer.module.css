@@ -1,7 +1,5 @@
 .footerWrap {
-  @apply fixed left-1/2 -translate-x-1/2 z-50;
-  bottom: 16px;
-  width: 350px;
+  width: min(350px, calc(var(--app-width) - 24px));
   pointer-events: none;
   background: transparent;
 }
