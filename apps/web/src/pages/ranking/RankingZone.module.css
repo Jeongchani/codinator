@@ -112,26 +112,6 @@
   @apply w-full min-h-[200px] flex items-center justify-center text-sm text-neutral-500;
 }
 
-.footerWrap {
-  @apply absolute left-1/2 -translate-x-1/2 bottom-[18px] z-50
-    w-full flex justify-center pointer-events-none;
-}
-
-.footerWrap > * {
-  pointer-events: auto;
-}
-
-.footerWrap::after {
-  content: '';
-  @apply absolute left-1/2 -translate-x-1/2;
-  bottom: -10px;
-  width: 250px;
-  height: 18px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.14);
-  filter: blur(12px);
-  z-index: -1;
-}
 
 .cardPressed {
   transform: scale(0.985);

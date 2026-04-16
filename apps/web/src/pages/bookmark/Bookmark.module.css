@@ -77,7 +77,8 @@
 .contentArea {
   @apply absolute left-0 w-full overflow-y-auto px-4 z-10;
   top: 166px;
-  height: 582px;
+  bottom: 0;
+  padding-bottom: calc(var(--footer-safe-bottom) + 16px);
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
