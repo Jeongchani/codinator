@@ -193,6 +193,19 @@ function WearTypeDropdown({
 
       {open && (
         <div className={styles.selectMenu} role="listbox">
+          <button
+            type="button"
+            className={cls(styles.selectOption, value === '' && styles.selectOptionActive)}
+            onClick={() => {
+              onChange('');
+              onClose();
+            }}
+          >
+            <div className={styles.selectOptionContent}>
+              <span className={styles.selectOptionLabel}>선택 해제</span>
+            </div>
+          </button>
+
           {options.map((type) => {
             const selected = value === type;
 
