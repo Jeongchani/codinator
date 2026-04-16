@@ -1,19 +1,20 @@
-import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ChevronDown,
   ChevronLeft,
-  Plus,
+  Image as ImageIcon,
+  Search,
   Sparkles,
   Tag,
   Undo2,
   X,
-} from "lucide-react";
+} from 'lucide-react';
 import type {
   CreatePostResponse,
   GarmentCategory,
   GetKeywordsResponse,
-} from "@codinator/contracts";
+} from '@codinator/contracts';
 import {
   clearAuthTokens,
   fetcher,
@@ -22,23 +23,15 @@ import {
   resolveAssetUrl,
   uploadPostImage,
   type UploadedPostImageResponse,
-} from "../../lib/api";
-import styles from "./PostUpload.module.css";
+} from '../../lib/api';
+import styles from './PostUpload.module.css';
 
 type KeywordItem = {
   id: number;
   label: string;
 };
 
-type WearType =
-  | ""
-  | "상의"
-  | "하의"
-  | "아우터"
-  | "신발"
-  | "가방"
-  | "악세사리"
-  | "기타";
+type WearType = '' | '상의' | '하의' | '아우터' | '신발' | '가방' | '악세사리' | '기타';
 
 type WearItem = {
   id: number;
@@ -47,108 +40,79 @@ type WearItem = {
   name: string;
 };
 
-type BlurFlowStep = "idle" | "decision" | "manual";
-type BrushTool = "blur" | "eraser";
+type BlurFlowStep = 'idle' | 'decision' | 'manual';
+type BrushTool = 'blur' | 'eraser';
 
 type BrushPreset = {
-  id: "s" | "m" | "l";
+  id: 's' | 'm' | 'l';
   size: number;
   dot: number;
   block: number;
 };
 
 const BRUSH_PRESETS: BrushPreset[] = [
-  { id: "s", size: 28, dot: 10, block: 18 },
-  { id: "m", size: 52, dot: 18, block: 18 },
-  { id: "l", size: 84, dot: 26, block: 18 },
+  { id: 's', size: 28, dot: 10, block: 18 },
+  { id: 'm', size: 52, dot: 18, block: 18 },
+  { id: 'l', size: 84, dot: 26, block: 18 },
 ];
 
-const wearTypeOptions: WearType[] = [
-  "",
-  "상의",
-  "하의",
-  "아우터",
-  "신발",
-  "가방",
-  "악세사리",
-  "기타",
+const wearTypeOptions: Exclude<WearType, ''>[] = [
+  '상의',
+  '하의',
+  '아우터',
+  '신발',
+  '가방',
+  '악세사리',
+  '기타',
 ];
 
 const initialWearItems: WearItem[] = [
-  { id: 1, type: "", brand: "", name: "" },
-  { id: 2, type: "", brand: "", name: "" },
-  { id: 3, type: "", brand: "", name: "" },
-  { id: 4, type: "", brand: "", name: "" },
+  { id: 1, type: '', brand: '', name: '' },
+  { id: 2, type: '', brand: '', name: '' },
+  { id: 3, type: '', brand: '', name: '' },
+  { id: 4, type: '', brand: '', name: '' },
 ];
+
+function cls(...names: Array<string | false | null | undefined>) {
+  return names.filter(Boolean).join(' ');
+}
+
+function createEmptyWearItem(id: number): WearItem {
+  return {
+    id,
+    type: '',
+    brand: '',
+    name: '',
+  };
+}
 
 function mapWearTypeToCategory(type: WearType): GarmentCategory | null {
   switch (type) {
-    case "상의":
-      return "TOP";
-    case "하의":
-      return "BOTTOM";
-    case "아우터":
-      return "OUTER";
-    case "신발":
-      return "SHOES";
-    case "가방":
-      return "BAG";
-    case "악세사리":
-      return "ACCESSORY";
-    case "기타":
-      return "ETC";
+    case '상의':
+      return 'TOP';
+    case '하의':
+      return 'BOTTOM';
+    case '아우터':
+      return 'OUTER';
+    case '신발':
+      return 'SHOES';
+    case '가방':
+      return 'BAG';
+    case '악세사리':
+      return 'ACCESSORY';
+    case '기타':
+      return 'ETC';
     default:
       return null;
   }
 }
 
-function PhotoFrameIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect
-        x="3.5"
-        y="5"
-        width="17"
-        height="14"
-        rx="2.5"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <circle cx="16.8" cy="9.2" r="1.5" fill="currentColor" />
-      <path
-        d="M6.5 16L10.2 12.4C10.6 12 11.2 12 11.6 12.4L13.6 14.4"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M11.8 14L13.4 12.5C13.8 12.1 14.4 12.1 14.8 12.5L17.5 15.2"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function cls(...names: Array<string | false | null | undefined>) {
-  return names.filter(Boolean).join(" ");
-}
-
 function assetUrl(url: string | null | undefined) {
-  if (!url) return "";
+  if (!url) return '';
   return resolveAssetUrl(url);
 }
 
-function Modal({
-  children,
-  onClose,
-}: {
-  children: React.ReactNode;
-  onClose?: () => void;
-}) {
+function Modal({ children, onClose }: { children: React.ReactNode; onClose?: () => void }) {
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
@@ -167,7 +131,7 @@ function WearTypeDropdown({
   onChange,
 }: {
   value: WearType;
-  options: WearType[];
+  options: Exclude<WearType, ''>[];
   open: boolean;
   onToggle: () => void;
   onClose: () => void;
@@ -188,19 +152,19 @@ function WearTypeDropdown({
     };
 
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === 'Escape') {
         onClose();
       }
     };
 
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("touchstart", handlePointerDown);
-    document.addEventListener("keydown", handleEscape);
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("touchstart", handlePointerDown);
-      document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
     };
   }, [open, onClose]);
 
@@ -215,13 +179,8 @@ function WearTypeDropdown({
       >
         <div className={styles.itemSelectContent}>
           <Tag size={14} strokeWidth={2.1} className={styles.itemSelectTagIcon} />
-          <span
-            className={cls(
-              styles.itemSelectText,
-              !value && styles.itemSelectPlaceholder,
-            )}
-          >
-            {value || "의류 종류 선택"}
+          <span className={cls(styles.itemSelectText, !value && styles.itemSelectPlaceholder)}>
+            {value || '의류 종류'}
           </span>
         </div>
 
@@ -234,19 +193,27 @@ function WearTypeDropdown({
 
       {open && (
         <div className={styles.selectMenu} role="listbox">
+          <button
+            type="button"
+            className={cls(styles.selectOption, value === '' && styles.selectOptionActive)}
+            onClick={() => {
+              onChange('');
+              onClose();
+            }}
+          >
+            <div className={styles.selectOptionContent}>
+              <span className={styles.selectOptionLabel}>선택 해제</span>
+            </div>
+          </button>
+
           {options.map((type) => {
-            const isPlaceholder = type === "";
             const selected = value === type;
 
             return (
               <button
-                key={type || "placeholder"}
+                key={type}
                 type="button"
-                className={cls(
-                  styles.selectOption,
-                  selected && styles.selectOptionActive,
-                  isPlaceholder && styles.selectOptionPlaceholder,
-                )}
+                className={cls(styles.selectOption, selected && styles.selectOptionActive)}
                 onClick={() => {
                   onChange(type);
                   onClose();
@@ -254,9 +221,7 @@ function WearTypeDropdown({
               >
                 <div className={styles.selectOptionContent}>
                   <Tag size={14} strokeWidth={2.1} className={styles.selectOptionTagIcon} />
-                  <span className={styles.selectOptionLabel}>
-                    {type || "의류 종류 선택"}
-                  </span>
+                  <span className={styles.selectOptionLabel}>{type}</span>
                 </div>
               </button>
             );
@@ -267,15 +232,7 @@ function WearTypeDropdown({
   );
 }
 
-function CompareImage({
-  label,
-  imageUrl,
-  ai,
-}: {
-  label: string;
-  imageUrl: string;
-  ai?: boolean;
-}) {
+function CompareImage({ label, imageUrl, ai }: { label: string; imageUrl: string; ai?: boolean }) {
   return (
     <div className={styles.compareImageWrap}>
       <div className={styles.compareFloatingLabel}>
@@ -330,20 +287,20 @@ function buildPixelatedCanvas(sourceCanvas: HTMLCanvasElement, block: number) {
   const width = sourceCanvas.width;
   const height = sourceCanvas.height;
 
-  const scaledCanvas = document.createElement("canvas");
+  const scaledCanvas = document.createElement('canvas');
   scaledCanvas.width = Math.max(1, Math.ceil(width / block));
   scaledCanvas.height = Math.max(1, Math.ceil(height / block));
 
-  const scaledCtx = scaledCanvas.getContext("2d");
+  const scaledCtx = scaledCanvas.getContext('2d');
   if (!scaledCtx) return null;
 
   scaledCtx.drawImage(sourceCanvas, 0, 0, scaledCanvas.width, scaledCanvas.height);
 
-  const resultCanvas = document.createElement("canvas");
+  const resultCanvas = document.createElement('canvas');
   resultCanvas.width = width;
   resultCanvas.height = height;
 
-  const resultCtx = resultCanvas.getContext("2d");
+  const resultCtx = resultCanvas.getContext('2d');
   if (!resultCtx) return null;
 
   resultCtx.imageSmoothingEnabled = false;
@@ -372,15 +329,15 @@ function ManualBlurEditor({
   onApprove: (file: File, previewDataUrl: string) => void;
   onBack: () => void;
 }) {
-  const [tool, setTool] = useState<BrushTool>("blur");
+  const [tool, setTool] = useState<BrushTool>('blur');
   const [brushSize, setBrushSize] = useState(BRUSH_PRESETS[1].size);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [approving, setApproving] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
-  const [imageLoadError, setImageLoadError] = useState("");
+  const [imageLoadError, setImageLoadError] = useState('');
 
-  const toolRef = useRef<BrushTool>("blur");
+  const toolRef = useRef<BrushTool>('blur');
   const brushRef = useRef(BRUSH_PRESETS[1].size);
 
   const displayCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -410,7 +367,7 @@ function ManualBlurEditor({
   useEffect(() => {
     let cancelled = false;
 
-    const sameOriginUrl = originalImageUrl.replace(/^https?:\/\/localhost:\d+/, "");
+    const sameOriginUrl = originalImageUrl.replace(/^https?:\/\/localhost:\d+/, '');
     const img = new Image();
 
     img.onload = () => {
@@ -426,8 +383,8 @@ function ManualBlurEditor({
       displayCanvas.width = origCanvas.width = width;
       displayCanvas.height = origCanvas.height = height;
 
-      const displayCtx = displayCanvas.getContext("2d");
-      const origCtx = origCanvas.getContext("2d");
+      const displayCtx = displayCanvas.getContext('2d');
+      const origCtx = origCanvas.getContext('2d');
       if (!displayCtx || !origCtx) return;
 
       displayCtx.clearRect(0, 0, width, height);
@@ -451,7 +408,7 @@ function ManualBlurEditor({
 
     img.onerror = () => {
       if (cancelled) return;
-      setImageLoadError("원본 이미지를 불러오지 못했습니다.");
+      setImageLoadError('원본 이미지를 불러오지 못했습니다.');
     };
 
     img.src = sameOriginUrl;
@@ -469,7 +426,7 @@ function ManualBlurEditor({
     if (!displayCanvas) return;
 
     try {
-      const ctx = displayCanvas.getContext("2d");
+      const ctx = displayCanvas.getContext('2d');
       if (!ctx) return;
 
       const snapshot = ctx.getImageData(0, 0, displayCanvas.width, displayCanvas.height);
@@ -489,7 +446,7 @@ function ManualBlurEditor({
     const displayCanvas = displayCanvasRef.current;
     if (!displayCanvas || historyRef.current.length === 0) return;
 
-    const ctx = displayCanvas.getContext("2d");
+    const ctx = displayCanvas.getContext('2d');
     if (!ctx) return;
 
     const prev = historyRef.current.pop();
@@ -499,11 +456,7 @@ function ManualBlurEditor({
     setCanUndo(historyRef.current.length > 0);
   };
 
-  const toCanvasPosition = (
-    clientX: number,
-    clientY: number,
-    canvas: HTMLCanvasElement,
-  ) => {
+  const toCanvasPosition = (clientX: number, clientY: number, canvas: HTMLCanvasElement) => {
     const rect = canvas.getBoundingClientRect();
 
     return {
@@ -517,19 +470,19 @@ function ManualBlurEditor({
     return cssRadius * (canvas.width / rect.width);
   };
 
-  const applyAt = (cx: number, cy: number, canvasRadius: number, canvas: HTMLCanvasElement) => {
+  const applyAt = (cx: number, cy: number, canvasRadius: number) => {
     const displayCanvas = displayCanvasRef.current;
     const origCanvas = origCanvasRef.current;
     if (!displayCanvas || !origCanvas) return;
 
-    const displayCtx = displayCanvas.getContext("2d");
+    const displayCtx = displayCanvas.getContext('2d');
     if (!displayCtx) return;
 
     const currentPreset = getCurrentPreset();
     const block = currentPreset.block;
 
     const blurSource = mosaicCacheRef.current.get(block);
-    const sourceCanvas = toolRef.current === "blur" ? blurSource : origCanvas;
+    const sourceCanvas = toolRef.current === 'blur' ? blurSource : origCanvas;
     if (!sourceCanvas) return;
 
     const bx1 = Math.max(0, Math.floor((cx - canvasRadius) / block));
@@ -560,7 +513,6 @@ function ManualBlurEditor({
     from: { x: number; y: number },
     to: { x: number; y: number },
     canvasRadius: number,
-    canvas: HTMLCanvasElement,
   ) => {
     const dx = to.x - from.x;
     const dy = to.y - from.y;
@@ -569,12 +521,7 @@ function ManualBlurEditor({
     const steps = Math.ceil(distance / step);
 
     for (let i = 1; i <= steps; i += 1) {
-      applyAt(
-        from.x + (dx * i) / steps,
-        from.y + (dy * i) / steps,
-        canvasRadius,
-        canvas,
-      );
+      applyAt(from.x + (dx * i) / steps, from.y + (dy * i) / steps, canvasRadius);
     }
   };
 
@@ -586,7 +533,7 @@ function ManualBlurEditor({
     }
 
     const canvasRadius = toCanvasRadius(brushRef.current / 2, pending.canvas);
-    interpolate(lastCvsPos.current, pending, canvasRadius, pending.canvas);
+    interpolate(lastCvsPos.current, pending, canvasRadius);
     lastCvsPos.current = { x: pending.x, y: pending.y };
     pendingPointRef.current = null;
     rafRef.current = null;
@@ -606,7 +553,7 @@ function ManualBlurEditor({
     if (pendingPointRef.current && lastCvsPos.current) {
       const pending = pendingPointRef.current;
       const canvasRadius = toCanvasRadius(brushRef.current / 2, pending.canvas);
-      interpolate(lastCvsPos.current, pending, canvasRadius, pending.canvas);
+      interpolate(lastCvsPos.current, pending, canvasRadius);
       lastCvsPos.current = { x: pending.x, y: pending.y };
       pendingPointRef.current = null;
     }
@@ -634,7 +581,7 @@ function ManualBlurEditor({
     lastCvsPos.current = pos;
     setCursorPos({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
 
-    applyAt(pos.x, pos.y, canvasRadius, canvas);
+    applyAt(pos.x, pos.y, canvasRadius);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -674,7 +621,7 @@ function ManualBlurEditor({
 
     setApproving(true);
 
-    const previewDataUrl = displayCanvas.toDataURL("image/jpeg", 0.92);
+    const previewDataUrl = displayCanvas.toDataURL('image/jpeg', 0.92);
 
     displayCanvas.toBlob(
       (blob) => {
@@ -683,14 +630,14 @@ function ManualBlurEditor({
           return;
         }
 
-        onApprove(new File([blob], "manual-blur.jpg", { type: "image/jpeg" }), previewDataUrl);
+        onApprove(new File([blob], 'manual-blur.jpg', { type: 'image/jpeg' }), previewDataUrl);
       },
-      "image/jpeg",
+      'image/jpeg',
       0.92,
     );
   };
 
-  const toolColor = tool === "blur" ? "#2563eb" : "#ef4444";
+  const toolColor = tool === 'blur' ? '#2563eb' : '#ef4444';
 
   return (
     <div className={styles.manualEditorWrap}>
@@ -713,16 +660,16 @@ function ManualBlurEditor({
       <div className={styles.manualToolbar}>
         <button
           type="button"
-          className={cls(styles.toolButton, tool === "blur" && styles.toolButtonBlue)}
-          onClick={() => changeTool("blur")}
+          className={cls(styles.toolButton, tool === 'blur' && styles.toolButtonBlue)}
+          onClick={() => changeTool('blur')}
         >
           블러
         </button>
 
         <button
           type="button"
-          className={cls(styles.toolButton, tool === "eraser" && styles.toolButtonRed)}
-          onClick={() => changeTool("eraser")}
+          className={cls(styles.toolButton, tool === 'eraser' && styles.toolButtonRed)}
+          onClick={() => changeTool('eraser')}
         >
           지우개
         </button>
@@ -745,7 +692,7 @@ function ManualBlurEditor({
                     style={{
                       width: `${preset.dot}px`,
                       height: `${preset.dot}px`,
-                      backgroundColor: active ? toolColor : "#9ca3af",
+                      backgroundColor: active ? toolColor : '#9ca3af',
                     }}
                   />
                 </button>
@@ -774,7 +721,7 @@ function ManualBlurEditor({
       <div
         className={styles.editorCanvasFrame}
         style={{
-          display: imgLoaded ? "block" : "none",
+          display: imgLoaded ? 'block' : 'none',
           borderColor: toolColor,
         }}
       >
@@ -798,10 +745,7 @@ function ManualBlurEditor({
                 width: `${brushSize}px`,
                 height: `${brushSize}px`,
                 borderColor: toolColor,
-                background:
-                  tool === "blur"
-                    ? "rgba(37,99,235,0.14)"
-                    : "rgba(239,68,68,0.14)",
+                background: tool === 'blur' ? 'rgba(37,99,235,0.14)' : 'rgba(239,68,68,0.14)',
               }}
             />
           )}
@@ -815,7 +759,7 @@ function ManualBlurEditor({
           onClick={handleApprove}
           disabled={!imgLoaded || approving}
         >
-          {approving ? "처리 중..." : "이 결과로 사용하기"}
+          {approving ? '처리 중...' : '이 결과로 사용하기'}
         </button>
       </div>
 
@@ -829,32 +773,43 @@ export default function PostUpload() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
 
-  const [content, setContent] = useState("");
-  const [message, setMessage] = useState("이미지와 설명을 입력하면 게시글을 등록할 수 있습니다.");
+  const [content, setContent] = useState('');
+  const [message, setMessage] = useState('이미지와 설명을 입력하면 게시글을 등록할 수 있습니다.');
   const [submitting, setSubmitting] = useState(false);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadedImage, setUploadedImage] = useState<UploadedPostImageResponse | null>(null);
   const [keywordOptions, setKeywordOptions] = useState<KeywordItem[]>([]);
+  const [keywordQuery, setKeywordQuery] = useState('');
 
-  const [rawLocalPreview, setRawLocalPreview] = useState("");
-  const [approvedPreview, setApprovedPreview] = useState("");
+  const [rawLocalPreview, setRawLocalPreview] = useState('');
+  const [approvedPreview, setApprovedPreview] = useState('');
   const [selectedKeywords, setSelectedKeywords] = useState<number[]>([]);
   const [wearItems, setWearItems] = useState<WearItem[]>(initialWearItems);
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
 
-  const [blurStep, setBlurStep] = useState<BlurFlowStep>("idle");
+  const [blurStep, setBlurStep] = useState<BlurFlowStep>('idle');
   const [blurDecisionOpen, setBlurDecisionOpen] = useState(false);
   const [manualPreviewUrl, setManualPreviewUrl] = useState<string | null>(null);
   const [manualBlurFile, setManualBlurFile] = useState<File | null>(null);
-  const [approvedBlurMode, setApprovedBlurMode] = useState<"AUTO" | "MANUAL" | null>(null);
+  const [approvedBlurMode, setApprovedBlurMode] = useState<'AUTO' | 'MANUAL' | null>(null);
 
-  const previewUrl = useMemo(() => approvedPreview || "", [approvedPreview]);
+  const previewUrl = useMemo(() => approvedPreview || '', [approvedPreview]);
+
+  const filteredKeywordOptions = useMemo(() => {
+    const normalized = keywordQuery.trim().toLowerCase();
+    if (!normalized) return keywordOptions;
+
+    return keywordOptions.filter((keyword) => keyword.label.toLowerCase().includes(normalized));
+  }, [keywordOptions, keywordQuery]);
+
+  const selectedKeywordItems = useMemo(
+    () => keywordOptions.filter((keyword) => selectedKeywords.includes(keyword.id)),
+    [keywordOptions, selectedKeywords],
+  );
 
   const visibleStatusMessage =
-    message && message !== "이미지와 설명을 입력하면 게시글을 등록할 수 있습니다."
-      ? message
-      : "";
+    message && message !== '이미지와 설명을 입력하면 게시글을 등록할 수 있습니다.' ? message : '';
 
   const handleBack = () => {
     navigate(-1);
@@ -866,24 +821,24 @@ export default function PostUpload() {
 
   const resetBlurState = () => {
     setUploadedImage(null);
-    setBlurStep("idle");
+    setBlurStep('idle');
     setBlurDecisionOpen(false);
     setManualPreviewUrl(null);
     setManualBlurFile(null);
     setApprovedBlurMode(null);
-    setApprovedPreview("");
+    setApprovedPreview('');
   };
 
   const handleAuthError = (err: unknown) => {
-    const errorMessage = err instanceof Error ? err.message : "요청 처리 실패";
+    const errorMessage = err instanceof Error ? err.message : '요청 처리 실패';
 
     if (
-      errorMessage.includes("Unauthorized") ||
-      errorMessage.includes("로그인이 필요합니다") ||
-      errorMessage.includes("유효하지 않거나 만료된 토큰")
+      errorMessage.includes('Unauthorized') ||
+      errorMessage.includes('로그인이 필요합니다') ||
+      errorMessage.includes('유효하지 않거나 만료된 토큰')
     ) {
       clearAuthTokens();
-      navigate("/login");
+      navigate('/login');
       return true;
     }
 
@@ -902,8 +857,8 @@ export default function PostUpload() {
     resetBlurState();
 
     if (!file) {
-      setRawLocalPreview("");
-      setMessage("업로드할 이미지를 선택해주세요.");
+      setRawLocalPreview('');
+      setMessage('업로드할 이미지를 선택해주세요.');
       return;
     }
 
@@ -913,22 +868,22 @@ export default function PostUpload() {
 
     try {
       setSubmitting(true);
-      setMessage("AI 얼굴 블러 처리 중...");
+      setMessage('AI 얼굴 블러 처리 중...');
 
       const uploaded = await uploadPostImage(file);
       setUploadedImage(uploaded);
-      setBlurStep("decision");
+      setBlurStep('decision');
       setBlurDecisionOpen(true);
 
-      if (uploaded.aiBlurStatus === "FAILED") {
-        setMessage("AI 블러에 실패했습니다. 수동 블러를 진행해주세요.");
+      if (uploaded.aiBlurStatus === 'FAILED') {
+        setMessage('AI 블러에 실패했습니다. 수동 블러를 진행해주세요.');
       } else {
-        setMessage("AI 블러 결과를 확인해주세요.");
+        setMessage('AI 블러 결과를 확인해주세요.');
       }
     } catch (err) {
-      console.error("이미지 업로드 실패:", err);
+      console.error('이미지 업로드 실패:', err);
       if (handleAuthError(err)) return;
-      setMessage(err instanceof Error ? err.message : "이미지 업로드 실패");
+      setMessage(err instanceof Error ? err.message : '이미지 업로드 실패');
     } finally {
       setSubmitting(false);
     }
@@ -943,7 +898,7 @@ export default function PostUpload() {
       }
 
       if (prev.length >= 3) {
-        alert("키워드는 최대 3개까지 선택할 수 있습니다.");
+        alert('키워드는 최대 3개까지 선택할 수 있습니다.');
         return prev;
       }
 
@@ -953,7 +908,7 @@ export default function PostUpload() {
 
   const handleWearItemChange = (
     itemId: number,
-    field: keyof Pick<WearItem, "type" | "brand" | "name">,
+    field: keyof Pick<WearItem, 'type' | 'brand' | 'name'>,
     value: string,
   ) => {
     setWearItems((prev) =>
@@ -971,59 +926,53 @@ export default function PostUpload() {
   const handleAddWearItem = () => {
     setWearItems((prev) => {
       const nextId = prev.length > 0 ? Math.max(...prev.map((item) => item.id)) + 1 : 1;
-
-      return [
-        ...prev,
-        {
-          id: nextId,
-          type: "",
-          brand: "",
-          name: "",
-        },
-      ];
+      return [...prev, createEmptyWearItem(nextId)];
     });
+
     setOpenDropdownId(null);
   };
 
   const handleApproveAutoBlur = () => {
     if (!uploadedImage) return;
 
-    setApprovedBlurMode("AUTO");
-    setApprovedPreview(resolveAssetUrl(uploadedImage.processedImageUrl || uploadedImage.originalImageUrl));
+    setApprovedBlurMode('AUTO');
+    setApprovedPreview(
+      resolveAssetUrl(uploadedImage.processedImageUrl || uploadedImage.originalImageUrl),
+    );
     setBlurDecisionOpen(false);
-    setBlurStep("idle");
-    setMessage("");
+    setBlurStep('idle');
+    setMessage('');
   };
 
   const handleOpenManualEditor = () => {
-    setBlurStep("manual");
+    setBlurStep('manual');
   };
 
   const handleManualApprove = (file: File, previewDataUrl: string) => {
     setManualBlurFile(file);
     setManualPreviewUrl(previewDataUrl);
-    setApprovedBlurMode("MANUAL");
+    setApprovedBlurMode('MANUAL');
     setApprovedPreview(previewDataUrl);
     setBlurDecisionOpen(false);
-    setBlurStep("idle");
-    setMessage("");
+    setBlurStep('idle');
+    setMessage('');
   };
 
   const handleSubmit = async () => {
     if (!selectedFile) {
-      setMessage("이미지를 먼저 선택해주세요.");
+      setMessage('이미지를 먼저 선택해주세요.');
       return;
     }
 
     if (!approvedBlurMode || !uploadedImage) {
-      setMessage("먼저 블러 확인을 완료해주세요.");
+      setMessage('먼저 블러 확인을 완료해주세요.');
       setBlurDecisionOpen(true);
-      setBlurStep("decision");
+      setBlurStep('decision');
       return;
     }
 
     if (!content.trim()) {
-      setMessage("게시글 설명을 입력해주세요.");
+      setMessage('게시글 설명을 입력해주세요.');
       return;
     }
 
@@ -1046,22 +995,22 @@ export default function PostUpload() {
           } => item.category !== null && Boolean(item.brand || item.itemName),
         );
 
-      setMessage("게시글 생성 중...");
+      setMessage('게시글 생성 중...');
 
-      const created = await fetcher<CreatePostResponse & { postId?: number }>("/posts", {
-        method: "POST",
+      const created = await fetcher<CreatePostResponse & { postId?: number }>('/posts', {
+        method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
           content: content.trim(),
           image: {
             originalImageUrl: uploadedImage.originalImageUrl,
             processedImageUrl:
-              approvedBlurMode === "MANUAL"
+              approvedBlurMode === 'MANUAL'
                 ? uploadedImage.originalImageUrl
                 : uploadedImage.processedImageUrl,
             storageKey: uploadedImage.storageKey ?? null,
             thumbnailUrl: uploadedImage.thumbnailUrl ?? null,
-            blurMethod: approvedBlurMode === "MANUAL" ? "MANUAL" : uploadedImage.blurMethod,
+            blurMethod: approvedBlurMode === 'MANUAL' ? 'MANUAL' : uploadedImage.blurMethod,
             aiBlurStatus: uploadedImage.aiBlurStatus,
           },
           keywordIds: selectedKeywords,
@@ -1070,32 +1019,31 @@ export default function PostUpload() {
       });
 
       const postId =
-        created.postId ??
-        (created as unknown as { item?: { postId?: number } }).item?.postId;
+        created.postId ?? (created as unknown as { item?: { postId?: number } }).item?.postId;
 
-      if (approvedBlurMode === "MANUAL" && manualBlurFile && postId) {
-        setMessage("수동 블러 서버 반영 중...");
+      if (approvedBlurMode === 'MANUAL' && manualBlurFile && postId) {
+        setMessage('수동 블러 서버 반영 중...');
 
         const formData = new FormData();
-        formData.append("file", manualBlurFile);
+        formData.append('file', manualBlurFile);
 
         const response = await performApiRequest(`/uploads/posts/${postId}/manual-blur`, {
-          method: "PATCH",
+          method: 'PATCH',
           body: formData,
         });
 
         if (!response.ok) {
           const text = await response.text();
-          throw new Error(text || "수동 블러 반영 실패");
+          throw new Error(text || '수동 블러 반영 실패');
         }
       }
 
-      setMessage("게시글 생성 완료");
-      navigate("/rankingZone");
+      setMessage('게시글 생성 완료');
+      navigate('/rankingZone');
     } catch (err) {
-      console.error("게시글 작성 실패:", err);
+      console.error('게시글 작성 실패:', err);
       if (handleAuthError(err)) return;
-      setMessage(err instanceof Error ? err.message : "게시글 작성 실패");
+      setMessage(err instanceof Error ? err.message : '게시글 작성 실패');
     } finally {
       setSubmitting(false);
     }
@@ -1104,14 +1052,14 @@ export default function PostUpload() {
   useEffect(() => {
     const loadKeywords = async () => {
       try {
-        const data = await fetcher<GetKeywordsResponse>("/keywords", {
+        const data = await fetcher<GetKeywordsResponse>('/keywords', {
           headers: getAuthHeaders(),
         });
 
         setKeywordOptions((data.items ?? []).map((item) => ({ id: item.id, label: item.label })));
       } catch (err) {
         if (handleAuthError(err)) return;
-        console.error("키워드 불러오기 실패:", err);
+        console.error('키워드 불러오기 실패:', err);
       }
     };
 
@@ -1134,7 +1082,7 @@ export default function PostUpload() {
             ) : (
               <div className={styles.heroPlaceholder}>
                 <span className={styles.heroPlaceholderText}>
-                  블러 승인된 이미지가 여기에 표시됩니다.
+                  업로드한 사진이 여기에 표시됩니다.
                 </span>
               </div>
             )}
@@ -1145,7 +1093,7 @@ export default function PostUpload() {
               onClick={handleBack}
               aria-label="뒤로가기"
             >
-              <ChevronLeft size={15} strokeWidth={2.6} />
+              <ChevronLeft size={17} strokeWidth={2.6} />
             </button>
 
             <button
@@ -1154,7 +1102,7 @@ export default function PostUpload() {
               onClick={handleOpenFilePicker}
               aria-label="사진 선택"
             >
-              <PhotoFrameIcon />
+              <ImageIcon size={18} />
             </button>
           </div>
 
@@ -1176,7 +1124,7 @@ export default function PostUpload() {
                   className={styles.blurCheckButton}
                   onClick={() => {
                     setBlurDecisionOpen(true);
-                    setBlurStep("decision");
+                    setBlurStep('decision');
                   }}
                 >
                   블러 다시 처리하기
@@ -1187,15 +1135,15 @@ export default function PostUpload() {
           )}
 
           <section className={styles.contentInputSection}>
-            <label htmlFor="post-content" className={styles.contentLabel}>
-              게시글 설명
-            </label>
+            <div className={styles.sectionHeaderRow}>
+              <h2 className={styles.sectionTitle}>코디 컨셉</h2>
+            </div>
 
             <textarea
               id="post-content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="코디 컨셉을 타이핑"
+              placeholder="코디 컨셉 타이핑"
               className={styles.contentTextarea}
               maxLength={300}
             />
@@ -1206,51 +1154,90 @@ export default function PostUpload() {
             </div>
           </section>
 
-          <div className={styles.divider} />
-
           <section className={styles.keywordSection}>
-            <div className={styles.keywordHeader}>
-              <span className={styles.sectionTitle}>이 코디의 키워드를 선택해주세요</span>
+            <div className={styles.sectionHeaderRow}>
+              <div className={styles.keywordTitleWrap}>
+                <h2 className={styles.sectionTitle}>코디 키워드</h2>
+                <span className={styles.keywordLimitText}>(최대 3개)</span>
+              </div>
             </div>
 
-            <div className={styles.keywordMetaText}>최대 3개 까지만 선택해주세요</div>
+            <div className={styles.keywordCard}>
+              <div className={styles.keywordSearchBar}>
+                <Search size={18} className={styles.keywordSearchIcon} />
+                <input
+                  type="text"
+                  value={keywordQuery}
+                  onChange={(e) => setKeywordQuery(e.target.value)}
+                  placeholder="키워드 검색"
+                  className={styles.keywordSearchInput}
+                />
+                {keywordQuery ? (
+                  <button
+                    type="button"
+                    className={styles.keywordClearButton}
+                    onClick={() => setKeywordQuery('')}
+                    aria-label="검색어 지우기"
+                  >
+                    <X size={16} />
+                  </button>
+                ) : null}
+              </div>
 
-            <div className={styles.keywordGrid}>
-              {keywordOptions.length > 0 ? (
-                keywordOptions.map((keyword) => {
-                  const selected = selectedKeywords.includes(keyword.id);
-
-                  return (
+              {selectedKeywordItems.length > 0 && (
+                <div className={styles.selectedKeywordWrap}>
+                  {selectedKeywordItems.map((keyword) => (
                     <button
                       key={keyword.id}
                       type="button"
-                      className={cls(styles.keywordChip, selected && styles.keywordChipSelected)}
+                      className={styles.selectedKeywordChip}
                       onClick={() => toggleKeyword(keyword.id)}
                     >
-                      <span className={styles.keywordLabel}>{keyword.label}</span>
+                      {keyword.label}
                     </button>
-                  );
-                })
-              ) : (
-                <p className={styles.statusMessage}>키워드 목록을 불러오지 못했습니다.</p>
+                  ))}
+                </div>
               )}
+
+              <div className={styles.keywordSuggestionWrap}>
+                {filteredKeywordOptions.length > 0 ? (
+                  filteredKeywordOptions.map((keyword) => {
+                    const selected = selectedKeywords.includes(keyword.id);
+
+                    return (
+                      <button
+                        key={keyword.id}
+                        type="button"
+                        className={cls(
+                          styles.keywordSuggestionChip,
+                          selected && styles.keywordSuggestionChipSelected,
+                        )}
+                        onClick={() => toggleKeyword(keyword.id)}
+                      >
+                        {keyword.label}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className={styles.emptyKeywordText}>검색 결과가 없습니다.</div>
+                )}
+              </div>
             </div>
           </section>
-
-          <div className={styles.divider} />
 
           <section className={styles.itemSection}>
             <div className={styles.sectionHeaderRow}>
               <h2 className={styles.sectionTitle}>착용 아이템</h2>
 
-              <button
-                type="button"
-                className={styles.addItemButton}
-                onClick={handleAddWearItem}
-              >
-                <Plus size={14} strokeWidth={2.5} className={styles.addItemPlusIcon} />
-                <span className={styles.addItemText}>추가</span>
-              </button>
+              <div className={styles.itemHeaderActionGroup}>
+                <button
+                  type="button"
+                  className={styles.whiteActionButton}
+                  onClick={handleAddWearItem}
+                >
+                  추가
+                </button>
+              </div>
             </div>
 
             <div className={styles.itemGrid}>
@@ -1273,15 +1260,13 @@ export default function PostUpload() {
                         onClose={() => {
                           setOpenDropdownId((prev) => (prev === item.id ? null : prev));
                         }}
-                        onChange={(value) =>
-                          handleWearItemChange(item.id, "type", value)
-                        }
+                        onChange={(value) => handleWearItemChange(item.id, 'type', value)}
                       />
 
                       <input
                         type="text"
                         value={item.brand}
-                        onChange={(e) => handleWearItemChange(item.id, "brand", e.target.value)}
+                        onChange={(e) => handleWearItemChange(item.id, 'brand', e.target.value)}
                         placeholder="상품 브랜드"
                         className={styles.itemInput}
                       />
@@ -1289,7 +1274,7 @@ export default function PostUpload() {
                       <input
                         type="text"
                         value={item.name}
-                        onChange={(e) => handleWearItemChange(item.id, "name", e.target.value)}
+                        onChange={(e) => handleWearItemChange(item.id, 'name', e.target.value)}
                         placeholder="상품 이름"
                         className={styles.itemInput}
                       />
@@ -1311,7 +1296,7 @@ export default function PostUpload() {
               onClick={handleSubmit}
               disabled={submitting}
             >
-              {submitting ? "처리 중..." : "작성 완료"}
+              {submitting ? '처리 중...' : '작성 완료'}
             </button>
           </div>
         </section>
@@ -1319,7 +1304,7 @@ export default function PostUpload() {
 
       {blurDecisionOpen && uploadedImage && (
         <Modal onClose={() => setBlurDecisionOpen(false)}>
-          {blurStep === "decision" && (
+          {blurStep === 'decision' && (
             <>
               <div className={styles.modalHeaderRow}>
                 <h3 className={styles.modalTitle}>블러 확인</h3>
@@ -1336,12 +1321,14 @@ export default function PostUpload() {
 
               <ImgCompare
                 originalUrl={rawLocalPreview || assetUrl(uploadedImage.originalImageUrl)}
-                aiUrl={uploadedImage.processedImageUrl ? assetUrl(uploadedImage.processedImageUrl) : ""}
-                aiFailed={uploadedImage.aiBlurStatus === "FAILED"}
+                aiUrl={
+                  uploadedImage.processedImageUrl ? assetUrl(uploadedImage.processedImageUrl) : ''
+                }
+                aiFailed={uploadedImage.aiBlurStatus === 'FAILED'}
                 manualPreview={manualPreviewUrl}
               />
 
-              {uploadedImage.aiBlurStatus === "FAILED" ? (
+              {uploadedImage.aiBlurStatus === 'FAILED' ? (
                 <p className={styles.modalWarningText}>
                   AI 블러가 실패했어요. 수동 블러로 바로 수정해주세요.
                 </p>
@@ -1356,7 +1343,7 @@ export default function PostUpload() {
                   type="button"
                   className={styles.modalPrimaryButton}
                   onClick={handleApproveAutoBlur}
-                  disabled={uploadedImage.aiBlurStatus === "FAILED"}
+                  disabled={uploadedImage.aiBlurStatus === 'FAILED'}
                 >
                   AI 블러 사용
                 </button>
@@ -1372,12 +1359,12 @@ export default function PostUpload() {
             </>
           )}
 
-          {blurStep === "manual" && (
+          {blurStep === 'manual' && (
             <ManualBlurEditor
               key={rawLocalPreview || assetUrl(uploadedImage.originalImageUrl)}
               originalImageUrl={rawLocalPreview || assetUrl(uploadedImage.originalImageUrl)}
               onApprove={handleManualApprove}
-              onBack={() => setBlurStep("decision")}
+              onBack={() => setBlurStep('decision')}
             />
           )}
         </Modal>

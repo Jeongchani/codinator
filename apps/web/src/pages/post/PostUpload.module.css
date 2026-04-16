@@ -34,25 +34,16 @@
 
 .headerCircleButton,
 .editCircleButton {
-  @apply absolute z-10 flex items-center justify-center rounded-full text-white;
-  background: rgba(0, 0, 0, 0.42);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  @apply absolute z-10 flex items-center justify-center rounded-full bg-white text-neutral-900;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
 }
 
 .headerCircleButton {
-  @apply left-3 top-3 h-8 w-8;
+  @apply left-4 top-[10px] h-9 w-9;
 }
 
 .editCircleButton {
-  @apply bottom-3 right-3 h-8 w-8;
-}
-
-.manualTopBackButton,
-.modalCloseButton {
-  @apply flex h-8 w-8 items-center justify-center rounded-full bg-white text-neutral-700;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  @apply bottom-4 right-4 h-9 w-9;
 }
 
 .hiddenInput {
@@ -64,47 +55,11 @@
 }
 
 .contentSection {
-  @apply px-4 pt-3 pb-4;
+  @apply px-4 pt-5 pb-6 bg-white;
 }
 
 .divider {
-  @apply my-4 h-px w-full bg-neutral-300;
-}
-
-.keywordSection {
-  @apply w-full;
-}
-
-.keywordHeader {
-  @apply mb-1 flex items-center justify-between;
-}
-
-.keywordMetaText {
-  @apply mb-3 text-[11px] text-neutral-400;
-}
-
-.keywordGrid {
-  @apply flex flex-wrap gap-2;
-}
-
-.keywordChip {
-  @apply flex min-h-[30px] items-center justify-center rounded-full border border-neutral-300 bg-white px-3 py-1.5 transition;
-}
-
-.keywordChipSelected {
-  @apply border-black bg-black;
-}
-
-.keywordLabel {
-  @apply text-[12px] leading-4 text-neutral-700;
-}
-
-.keywordChipSelected .keywordLabel {
-  @apply text-white;
-}
-
-.itemSection {
-  @apply pt-0;
+  @apply my-5 h-px w-full bg-neutral-200;
 }
 
 .sectionHeaderRow {
@@ -112,23 +67,105 @@
 }
 
 .sectionTitle {
-  @apply text-[15px] font-semibold leading-6 text-neutral-900;
+  @apply text-base font-semibold leading-[22.4px] text-neutral-900;
 }
 
-/* 추가 버튼 */
-.addItemButton {
-  @apply inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-neutral-300 bg-white px-3 text-[12px] font-semibold text-neutral-700;
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+.contentInputSection {
+  @apply flex flex-col;
 }
 
-.addItemPlusIcon {
-  @apply shrink-0 text-neutral-800;
+.contentTextarea {
+  @apply min-h-[135px] w-full resize-none rounded-[10px] border border-neutral-400 bg-neutral-100 px-[15px] py-[15px] text-sm leading-5 text-neutral-900 outline-none placeholder:text-neutral-400;
 }
 
-.addItemText {
-  @apply inline-flex items-center leading-none;
+.contentTextarea:focus {
+  @apply border-neutral-500;
+}
+
+.textMetaRow {
+  @apply mt-2 flex items-center justify-between;
+}
+
+.helperText {
+  @apply text-[11px] text-neutral-500;
+}
+
+.lengthText {
+  @apply text-[11px] text-neutral-400;
+}
+
+.keywordSection {
+  @apply mt-6;
+}
+
+.keywordTitleWrap {
+  @apply flex items-end gap-1;
+}
+
+.keywordLimitText {
+  @apply pb-[2px] text-xs leading-4 text-neutral-400;
+}
+
+.keywordCard {
+  @apply rounded-[10px] border border-neutral-400 bg-white p-3;
+  box-shadow: 2px 4px 10px 0 rgba(0, 0, 0, 0.12);
+}
+
+.keywordSearchBar {
+  @apply flex h-10 items-center gap-2 rounded-[10px] border border-neutral-400 bg-white px-4;
+}
+
+.keywordSearchIcon {
+  @apply shrink-0 text-neutral-400;
+}
+
+.keywordSearchInput {
+  @apply h-full w-full bg-transparent text-[15px] leading-5 text-neutral-900 outline-none placeholder:text-neutral-400;
+}
+
+.keywordClearButton {
+  @apply flex h-6 w-6 items-center justify-center rounded-full text-neutral-400;
+}
+
+.selectedKeywordWrap {
+  @apply mt-3 flex flex-wrap gap-[6px];
+}
+
+.selectedKeywordChip {
+  @apply flex h-[30px] items-center justify-center rounded-[10px] bg-black px-4 text-[15px] leading-5 text-white;
+}
+
+.keywordSuggestionWrap {
+  @apply mt-3 flex flex-wrap gap-[6px];
+}
+
+.keywordSuggestionChip {
+  @apply flex h-[30px] items-center justify-center rounded-[10px] border border-neutral-400 bg-white px-4 text-[15px] leading-5 text-neutral-500 transition;
+}
+
+.keywordSuggestionChipSelected {
+  @apply border-black bg-black text-white;
+}
+
+.emptyKeywordText {
+  @apply text-[13px] text-neutral-400;
+}
+
+.itemSection {
+  @apply mt-8;
+}
+
+.itemHeaderActionGroup {
+  @apply ml-auto flex items-center justify-end;
+}
+
+.whiteActionButton {
+  @apply inline-flex h-[30px] items-center justify-center rounded-[8px] border border-neutral-300 bg-white px-4 text-xs font-medium text-neutral-800 transition;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.whiteActionButton:hover {
+  @apply bg-neutral-50;
 }
 
 .itemGrid {
@@ -136,7 +173,7 @@
 }
 
 .itemCard {
-  @apply rounded-[12px] border border-neutral-200 bg-white;
+  @apply rounded-[12px] border border-neutral-300 bg-white p-3 transition;
   position: relative;
   box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
 }
@@ -146,16 +183,15 @@
 }
 
 .itemInfo {
-  @apply flex flex-col gap-1.5 p-2;
+  @apply flex flex-col gap-2;
 }
 
-/* 커스텀 드롭다운 */
 .selectWrap {
   position: relative;
 }
 
 .itemSelectButton {
-  @apply flex h-9 w-full items-center justify-between border bg-white text-left outline-none transition;
+  @apply flex h-10 w-full items-center justify-between border bg-white text-left outline-none transition;
   border-radius: 12px;
   border-color: #d4d4d8;
   padding: 0 12px;
@@ -165,9 +201,9 @@
 }
 
 .itemSelectButtonOpen {
-  border-color: #171717;
+  border-color: #a3a3a3;
   box-shadow:
-    0 0 0 3px rgba(0, 0, 0, 0.05),
+    0 0 0 3px rgba(163, 163, 163, 0.08),
     0 8px 20px rgba(15, 23, 42, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
@@ -177,20 +213,20 @@
 }
 
 .itemSelectTagIcon {
-  @apply shrink-0 text-neutral-500;
+  @apply shrink-0 text-neutral-400;
 }
 
 .itemSelectText {
-  @apply block truncate text-[11px] leading-4 text-neutral-900;
-  padding-right: 10px;
+  @apply block truncate whitespace-nowrap text-[12px] leading-4 text-neutral-500;
+  padding-right: 8px;
 }
 
 .itemSelectPlaceholder {
-  @apply text-neutral-500;
+  @apply text-neutral-400;
 }
 
 .itemSelectChevron {
-  @apply shrink-0 text-neutral-700 transition-transform duration-200;
+  @apply shrink-0 text-neutral-400 transition-transform duration-200;
 }
 
 .itemSelectChevronOpen {
@@ -240,11 +276,11 @@
 }
 
 .selectOptionTagIcon {
-  @apply shrink-0 text-neutral-500;
+  @apply shrink-0 text-neutral-400;
 }
 
 .selectOptionLabel {
-  @apply truncate text-[12px] leading-4 text-neutral-800;
+  @apply truncate text-[12px] leading-4 text-neutral-500;
 }
 
 .selectOption:hover {
@@ -252,25 +288,20 @@
 }
 
 .selectOptionActive {
-  background: #111111;
+  background: #f5f5f5;
 }
 
 .selectOptionActive .selectOptionLabel {
-  color: #ffffff;
+  color: #737373;
   font-weight: 600;
 }
 
 .selectOptionActive .selectOptionTagIcon {
-  color: #ffffff;
-}
-
-.selectOptionPlaceholder .selectOptionLabel {
   color: #737373;
 }
 
-/* 입력칸 */
 .itemInput {
-  @apply h-9 w-full border bg-white text-[11px] leading-4 text-neutral-900 outline-none placeholder:text-neutral-400;
+  @apply h-10 w-full border bg-white text-[12px] leading-4 text-neutral-900 outline-none placeholder:text-neutral-400;
   border-radius: 12px;
   border-color: #e5e5e5;
   padding: 0 12px;
@@ -286,40 +317,24 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
+.statusMessage {
+  @apply mt-4 text-[12px] leading-5 text-neutral-500;
+}
+
 .submitArea {
-  @apply mt-5 pb-0;
+  @apply mt-6;
 }
 
 .submitButton {
-  @apply flex h-[44px] w-full items-center justify-center rounded-[8px] bg-black text-[15px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60;
+  @apply flex h-10 w-full items-center justify-center rounded-[10px] bg-black text-lg font-bold text-white disabled:cursor-not-allowed disabled:opacity-60;
 }
 
-.contentInputSection {
+.blurActionArea {
   @apply flex flex-col gap-2;
 }
 
-.contentLabel {
-  @apply text-[14px] font-semibold leading-6 text-neutral-900;
-}
-
-.contentTextarea {
-  @apply min-h-[100px] w-full resize-none rounded-[8px] border border-neutral-200 bg-white px-3 py-3 text-[13px] leading-5 text-neutral-900 outline-none placeholder:text-neutral-400;
-}
-
-.textMetaRow {
-  @apply flex items-center justify-between;
-}
-
-.helperText {
-  @apply text-[11px] text-neutral-500;
-}
-
-.lengthText {
-  @apply text-[11px] text-neutral-400;
-}
-
-.statusMessage {
-  @apply mt-4 text-[12px] leading-5 text-neutral-500;
+.blurCheckButton {
+  @apply flex h-[40px] w-full items-center justify-center rounded-[10px] bg-black text-[14px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60;
 }
 
 /* modal */
@@ -337,6 +352,12 @@
 
 .modalTitle {
   @apply text-[24px] font-bold leading-8 text-neutral-900;
+}
+
+.modalCloseButton,
+.manualTopBackButton {
+  @apply flex h-8 w-8 items-center justify-center rounded-full bg-white text-neutral-700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .modalInfoText {
@@ -491,12 +512,4 @@
 
 .editorApplyButton {
   @apply flex h-[50px] w-full items-center justify-center rounded-full bg-black px-4 text-[15px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50;
-}
-
-.blurActionArea {
-  @apply flex flex-col gap-2;
-}
-
-.blurCheckButton {
-  @apply flex h-[40px] w-full items-center justify-center rounded-[10px] bg-black text-[14px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60;
 }
