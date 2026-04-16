@@ -26,4 +26,10 @@ export class SignupRequestDto {
     description: '전화번호. 저장 시 숫자만 남기고 정규화됨',
   })
   phoneNumber: string;
+
+  @ApiProperty({
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    description: 'POST /auth/phone/verify 응답으로 받은 전화번호 인증 토큰 (SIGN_UP 목적)',
+  })
+  phoneVerificationToken: string;
 }

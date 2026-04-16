@@ -44,3 +44,17 @@ export type AiBlurStatus = 'NONE' | 'PENDING' | 'PROCESSING' | 'DONE' | 'FAILED'
 export type ImageSearchMode = 'FULL_OUTFIT' | 'SINGLE_ITEM';
 
 export type FeedbackTagCode = string;
+
+// ── V3 추가 enums ────────────────────────────────────────────────────────────
+
+export type SocialProvider = 'GOOGLE' | 'KAKAO' | 'NAVER';
+
+export type PhoneVerificationPurpose = 'SIGN_UP' | 'PHONE_CHANGE' | 'PASSWORD_RESET';
+
+export type PhoneVerificationStatus = 'PENDING' | 'VERIFIED' | 'USED' | 'EXPIRED' | 'FAILED';
+
+export type ThemeMode = 'LIGHT' | 'DARK';
+
+export type PushDevice = 'IOS' | 'ANDROID' | 'WEB';
+
+export type SanctionType = 'TEMP_SUSPENSION' | 'PERMANENT_BAN' | 'POST_RESTRICTION';

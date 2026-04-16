@@ -8,6 +8,8 @@ export interface SignupRequest {
   birthDate: string;
   gender: Gender;
   phoneNumber: string;
+  /** POST /auth/phone/verify 응답으로 받은 전화번호 인증 토큰 (SIGN_UP 목적, 10분 유효) */
+  phoneVerificationToken: string;
 }
 
 export interface SignupResponse {
