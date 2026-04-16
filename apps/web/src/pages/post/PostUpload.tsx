@@ -56,8 +56,7 @@ const BRUSH_PRESETS: BrushPreset[] = [
   { id: 'l', size: 84, dot: 26, block: 18 },
 ];
 
-const wearTypeOptions: WearType[] = [
-  '',
+const wearTypeOptions: Exclude<WearType, ''>[] = [
   '상의',
   '하의',
   '아우터',
@@ -127,15 +126,13 @@ function WearTypeDropdown({
   value,
   options,
   open,
-  disabled,
   onToggle,
   onClose,
   onChange,
 }: {
   value: WearType;
-  options: WearType[];
+  options: Exclude<WearType, ''>[];
   open: boolean;
-  disabled?: boolean;
   onToggle: () => void;
   onClose: () => void;
   onChange: (value: WearType) => void;
@@ -143,7 +140,7 @@ function WearTypeDropdown({
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!open || disabled) return;
+    if (!open) return;
 
     const handlePointerDown = (event: MouseEvent | TouchEvent) => {
       const target = event.target as Node | null;
@@ -169,29 +166,21 @@ function WearTypeDropdown({
       document.removeEventListener('touchstart', handlePointerDown);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [open, disabled, onClose]);
+  }, [open, onClose]);
 
   return (
     <div className={styles.selectWrap} ref={wrapRef}>
       <button
         type="button"
-        className={cls(
-          styles.itemSelectButton,
-          open && styles.itemSelectButtonOpen,
-          disabled && styles.itemSelectButtonDisabled,
-        )}
-        onClick={() => {
-          if (disabled) return;
-          onToggle();
-        }}
+        className={cls(styles.itemSelectButton, open && styles.itemSelectButtonOpen)}
+        onClick={onToggle}
         aria-haspopup="listbox"
         aria-expanded={open}
-        disabled={disabled}
       >
         <div className={styles.itemSelectContent}>
           <Tag size={14} strokeWidth={2.1} className={styles.itemSelectTagIcon} />
           <span className={cls(styles.itemSelectText, !value && styles.itemSelectPlaceholder)}>
-            {value || '의류 종류 선택'}
+            {value || '의류 종류'}
           </span>
         </div>
 
@@ -202,21 +191,16 @@ function WearTypeDropdown({
         />
       </button>
 
-      {open && !disabled && (
+      {open && (
         <div className={styles.selectMenu} role="listbox">
           {options.map((type) => {
-            const isPlaceholder = type === '';
             const selected = value === type;
 
             return (
               <button
-                key={type || 'placeholder'}
+                key={type}
                 type="button"
-                className={cls(
-                  styles.selectOption,
-                  selected && styles.selectOptionActive,
-                  isPlaceholder && styles.selectOptionPlaceholder,
-                )}
+                className={cls(styles.selectOption, selected && styles.selectOptionActive)}
                 onClick={() => {
                   onChange(type);
                   onClose();
@@ -224,7 +208,7 @@ function WearTypeDropdown({
               >
                 <div className={styles.selectOptionContent}>
                   <Tag size={14} strokeWidth={2.1} className={styles.selectOptionTagIcon} />
-                  <span className={styles.selectOptionLabel}>{type || '의류 종류 선택'}</span>
+                  <span className={styles.selectOptionLabel}>{type}</span>
                 </div>
               </button>
             );
@@ -791,9 +775,6 @@ export default function PostUpload() {
   const [wearItems, setWearItems] = useState<WearItem[]>(initialWearItems);
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
 
-  const [isSelectMode, setIsSelectMode] = useState(false);
-  const [selectedWearItemIds, setSelectedWearItemIds] = useState<number[]>([]);
-
   const [blurStep, setBlurStep] = useState<BlurFlowStep>('idle');
   const [blurDecisionOpen, setBlurDecisionOpen] = useState(false);
   const [manualPreviewUrl, setManualPreviewUrl] = useState<string | null>(null);
@@ -929,42 +910,12 @@ export default function PostUpload() {
     );
   };
 
-  const handleEnterSelectMode = () => {
-    setIsSelectMode(true);
-    setSelectedWearItemIds([]);
-    setOpenDropdownId(null);
-  };
-
-  const handleToggleWearItemSelection = (itemId: number) => {
-    if (!isSelectMode) return;
-
-    setSelectedWearItemIds((prev) =>
-      prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId],
-    );
-  };
-
   const handleAddWearItem = () => {
     setWearItems((prev) => {
       const nextId = prev.length > 0 ? Math.max(...prev.map((item) => item.id)) + 1 : 1;
       return [...prev, createEmptyWearItem(nextId)];
     });
 
-    setSelectedWearItemIds([]);
-    setIsSelectMode(false);
-    setOpenDropdownId(null);
-  };
-
-  const handleDeleteWearItems = () => {
-    if (selectedWearItemIds.length === 0) return;
-
-    setWearItems((prev) => {
-      const remaining = prev.filter((item) => !selectedWearItemIds.includes(item.id));
-      if (remaining.length > 0) return remaining;
-      return [createEmptyWearItem(1)];
-    });
-
-    setSelectedWearItemIds([]);
-    setIsSelectMode(false);
     setOpenDropdownId(null);
   };
 
@@ -1179,7 +1130,7 @@ export default function PostUpload() {
               id="post-content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="코디 컨셉 타이핑 (최대 300자)"
+              placeholder="코디 컨셉 타이핑"
               className={styles.contentTextarea}
               maxLength={300}
             />
@@ -1266,58 +1217,30 @@ export default function PostUpload() {
               <h2 className={styles.sectionTitle}>착용 아이템</h2>
 
               <div className={styles.itemHeaderActionGroup}>
-                {!isSelectMode ? (
-                  <button
-                    type="button"
-                    className={styles.whiteActionButton}
-                    onClick={handleEnterSelectMode}
-                  >
-                    선택
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className={styles.whiteActionButton}
-                      onClick={handleAddWearItem}
-                    >
-                      추가
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.whiteActionButton}
-                      onClick={handleDeleteWearItems}
-                      disabled={selectedWearItemIds.length === 0}
-                    >
-                      삭제
-                    </button>
-                  </>
-                )}
+                <button
+                  type="button"
+                  className={styles.whiteActionButton}
+                  onClick={handleAddWearItem}
+                >
+                  추가
+                </button>
               </div>
             </div>
 
             <div className={styles.itemGrid}>
               {wearItems.map((item) => {
                 const isOpen = openDropdownId === item.id;
-                const isSelected = selectedWearItemIds.includes(item.id);
 
                 return (
                   <article
                     key={item.id}
-                    className={cls(
-                      styles.itemCard,
-                      isOpen && styles.itemCardOpen,
-                      isSelectMode && styles.itemCardSelectable,
-                      isSelected && styles.itemCardSelected,
-                    )}
-                    onClick={() => handleToggleWearItemSelection(item.id)}
+                    className={cls(styles.itemCard, isOpen && styles.itemCardOpen)}
                   >
                     <div className={styles.itemInfo}>
                       <WearTypeDropdown
                         value={item.type}
                         options={wearTypeOptions}
                         open={isOpen}
-                        disabled={isSelectMode}
                         onToggle={() =>
                           setOpenDropdownId((prev) => (prev === item.id ? null : item.id))
                         }
@@ -1333,10 +1256,6 @@ export default function PostUpload() {
                         onChange={(e) => handleWearItemChange(item.id, 'brand', e.target.value)}
                         placeholder="상품 브랜드"
                         className={styles.itemInput}
-                        disabled={isSelectMode}
-                        onClick={(e) => {
-                          if (isSelectMode) e.preventDefault();
-                        }}
                       />
 
                       <input
@@ -1345,10 +1264,6 @@ export default function PostUpload() {
                         onChange={(e) => handleWearItemChange(item.id, 'name', e.target.value)}
                         placeholder="상품 이름"
                         className={styles.itemInput}
-                        disabled={isSelectMode}
-                        onClick={(e) => {
-                          if (isSelectMode) e.preventDefault();
-                        }}
                       />
                     </div>
                   </article>

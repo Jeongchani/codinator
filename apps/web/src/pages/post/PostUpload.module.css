@@ -13,28 +13,28 @@
 }
 
 .heroSection {
-  @apply relative w-full bg-white;
+  @apply relative w-full;
 }
 
 .heroMediaFrame {
-  @apply relative h-[434px] w-full overflow-hidden bg-white border-b border-neutral-200;
+  @apply relative h-[460px] w-full overflow-hidden bg-neutral-200;
 }
 
 .heroImage {
-  @apply h-full w-full object-contain bg-white;
+  @apply h-full w-full object-contain bg-neutral-100;
 }
 
 .heroPlaceholder {
-  @apply flex h-full w-full items-center justify-center bg-white;
+  @apply flex h-full w-full items-center justify-center bg-neutral-200;
 }
 
 .heroPlaceholderText {
-  @apply text-[12px] text-neutral-400;
+  @apply text-[12px] text-neutral-500;
 }
 
 .headerCircleButton,
 .editCircleButton {
-  @apply absolute z-10 flex items-center justify-center rounded-full text-neutral-900 bg-white;
+  @apply absolute z-10 flex items-center justify-center rounded-full bg-white text-neutral-900;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
 }
 
@@ -156,7 +156,7 @@
 }
 
 .itemHeaderActionGroup {
-  @apply ml-auto flex items-center justify-end gap-2;
+  @apply ml-auto flex items-center justify-end;
 }
 
 .whiteActionButton {
@@ -166,10 +166,6 @@
 
 .whiteActionButton:hover {
   @apply bg-neutral-50;
-}
-
-.whiteActionButton:disabled {
-  @apply cursor-not-allowed opacity-45;
 }
 
 .itemGrid {
@@ -184,17 +180,6 @@
 
 .itemCardOpen {
   z-index: 30;
-}
-
-.itemCardSelectable {
-  @apply cursor-pointer;
-}
-
-.itemCardSelected {
-  @apply border-black;
-  box-shadow:
-    0 0 0 2px rgba(17, 17, 17, 0.08),
-    0 8px 20px rgba(15, 23, 42, 0.12);
 }
 
 .itemInfo {
@@ -216,15 +201,11 @@
 }
 
 .itemSelectButtonOpen {
-  border-color: #171717;
+  border-color: #a3a3a3;
   box-shadow:
-    0 0 0 3px rgba(0, 0, 0, 0.05),
+    0 0 0 3px rgba(163, 163, 163, 0.08),
     0 8px 20px rgba(15, 23, 42, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
-}
-
-.itemSelectButtonDisabled {
-  @apply opacity-80;
 }
 
 .itemSelectContent {
@@ -232,20 +213,20 @@
 }
 
 .itemSelectTagIcon {
-  @apply shrink-0 text-neutral-500;
+  @apply shrink-0 text-neutral-400;
 }
 
 .itemSelectText {
-  @apply block truncate whitespace-nowrap text-[12px] leading-4 text-neutral-900;
+  @apply block truncate whitespace-nowrap text-[12px] leading-4 text-neutral-500;
   padding-right: 8px;
 }
 
 .itemSelectPlaceholder {
-  @apply text-neutral-500;
+  @apply text-neutral-400;
 }
 
 .itemSelectChevron {
-  @apply shrink-0 text-neutral-700 transition-transform duration-200;
+  @apply shrink-0 text-neutral-400 transition-transform duration-200;
 }
 
 .itemSelectChevronOpen {
@@ -295,11 +276,11 @@
 }
 
 .selectOptionTagIcon {
-  @apply shrink-0 text-neutral-500;
+  @apply shrink-0 text-neutral-400;
 }
 
 .selectOptionLabel {
-  @apply truncate text-[12px] leading-4 text-neutral-800;
+  @apply truncate text-[12px] leading-4 text-neutral-500;
 }
 
 .selectOption:hover {
@@ -307,19 +288,15 @@
 }
 
 .selectOptionActive {
-  background: #111111;
+  background: #f5f5f5;
 }
 
 .selectOptionActive .selectOptionLabel {
-  color: #ffffff;
+  color: #737373;
   font-weight: 600;
 }
 
 .selectOptionActive .selectOptionTagIcon {
-  color: #ffffff;
-}
-
-.selectOptionPlaceholder .selectOptionLabel {
   color: #737373;
 }
 
@@ -338,10 +315,6 @@
   box-shadow:
     0 0 0 3px rgba(0, 0, 0, 0.05),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
-}
-
-.itemInput:disabled {
-  @apply cursor-pointer bg-neutral-50 text-neutral-500;
 }
 
 .statusMessage {
