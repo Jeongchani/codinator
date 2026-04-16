@@ -7,9 +7,5 @@ export class UpdateMeDto {
   })
   nickname?: string;
 
-  @ApiPropertyOptional({
-    example: '010-9876-5432',
-    description: '변경할 전화번호. 저장 시 숫자만 정규화됨',
-  })
-  phoneNumber?: string;
+  // phoneNumber는 V3 정책에 따라 PATCH /users/me/phone 경로로만 변경 가능
 }

@@ -15,6 +15,7 @@ import type {
 import { UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
+import { isValidPassword } from '../../common/helpers/password.helper';
 import { syncAuthorSearchIndexes } from '../search/common/post-search-index.util';
 
 @Injectable()
@@ -64,7 +65,7 @@ export class UsersService {
       throw new NotFoundException('사용자를 찾을 수 없습니다.');
     }
 
-    const dataToUpdate: { nickname?: string; phoneNumber?: string } = {};
+    const dataToUpdate: { nickname?: string } = {};
     let nicknameChanged = false;
 
     if (body.nickname !== undefined) {
@@ -86,17 +87,7 @@ export class UsersService {
       nicknameChanged = true;
     }
 
-    if (body.phoneNumber !== undefined) {
-      const normalized = this.normalizePhoneNumber(body.phoneNumber);
-      const existing = await this.prisma.user.findFirst({
-        where: { phoneNumber: normalized, NOT: { id: userId } },
-        select: { id: true },
-      });
-      if (existing) {
-        throw new BadRequestException('이미 사용 중인 전화번호입니다.');
-      }
-      dataToUpdate.phoneNumber = normalized;
-    }
+    // phoneNumber 변경은 V3 정책에 따라 PATCH /users/me/phone 에서만 처리
 
     const updated = await this.prisma.user.update({
       where: { id: userId },
@@ -179,7 +170,7 @@ export class UsersService {
       throw new UnauthorizedException('현재 비밀번호가 올바르지 않습니다.');
     }
 
-    if (!this.isValidPassword(body.newPassword)) {
+    if (!isValidPassword(body.newPassword)) {
       throw new BadRequestException(
         '새 비밀번호는 8자 이상이며 영문, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.',
       );
@@ -195,21 +186,4 @@ export class UsersService {
     return { success: true, message: '비밀번호가 변경되었습니다.' };
   }
 
-  private isValidPassword(password: string): boolean {
-    return /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(password);
-  }
-
-  private normalizePhoneNumber(phoneNumber: string): string {
-    const normalized = phoneNumber.replace(/[^0-9]/g, '');
-
-    if (!normalized) {
-      throw new BadRequestException('전화번호는 필수값입니다.');
-    }
-
-    if (normalized.length < 9 || normalized.length > 15) {
-      throw new BadRequestException('전화번호 형식이 올바르지 않습니다.');
-    }
-
-    return normalized;
-  }
 }
