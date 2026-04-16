@@ -28,6 +28,26 @@
   transform: translateY(-50%);
 }
 
+.headerTextButton {
+  @apply absolute right-5 flex items-center justify-center rounded-[999px] border-0 px-[8px] h-[30px] text-[11px] font-medium text-white;
+  top: 59px;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.62);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+  transition:
+    transform 140ms ease,
+    opacity 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.headerTextButtonPressed {
+  transform: translateY(-50%) scale(0.96);
+  opacity: 0.94;
+  background: rgba(0, 0, 0, 0.75);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+}
+
 .headerIconButtonFilled {
   @apply w-6 h-6 flex items-center justify-center text-black border-0 p-0 bg-transparent;
 }
@@ -136,7 +156,8 @@
 }
 
 .contentAreaSelectionMode {
-  touch-action: none;
+  touch-action: pan-y;
+  padding-bottom: 141px;
 }
 
 .contentArea::-webkit-scrollbar {
@@ -235,7 +256,7 @@
 }
 
 .modalOverlay {
-  @apply absolute inset-0 z-40 flex items-center justify-center bg-black/35 px-6;
+  @apply absolute inset-0 z-[95] flex items-center justify-center bg-black/35 px-6;
 }
 
 .modalCard {
@@ -269,4 +290,107 @@
 }
 .modalDeleteButton {
   background: #ef4444;
+}
+
+.selectionActionBar {
+  @apply absolute inset-x-0 bottom-0 z-[70] pointer-events-none;
+}
+
+.selectionActionBarLayer {
+  @apply pointer-events-auto relative h-[125px];
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.08) 34%,
+    rgba(0, 0, 0, 0.18) 72%,
+    rgba(0, 0, 0, 0.35) 100%
+  );
+}
+
+.selectionActionSurface {
+  @apply absolute bottom-10 left-0 right-0 h-[0px];
+  background: transparent;
+  overflow: visible;
+}
+
+.selectionActionSurface::before {
+  content: '';
+  position: absolute;
+  inset: -25px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.012) 0%,
+    rgba(255, 255, 255, 0.004) 100%
+  );
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  -webkit-mask-image: radial-gradient(
+    165% 165% at 50% 50%,
+    rgba(0, 0, 0, 0.92) 34%,
+    rgba(0, 0, 0, 0.28) 72%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  mask-image: radial-gradient(
+    165% 165% at 50% 50%,
+    rgba(0, 0, 0, 0.92) 34%,
+    rgba(0, 0, 0, 0.28) 72%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  pointer-events: none;
+}
+
+.selectionActionRow {
+  @apply absolute left-8 right-8 z-[1] flex items-center justify-between;
+  top: 50%;
+  height: 38px;
+  transform: translateY(-50%);
+  overflow: visible;
+}
+
+.selectionCountText {
+  @apply relative z-[2] whitespace-nowrap text-[16px] font-extrabold leading-none tracking-[-0.04em] text-white;
+  text-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.42),
+    0 1px 2px rgba(0, 0, 0, 0.24);
+}
+
+.selectionActionButtons {
+  @apply flex items-center gap-[15px];
+}
+
+.selectionGlassButton {
+  @apply relative flex h-[38px] w-[38px] items-center justify-center rounded-full border;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(236, 236, 240, 0.07) 48%,
+    rgba(210, 210, 214, 0.05) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 7px 14px rgba(0, 0, 0, 0.12),
+    0 1px 3px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.04);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+.selectionGlassButtonDisabled {
+  @apply opacity-40;
+}
+
+.selectionGlassButtonInner {
+  @apply pointer-events-none absolute inset-[1.5px] rounded-full border;
+  border-color: rgba(255, 255, 255, 0.36);
+}
+
+.selectionGlassButtonIcon {
+  @apply relative z-10;
+  opacity: 0.85;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.12));
+}
+
+.selectionActionIconSvg {
+  @apply w-[16px] h-[16px] text-white;
 }

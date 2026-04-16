@@ -1,40 +1,29 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { ChevronLeft, Check, ChevronsUp, Trash2, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import type {
-  BookmarkListItem,
-  RankingPeriod,
-  VoteChoice,
-} from "@codinator/contracts";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ChevronLeft, Check, ChevronsUp, Trash2, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import type { BookmarkListItem, RankingPeriod, VoteChoice } from '@codinator/contracts';
 import {
   clearAuthTokens,
   fetchAllMyBookmarks,
   isAuthError,
   resolveAssetUrl,
   setPostBookmark,
-} from "../../lib/api";
-import PostDetailBottomSheet from "../../components/postdetail/PostDetailBottomSheet";
-import RankingDetail from "../ranking/RankingDetail";
-import EvaluationDetailFeedback from "../evaluation/EvaluationDetailFeedback";
-import styles from "./Bookmark.module.css";
+} from '../../lib/api';
+import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
+import RankingDetail from '../ranking/RankingDetail';
+import EvaluationDetailFeedback from '../evaluation/EvaluationDetailFeedback';
+import styles from './Bookmark.module.css';
 
-type TabType = "all" | "ongoing" | "done";
-type TouchDragMode = "select" | "deselect";
-type SlideDirection = "left" | "right";
+type TabType = 'all' | 'ongoing' | 'done';
+type TouchDragMode = 'select' | 'deselect';
+type SlideDirection = 'left' | 'right';
 
 type BookmarkItem = {
   id: number;
   postId: number;
   title: string;
   imageUrl?: string;
-  status: Exclude<TabType, "all">;
+  status: Exclude<TabType, 'all'>;
   rankingPeriods: RankingPeriod[];
   voteId: number | null;
   voteChoice: VoteChoice | null;
@@ -57,18 +46,18 @@ type SelectionRect = {
   bottom: number;
 };
 
-const TAB_ORDER: TabType[] = ["all", "ongoing", "done"];
+const TAB_ORDER: TabType[] = ['all', 'ongoing', 'done'];
 const LONG_PRESS_MS = 450;
 const LONG_PRESS_MOVE_THRESHOLD = 8;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+  return typeof value === 'object' && value !== null;
 }
 
 function toSafeNumber(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
 
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     const parsed = Number(value);
     if (Number.isFinite(parsed)) return parsed;
   }
@@ -77,10 +66,10 @@ function toSafeNumber(value: unknown): number | null {
 }
 
 function normalizeVoteChoice(value: unknown): VoteChoice | null {
-  const text = String(value ?? "").toUpperCase();
+  const text = String(value ?? '').toUpperCase();
 
-  if (text === "LIKE") return "LIKE";
-  if (text === "DISLIKE") return "DISLIKE";
+  if (text === 'LIKE') return 'LIKE';
+  if (text === 'DISLIKE') return 'DISLIKE';
 
   return null;
 }
@@ -91,17 +80,12 @@ function normalizeRankingPeriods(periods: unknown): RankingPeriod[] {
   return periods
     .map((period) => String(period).toUpperCase())
     .filter((period): period is RankingPeriod => {
-      return period === "WEEKLY" || period === "MONTHLY";
+      return period === 'WEEKLY' || period === 'MONTHLY';
     });
 }
 
 function extractRankingPeriods(raw: Record<string, unknown>): RankingPeriod[] {
-  const candidates = [
-    raw.rankingPeriods,
-    raw.periods,
-    raw.rankingPeriod,
-    raw.period,
-  ];
+  const candidates = [raw.rankingPeriods, raw.periods, raw.rankingPeriod, raw.period];
 
   for (const candidate of candidates) {
     if (Array.isArray(candidate)) {
@@ -109,7 +93,7 @@ function extractRankingPeriods(raw: Record<string, unknown>): RankingPeriod[] {
       if (normalized.length > 0) return normalized;
     }
 
-    if (typeof candidate === "string") {
+    if (typeof candidate === 'string') {
       const normalized = normalizeRankingPeriods([candidate]);
       if (normalized.length > 0) return normalized;
     }
@@ -119,12 +103,7 @@ function extractRankingPeriods(raw: Record<string, unknown>): RankingPeriod[] {
 }
 
 function extractVoteId(raw: Record<string, unknown>): number | null {
-  const directCandidates = [
-    raw.voteId,
-    raw.myVoteId,
-    raw.latestVoteId,
-    raw.selectedVoteId,
-  ];
+  const directCandidates = [raw.voteId, raw.myVoteId, raw.latestVoteId, raw.selectedVoteId];
 
   for (const candidate of directCandidates) {
     const parsed = toSafeNumber(candidate);
@@ -144,11 +123,7 @@ function extractVoteId(raw: Record<string, unknown>): number | null {
 }
 
 function extractVoteChoice(raw: Record<string, unknown>): VoteChoice | null {
-  const directCandidates = [
-    raw.voteChoice,
-    raw.myVoteChoice,
-    raw.selectedVoteChoice,
-  ];
+  const directCandidates = [raw.voteChoice, raw.myVoteChoice, raw.selectedVoteChoice];
 
   for (const candidate of directCandidates) {
     const normalized = normalizeVoteChoice(candidate);
@@ -161,8 +136,7 @@ function extractVoteChoice(raw: Record<string, unknown>): VoteChoice | null {
     if (!isRecord(candidate)) continue;
 
     const normalized =
-      normalizeVoteChoice(candidate.voteChoice) ??
-      normalizeVoteChoice(candidate.choice);
+      normalizeVoteChoice(candidate.voteChoice) ?? normalizeVoteChoice(candidate.choice);
 
     if (normalized) return normalized;
   }
@@ -171,18 +145,18 @@ function extractVoteChoice(raw: Record<string, unknown>): VoteChoice | null {
 }
 
 function getItemsByTab(items: BookmarkItem[], tab: TabType) {
-  if (tab === "all") return items;
+  if (tab === 'all') return items;
   return items.filter((item) => item.status === tab);
 }
 
 function getDefaultPeriod(periods: RankingPeriod[]): RankingPeriod | null {
-  if (periods.includes("WEEKLY")) return "WEEKLY";
-  if (periods.includes("MONTHLY")) return "MONTHLY";
+  if (periods.includes('WEEKLY')) return 'WEEKLY';
+  if (periods.includes('MONTHLY')) return 'MONTHLY';
   return null;
 }
 
 function formatPeriodLabel(period: RankingPeriod) {
-  return period === "MONTHLY" ? "This Month" : "This Week";
+  return period === 'MONTHLY' ? 'This Month' : 'This Week';
 }
 
 function mapBookmarkItems(rawItems: BookmarkListItem[]): BookmarkItem[] {
@@ -196,8 +170,7 @@ function mapBookmarkItems(rawItems: BookmarkListItem[]): BookmarkItem[] {
       const evaluationStatus = item.evaluationStatus ?? null;
       const raw = item as BookmarkListItem & Record<string, unknown>;
 
-      const status: BookmarkItem["status"] =
-        evaluationStatus === "OPEN" ? "ongoing" : "done";
+      const status: BookmarkItem['status'] = evaluationStatus === 'OPEN' ? 'ongoing' : 'done';
 
       return {
         id: postId,
@@ -213,13 +186,7 @@ function mapBookmarkItems(rawItems: BookmarkListItem[]): BookmarkItem[] {
     .filter((item): item is BookmarkItem => item !== null);
 }
 
-function VerticalSwipeIndicator({
-  above,
-  below,
-}: {
-  above: number;
-  below: number;
-}) {
+function VerticalSwipeIndicator({ above, below }: { above: number; below: number }) {
   const visibleAbove = Math.min(Math.max(above, 0), 3);
   const visibleBelow = Math.min(Math.max(below, 0), 3);
 
@@ -240,20 +207,60 @@ function VerticalSwipeIndicator({
   );
 }
 
+type BookmarkSelectionActionBarProps = {
+  countText: string;
+  canDelete: boolean;
+  onDelete: () => void;
+};
+
+function BookmarkSelectionActionBar({
+  countText,
+  canDelete,
+  onDelete,
+}: BookmarkSelectionActionBarProps) {
+  return (
+    <div className={styles.selectionActionBar}>
+      <div className={styles.selectionActionBarLayer}>
+        <div className={styles.selectionActionSurface}>
+          <div className={styles.selectionActionRow}>
+            <p className={styles.selectionCountText}>{countText}</p>
+
+            <div className={styles.selectionActionButtons}>
+              <button
+                type="button"
+                className={`${styles.selectionGlassButton} ${
+                  !canDelete ? styles.selectionGlassButtonDisabled : ''
+                }`}
+                onClick={onDelete}
+                disabled={!canDelete}
+                aria-label="삭제"
+              >
+                <span className={styles.selectionGlassButtonInner} />
+                <span className={styles.selectionGlassButtonIcon}>
+                  <Trash2 className={styles.selectionActionIconSvg} strokeWidth={2.2} />
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Bookmark() {
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState<TabType>("all");
-  const [displayTab, setDisplayTab] = useState<TabType>("all");
-  const [prevTab, setPrevTab] = useState<TabType>("all");
+  const [activeTab, setActiveTab] = useState<TabType>('all');
+  const [displayTab, setDisplayTab] = useState<TabType>('all');
+  const [prevTab, setPrevTab] = useState<TabType>('all');
   const [incomingTab, setIncomingTab] = useState<TabType | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [slideDirection, setSlideDirection] =
-    useState<SlideDirection>("right");
+  const [slideDirection, setSlideDirection] = useState<SlideDirection>('right');
 
   const [items, setItems] = useState<BookmarkItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const [deleteMode, setDeleteMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -261,9 +268,9 @@ export default function Bookmark() {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const [isTouchDragging, setIsTouchDragging] = useState(false);
-  const [touchDragMode, setTouchDragMode] =
-    useState<TouchDragMode>("select");
+  const [touchDragMode, setTouchDragMode] = useState<TouchDragMode>('select');
   const [pressingCardId, setPressingCardId] = useState<number | null>(null);
+  const [isSelectButtonPressed, setIsSelectButtonPressed] = useState(false);
 
   const [focusOpen, setFocusOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -319,6 +326,13 @@ export default function Bookmark() {
     () => new Set(activeItemsForSelection.map((item) => item.id)),
     [activeItemsForSelection],
   );
+  const allVisibleSelected = useMemo(
+    () =>
+      activeItemsForSelection.length > 0 &&
+      activeItemsForSelection.every((item) => selectedIdSet.has(item.id)),
+    [activeItemsForSelection, selectedIdSet],
+  );
+  const selectionCountText = `${selectedIds.length.toLocaleString('ko-KR')}개 선택됨`;
 
   const focusedItem = focusItems[focusIndex] ?? null;
   const focusedPeriod = useMemo(
@@ -327,25 +341,21 @@ export default function Bookmark() {
   );
 
   const previousSwipeCount = Math.min(Math.max(focusIndex, 0), 3);
-  const nextSwipeCount = Math.min(
-    Math.max(focusItems.length - focusIndex - 1, 0),
-    3,
-  );
+  const nextSwipeCount = Math.min(Math.max(focusItems.length - focusIndex - 1, 0), 3);
 
   const loadBookmarks = useCallback(async () => {
     try {
       setLoading(true);
-      setError("");
+      setError('');
 
       const data = await fetchAllMyBookmarks();
       setItems(mapBookmarkItems(data));
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "북마크 목록을 불러오지 못했습니다.";
+      const message = err instanceof Error ? err.message : '북마크 목록을 불러오지 못했습니다.';
 
       if (isAuthError(message)) {
         clearAuthTokens();
-        navigate("/login", { replace: true });
+        navigate('/login', { replace: true });
         return;
       }
 
@@ -364,9 +374,36 @@ export default function Bookmark() {
     setSelectedIds((prev) => prev.filter((id) => activeItemIdSet.has(id)));
   }, [activeItemIdSet]);
 
+  useEffect(() => {
+    const footerElements = Array.from(
+      document.querySelectorAll<HTMLElement>('[class*="footerWrap"], .footerWrap'),
+    );
+
+    footerElements.forEach((element) => {
+      if (deleteMode) {
+        if (!element.dataset.prevDisplay) {
+          element.dataset.prevDisplay = element.style.display || '';
+        }
+        element.style.display = 'none';
+      } else if (element.dataset.prevDisplay !== undefined) {
+        element.style.display = element.dataset.prevDisplay;
+        delete element.dataset.prevDisplay;
+      }
+    });
+
+    return () => {
+      footerElements.forEach((element) => {
+        if (element.dataset.prevDisplay !== undefined) {
+          element.style.display = element.dataset.prevDisplay;
+          delete element.dataset.prevDisplay;
+        }
+      });
+    };
+  }, [deleteMode]);
+
   const getTabTextRef = useCallback((tab: TabType) => {
-    if (tab === "all") return allTextRef.current;
-    if (tab === "ongoing") return ongoingTextRef.current;
+    if (tab === 'all') return allTextRef.current;
+    if (tab === 'ongoing') return ongoingTextRef.current;
     return doneTextRef.current;
   }, []);
 
@@ -391,8 +428,8 @@ export default function Bookmark() {
 
   useEffect(() => {
     const handleResize = () => updateIndicator();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [updateIndicator]);
 
   useEffect(() => {
@@ -424,7 +461,7 @@ export default function Bookmark() {
     const raf = window.requestAnimationFrame(() => {
       container.scrollTo({
         top: container.clientHeight * focusIndex,
-        behavior: "auto",
+        behavior: 'auto',
       });
     });
 
@@ -486,7 +523,7 @@ export default function Bookmark() {
 
     const baseSet = new Set(initialSelectedIdsRef.current);
 
-    if (touchDragMode === "select") {
+    if (touchDragMode === 'select') {
       touchedIds.forEach((id) => baseSet.add(id));
     } else {
       touchedIds.forEach((id) => baseSet.delete(id));
@@ -544,13 +581,7 @@ export default function Bookmark() {
         longPressTimerRef.current = null;
       }, LONG_PRESS_MS);
     },
-    [
-      activateDeleteModeByLongPress,
-      clearLongPress,
-      deleteMode,
-      focusOpen,
-      getPointInContainer,
-    ],
+    [activateDeleteModeByLongPress, clearLongPress, deleteMode, focusOpen, getPointInContainer],
   );
 
   const moveCardLongPress = useCallback(
@@ -582,6 +613,7 @@ export default function Bookmark() {
     setShowDeleteConfirm(false);
     setSheetOpen(false);
     setFocusOpen(false);
+    setIsSelectButtonPressed(false);
     resetTouchDragging();
   };
 
@@ -590,7 +622,25 @@ export default function Bookmark() {
     setDeleteMode(false);
     setSelectedIds([]);
     setShowDeleteConfirm(false);
+    setIsSelectButtonPressed(false);
     resetTouchDragging();
+  };
+
+  const handleToggleSelectAll = () => {
+    if (!deleteMode) return;
+    if (activeItemsForSelection.length === 0) return;
+
+    setSelectedIds((prev) => {
+      const nextSet = new Set(prev);
+
+      if (allVisibleSelected) {
+        activeItemsForSelection.forEach((item) => nextSet.delete(item.id));
+      } else {
+        activeItemsForSelection.forEach((item) => nextSet.add(item.id));
+      }
+
+      return Array.from(nextSet);
+    });
   };
 
   const handleTabChange = (tab: TabType) => {
@@ -598,7 +648,7 @@ export default function Bookmark() {
 
     const currentIndex = TAB_ORDER.indexOf(activeTab);
     const nextIndex = TAB_ORDER.indexOf(tab);
-    const direction: SlideDirection = nextIndex > currentIndex ? "right" : "left";
+    const direction: SlideDirection = nextIndex > currentIndex ? 'right' : 'left';
 
     setSlideDirection(direction);
     ignoreNextSelectionTouchEndRef.current = null;
@@ -635,13 +685,9 @@ export default function Bookmark() {
     );
 
     const failedMessages = results
-      .filter(
-        (result): result is PromiseRejectedResult => result.status === "rejected",
-      )
+      .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
       .map((result) =>
-        result.reason instanceof Error
-          ? result.reason.message
-          : "북마크 삭제에 실패했습니다.",
+        result.reason instanceof Error ? result.reason.message : '북마크 삭제에 실패했습니다.',
       );
 
     const authFailed = failedMessages.some((message) => isAuthError(message));
@@ -649,13 +695,11 @@ export default function Bookmark() {
     if (authFailed) {
       setDeleteLoading(false);
       clearAuthTokens();
-      navigate("/login", { replace: true });
+      navigate('/login', { replace: true });
       return;
     }
 
-    const succeededIds = selectedIds.filter(
-      (_, index) => results[index]?.status === "fulfilled",
-    );
+    const succeededIds = selectedIds.filter((_, index) => results[index]?.status === 'fulfilled');
 
     if (succeededIds.length > 0) {
       setItems((prev) => prev.filter((item) => !succeededIds.includes(item.postId)));
@@ -674,17 +718,11 @@ export default function Bookmark() {
 
   const toggleSelectedId = useCallback((id: number) => {
     setSelectedIds((prev) =>
-      prev.includes(id)
-        ? prev.filter((itemId) => itemId !== id)
-        : [...prev, id],
+      prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id],
     );
   }, []);
 
-  const startTouchDrag = (
-    clientX: number,
-    clientY: number,
-    startItemId?: number,
-  ) => {
+  const startTouchDrag = (clientX: number, clientY: number, startItemId?: number) => {
     if (!deleteMode) return;
 
     const startPoint = getPointInContainer(clientX, clientY);
@@ -696,7 +734,7 @@ export default function Bookmark() {
     ignoreNextClickRef.current = false;
 
     const nextMode: TouchDragMode =
-      startItemId && selectedIdSet.has(startItemId) ? "deselect" : "select";
+      startItemId && selectedIdSet.has(startItemId) ? 'deselect' : 'select';
 
     setTouchDragMode(nextMode);
     setIsTouchDragging(true);
@@ -739,7 +777,7 @@ export default function Bookmark() {
     if (!deleteMode) return;
 
     const target = e.target as HTMLElement;
-    if (target.closest("button")) return;
+    if (target.closest('button')) return;
 
     const touch = e.touches[0];
     if (!touch) return;
@@ -760,10 +798,7 @@ export default function Bookmark() {
     endTouchDrag();
   };
 
-  const handleCardTouchStart = (
-    e: React.TouchEvent<HTMLButtonElement>,
-    itemId: number,
-  ) => {
+  const handleCardTouchStart = (e: React.TouchEvent<HTMLButtonElement>, itemId: number) => {
     if (!deleteMode) return;
     const touch = e.touches[0];
     if (!touch) return;
@@ -781,10 +816,7 @@ export default function Bookmark() {
     moveTouchDrag(touch.clientX, touch.clientY);
   };
 
-  const handleCardTouchEnd = (
-    e: React.TouchEvent<HTMLButtonElement>,
-    itemId: number,
-  ) => {
+  const handleCardTouchEnd = (e: React.TouchEvent<HTMLButtonElement>, itemId: number) => {
     if (!deleteMode) return;
     e.stopPropagation();
 
@@ -804,9 +836,7 @@ export default function Bookmark() {
     }
 
     if (!deleteMode) {
-      const nextIndex = sourceItems.findIndex(
-        (sourceItem) => sourceItem.id === item.id,
-      );
+      const nextIndex = sourceItems.findIndex((sourceItem) => sourceItem.id === item.id);
 
       setFocusItems(sourceItems);
       setFocusIndex(nextIndex >= 0 ? nextIndex : 0);
@@ -841,7 +871,7 @@ export default function Bookmark() {
   const renderFocusedSheetContent = () => {
     if (!focusedItem) return null;
 
-    if (focusedItem.status === "ongoing") {
+    if (focusedItem.status === 'ongoing') {
       return (
         <EvaluationDetailFeedback
           embedded
@@ -854,11 +884,7 @@ export default function Bookmark() {
     }
 
     return (
-      <RankingDetail
-        postId={focusedItem.postId}
-        period={focusedPeriod ?? undefined}
-        hideFeedLink
-      />
+      <RankingDetail postId={focusedItem.postId} period={focusedPeriod ?? undefined} hideFeedLink />
     );
   };
 
@@ -870,7 +896,7 @@ export default function Bookmark() {
   return (
     <div
       ref={containerRef}
-      className={`${styles.container} ${deleteMode ? styles.deleteMode : ""}`}
+      className={`${styles.container} ${deleteMode ? styles.deleteMode : ''}`}
     >
       <header className={styles.header}>
         <div className={styles.headerInner}>
@@ -885,42 +911,40 @@ export default function Bookmark() {
 
           <h1 className={styles.title}>북마크</h1>
 
-          {deleteMode ? (
-            <button
-              type="button"
-              className={styles.deleteButtonRed}
-              onClick={handleDeleteConfirmOpen}
-              aria-label="선택 삭제"
-              disabled={selectedIds.length === 0 || deleteLoading}
-            >
-              <Trash2 size={16} strokeWidth={2.3} />
-            </button>
-          ) : (
-            <button
-              type="button"
-              className={styles.headerIconButtonFilled}
-              onClick={handleEnterDeleteMode}
-              aria-label="삭제 모드"
-              disabled={loading}
-            >
-              <Trash2 size={16} strokeWidth={2.3} />
-            </button>
-          )}
+          <button
+            type="button"
+            className={`${styles.headerTextButton} ${
+              isSelectButtonPressed ? styles.headerTextButtonPressed : ''
+            }`}
+            onClick={() => {
+              if (deleteMode) {
+                handleToggleSelectAll();
+                setIsSelectButtonPressed(false);
+                return;
+              }
+
+              handleEnterDeleteMode();
+            }}
+            onTouchStart={() => setIsSelectButtonPressed(true)}
+            onTouchEnd={() => setIsSelectButtonPressed(false)}
+            onTouchCancel={() => setIsSelectButtonPressed(false)}
+            onMouseDown={() => setIsSelectButtonPressed(true)}
+            onMouseUp={() => setIsSelectButtonPressed(false)}
+            onMouseLeave={() => setIsSelectButtonPressed(false)}
+            aria-label={deleteMode ? '전체선택' : '선택'}
+            disabled={loading}
+          >
+            {deleteMode ? '전체선택' : '선택'}
+          </button>
         </div>
       </header>
 
       <div className={styles.tabSection}>
         <div ref={tabRowRef} className={styles.tabRow}>
-          <button
-            type="button"
-            className={styles.tabButton}
-            onClick={() => handleTabChange("all")}
-          >
+          <button type="button" className={styles.tabButton} onClick={() => handleTabChange('all')}>
             <span
               ref={allTextRef}
-              className={`${styles.tabText} ${
-                activeTab === "all" ? styles.tabTextActive : ""
-              }`}
+              className={`${styles.tabText} ${activeTab === 'all' ? styles.tabTextActive : ''}`}
             >
               전체
             </span>
@@ -929,13 +953,11 @@ export default function Bookmark() {
           <button
             type="button"
             className={styles.tabButton}
-            onClick={() => handleTabChange("done")}
+            onClick={() => handleTabChange('done')}
           >
             <span
               ref={doneTextRef}
-              className={`${styles.tabText} ${
-                activeTab === "done" ? styles.tabTextActive : ""
-              }`}
+              className={`${styles.tabText} ${activeTab === 'done' ? styles.tabTextActive : ''}`}
             >
               평가 완료
             </span>
@@ -944,13 +966,11 @@ export default function Bookmark() {
           <button
             type="button"
             className={styles.tabButton}
-            onClick={() => handleTabChange("ongoing")}
+            onClick={() => handleTabChange('ongoing')}
           >
             <span
               ref={ongoingTextRef}
-              className={`${styles.tabText} ${
-                activeTab === "ongoing" ? styles.tabTextActive : ""
-              }`}
+              className={`${styles.tabText} ${activeTab === 'ongoing' ? styles.tabTextActive : ''}`}
             >
               평가 중
             </span>
@@ -967,10 +987,8 @@ export default function Bookmark() {
       </div>
 
       <main
-        className={`${styles.contentArea} ${
-          deleteMode ? styles.contentAreaDeleteMode : ""
-        }`}
-        style={{ touchAction: deleteMode ? "none" : "pan-y" }}
+        className={`${styles.contentArea} ${deleteMode ? styles.contentAreaDeleteMode : ''}`}
+        style={{ touchAction: deleteMode ? 'none' : 'pan-y' }}
         onTouchStart={handleContentTouchStart}
         onTouchMove={handleContentTouchMove}
         onTouchEnd={handleContentTouchEnd}
@@ -995,13 +1013,17 @@ export default function Bookmark() {
         </div>
       </main>
 
+      {deleteMode ? (
+        <BookmarkSelectionActionBar
+          countText={selectionCountText}
+          canDelete={selectedIds.length > 0 && !deleteLoading}
+          onDelete={handleDeleteConfirmOpen}
+        />
+      ) : null}
+
       {focusOpen && focusedItem ? (
         <div className={styles.focusOverlay}>
-          <div
-            ref={focusScrollRef}
-            className={styles.focusViewport}
-            onScroll={handleFocusScroll}
-          >
+          <div ref={focusScrollRef} className={styles.focusViewport} onScroll={handleFocusScroll}>
             {focusItems.map((item) => (
               <section key={item.postId} className={styles.focusSlide}>
                 {item.imageUrl ? (
@@ -1042,31 +1064,17 @@ export default function Bookmark() {
           </button>
 
           {!sheetOpen ? (
-            <VerticalSwipeIndicator
-              above={previousSwipeCount}
-              below={nextSwipeCount}
-            />
+            <VerticalSwipeIndicator above={previousSwipeCount} below={nextSwipeCount} />
           ) : null}
 
           <div className={styles.focusFloatingArea}>
-            <button
-              type="button"
-              className={styles.detailButton}
-              onClick={handleOpenDetailSheet}
-            >
+            <button type="button" className={styles.detailButton} onClick={handleOpenDetailSheet}>
               <span className={styles.detailButtonText}>상세보기</span>
-              <ChevronsUp
-                size={16}
-                strokeWidth={2.4}
-                className={styles.detailButtonUpIcon}
-              />
+              <ChevronsUp size={16} strokeWidth={2.4} className={styles.detailButtonUpIcon} />
             </button>
           </div>
 
-          <PostDetailBottomSheet
-            isOpen={sheetOpen}
-            onCloseRequest={() => setSheetOpen(false)}
-          >
+          <PostDetailBottomSheet isOpen={sheetOpen} onCloseRequest={() => setSheetOpen(false)}>
             {renderFocusedSheetContent()}
           </PostDetailBottomSheet>
         </div>
@@ -1112,13 +1120,9 @@ export default function Bookmark() {
     </div>
   );
 
-  function renderGrid(
-    paneItems: BookmarkItem[],
-    paneKey: string,
-    extraClassName?: string,
-  ) {
+  function renderGrid(paneItems: BookmarkItem[], paneKey: string, extraClassName?: string) {
     return (
-      <div className={`${styles.gridPane} ${extraClassName ?? ""}`} key={paneKey}>
+      <div className={`${styles.gridPane} ${extraClassName ?? ''}`} key={paneKey}>
         {loading ? (
           <div className={styles.emptyState}>불러오는 중...</div>
         ) : error ? (
@@ -1139,14 +1143,13 @@ export default function Bookmark() {
                   }}
                   type="button"
                   className={`${styles.card} ${
-                    deleteMode && isSelected ? styles.cardSelected : ""
+                    deleteMode && isSelected ? styles.cardSelected : ''
                   }`}
                   style={{
-                    transform: isPressing ? "scale(0.96)" : "scale(1)",
-                    filter: isPressing ? "brightness(0.9)" : "brightness(1)",
-                    transition:
-                      "transform 140ms ease, filter 140ms ease, box-shadow 140ms ease",
-                    touchAction: deleteMode ? "none" : "manipulation",
+                    transform: isPressing ? 'scale(0.96)' : 'scale(1)',
+                    filter: isPressing ? 'brightness(0.9)' : 'brightness(1)',
+                    transition: 'transform 140ms ease, filter 140ms ease, box-shadow 140ms ease',
+                    touchAction: deleteMode ? 'none' : 'manipulation',
                   }}
                   onTouchStart={(e) => {
                     if (deleteMode) {
@@ -1212,11 +1215,11 @@ export default function Bookmark() {
                       src={item.imageUrl}
                       alt={item.title}
                       style={{
-                        position: "absolute",
+                        position: 'absolute',
                         inset: 0,
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
                       }}
                     />
                   ) : (
@@ -1226,7 +1229,7 @@ export default function Bookmark() {
                   {deleteMode && (
                     <span
                       className={`${styles.selectionDot} ${
-                        isSelected ? styles.selectionDotSelected : ""
+                        isSelected ? styles.selectionDotSelected : ''
                       }`}
                     >
                       {isSelected && <Check size={12} strokeWidth={3} />}
@@ -1242,16 +1245,14 @@ export default function Bookmark() {
   }
 
   function getTabTitle() {
-    return focusedItem?.status === "ongoing"
-      ? "평가 상세"
+    return focusedItem?.status === 'ongoing'
+      ? '평가 상세'
       : focusedPeriod
         ? formatPeriodLabel(focusedPeriod)
-        : "북마크";
+        : '북마크';
   }
 
   function nextPaneEnterClass() {
-    return slideDirection === "right"
-      ? styles.enterFromRight
-      : styles.enterFromLeft;
+    return slideDirection === 'right' ? styles.enterFromRight : styles.enterFromLeft;
   }
 }
