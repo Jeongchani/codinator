@@ -22,7 +22,6 @@ import {
   ApiOperation,
   ApiParam,
   ApiTags,
-  ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import type { ManualBlurResponse, UploadPostImageResponse } from '@codinator/contracts';
 import { AuthTokenService } from '../auth/auth-token.service';
@@ -112,9 +111,11 @@ export class UploadsController {
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: '수동 블러 이미지 적용',
+    summary: '수동 블러 이미지 적용 (postId 기반)',
     description:
-      'AI 자동 블러가 적용되지 않은 게시글 이미지 asset에 대해 사용자가 직접 블러 처리한 이미지를 업로드하여 processedImageUrl을 교체합니다.',
+      '게시글 생성 이후, postId 기준으로 수동 블러를 적용합니다. ' +
+      'AI AUTO 블러 결과를 수동으로 override하는 것도 허용됩니다(Batch4). ' +
+      'processedImageUrl을 교체하며, aiBlurStatus는 AI 파이프라인 결과이므로 변경되지 않습니다.',
   })
   @ApiParam({ name: 'postId', type: Number, example: 12, description: '게시글 ID' })
   @ApiConsumes('multipart/form-data')
@@ -134,9 +135,6 @@ export class UploadsController {
   @ApiOkResponse({ description: '수동 블러 적용 완료' })
   @ApiForbiddenResponse({ description: '본인 게시글에만 적용 가능' })
   @ApiNotFoundResponse({ description: '게시글 또는 이미지를 찾을 수 없음' })
-  @ApiUnprocessableEntityResponse({
-    description: '이미 AUTO 블러가 적용된 이미지',
-  })
   @UseInterceptors(FileInterceptor('file'))
   async applyManualBlur(
     @Param('postId', ParseIntPipe) postId: number,
@@ -153,5 +151,52 @@ export class UploadsController {
     }
 
     return this.uploadsService.applyManualBlur(userId!, postId, file);
+  }
+
+  // Batch4: 게시글 생성 전(업로드 단계) imageAssetId 기준 수동 블러 적용
+  @Patch('image-assets/:imageAssetId/manual-blur')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '수동 블러 이미지 적용 (imageAssetId 기반)',
+    description:
+      '게시글 생성 전 업로드 단계에서 imageAssetId 기준으로 수동 블러를 적용합니다. ' +
+      'V3 흐름: 이미지 업로드 → AI 블러 결과 확인 → 수동 블러 선택 시 이 endpoint 호출 → 게시글 생성. ' +
+      'aiBlurStatus는 AI 파이프라인 결과이므로 변경되지 않으며, blurMethod만 MANUAL로 업데이트됩니다.',
+  })
+  @ApiParam({ name: 'imageAssetId', type: Number, example: 42, description: '이미지 자산 ID' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: '직접 블러 처리한 이미지 파일 (jpg/png/webp, 최대 5MB)',
+        },
+      },
+      required: ['file'],
+    },
+  })
+  @ApiOkResponse({ description: '수동 블러 적용 완료 (postId 없음 — 게시글 생성 전)' })
+  @ApiForbiddenResponse({ description: '본인 이미지 자산에만 적용 가능' })
+  @ApiNotFoundResponse({ description: '이미지 자산을 찾을 수 없음' })
+  @UseInterceptors(FileInterceptor('file'))
+  async applyManualBlurByAsset(
+    @Param('imageAssetId', ParseIntPipe) imageAssetId: number,
+    @UploadedFile() file: Express.Multer.File,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ManualBlurResponse> {
+    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+
+    if (!file) {
+      throw new BadRequestException('블러 처리된 이미지 파일이 필요합니다.');
+    }
+
+    return this.uploadsService.applyManualBlurByAsset(userId!, imageAssetId, file);
   }
 }

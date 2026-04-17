@@ -4,6 +4,7 @@ import { AiModule } from './modules/ai/ai.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BookmarksModule } from './modules/bookmarks/bookmarks.module';
 import { EvaluationsModule } from './modules/evaluations/evaluations.module';
+import { FeedbackTagsModule } from './modules/feedback-tags/feedback-tags.module';
 import { FeedsModule } from './modules/feeds/feeds.module';
 import { HealthModule } from './modules/health/health.module';
 import { KeywordsModule } from './modules/keywords/keywords.module';
@@ -38,6 +39,7 @@ import { PrismaModule } from './prisma/prisma.module';
     VotesModule,
     RankingsModule,
     FeedsModule,
+    FeedbackTagsModule,
   ],
 })
 export class AppModule {}
