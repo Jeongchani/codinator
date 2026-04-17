@@ -16,6 +16,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type {
+  ChangePhoneRequest,
+  ChangePhoneResponse,
   DeleteMeResponse,
   GetMeResponse,
   UpdateMeResponse,
@@ -33,6 +35,48 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly authTokenService: AuthTokenService,
   ) {}
+
+  // ─── PATCH me/phone ───────────────────────────────────────────────────────
+
+  @Patch('me/phone')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '전화번호 변경 — PHONE_CHANGE purpose 인증 토큰 필수',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['phoneNumber', 'phoneVerificationToken'],
+      properties: {
+        phoneNumber: { type: 'string', example: '01099998888' },
+        phoneVerificationToken: {
+          type: 'string',
+          description: 'purpose=PHONE_CHANGE 로 발급된 전화번호 인증 토큰',
+        },
+      },
+    },
+  })
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: '전화번호가 변경되었습니다.' },
+        phoneNumber: { type: 'string', example: '01099998888' },
+      },
+    },
+  })
+  async changePhone(
+    @Body() body: ChangePhoneRequest,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ChangePhoneResponse> {
+    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.usersService.changePhone(userId!, body);
+  }
 
   // ─── PATCH me/password (me보다 먼저 선언 — 더 구체적인 경로 우선) ──────────────
 
