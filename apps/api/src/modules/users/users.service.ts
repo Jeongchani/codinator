@@ -10,12 +10,13 @@ import type {
   ChangePhoneResponse,
   DeleteMeResponse,
   GetMeResponse,
+  GetMyActivitySummaryResponse,
   UpdateMeRequest,
   UpdateMeResponse,
   UpdatePasswordRequest,
   UpdatePasswordResponse,
 } from '@codinator/contracts';
-import { PhoneVerificationPurpose, PhoneVerificationStatus, UserStatus } from '@prisma/client';
+import { PhoneVerificationPurpose, PhoneVerificationStatus, PostStatus, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { isValidPassword } from '../../common/helpers/password.helper';
@@ -29,6 +30,24 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly authTokenService: AuthTokenService,
   ) {}
+
+  // ── Private helper ────────────────────────────────────────────────────────
+
+  /**
+   * P0: ACTIVE 상태 user만 통과시키는 공통 헬퍼.
+   * DELETED/SUSPENDED 모두 차단.
+   */
+  private async assertActiveUser(userId: number): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { status: true },
+    });
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException('사용할 수 없는 계정입니다. 고객센터에 문의해 주세요.');
+    }
+  }
+
+  // ── GET /users/me ─────────────────────────────────────────────────────────
 
   async getMe(userId: number): Promise<GetMeResponse> {
     const user = await this.prisma.user.findUnique({
@@ -46,7 +65,8 @@ export class UsersService {
       },
     });
 
-    if (!user || user.status === UserStatus.DELETED) {
+    // P0: DELETED뿐 아니라 SUSPENDED도 차단
+    if (!user || user.status !== UserStatus.ACTIVE) {
       throw new NotFoundException('사용자를 찾을 수 없습니다.');
     }
 
@@ -63,13 +83,16 @@ export class UsersService {
     };
   }
 
+  // ── PATCH /users/me ───────────────────────────────────────────────────────
+
   async updateMe(userId: number, body: UpdateMeRequest): Promise<UpdateMeResponse> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, status: true },
     });
 
-    if (!user || user.status === UserStatus.DELETED) {
+    // P0: DELETED뿐 아니라 SUSPENDED도 차단
+    if (!user || user.status !== UserStatus.ACTIVE) {
       throw new NotFoundException('사용자를 찾을 수 없습니다.');
     }
 
@@ -130,13 +153,16 @@ export class UsersService {
     };
   }
 
+  // ── DELETE /users/me ──────────────────────────────────────────────────────
+
   async deleteMe(userId: number): Promise<DeleteMeResponse> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, status: true },
     });
 
-    if (!user || user.status === UserStatus.DELETED) {
+    // P0: DELETED뿐 아니라 SUSPENDED도 차단
+    if (!user || user.status !== UserStatus.ACTIVE) {
       throw new NotFoundException('사용자를 찾을 수 없습니다.');
     }
 
@@ -164,7 +190,8 @@ export class UsersService {
       select: { id: true, status: true },
     });
 
-    if (!user || user.status === UserStatus.DELETED) {
+    // P0: DELETED뿐 아니라 SUSPENDED도 차단
+    if (!user || user.status !== UserStatus.ACTIVE) {
       throw new NotFoundException('사용자를 찾을 수 없습니다.');
     }
 
@@ -240,7 +267,8 @@ export class UsersService {
       select: { id: true, status: true, passwordHash: true },
     });
 
-    if (!user || user.status === UserStatus.DELETED) {
+    // P0: DELETED뿐 아니라 SUSPENDED도 차단
+    if (!user || user.status !== UserStatus.ACTIVE) {
       throw new NotFoundException('사용자를 찾을 수 없습니다.');
     }
 
@@ -267,5 +295,47 @@ export class UsersService {
     });
 
     return { success: true, message: '비밀번호가 변경되었습니다.' };
+  }
+
+  // ── GET /users/me/activity-summary ───────────────────────────────────────
+
+  /**
+   * P0: Batch 3 필수 기능 — 내 활동 요약
+   *
+   * - myPostCount: 내가 작성한 게시글 수 (PostStatus.DELETED 제외)
+   * - votedPostCount: 내가 투표한 평가 수
+   *     Vote @@unique([evaluationId, voterId]) → 평가당 1표 → count = distinct 평가 수
+   * - top10Count: 내 게시글이 any ranking의 TOP10에 오른 건수 (distinct postId 기준)
+   *     동일 게시글이 주간/월간 모두 TOP10이어도 1건으로 집계
+   */
+  async getMyActivitySummary(userId: number): Promise<GetMyActivitySummaryResponse> {
+    // P0: ACTIVE user만 조회
+    await this.assertActiveUser(userId);
+
+    const [myPostCount, votedPostCount, top10Posts] = await Promise.all([
+      // 내가 작성한 게시글 (삭제 제외)
+      this.prisma.post.count({
+        where: { authorId: userId, status: { not: PostStatus.DELETED } },
+      }),
+      // 내가 투표한 평가 수 (unique 제약으로 이미 distinct)
+      this.prisma.vote.count({
+        where: { voterId: userId },
+      }),
+      // 내 게시글이 TOP 10에 오른 distinct post 목록
+      this.prisma.rankingDetail.findMany({
+        where: {
+          rank: { lte: 10 },
+          post: { authorId: userId },
+        },
+        select: { postId: true },
+        distinct: ['postId'],
+      }),
+    ]);
+
+    return {
+      myPostCount,
+      votedPostCount,
+      top10Count: top10Posts.length,
+    };
   }
 }

@@ -1,20 +1,38 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import type {
   GetSettingsResponse,
   UpdateSettingsRequest,
   UpdateSettingsResponse,
 } from '@codinator/contracts';
-import { ThemeMode } from '@prisma/client';
+import { ThemeMode, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class SettingsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // ── Private helper ────────────────────────────────────────────────────────
+
+  /**
+   * P0: ACTIVE 상태 user만 통과시키는 헬퍼.
+   * DELETED / SUSPENDED 모두 차단.
+   */
+  private async assertActiveUser(userId: number): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { status: true },
+    });
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException('사용할 수 없는 계정입니다. 고객센터에 문의해 주세요.');
+    }
+  }
+
   // ── GET /users/me/settings ─────────────────────────────────────────────────
 
   /** Setting 행이 없으면 DB 기본값과 동일한 값을 반환 (lazy create 없음). */
   async getSettings(userId: number): Promise<GetSettingsResponse> {
+    await this.assertActiveUser(userId); // P0
+
     const setting = await this.prisma.setting.findUnique({
       where: { userId },
     });
@@ -42,6 +60,8 @@ export class SettingsService {
     userId: number,
     body: UpdateSettingsRequest,
   ): Promise<UpdateSettingsResponse> {
+    await this.assertActiveUser(userId); // P0
+
     const keys = ['theme', 'pushEnabled', 'servicePushEnabled', 'marketingPushEnabled'] as const;
     const hasAnyField = keys.some((k) => body[k] !== undefined);
 

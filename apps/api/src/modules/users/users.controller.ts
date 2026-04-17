@@ -20,6 +20,7 @@ import type {
   ChangePhoneResponse,
   DeleteMeResponse,
   GetMeResponse,
+  GetMyActivitySummaryResponse,
   UpdateMeResponse,
   UpdatePasswordResponse,
 } from '@codinator/contracts';
@@ -168,6 +169,30 @@ export class UsersController {
       { required: true },
     );
     return this.usersService.updateMe(userId!, body);
+  }
+
+  // ─── GET me/activity-summary ─────────────────────────────────────────────── // V3
+
+  @Get('me/activity-summary')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '내 활동 요약 — 게시글 수 / 투표 수 / TOP10 진입 수' })
+  @ApiOkResponse({
+    schema: {
+      example: {
+        myPostCount: 12,
+        votedPostCount: 34,
+        top10Count: 3,
+      },
+    },
+  })
+  async getMyActivitySummary(
+    @Headers('authorization') authorization?: string,
+  ): Promise<GetMyActivitySummaryResponse> {
+    const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.usersService.getMyActivitySummary(userId!);
   }
 
   // ─── DELETE me ───────────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import type {
   DeletePushTokenResponse,
@@ -10,12 +11,28 @@ import type {
   RegisterPushTokenRequest,
   RegisterPushTokenResponse,
 } from '@codinator/contracts';
-import { PushDevice } from '@prisma/client';
+import { PushDevice, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class PushTokensService {
   constructor(private readonly prisma: PrismaService) {}
+
+  // ── Private helper ────────────────────────────────────────────────────────
+
+  /**
+   * P0: ACTIVE 상태 user만 통과시키는 헬퍼.
+   * DELETED / SUSPENDED 모두 차단.
+   */
+  private async assertActiveUser(userId: number): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { status: true },
+    });
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException('사용할 수 없는 계정입니다. 고객센터에 문의해 주세요.');
+    }
+  }
 
   // ── POST /users/me/push-tokens ─────────────────────────────────────────────
 
@@ -23,6 +40,8 @@ export class PushTokensService {
     userId: number,
     body: RegisterPushTokenRequest,
   ): Promise<RegisterPushTokenResponse> {
+    await this.assertActiveUser(userId); // P0
+
     const existing = await this.prisma.pushToken.findUnique({
       where: { pushToken: body.pushToken },
     });
@@ -68,6 +87,8 @@ export class PushTokensService {
   // ── GET /users/me/push-tokens ──────────────────────────────────────────────
 
   async getPushTokens(userId: number, deviceOs?: PushDevice): Promise<GetPushTokensResponse> {
+    await this.assertActiveUser(userId); // P0
+
     const where: { userId: number; isActive: boolean; deviceOs?: PushDevice } = {
       userId,
       isActive: true,
@@ -96,6 +117,8 @@ export class PushTokensService {
   // ── DELETE /users/me/push-tokens/:tokenId ──────────────────────────────────
 
   async deletePushToken(userId: number, tokenId: number): Promise<DeletePushTokenResponse> {
+    await this.assertActiveUser(userId); // P0
+
     const token = await this.prisma.pushToken.findUnique({
       where: { id: tokenId },
     });
