@@ -16,7 +16,10 @@ export class RankingsController {
 
   @Get()
   @ApiBearerAuth()
-  @ApiOperation({ summary: '랭킹 목록 조회' })
+  @ApiOperation({
+    summary: '랭킹 목록 조회 (V3)',
+    description: '공개 조건: posts.status=ACTIVE + hiddenAt IS NULL + publishedAt IS NOT NULL. 삭제/숨김 게시글 제외.',
+  })
   @ApiQuery({ name: 'period', required: true, enum: ['WEEKLY', 'MONTHLY'] })
   @ApiOkResponse({
     description: '선택한 기간의 랭킹 목록',
@@ -50,7 +53,10 @@ export class RankingsController {
 
   @Get('posts/:postId')
   @ApiBearerAuth()
-  @ApiOperation({ summary: '랭킹 게시글 상세 조회' })
+  @ApiOperation({
+    summary: '랭킹 게시글 상세 조회 (V3)',
+    description: '랭킹 문맥의 게시글 상세. 공개 조건: status=ACTIVE + hiddenAt IS NULL + publishedAt IS NOT NULL + evaluation.status=ENDED.',
+  })
   @ApiQuery({ name: 'period', required: true, enum: ['WEEKLY', 'MONTHLY'] })
   @ApiOkResponse({
     description: '랭킹 문맥의 게시글 상세 정보. 작성자 정보가 포함됨.',

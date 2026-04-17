@@ -1,3 +1,6 @@
+// Batch5: V3 응답 shape — postId / status / deletedAt
 export interface DeletePostResponse {
-  success: true;
+  postId: number;
+  status: 'DELETED';
+  deletedAt: string; // ISO 8601
 }

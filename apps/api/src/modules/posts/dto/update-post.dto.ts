@@ -1,51 +1,48 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type {
   GarmentCategory,
   UpdatePostOutfitItemRequest,
   UpdatePostRequest,
 } from '@codinator/contracts';
 
+// Batch5: V3 정책 — outfitItems 중심 수정. content 수정 필드 제거.
+
 export class UpdatePostOutfitItemDto implements UpdatePostOutfitItemRequest {
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: 'TOP',
-    description: '의류 카테고리',
+    description: '의류 카테고리 (필수)',
     enum: ['TOP', 'BOTTOM', 'OUTER', 'SHOES', 'BAG', 'ACCESSORY', 'ETC'],
   })
-  category: GarmentCategory;
+  category!: GarmentCategory;
 
   @ApiPropertyOptional({
     example: '와이드 셔츠',
     maxLength: 100,
     description: '아이템명 (최대 100자)',
   })
-  itemName?: string;
+  itemName?: string | null;
 
   @ApiPropertyOptional({
     example: '무신사',
     maxLength: 100,
     description: '브랜드명 (최대 100자)',
   })
-  brand?: string;
+  brand?: string | null;
 }
 
 export class UpdatePostDto implements UpdatePostRequest {
-  @ApiPropertyOptional({
-    example: '평가 종료 후 수정된 코디 설명',
-    maxLength: 500,
-    description: '게시글 본문 (ENDED/CLOSED 상태에서만 수정 가능, 최대 500자)',
-  })
-  content?: string;
-
-  @ApiPropertyOptional({
+  @ApiProperty({
     type: () => [UpdatePostOutfitItemDto],
-    description: '착장 아이템 목록 (OPEN/ENDED/CLOSED 모두 수정 가능, 전체 교체)',
+    description: [
+      '착장 아이템 목록 (필수, 전체 교체 방식).',
+      '빈 배열([]) 전송 시 전체 삭제.',
+      'OPEN / ENDED / CLOSED 상태 모두 수정 가능.',
+      '※ V3: content / imageAssetId / keywordIds는 이 API로 수정하지 않는다.',
+    ].join(' '),
     example: [
-      {
-        category: 'TOP',
-        itemName: '와이드 셔츠',
-        brand: '무신사',
-      },
+      { category: 'TOP', itemName: '화이트 셔츠', brand: 'SPAO' },
+      { category: 'BOTTOM', itemName: '와이드 슬랙스', brand: 'MUSINSA STANDARD' },
     ],
   })
-  outfitItems?: UpdatePostOutfitItemDto[];
+  outfitItems!: UpdatePostOutfitItemDto[];
 }
