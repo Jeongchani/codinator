@@ -40,6 +40,7 @@ import { SendPhoneVerificationDto } from './dto/send-phone-verification.dto';
 import { SignupRequestDto } from './dto/signup-request.dto';
 import { SignupResponseDto } from './dto/signup-response.dto';
 import { VerifyPhoneCodeDto } from './dto/verify-phone-code.dto';
+import { SocialProviderVerifierFactory } from './social/social-provider-verifier.factory';
 
 /** 인증번호 유효 시간 (분) */
 const CODE_TTL_MINUTES = 5;
@@ -55,6 +56,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly authTokenService: AuthTokenService,
+    private readonly socialVerifierFactory: SocialProviderVerifierFactory,
   ) {}
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -502,32 +504,28 @@ export class AuthService {
   async socialLogin(dto: SocialLoginRequest): Promise<SocialLoginResponse> {
     const provider = dto.provider as SocialProvider;
 
-    // Provider 액세스 토큰 검증 (stub: 프로덕션에서는 실제 OAuth API 호출)
-    const { providerUserId } = await this.verifyProviderToken(provider, dto.accessToken);
+    // Provider 토큰 실제 검증 (Google: ID token, Kakao/Naver: access token)
+    const verifier = this.socialVerifierFactory.getVerifier(provider);
+    const profile = await verifier.verify(dto.providerToken);
 
     // 기존 소셜 계정 조회
     const socialAccount = await this.prisma.socialAccount.findUnique({
       where: {
-        provider_providerUserId: { provider, providerUserId },
+        provider_providerUserId: { provider, providerUserId: profile.providerUserId },
       },
       include: { user: { select: { id: true, status: true } } },
     });
 
-    if (socialAccount && socialAccount.user.status !== UserStatus.DELETED) {
-      // 기존 회원 → socialLoginToken에 userId 포함
-      const socialLoginToken = this.authTokenService.signSocialLoginToken(
-        provider,
-        providerUserId,
-        socialAccount.userId,
-      );
+    const isNewUser = !socialAccount || socialAccount.user.status === UserStatus.DELETED;
 
-      return { socialLoginToken, isNewUser: false };
-    }
+    // socialLoginToken: 클라이언트에 isNewUser 상태를 전달하는 마커 (complete-profile 에서는 미사용)
+    const socialLoginToken = this.authTokenService.signSocialLoginToken(
+      provider,
+      profile.providerUserId,
+      isNewUser ? undefined : socialAccount!.userId,
+    );
 
-    // 신규 회원 (또는 탈퇴 후 재가입)
-    const socialLoginToken = this.authTokenService.signSocialLoginToken(provider, providerUserId);
-
-    return { socialLoginToken, isNewUser: true };
+    return { socialLoginToken, isNewUser };
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -536,31 +534,29 @@ export class AuthService {
   async socialCompleteProfile(
     dto: SocialCompleteProfileRequest,
   ): Promise<SocialCompleteProfileResponse> {
-    const tokenPayload = this.authTokenService.verifySocialLoginToken(dto.socialLoginToken);
-
-    if (tokenPayload.provider !== dto.provider) {
-      throw new BadRequestException('소셜 로그인 토큰의 provider와 요청 provider가 일치하지 않습니다.');
-    }
-
     const provider = dto.provider as SocialProvider;
-    const { providerUserId, userId } = tokenPayload;
+
+    // providerToken 재검증 — complete-profile 은 socialLoginToken 에 의존하지 않음
+    const verifier = this.socialVerifierFactory.getVerifier(provider);
+    const profile = await verifier.verify(dto.providerToken);
+
+    // 기존 소셜 계정 조회
+    const socialAccount = await this.prisma.socialAccount.findUnique({
+      where: {
+        provider_providerUserId: { provider, providerUserId: profile.providerUserId },
+      },
+      include: { user: { select: { id: true, email: true, nickname: true, status: true } } },
+    });
 
     // ── 기존 회원 ─────────────────────────────────────────────────────────
-    if (userId !== undefined) {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { id: true, email: true, nickname: true, status: true },
-      });
-
-      if (!user || user.status === UserStatus.DELETED) {
-        throw new NotFoundException('사용자를 찾을 수 없습니다.');
-      }
+    if (socialAccount && socialAccount.user.status !== UserStatus.DELETED) {
+      const user = socialAccount.user;
 
       if (user.status === UserStatus.SUSPENDED) {
         throw new UnauthorizedException('사용할 수 없는 계정입니다. 고객센터에 문의해 주세요.');
       }
 
-      await this.assertNoActiveLoginSanction(userId);
+      await this.assertNoActiveLoginSanction(user.id);
 
       const { accessToken, refreshToken } = await this.createSession(user.id, user.email ?? '');
 
@@ -627,15 +623,16 @@ export class AuthService {
     if (existingNickname) throw new ConflictException('이미 사용 중인 닉네임입니다.');
     if (existingPhone) throw new ConflictException('이미 가입된 전화번호입니다.');
 
-    // 소셜 전용 계정은 email 컬럼이 필수이므로 결정론적 합성 이메일 생성
-    // 실제 프로덕션에서는 Provider OAuth 응답의 email 필드를 사용
-    const syntheticEmail = `${providerUserId.slice(0, 30)}@${provider.toLowerCase()}.social`;
+    // 소셜 전용 계정: provider 제공 이메일 우선, 없으면 결정론적 합성 이메일
+    const email =
+      profile.providerEmail ??
+      `${profile.providerUserId.slice(0, 30)}@${provider.toLowerCase()}.social`;
 
     // 트랜잭션: 유저 생성 + 소셜 계정 연결 + 전화번호 인증 USED 처리
     const user = await this.prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
         data: {
-          email: syntheticEmail,
+          email,
           nickname: trimmedNickname,
           birthDate: parsedBirthDate,
           gender,
@@ -648,7 +645,8 @@ export class AuthService {
         data: {
           userId: created.id,
           provider,
-          providerUserId,
+          providerUserId: profile.providerUserId,
+          providerEmail: profile.providerEmail ?? null,
         },
       });
 
@@ -781,17 +779,6 @@ export class AuthService {
     });
 
     return { accessToken, refreshToken };
-  }
-
-  /** Provider OAuth 액세스 토큰 검증 (stub 구현 — 프로덕션에서 실제 API 교체) */
-  private async verifyProviderToken(
-    _provider: SocialProvider,
-    accessToken: string,
-  ): Promise<{ providerUserId: string; providerEmail?: string }> {
-    // Stub: accessToken을 SHA-256 해시하여 결정론적 providerUserId 생성
-    const providerUserId = createHash('sha256').update(accessToken).digest('hex').slice(0, 40);
-
-    return { providerUserId };
   }
 
   private hashToken(token: string): string {

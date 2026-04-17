@@ -9,6 +9,7 @@ import {
   ApiConflictResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
+  ApiResponse,
   ApiTooManyRequestsResponse,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -198,16 +199,18 @@ export class AuthController {
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['provider', 'accessToken'],
+      required: ['provider', 'providerToken'],
       properties: {
         provider: {
           type: 'string',
           enum: ['GOOGLE', 'KAKAO', 'NAVER'],
           example: 'KAKAO',
         },
-        accessToken: {
+        providerToken: {
           type: 'string',
-          example: 'provider-oauth-access-token',
+          description:
+            'GOOGLE: ID token / KAKAO: access token / NAVER: access token',
+          example: 'provider-oauth-token',
         },
       },
     },
@@ -221,7 +224,9 @@ export class AuthController {
       },
     },
   })
-  @ApiBadRequestResponse({ description: 'provider 또는 accessToken 오류' })
+  @ApiBadRequestResponse({ description: 'provider 오류' })
+  @ApiResponse({ status: 401, description: '유효하지 않은 providerToken' })
+  @ApiResponse({ status: 502, description: 'Provider 서버 일시 장애' })
   async socialLogin(@Body() dto: SocialLoginRequest): Promise<SocialLoginResponse> {
     return this.authService.socialLogin(dto);
   }
@@ -233,21 +238,28 @@ export class AuthController {
   @ApiOperation({
     summary: '소셜 로그인 프로필 완성 — 기존 회원 세션 발급 또는 신규 회원 가입',
     description:
-      '기존 회원(isNewUser=false): provider + socialLoginToken 만 전송. ' +
-      '신규 회원(isNewUser=true): nickname, birthDate, gender, phoneNumber, phoneVerificationToken(SIGN_UP) 추가 필요.',
+      '기존 회원(isNewUser=false): provider + providerToken 만 전송하면 즉시 세션 발급. ' +
+      '신규 회원(isNewUser=true): nickname, birthDate, gender, phoneNumber, phoneVerificationToken(SIGN_UP purpose) 추가 필수. ' +
+      'providerToken 은 social/login 에 전달한 원본 token 을 그대로 사용.',
   })
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['provider', 'socialLoginToken'],
+      required: ['provider', 'providerToken'],
       properties: {
         provider: { type: 'string', enum: ['GOOGLE', 'KAKAO', 'NAVER'] },
-        socialLoginToken: { type: 'string' },
+        providerToken: {
+          type: 'string',
+          description: 'social/login 에 전달한 원본 Provider token (서버가 재검증)',
+        },
         nickname: { type: 'string', example: '코디네이터' },
         birthDate: { type: 'string', format: 'date', example: '1995-07-20' },
         gender: { type: 'string', enum: ['MALE', 'FEMALE'] },
         phoneNumber: { type: 'string', example: '01012345678' },
-        phoneVerificationToken: { type: 'string' },
+        phoneVerificationToken: {
+          type: 'string',
+          description: 'purpose=SIGN_UP 전화번호 인증 토큰 (신규 회원 전용)',
+        },
       },
     },
   })

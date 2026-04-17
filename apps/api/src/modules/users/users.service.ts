@@ -207,18 +207,26 @@ export class UsersService {
     }
 
     // 트랜잭션: 전화번호 업데이트 + 인증 USED 처리
-    await this.prisma.$transaction([
-      this.prisma.user.update({
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
         where: { id: userId },
         data: { phoneNumber },
-      }),
-      this.prisma.phoneVerification.update({
+        select: { id: true, phoneNumber: true, updatedAt: true },
+      });
+
+      await tx.phoneVerification.update({
         where: { id: phoneVerification.id },
         data: { status: PhoneVerificationStatus.USED, usedAt: new Date(), userId },
-      }),
-    ]);
+      });
 
-    return { success: true, message: '전화번호가 변경되었습니다.', phoneNumber };
+      return updatedUser;
+    });
+
+    return {
+      userId: updated.id,
+      phoneNumber: updated.phoneNumber,
+      updatedAt: updated.updatedAt.toISOString(),
+    };
   }
 
   // ── PATCH /users/me/password ──────────────────────────────────────────────

@@ -4,15 +4,20 @@ import type { SocialProvider } from '../common/enums';
 
 export interface SocialLoginRequest {
   provider: SocialProvider;
-  /** Provider OAuth access token */
-  accessToken: string;
+  /**
+   * Provider별 해석:
+   * - GOOGLE : Google ID token (OpenID Connect)
+   * - KAKAO  : Kakao OAuth access token
+   * - NAVER  : Naver OAuth access token
+   */
+  providerToken: string;
 }
 
 export interface SocialLoginResponse {
   /**
-   * 임시 소셜 로그인 토큰 (5분 유효).
-   * - isNewUser=false: 기존 회원 → complete-profile 없이 세션 발급 가능
-   * - isNewUser=true : 신규 회원 → complete-profile 호출 필요
+   * 임시 소셜 로그인 상태 토큰 (5분 유효).
+   * isNewUser 여부를 클라이언트에 전달하기 위한 마커.
+   * complete-profile 에는 원본 providerToken 을 그대로 사용.
    */
   socialLoginToken: string;
   isNewUser: boolean;
@@ -22,8 +27,12 @@ export interface SocialLoginResponse {
 
 export interface SocialCompleteProfileRequest {
   provider: SocialProvider;
-  socialLoginToken: string;
-  /** 신규 회원 전용 필드 (isNewUser=true 일 때만 필수) */
+  /**
+   * social/login 에 전달한 원본 Provider token.
+   * 서버가 다시 Provider API 로 검증하여 providerUserId 를 확인한다.
+   */
+  providerToken: string;
+  /** 신규 회원 전용 (isNewUser=true 일 때만 필수) */
   nickname?: string;
   birthDate?: string; // YYYY-MM-DD
   gender?: 'MALE' | 'FEMALE';

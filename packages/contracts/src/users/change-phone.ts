@@ -7,7 +7,7 @@ export interface ChangePhoneRequest {
 }
 
 export interface ChangePhoneResponse {
-  success: boolean;
-  message: string;
+  userId: number;
   phoneNumber: string;
+  updatedAt: string; // ISO-8601
 }

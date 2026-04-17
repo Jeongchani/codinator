@@ -61,9 +61,9 @@ export class UsersController {
     schema: {
       type: 'object',
       properties: {
-        success: { type: 'boolean', example: true },
-        message: { type: 'string', example: '전화번호가 변경되었습니다.' },
+        userId: { type: 'number', example: 1 },
         phoneNumber: { type: 'string', example: '01099998888' },
+        updatedAt: { type: 'string', format: 'date-time', example: '2026-04-17T12:00:00.000Z' },
       },
     },
   })
