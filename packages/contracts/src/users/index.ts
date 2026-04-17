@@ -3,3 +3,5 @@ export * from './update-me';
 export * from './update-password';
 export * from './delete-me';
 export * from './change-phone';
+export * from './settings';
+export * from './push-tokens';

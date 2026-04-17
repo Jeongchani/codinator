@@ -141,7 +141,7 @@ export class UsersController {
   @Patch('me')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: '내 정보 수정 (닉네임, 전화번호)' })
+  @ApiOperation({ summary: '내 정보 수정 (닉네임)' })
   @ApiBody({ type: UpdateMeDto })
   @ApiOkResponse({
     description: '수정된 프로필 반환',
