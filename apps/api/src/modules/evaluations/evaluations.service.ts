@@ -1,5 +1,9 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import type { GetEvaluationPostDetailResponse, GetEvaluationsResponse } from '@codinator/contracts';
+import type {
+  GetEvaluationHistoryResponse,
+  GetEvaluationPostDetailResponse,
+  GetEvaluationsResponse,
+} from '@codinator/contracts';
 import { EvaluationStatus, PostStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -170,6 +174,66 @@ export class EvaluationsService {
       canVote: !voteContext.hasVoted && !isOwner,
       voteSummary: buildVoteSummary(post.evaluation.votes),
       feedbackSummary: buildFeedbackSummary(post.evaluation.votes),
+    };
+  }
+
+  async getMyEvaluationHistory(params: {
+    cursor?: number;
+    limit?: number;
+    userId: number;
+  }): Promise<GetEvaluationHistoryResponse> {
+    // 만료된 평가를 ENDED로 전환한 뒤 조회 (stale 상태 방지)
+    await syncExpiredEvaluations(this.prisma);
+
+    const limit = this.normalizeLimit(params.limit);
+
+    const votes = await this.prisma.vote.findMany({
+      where: {
+        voterId: params.userId,
+        // 진행중인 평가 기록: evaluation.status = OPEN 인 건만 노출
+        // 평가 완료(ENDED/CLOSED)된 게시글은 목록에서 제외
+        evaluation: { status: EvaluationStatus.OPEN },
+        ...(params.cursor !== undefined ? { id: { lt: params.cursor } } : {}),
+      },
+      orderBy: { id: 'desc' },
+      take: limit + 1,
+      include: {
+        evaluation: {
+          include: {
+            post: {
+              include: {
+                images: {
+                  orderBy: IMAGE_ORDER_BY,
+                  take: 1,
+                  include: POST_IMAGE_INCLUDE,
+                },
+              },
+            },
+          },
+        },
+        feedbacks: {
+          select: { tagId: true },
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
+    });
+
+    const hasMore = votes.length > limit;
+    const pageItems = hasMore ? votes.slice(0, limit) : votes;
+
+    return {
+      items: pageItems.map((vote) => ({
+        evaluationId: vote.evaluationId,
+        postId: vote.evaluation.postId,
+        thumbnailUrl: pickPostThumbnail(vote.evaluation.post.images),
+        endsAt: vote.evaluation.endsAt.toISOString(),
+        evaluationStatus: vote.evaluation.status,
+        myVoteId: vote.id,
+        myVoteChoice: vote.choice,
+        myFeedbackTagIds: vote.feedbacks.map((f) => f.tagId),
+      })),
+      nextCursor: hasMore ? (pageItems[pageItems.length - 1]?.id ?? null) : null,
+      hasMore,
     };
   }
 
