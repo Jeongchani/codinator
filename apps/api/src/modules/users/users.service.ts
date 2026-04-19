@@ -16,7 +16,7 @@ import type {
   UpdatePasswordRequest,
   UpdatePasswordResponse,
 } from '@codinator/contracts';
-import { PhoneVerificationPurpose, PhoneVerificationStatus, PostStatus, UserStatus } from '@prisma/client';
+import { PhoneVerificationPurpose, PhoneVerificationStatus, PostStatus, RankingStatus, UserStatus } from '@prisma/client'; // V3 Batch7: RankingStatus 추가
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { isValidPassword } from '../../common/helpers/password.helper';
@@ -321,11 +321,13 @@ export class UsersService {
       this.prisma.vote.count({
         where: { voterId: userId },
       }),
-      // 내 게시글이 TOP 10에 오른 distinct post 목록
+      // 내 게시글이 TOP 10에 오른 distinct post 목록 (READY 랭킹만 집계 대상)
+      // V3 Batch7: ranking.status = READY 필터 추가 — FAILED/PENDING 랭킹은 집계 제외
       this.prisma.rankingDetail.findMany({
         where: {
           rank: { lte: 10 },
           post: { authorId: userId },
+          ranking: { status: RankingStatus.READY },
         },
         select: { postId: true },
         distinct: ['postId'],
