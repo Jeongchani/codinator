@@ -248,10 +248,7 @@ export class EvaluationsService {
   }
 
   private normalizeLimit(limit?: number): number {
-    if (!limit || Number.isNaN(Number(limit))) {
-      return 10;
-    }
-
-    return Math.min(Math.max(Number(limit), 1), 30);
+    if (!limit || Number.isNaN(Number(limit)) || Number(limit) <= 0) return 10;
+    return Math.min(Math.max(Math.floor(Number(limit)), 1), 30);
   }
 }

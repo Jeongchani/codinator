@@ -72,7 +72,8 @@ export class RankingsController {
   @ApiOperation({
     summary: '개인화 추천 목록 조회 (V3)',
     description: [
-      '최근 북마크 → 최근 LIKE 투표 순으로 키워드 신호를 추출하여 개인화 추천을 반환한다.',
+      '최근 북마크 → 최근 LIKE 투표 → 최근 검색 기록(TEXT) 순으로 키워드 신호를 추출하여 개인화 추천을 반환한다.', // V3 Batch7-Fix
+      '신호 우선순위: 북마크(가장 높음) > 좋아요 > 검색 기록(가장 낮음).',
       '신호가 없는 신규 사용자는 likeRatio 기반 인기 게시글로 fallback.',
       '추천 풀: evaluation.status=ENDED + status=ACTIVE + publishedAt IS NOT NULL + hiddenAt IS NULL.',
       '※ rankingDetails 등재 여부와 무관하게 랭킹존 공개 조건을 사용한다.',

@@ -5,7 +5,7 @@ import type {
   GetRankingsResponse,
   RankingPeriod,
 } from '@codinator/contracts';
-import { EvaluationStatus, PostStatus, RankingStatus, VoteChoice } from '@prisma/client'; // V3 Batch7: EvaluationStatus, VoteChoice 추가
+import { EvaluationStatus, PostStatus, RankingStatus, SearchHistoryType, VoteChoice } from '@prisma/client'; // V3 Batch7: EvaluationStatus, VoteChoice 추가 | Batch7-Fix: SearchHistoryType 추가
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   buildFeedbackSummary,
@@ -182,8 +182,10 @@ export class RankingsService {
 
     const limit = this.normalizePersonalizedLimit(params.limit);
 
-    // 1. 최근 활동 신호 수집 — 북마크(최근 50) + LIKE 투표(최근 50)
-    const [recentBookmarkPostIds, recentLikedPostIds] = await Promise.all([
+    // 1. 최근 활동 신호 수집 — 3개 소스 병렬 조회
+    //    우선순위: 북마크(+3, 가장 높음) > LIKE 투표(+2) > 검색 기록(+1, 가장 낮음) // V3 Batch7-Fix
+    const [recentBookmarkPostIds, recentLikedPostIds, recentSearchQueries] = await Promise.all([
+      // 신호 1: 최근 북마크 (가장 높은 가중치)
       this.prisma.bookmark
         .findMany({
           where: { userId: params.userId },
@@ -193,6 +195,7 @@ export class RankingsService {
         })
         .then((rows) => rows.map((r) => r.postId)),
 
+      // 신호 2: 최근 LIKE 투표 (중간 가중치)
       this.prisma.vote
         .findMany({
           where: { voterId: params.userId, choice: VoteChoice.LIKE },
@@ -201,11 +204,30 @@ export class RankingsService {
           include: { evaluation: { select: { postId: true } } },
         })
         .then((rows) => rows.map((r) => r.evaluation.postId)),
+
+      // 신호 3: 최근 TEXT 검색 기록 (낮은 가중치) // V3 Batch7-Fix
+      // IMAGE search histories는 벡터 기반 처리가 필요하므로 Batch 9 이후 확장 예정
+      this.prisma.searchHistory
+        .findMany({
+          where: {
+            userId: params.userId,
+            searchType: SearchHistoryType.TEXT,
+            queryText: { not: null },
+          },
+          orderBy: { id: 'desc' },
+          take: 15,
+          select: { queryText: true },
+        })
+        .then((rows) =>
+          rows
+            .map((r) => (r.queryText ?? '').trim().toLowerCase())
+            .filter((q) => q.length >= 2), // 너무 짧은 검색어 제외
+        ),
     ]);
 
     const signalPostIds = Array.from(new Set([...recentBookmarkPostIds, ...recentLikedPostIds]));
 
-    // 2. 신호 게시글의 keyword codes 추출
+    // 2. 신호 게시글의 keyword codes 추출 (북마크/좋아요 신호)
     let preferredKeywordCodes: string[] = [];
     if (signalPostIds.length > 0) {
       const kws = await this.prisma.postKeyword.findMany({
@@ -214,6 +236,30 @@ export class RankingsService {
         distinct: ['keywordId'],
       });
       preferredKeywordCodes = kws.map((k) => k.keyword.code);
+    }
+
+    // 2-b. 검색 기록 신호 → active keyword 매칭으로 선호 키워드 보강 // V3 Batch7-Fix
+    //      queryText와 keyword.label의 포함(contains) 관계로 매칭
+    //      이미 북마크/좋아요 신호에서 추출된 코드는 중복 제거 (낮은 가중치 신호가 높은 가중치 신호를 덮어쓰지 않도록)
+    if (recentSearchQueries.length > 0) {
+      const activeKeywords = await this.prisma.keyword.findMany({
+        where: { isActive: true },
+        select: { code: true, label: true },
+      });
+
+      const searchDerivedCodes = activeKeywords
+        .filter((kw) =>
+          recentSearchQueries.some(
+            (q) =>
+              kw.label.toLowerCase().includes(q) ||
+              q.includes(kw.label.toLowerCase()),
+          ),
+        )
+        .map((kw) => kw.code)
+        .filter((code) => !preferredKeywordCodes.includes(code)); // 중복 제거
+
+      // 우선순위 유지: 북마크/좋아요 키워드 먼저, 검색 유래 키워드 후순위로 추가
+      preferredKeywordCodes = [...preferredKeywordCodes, ...searchDerivedCodes];
     }
 
     // 3. 공개 조건 — 랭킹존 노출 대상 (V3 정책: 평가 완료 + ACTIVE + publishedAt + hiddenAt=null)
