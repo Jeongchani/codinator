@@ -33,18 +33,22 @@ export class UserEvaluationHistoryController {
   @ApiQuery({ name: 'cursor', required: false, type: Number, description: '직전 페이지 마지막 voteId' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: '페이지 크기 (기본 10, 최대 30)' })
   @ApiOkResponse({
-    description: '내가 투표한 진행중(OPEN) 평가 목록',
+    description: '내가 투표한 진행중(OPEN) 평가 목록. 핵심 6개 필드 + optional extension 필드 포함.',
     schema: {
       example: {
         items: [
           {
-            evaluationId: 5,
+            // 핵심 공개 필드 (API 명세서 ZIP 기준)
             postId: 12,
+            evaluationId: 5,
             thumbnailUrl: '/uploads/posts/processed/20260325/open-post.jpg',
+            contentPreview: '봄 코디 평가 부탁드립니다. 오늘 처음 입어보는 조합인데...',
+            myChoice: 'DISLIKE',
+            votedAt: '2026-04-19T10:34:56.000Z',
+            // Optional extension 필드
             endsAt: '2026-04-20T12:00:00.000Z',
             evaluationStatus: 'OPEN',
             myVoteId: 31,
-            myVoteChoice: 'DISLIKE',
             myFeedbackTagIds: [4],
           },
         ],

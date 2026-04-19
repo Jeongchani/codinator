@@ -117,3 +117,17 @@ export function pickPostThumbnail(
 
   return first.imageAsset.thumbnailUrl ?? first.imageAsset.processedImageUrl ?? null;
 }
+
+/**
+ * [V3] post.content를 카드 미리보기용 문자열로 변환한다.
+ * DB 컬럼이 아닌 파생값 — presenter 레이어에서만 생성.
+ *
+ * @param content  posts.content (nullable)
+ * @param maxLength  최대 문자 수 (기본 60자). 초과 시 "..." 붙임.
+ */
+export function buildContentPreview(content: string | null | undefined, maxLength = 60): string {
+  if (!content) return '';
+  const trimmed = content.trim();
+  if (trimmed.length <= maxLength) return trimmed;
+  return trimmed.slice(0, maxLength) + '...';
+}

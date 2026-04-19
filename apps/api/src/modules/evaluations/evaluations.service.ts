@@ -13,6 +13,7 @@ import {
 } from './common/evaluation-summary.util';
 import { syncExpiredEvaluations } from './common/sync-expired-evaluations.util';
 import {
+  buildContentPreview, // V3 Batch6-Fix: contentPreview 파생값 helper
   IMAGE_ORDER_BY,
   mapOutfitItems,
   mapPostImages,
@@ -223,13 +224,17 @@ export class EvaluationsService {
 
     return {
       items: pageItems.map((vote) => ({
-        evaluationId: vote.evaluationId,
+        // ── 핵심 공개 필드 (API 명세서 ZIP 기준) ──────────────────────────── // V3 Batch6-Fix
         postId: vote.evaluation.postId,
+        evaluationId: vote.evaluationId,
         thumbnailUrl: pickPostThumbnail(vote.evaluation.post.images),
+        contentPreview: buildContentPreview(vote.evaluation.post.content), // V3 Batch6-Fix
+        myChoice: vote.choice,                                              // V3 Batch6-Fix: myVoteChoice → myChoice
+        votedAt: vote.createdAt.toISOString(),                              // V3 Batch6-Fix: votes.createdAt
+        // ── Optional extension 필드 (클라이언트 편의용) ───────────────────────
         endsAt: vote.evaluation.endsAt.toISOString(),
         evaluationStatus: vote.evaluation.status,
         myVoteId: vote.id,
-        myVoteChoice: vote.choice,
         myFeedbackTagIds: vote.feedbacks.map((f) => f.tagId),
       })),
       nextCursor: hasMore ? (pageItems[pageItems.length - 1]?.id ?? null) : null,
