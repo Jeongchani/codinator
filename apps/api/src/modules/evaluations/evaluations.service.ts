@@ -193,7 +193,12 @@ export class EvaluationsService {
         voterId: params.userId,
         // 진행중인 평가 기록: evaluation.status = OPEN 인 건만 노출
         // 평가 완료(ENDED/CLOSED)된 게시글은 목록에서 제외
-        evaluation: { status: EvaluationStatus.OPEN },
+        evaluation: { status: EvaluationStatus.OPEN,
+                post: {
+        status: PostStatus.ACTIVE,
+        deletedAt: null,
+         },
+        },
         ...(params.cursor !== undefined ? { id: { lt: params.cursor } } : {}),
       },
       orderBy: { id: 'desc' },
