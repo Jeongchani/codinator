@@ -1,5 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'; // V3 Batch8: ForbiddenException 추가
 import type {
+  DeleteSearchHistoryResponse,
+  GetSearchHistoriesResponse,
   ImageSearchItem,
   ImageSearchRequest,
   ImageSearchResponse,
@@ -16,8 +18,9 @@ import {
   ImageSearchMode,
   PostStatus,
   Prisma,
+  SearchHistoryType,
   UserStatus,
-} from '@prisma/client';
+} from '@prisma/client'; // V3 Batch8: SearchHistoryType 추가
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   IMAGE_ORDER_BY,
@@ -539,6 +542,84 @@ export class SearchService {
       keywords,
     };
   }
+
+  // ── V3 Batch8: 최근 검색 기록 조회 ──────────────────────────────────────────
+
+  /**
+   * GET /users/me/search-histories
+   * - 본인 기록만 조회 (userId 필터)
+   * - searchType 필터 지원 (TEXT / IMAGE / 생략 시 전체)
+   * - 커서 기반 페이지네이션 (historyId DESC)
+   */
+  async getMySearchHistories(params: {
+    userId: number;
+    searchType?: 'TEXT' | 'IMAGE';
+    cursor?: number;
+    limit?: number;
+  }): Promise<GetSearchHistoriesResponse> {
+    const limit = this.normalizeLimit(params.limit);
+
+    const histories = await this.prisma.searchHistory.findMany({
+      where: {
+        userId: params.userId,
+        ...(params.searchType
+          ? { searchType: params.searchType as SearchHistoryType }
+          : {}),
+        ...(params.cursor !== undefined ? { id: { lt: params.cursor } } : {}),
+      },
+      orderBy: { id: 'desc' },
+      take: limit + 1,
+    });
+
+    const hasMore = histories.length > limit;
+    const pageItems = hasMore ? histories.slice(0, limit) : histories;
+
+    return {
+      items: pageItems.map((h) => ({
+        historyId: h.id,
+        searchType: h.searchType as 'TEXT' | 'IMAGE',
+        queryText: h.queryText ?? null,
+        imageAssetId: h.imageAssetId ?? null,
+        imageSearchMode: (h.imageSearchMode as string | null) ?? null,
+        resultCount: h.resultCount,
+        createdAt: h.createdAt.toISOString(),
+      })),
+      nextCursor: hasMore ? (pageItems[pageItems.length - 1]?.id ?? null) : null,
+      hasMore,
+    };
+  }
+
+  // ── V3 Batch8: 검색 기록 삭제 ──────────────────────────────────────────────
+
+  /**
+   * DELETE /search/histories/:historyId
+   * - 본인 기록만 삭제 가능
+   * - soft delete 없음 → 실제 delete
+   * - 존재하지 않으면 404, 타인 기록이면 403
+   */
+  async deleteSearchHistory(
+    userId: number,
+    historyId: number,
+  ): Promise<DeleteSearchHistoryResponse> {
+    const history = await this.prisma.searchHistory.findUnique({
+      where: { id: historyId },
+      select: { id: true, userId: true },
+    });
+
+    if (!history) {
+      throw new NotFoundException('검색 기록을 찾을 수 없습니다.');
+    }
+
+    if (history.userId !== userId) {
+      throw new ForbiddenException('본인의 검색 기록만 삭제할 수 있습니다.');
+    }
+
+    await this.prisma.searchHistory.delete({ where: { id: historyId } });
+
+    return { success: true, message: '검색 기록이 삭제되었습니다.' };
+  }
+
+  // ── Private helpers ──────────────────────────────────────────────────────
 
   private normalizeLimit(limit?: number): number {
     if (!limit || Number.isNaN(Number(limit))) return 20;
