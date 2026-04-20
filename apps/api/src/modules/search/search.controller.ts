@@ -124,11 +124,11 @@ export class SearchController {
       '- SINGLE_ITEM: 특정 의류와 유사한 아이템이 포함된 게시글 우선 (GARMENT 벡터 사용)',
       '',
       '**필터** — 아래 중 하나 이상 지정 시 교집합 조건으로 적용됩니다.',
-      '- publishedFrom/To: 게시글 공개 시점(publishedAt) 범위',
-      '- minLikeRatio/maxLikeRatio: 0.0~1.0 좋아요 비율 범위',
-      '- outfitCategories: 게시글 outfit 카테고리 필터',
-      '- keywordCodes: 게시글에 연결된 키워드 코드 필터',
-      '- feedbackTagCodes: 게시글이 받은 피드백 태그 코드 필터',
+      '- periodFrom/periodTo: 게시글 공개 시점(publishedAt) 범위 (ISO 8601)',
+      '- likeRatioMin: 0.0~1.0 최소 좋아요 비율',
+      '- keywordIds: 키워드 ID 배열 필터',
+      '- feedbackLikeTagIds: 좋아요 피드백 태그 ID 배열 (voteChoice=LIKE)',
+      '- feedbackDislikeTagIds: 싫어요 피드백 태그 ID 배열 (voteChoice=DISLIKE)',
       '',
       '**검색 대상**: evaluation.status=ENDED, post.status=ACTIVE, publishedAt IS NOT NULL,',
       'hiddenAt=null, deletedAt=null, isSearchable=true 인 게시글만 포함됩니다.',
@@ -138,7 +138,7 @@ export class SearchController {
   })
   @ApiBody({ type: SearchImageDto })
   @ApiOkResponse({
-    description: '이미지 검색 결과 (유사도 내림차순)',
+    description: '이미지 검색 결과 (유사도 내림차순, offset 기반 페이지네이션)',
     schema: {
       example: {
         mode: 'FULL_OUTFIT',
@@ -155,6 +155,8 @@ export class SearchController {
             keywords: [{ keywordId: 2, label: '데일리룩' }],
           },
         ],
+        nextCursor: 20,
+        hasMore: true,
       },
     },
   })

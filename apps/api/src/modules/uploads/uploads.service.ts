@@ -233,7 +233,10 @@ export class UploadsService {
       },
       select: {
         id: true,
+        sourceType: true,
         originalImageUrl: true,
+        processedImageUrl: true,
+        thumbnailUrl: true,
       },
     });
 
@@ -243,7 +246,10 @@ export class UploadsService {
 
     return {
       imageAssetId: asset.id,
+      sourceType: asset.sourceType,
       originalImageUrl: asset.originalImageUrl,
+      processedImageUrl: asset.processedImageUrl,
+      thumbnailUrl: asset.thumbnailUrl,
     };
   }
 

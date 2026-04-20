@@ -122,7 +122,8 @@ export class SearchService {
 
     const mode: ImageSearchMode = body.mode ?? 'FULL_OUTFIT';
     const limit = this.normalizeLimit(body.limit);
-    const filters = this.normalizeImageSearchFilters(body);
+    const offset = body.cursor !== undefined ? Number(body.cursor) : 0;
+    const filters = await this.resolveImageSearchFilters(body);
 
     const imageAsset = await this.prisma.imageAsset.findFirst({
       where: {
@@ -162,38 +163,34 @@ export class SearchService {
         ? Prisma.sql`AND ig."normalized_category" = ${body.garmentCategory}::"AiGarmentCategory"`
         : Prisma.empty;
 
-    const publishedFromSql = filters.publishedFrom
-      ? Prisma.sql`AND p."published_at" >= ${filters.publishedFrom}`
+    const periodFromSql = filters.periodFrom
+      ? Prisma.sql`AND p."published_at" >= ${filters.periodFrom}`
       : Prisma.empty;
 
-    const publishedToSql = filters.publishedTo
-      ? Prisma.sql`AND p."published_at" <= ${filters.publishedTo}`
+    const periodToSql = filters.periodTo
+      ? Prisma.sql`AND p."published_at" <= ${filters.periodTo}`
       : Prisma.empty;
 
-    const minLikeRatioSql =
-      filters.minLikeRatio !== null
-        ? Prisma.sql`AND psi."like_ratio" >= ${filters.minLikeRatio}`
+    const likeRatioMinSql =
+      filters.likeRatioMin !== null
+        ? Prisma.sql`AND psi."like_ratio" >= ${filters.likeRatioMin}`
         : Prisma.empty;
-
-    const maxLikeRatioSql =
-      filters.maxLikeRatio !== null
-        ? Prisma.sql`AND psi."like_ratio" <= ${filters.maxLikeRatio}`
-        : Prisma.empty;
-
-    const outfitCategoriesSql = filters.outfitCategories.length
-      ? Prisma.sql`AND psi."outfit_categories" && ARRAY[${Prisma.join(filters.outfitCategories)}]::text[]`
-      : Prisma.empty;
 
     const keywordCodesSql = filters.keywordCodes.length
       ? Prisma.sql`AND psi."keyword_codes" && ARRAY[${Prisma.join(filters.keywordCodes)}]::text[]`
       : Prisma.empty;
 
-    const feedbackTagCodesSql = filters.feedbackTagCodes.length
-      ? Prisma.sql`AND (
-          psi."feedback_like_codes" && ARRAY[${Prisma.join(filters.feedbackTagCodes)}]::text[]
-          OR psi."feedback_dislike_codes" && ARRAY[${Prisma.join(filters.feedbackTagCodes)}]::text[]
-        )`
+    // like / dislike 피드백 필터는 각각 독립 조건 (AND 교집합, OR 아님)
+    const feedbackLikeCodesSql = filters.feedbackLikeCodes.length
+      ? Prisma.sql`AND psi."feedback_like_codes" && ARRAY[${Prisma.join(filters.feedbackLikeCodes)}]::text[]`
       : Prisma.empty;
+
+    const feedbackDislikeCodesSql = filters.feedbackDislikeCodes.length
+      ? Prisma.sql`AND psi."feedback_dislike_codes" && ARRAY[${Prisma.join(filters.feedbackDislikeCodes)}]::text[]`
+      : Prisma.empty;
+
+    // limit+1 조회 → hasMore 판별
+    const fetchLimit = limit + 1;
 
     const rows = await this.prisma.$queryRaw<Array<{ postId: number; similarity: number }>>(Prisma.sql`
       WITH ranked_vectors AS (
@@ -230,22 +227,26 @@ export class SearchService {
           AND p."hidden_at" IS NULL
           AND p."published_at" IS NOT NULL
           ${garmentCategorySql}
-          ${publishedFromSql}
-          ${publishedToSql}
-          ${minLikeRatioSql}
-          ${maxLikeRatioSql}
-          ${outfitCategoriesSql}
+          ${periodFromSql}
+          ${periodToSql}
+          ${likeRatioMinSql}
           ${keywordCodesSql}
-          ${feedbackTagCodesSql}
+          ${feedbackLikeCodesSql}
+          ${feedbackDislikeCodesSql}
       )
       SELECT "postId", similarity
       FROM ranked_vectors
       WHERE rn = 1
       ORDER BY similarity DESC, "postId" DESC
-      LIMIT ${limit}
+      LIMIT ${fetchLimit}
+      OFFSET ${offset}
     `);
 
-    const postIds = rows.map((row) => row.postId);
+    const hasMore = rows.length > limit;
+    const pageRows = hasMore ? rows.slice(0, limit) : rows;
+    const nextCursor = hasMore ? offset + limit : null;
+
+    const postIds = pageRows.map((row) => row.postId);
     const posts = postIds.length
       ? await this.prisma.post.findMany({
           where: { id: { in: postIds } },
@@ -255,7 +256,7 @@ export class SearchService {
 
     const postMap = new Map(posts.map((post) => [post.id, post]));
 
-    const items = rows
+    const items = pageRows
       .map((row) => {
         const post = postMap.get(row.postId);
         if (!post) {
@@ -281,6 +282,8 @@ export class SearchService {
       queryImageAssetId: imageAsset.id,
       analysisRunId,
       items,
+      nextCursor,
+      hasMore,
     };
   }
 
@@ -626,30 +629,95 @@ export class SearchService {
     return Math.min(Math.max(Number(limit), 1), 50);
   }
 
-  private normalizeImageSearchFilters(body: ImageSearchRequest) {
-    const publishedFrom = this.parseOptionalDate(body.publishedFrom, 'publishedFrom');
-    const publishedTo = this.parseOptionalDate(body.publishedTo, 'publishedTo');
+  /**
+   * [V3 Batch9] 이미지 검색 필터 정규화 — ID→code 비동기 매핑 포함
+   *
+   * - keywordIds: keyword.id 배열 → keyword.code 배열 변환
+   * - feedbackLikeTagIds: feedback_tag.id 배열 → voteChoice=LIKE 검증 후 code 배열 변환
+   * - feedbackDislikeTagIds: feedback_tag.id 배열 → voteChoice=DISLIKE 검증 후 code 배열 변환
+   */
+  private async resolveImageSearchFilters(body: ImageSearchRequest) {
+    const periodFrom = this.parseOptionalDate(body.periodFrom, 'periodFrom');
+    const periodTo = this.parseOptionalDate(body.periodTo, 'periodTo');
 
-    const minLikeRatio = this.parseOptionalRatio(body.minLikeRatio, 'minLikeRatio');
-    const maxLikeRatio = this.parseOptionalRatio(body.maxLikeRatio, 'maxLikeRatio');
-
-    if (minLikeRatio !== null && maxLikeRatio !== null && minLikeRatio > maxLikeRatio) {
-      throw new BadRequestException('minLikeRatio는 maxLikeRatio보다 클 수 없습니다.');
+    if (periodFrom && periodTo && periodFrom > periodTo) {
+      throw new BadRequestException('periodFrom은 periodTo보다 늦을 수 없습니다.');
     }
 
-    if (publishedFrom && publishedTo && publishedFrom > publishedTo) {
-      throw new BadRequestException('publishedFrom은 publishedTo보다 늦을 수 없습니다.');
-    }
+    const likeRatioMin = this.parseOptionalRatio(body.likeRatioMin, 'likeRatioMin');
+
+    const [keywordCodes, feedbackLikeCodes, feedbackDislikeCodes] = await Promise.all([
+      this.resolveKeywordCodes(body.keywordIds),
+      this.resolveFeedbackCodes(body.feedbackLikeTagIds, 'LIKE'),
+      this.resolveFeedbackCodes(body.feedbackDislikeTagIds, 'DISLIKE'),
+    ]);
 
     return {
-      publishedFrom,
-      publishedTo,
-      minLikeRatio,
-      maxLikeRatio,
-      outfitCategories: this.normalizeStringArray(body.outfitCategories),
-      keywordCodes: this.normalizeStringArray(body.keywordCodes),
-      feedbackTagCodes: this.normalizeStringArray(body.feedbackTagCodes),
+      periodFrom,
+      periodTo,
+      likeRatioMin,
+      keywordCodes,
+      feedbackLikeCodes,
+      feedbackDislikeCodes,
     };
+  }
+
+  /**
+   * keyword ID 배열 → keyword code 배열 변환.
+   * 존재하지 않는 ID가 있으면 400.
+   */
+  private async resolveKeywordCodes(ids?: number[]): Promise<string[]> {
+    if (!ids?.length) return [];
+    const uniqueIds = [...new Set(ids)];
+
+    const rows = await this.prisma.keyword.findMany({
+      where: { id: { in: uniqueIds }, isActive: true },
+      select: { id: true, code: true },
+    });
+
+    if (rows.length !== uniqueIds.length) {
+      const foundIds = new Set(rows.map((r) => r.id));
+      const missing = uniqueIds.filter((id) => !foundIds.has(id));
+      throw new BadRequestException(`유효하지 않은 keywordIds: ${missing.join(', ')}`);
+    }
+
+    return rows.map((r) => r.code);
+  }
+
+  /**
+   * feedback_tag ID 배열 → code 배열 변환 (voteChoice 검증 포함).
+   * 존재하지 않는 ID나 voteChoice 불일치 시 400.
+   */
+  private async resolveFeedbackCodes(
+    ids: number[] | undefined,
+    expectedVoteChoice: 'LIKE' | 'DISLIKE',
+  ): Promise<string[]> {
+    if (!ids?.length) return [];
+    const uniqueIds = [...new Set(ids)];
+
+    const rows = await this.prisma.feedbackTag.findMany({
+      where: { id: { in: uniqueIds }, isActive: true },
+      select: { id: true, code: true, voteChoice: true },
+    });
+
+    if (rows.length !== uniqueIds.length) {
+      const foundIds = new Set(rows.map((r) => r.id));
+      const missing = uniqueIds.filter((id) => !foundIds.has(id));
+      const fieldName =
+        expectedVoteChoice === 'LIKE' ? 'feedbackLikeTagIds' : 'feedbackDislikeTagIds';
+      throw new BadRequestException(`유효하지 않은 ${fieldName}: ${missing.join(', ')}`);
+    }
+
+    const wrongChoice = rows.filter((r) => r.voteChoice !== expectedVoteChoice);
+    if (wrongChoice.length) {
+      const fieldName =
+        expectedVoteChoice === 'LIKE' ? 'feedbackLikeTagIds' : 'feedbackDislikeTagIds';
+      throw new BadRequestException(
+        `${fieldName}에 ${expectedVoteChoice === 'LIKE' ? 'DISLIKE' : 'LIKE'} 태그가 포함되어 있습니다: ${wrongChoice.map((r) => r.id).join(', ')}`,
+      );
+    }
+
+    return rows.map((r) => r.code);
   }
 
   private parseOptionalDate(value: string | undefined, fieldName: string): Date | null {
@@ -676,19 +744,5 @@ export class SearchService {
     }
 
     return ratio;
-  }
-
-  private normalizeStringArray(values?: string[]): string[] {
-    if (!values?.length) {
-      return [];
-    }
-
-    return Array.from(
-      new Set(
-        values
-          .map((value) => String(value ?? '').trim())
-          .filter((value) => value.length > 0),
-      ),
-    );
   }
 }
