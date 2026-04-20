@@ -16,7 +16,7 @@ export class CreateKeywordDto implements CreateKeywordRequest {
   @ApiProperty({ description: '표시 레이블', example: '스트릿 룩' })
   @IsString()
   @IsNotEmpty()
-  @MaxLength(100)
+  @MaxLength(50)
   label!: string;
 
   @ApiPropertyOptional({ description: '정렬 순서 (기본 0)', example: 10 })

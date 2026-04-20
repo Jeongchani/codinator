@@ -7,7 +7,7 @@ export class UpdateKeywordDto implements UpdateKeywordRequest {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  @MaxLength(100)
+  @MaxLength(50)
   label?: string;
 
   @ApiPropertyOptional({ description: '정렬 순서', example: 5 })
