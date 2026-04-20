@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -13,14 +14,20 @@ import type {
   ReviewReportRequest,
   ReviewReportResponse,
 } from '@codinator/contracts';
-import { PostStatus, ReportStatus, UserRole } from '@prisma/client';
+import { ImageAnalysisPurpose, PostStatus, ReportStatus, UserRole } from '@prisma/client';
 import { POST_IMAGE_INCLUDE } from '../posts/common/post-presenter.util';
 import type { ListReportsQueryDto } from './dto/list-reports-query.dto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ImageIndexingService } from '../ai/image-indexing.service';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(AdminService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly imageIndexingService: ImageIndexingService,
+  ) {}
 
   // ─── ADMIN 권한 검증 헬퍼 ──────────────────────────────────────────────────────
 
@@ -335,6 +342,51 @@ export class AdminService {
         'action은 RESOLVED 또는 REJECTED 중 하나여야 합니다.',
       );
     }
+  }
+
+  // ─── [DEV] 게시글 이미지 일괄 재인덱싱 ─────────────────────────────────────────
+
+  /**
+   * POST /admin/reindex-post-images
+   *
+   * 시드 데이터 등 POST_INDEX 분석이 누락된 게시글 이미지를 일괄 재인덱싱합니다.
+   * - is_primary=true 인 post_image 의 image_asset 을 대상으로 합니다.
+   * - 이미 SUCCEEDED 분석 run 이 존재하면 건너뜁니다.
+   * - AI 분석 실패 시 해당 건만 skip 하고 계속 진행합니다.
+   */
+  async reindexPostImages(): Promise<{ total: number; succeeded: number; failed: number; failedIds: number[] }> {
+    // 주요 post 이미지 asset 조회 (PRIMARY 이미지만)
+    const primaryImages = await this.prisma.postImage.findMany({
+      where: { isPrimary: true },
+      select: { imageAssetId: true },
+    });
+
+    const assetIds = [...new Set(primaryImages.map((pi) => pi.imageAssetId))];
+    this.logger.log(`재인덱싱 대상 imageAsset 수: ${assetIds.length}`);
+
+    let succeeded = 0;
+    let failed = 0;
+    const failedIds: number[] = [];
+
+    for (const assetId of assetIds) {
+      try {
+        await this.imageIndexingService.ensureCurrentAnalysisRun(
+          assetId,
+          ImageAnalysisPurpose.POST_INDEX,
+        );
+        succeeded++;
+        this.logger.log(`[OK] imageAssetId=${assetId}`);
+      } catch (error) {
+        failed++;
+        failedIds.push(assetId);
+        this.logger.warn(
+          `[FAIL] imageAssetId=${assetId}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+
+    this.logger.log(`재인덱싱 완료 — 성공: ${succeeded}, 실패: ${failed}`);
+    return { total: assetIds.length, succeeded, failed, failedIds };
   }
 
   private validateChangePostStatusBody(body: ChangePostStatusRequest): void {

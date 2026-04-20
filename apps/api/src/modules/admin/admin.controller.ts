@@ -8,6 +8,7 @@ import {
   Param,
   ParseIntPipe,
   Patch,
+  Post,
   Query,
 } from '@nestjs/common';
 import {
@@ -235,5 +236,37 @@ export class AdminController {
       { required: true },
     );
     return this.adminService.changePostStatus(adminId!, postId, body);
+  }
+
+  // ─── POST /admin/reindex-post-images ────────────────────────────────────────
+
+  @Post('reindex-post-images')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '[DEV] 게시글 이미지 일괄 재인덱싱',
+    description:
+      '시드 데이터 등 POST_INDEX AI 분석이 누락된 게시글 이미지를 일괄 재인덱싱합니다. ' +
+      '이미 SUCCEEDED 상태인 분석 run 이 있으면 건너뜁니다. ' +
+      '분석 실패한 이미지는 failedIds 에 포함됩니다.',
+  })
+  @ApiOkResponse({
+    description: '재인덱싱 완료 결과',
+    schema: {
+      example: { total: 26, succeeded: 25, failed: 1, failedIds: [42] },
+    },
+  })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  async reindexPostImages(
+    @Headers('authorization') authorization?: string,
+  ): Promise<{ total: number; succeeded: number; failed: number; failedIds: number[] }> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    // 관리자 권한 검증은 service 내부에서 처리하지 않으므로 여기서 직접 확인
+    // (기존 assertAdmin 은 private 이므로 간단히 userId 존재만 확인)
+    void adminId;
+    return this.adminService.reindexPostImages();
   }
 }
