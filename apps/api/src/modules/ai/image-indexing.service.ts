@@ -133,11 +133,21 @@ export class ImageIndexingService {
       select: { id: true },
     });
 
+    /** AI 서버 업로드 허용 최대 파일 크기 (10 MB) */
+    const MAX_AI_UPLOAD_BYTES = 10 * 1024 * 1024;
+
     try {
       const filePath = join(this.uploadRoot, imageAsset.storageKey);
       const buffer = await fs.readFile(filePath);
       const filename = basename(filePath);
       const mimeType = imageAsset.mimeType ?? this.guessMimeType(filename);
+
+      // AI 서버에 보내기 전 파일 크기 사전 검사 — 초과 시 AI 호출 없이 즉시 실패
+      if (buffer.length > MAX_AI_UPLOAD_BYTES) {
+        throw new BadRequestException(
+          `이미지 파일이 너무 큽니다. AI 서버 허용 최대 크기는 10MB 입니다. (현재 ${(buffer.length / 1024 / 1024).toFixed(1)}MB)`,
+        );
+      }
 
       const result = await this.aiService.analyzeImageBinary({
         buffer,
