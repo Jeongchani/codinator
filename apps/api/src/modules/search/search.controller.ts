@@ -109,17 +109,58 @@ export class SearchController {
     return this.searchService.deleteSearchHistory(userId!, historyId);
   }
 
-  // ── POST /search/image ────────────────────────────────────────────────────
+  // ── POST /search/image ──────────────────────────────────────────────────── V3 Batch9
 
   @Post('image')
   @ApiBearerAuth()
   @ApiOperation({
-    summary: '랭킹존 AI 이미지 검색',
-    description:
-      'uploads/search-image 업로드 후 받은 imageAssetId를 기준으로 공개 가능한 랭킹존 게시글만 유사도 검색합니다.',
+    summary: '랭킹존 AI 이미지 검색 (V3)',
+    description: [
+      'POST /uploads/search-image 로 업로드한 이미지를 기준으로',
+      '공개 가능한 랭킹존 게시글만 vector 유사도 기반으로 검색합니다.',
+      '',
+      '**모드**',
+      '- FULL_OUTFIT(기본): 전체 스타일·색감·실루엣 유사도 기반 (OUTFIT 벡터 사용)',
+      '- SINGLE_ITEM: 특정 의류와 유사한 아이템이 포함된 게시글 우선 (GARMENT 벡터 사용)',
+      '',
+      '**필터** — 아래 중 하나 이상 지정 시 교집합 조건으로 적용됩니다.',
+      '- publishedFrom/To: 게시글 공개 시점(publishedAt) 범위',
+      '- minLikeRatio/maxLikeRatio: 0.0~1.0 좋아요 비율 범위',
+      '- outfitCategories: 게시글 outfit 카테고리 필터',
+      '- keywordCodes: 게시글에 연결된 키워드 코드 필터',
+      '- feedbackTagCodes: 게시글이 받은 피드백 태그 코드 필터',
+      '',
+      '**검색 대상**: evaluation.status=ENDED, post.status=ACTIVE, publishedAt IS NOT NULL,',
+      'hiddenAt=null, deletedAt=null, isSearchable=true 인 게시글만 포함됩니다.',
+      '',
+      '처음 호출 시 AI 서버에서 이미지를 분석합니다. 이미지 품질이 너무 낮으면 422를 반환합니다.',
+    ].join('\n'),
   })
   @ApiBody({ type: SearchImageDto })
-  @ApiOkResponse({ description: '이미지 검색 결과' })
+  @ApiOkResponse({
+    description: '이미지 검색 결과 (유사도 내림차순)',
+    schema: {
+      example: {
+        mode: 'FULL_OUTFIT',
+        queryImageAssetId: 201,
+        analysisRunId: 35,
+        items: [
+          {
+            postId: 12,
+            userId: 3,
+            thumbnailUrl: '/uploads/posts/processed/20260401/uuid.jpg',
+            content: '블랙 레더 자켓 데일리룩',
+            createdAt: '2026-04-01T12:00:00.000Z',
+            similarity: 0.93,
+            keywords: [{ keywordId: 2, label: '데일리룩' }],
+          },
+        ],
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({ description: 'Bearer Token 누락 또는 만료' })
+  @ApiBadRequestResponse({ description: 'imageAssetId 유효하지 않음 / 필터 형식 오류' })
+  @ApiNotFoundResponse({ description: '검색용 이미지 자산을 찾을 수 없음 / 벡터 없음' })
   async searchImage(
     @Body() body: SearchImageDto,
     @Headers('authorization') authorization?: string,

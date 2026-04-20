@@ -23,7 +23,7 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import type { ManualBlurResponse, UploadPostImageResponse } from '@codinator/contracts';
+import type { ManualBlurResponse, UploadPostImageResponse, UploadSearchImageResponse } from '@codinator/contracts'; // V3 Batch9: UploadSearchImageResponse 추가
 import { AuthTokenService } from '../auth/auth-token.service';
 import { UploadsService } from './uploads.service';
 
@@ -71,9 +71,21 @@ export class UploadsController {
     return this.uploadsService.savePostImage(userId!, file);
   }
 
+  // ── POST /uploads/search-image ────────────────────────────────────────────
+  // V3 Batch9: 검색용 이미지 업로드 (face blur 없음, imageAssetId만 반환)
+
   @Post('search-image')
   @ApiBearerAuth()
-  @ApiOperation({ summary: '이미지 검색용 업로드' })
+  @ApiOperation({
+    summary: '이미지 검색용 업로드 (V3)',
+    description: [
+      '검색에 사용할 이미지 1장을 업로드합니다.',
+      '지원 형식: jpg/jpeg, png, webp (최대 5MB).',
+      '검색용 이미지는 공개되지 않으므로 face blur가 적용되지 않습니다.',
+      '응답으로 받은 imageAssetId를 POST /search/image 에서 사용하세요.',
+      'AI 분석(garment 감지 + 임베딩 추출)은 /search/image 호출 시 자동으로 수행됩니다.',
+    ].join(' '),
+  })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
@@ -82,19 +94,26 @@ export class UploadsController {
         file: {
           type: 'string',
           format: 'binary',
+          description: '검색용 이미지 파일 (jpg/jpeg/png/webp, 최대 5MB)',
         },
       },
       required: ['file'],
     },
   })
   @ApiOkResponse({
-    description: '검색용 image asset 생성 결과',
+    description: '검색용 이미지 자산 생성 완료. imageAssetId를 /search/image 에서 사용',
+    schema: {
+      example: {
+        imageAssetId: 201,
+        originalImageUrl: '/uploads/search/originals/20260420/uuid.jpg',
+      },
+    },
   })
   @UseInterceptors(FileInterceptor('file'))
   async uploadSearchImage(
     @UploadedFile() file: Express.Multer.File,
     @Headers('authorization') authorization?: string,
-  ): Promise<UploadPostImageResponse> {
+  ): Promise<UploadSearchImageResponse> { // V3 Batch9: UploadPostImageResponse → UploadSearchImageResponse
     const userId = this.authTokenService.extractUserIdFromAuthorizationHeader(
       authorization,
       { required: true },

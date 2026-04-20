@@ -5,7 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { ManualBlurResponse, UploadPostImageResponse } from '@codinator/contracts';
+import type { ManualBlurResponse, UploadPostImageResponse, UploadSearchImageResponse } from '@codinator/contracts'; // V3 Batch9: UploadSearchImageResponse 추가
 import {
   AiBlurStatus,
   BlurMethod,
@@ -54,11 +54,14 @@ export class UploadsService {
     return this.saveImageAsset(userId, file, ImageAssetSourceType.POST, 'posts');
   }
 
+  // ── V3 Batch9: 검색용 이미지 저장 (face blur 없음) ───────────────────────────
+  // 검색용 이미지는 공개되지 않으므로 face blur가 불필요하다.
+  // AI 분석(garment detection + embedding)은 POST /search/image 호출 시 on-demand 실행.
   async saveSearchImage(
     userId: number,
     file: Express.Multer.File,
-  ): Promise<UploadPostImageResponse> {
-    return this.saveImageAsset(userId, file, ImageAssetSourceType.SEARCH_QUERY, 'search');
+  ): Promise<UploadSearchImageResponse> {
+    return this.saveSearchImageAsset(userId, file);
   }
 
   // ── PATCH /uploads/posts/:postId/manual-blur ─────────────────────────────
@@ -191,6 +194,58 @@ export class UploadsService {
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
+
+  /**
+   * [V3 Batch9] 검색용 이미지 전용 저장 메서드.
+   * - face blur를 실행하지 않는다 (검색 쿼리 이미지는 비공개, blur 불필요).
+   * - originalImageUrl만 저장하며, AI 임베딩 분석은 POST /search/image 시 on-demand 수행.
+   * - blurMethod=NONE, aiBlurStatus=NONE 으로 고정.
+   */
+  private async saveSearchImageAsset(
+    userId: number,
+    file: Express.Multer.File,
+  ): Promise<UploadSearchImageResponse> {
+    this.validateImage(file);
+
+    const today = this.getDatePath();
+    const originalDir = join(this.uploadRoot, 'search', 'originals', today);
+    await fs.mkdir(originalDir, { recursive: true });
+
+    const originalExtension = extname(file.originalname) || '.jpg';
+    const originalFilename = `${randomUUID()}${originalExtension}`;
+    const originalFullPath = join(originalDir, originalFilename);
+    await fs.writeFile(originalFullPath, file.buffer);
+
+    const storageKey = `search/originals/${today}/${originalFilename}`;
+    const originalImageUrl = `/uploads/${storageKey}`;
+
+    const asset = await this.prisma.imageAsset.create({
+      data: {
+        ownerUserId: userId,
+        sourceType: ImageAssetSourceType.SEARCH_QUERY,
+        storageKey,
+        originalImageUrl,
+        processedImageUrl: null, // 검색용 이미지는 processed 불필요 // V3 Batch9
+        thumbnailUrl: null,
+        mimeType: file.mimetype,
+        blurMethod: BlurMethod.NONE, // face blur 생략 // V3 Batch9
+        aiBlurStatus: AiBlurStatus.NONE, // AI blur 파이프라인 대상 아님 // V3 Batch9
+      },
+      select: {
+        id: true,
+        originalImageUrl: true,
+      },
+    });
+
+    this.logger.log(
+      `검색용 이미지 저장 완료 — imageAssetId=${asset.id}, storageKey=${storageKey}`,
+    );
+
+    return {
+      imageAssetId: asset.id,
+      originalImageUrl: asset.originalImageUrl,
+    };
+  }
 
   private async saveImageAsset(
     userId: number,

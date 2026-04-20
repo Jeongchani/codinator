@@ -3,6 +3,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  UnprocessableEntityException, // V3 Batch9: SEARCH_QUERY 이미지 품질 불량 시 422 반환
 } from '@nestjs/common';
 import {
   AiGarmentCategory,
@@ -148,18 +149,30 @@ export class ImageIndexingService {
 
       return run.id;
     } catch (error) {
+      // V3 Batch9: 분석 실패 이유를 errorCode/errorMessage 로 기록
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
       await this.prisma.imageAnalysisRun.update({
         where: { id: run.id },
         data: {
           status: ImageAnalysisStatus.FAILED,
           errorCode: 'ANALYSIS_FAILED',
-          errorMessage: error instanceof Error ? error.message : String(error),
+          errorMessage,
           finishedAt: new Date(),
         },
       });
 
+      // V3 Batch9: SEARCH_QUERY 목적의 분석 실패는 422(UnprocessableEntity) 반환.
+      // "이미지 품질이 너무 낮아 분석이 어려우면 검색 실패 메시지 제공" 정책 반영.
+      // POST_INDEX / REINDEX 목적은 기존과 동일하게 500 유지.
+      if (purpose === ImageAnalysisPurpose.SEARCH_QUERY) {
+        throw new UnprocessableEntityException(
+          '이미지를 분석할 수 없습니다. 전신 또는 의류가 명확히 보이는 이미지를 사용해 주세요.',
+        );
+      }
+
       throw new InternalServerErrorException(
-        error instanceof Error ? error.message : '이미지 분석 저장에 실패했습니다.',
+        errorMessage || '이미지 분석 저장에 실패했습니다.',
       );
     }
   }
