@@ -580,7 +580,7 @@ export class SearchService {
         searchType: h.searchType as 'TEXT' | 'IMAGE',
         queryText: h.queryText ?? null,
         imageAssetId: h.imageAssetId ?? null,
-        imageSearchMode: (h.imageSearchMode as string | null) ?? null,
+        imageSearchMode: h.imageSearchMode ?? null,
         resultCount: h.resultCount,
         createdAt: h.createdAt.toISOString(),
       })),
