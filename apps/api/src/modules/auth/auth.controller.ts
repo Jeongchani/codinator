@@ -1,4 +1,5 @@
-import { Body, Controller, Headers, HttpCode, HttpStatus, Ip, Patch, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Patch, Post, Req } from '@nestjs/common';
+import type { Request } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -153,9 +154,10 @@ export class AuthController {
   @ApiForbiddenResponse({ description: '로그인이 제한된 계정' })
   async login(
     @Body() dto: LoginRequestDto,
-    @Headers('user-agent') userAgent?: string,
-    @Ip() ipAddress?: string,
+    @Req() req: Request, // Auth-UserAgent-Fix: Swagger에 노출 없이 header/IP 자동 추출
   ): Promise<LoginResponse> {
+    const userAgent = req.headers['user-agent'];
+    const ipAddress = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ?? req.ip;
     return this.authService.login(dto, { userAgent, ipAddress });
   }
 
@@ -327,9 +329,10 @@ export class AuthController {
   @ApiForbiddenResponse({ description: '로그인이 제한된 계정' })
   async socialCompleteProfile(
     @Body() dto: SocialCompleteProfileRequest,
-    @Headers('user-agent') userAgent?: string,
-    @Ip() ipAddress?: string,
+    @Req() req: Request, // Auth-UserAgent-Fix
   ): Promise<SocialCompleteProfileResponse> {
+    const userAgent = req.headers['user-agent'];
+    const ipAddress = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ?? req.ip;
     return this.authService.socialCompleteProfile(dto, { userAgent, ipAddress });
   }
 
