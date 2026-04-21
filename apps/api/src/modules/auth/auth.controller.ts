@@ -270,7 +270,8 @@ export class AuthController {
     description:
       '기존 회원(isNewUser=false): provider + providerToken 만 전송하면 즉시 세션 발급. ' +
       '신규 회원(isNewUser=true): nickname, birthDate, gender, phoneNumber, phoneVerificationToken(SIGN_UP purpose) 추가 필수. ' +
-      'providerToken 은 social/login 에 전달한 원본 token 을 그대로 사용.',
+      'providerToken 은 social/login 에 전달한 원본 token 을 그대로 사용. ' +
+      'rememberMe=true 이면 refresh token 발급 + 세션 저장, false/미입력이면 access token만 발급.',
   })
   @ApiBody({
     schema: {
@@ -290,6 +291,12 @@ export class AuthController {
           type: 'string',
           description: 'purpose=SIGN_UP 전화번호 인증 토큰 (신규 회원 전용)',
         },
+        rememberMe: { // RememberMe
+          type: 'boolean',
+          example: true,
+          description:
+            '로그인 상태 유지 여부. true → refresh token 발급 + 세션 저장. false/미입력 → access token만 발급.',
+        },
       },
     },
   })
@@ -298,7 +305,11 @@ export class AuthController {
       type: 'object',
       properties: {
         accessToken: { type: 'string' },
-        refreshToken: { type: 'string' },
+        refreshToken: { // RememberMe
+          type: 'string',
+          nullable: true,
+          description: 'rememberMe=true 일 때만 포함',
+        },
         user: {
           type: 'object',
           properties: {

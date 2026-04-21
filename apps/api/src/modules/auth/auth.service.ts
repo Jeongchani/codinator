@@ -406,16 +406,21 @@ export class AuthService {
     // 활성 로그인 제한 제재 확인 (TEMP_SUSPENSION / PERMANENT_BAN)
     await this.assertNoActiveLoginSanction(user.id);
 
-    const { accessToken, refreshToken } = await this.createSession(user.id, user.email, meta);
+    // rememberMe=true → refresh token 발급 + user_sessions 저장 // RememberMe
+    if (dto.rememberMe === true) {
+      const { accessToken, refreshToken } = await this.createSession(user.id, user.email, meta);
+      return {
+        user: { id: user.id, email: user.email, nickname: user.nickname },
+        accessToken,
+        refreshToken,
+      };
+    }
 
+    // rememberMe=false 또는 미입력 → access token만 발급, 세션 없음 // RememberMe
+    const accessToken = this.authTokenService.signAccessToken(user.id, user.email);
     return {
-      user: {
-        id: user.id,
-        email: user.email,
-        nickname: user.nickname,
-      },
+      user: { id: user.id, email: user.email, nickname: user.nickname },
       accessToken,
-      refreshToken,
     };
   }
 
@@ -551,11 +556,21 @@ export class AuthService {
 
       await this.assertNoActiveLoginSanction(user.id);
 
-      const { accessToken, refreshToken } = await this.createSession(user.id, user.email ?? '');
+      // rememberMe=true → refresh token 발급 + user_sessions 저장 // RememberMe
+      if (dto.rememberMe === true) {
+        const { accessToken, refreshToken } = await this.createSession(user.id, user.email ?? '', meta);
+        return {
+          accessToken,
+          refreshToken,
+          user: { id: user.id, email: user.email, nickname: user.nickname },
+          isNewUser: false,
+        };
+      }
 
+      // rememberMe=false 또는 미입력 → access token만 발급 // RememberMe
+      const accessToken = this.authTokenService.signAccessToken(user.id, user.email ?? '');
       return {
         accessToken,
-        refreshToken,
         user: { id: user.id, email: user.email, nickname: user.nickname },
         isNewUser: false,
       };
@@ -655,11 +670,21 @@ export class AuthService {
       return created;
     });
 
-    const { accessToken, refreshToken } = await this.createSession(user.id, user.email);
+    // rememberMe=true → refresh token 발급 + user_sessions 저장 // RememberMe
+    if (dto.rememberMe === true) {
+      const { accessToken, refreshToken } = await this.createSession(user.id, user.email, meta);
+      return {
+        accessToken,
+        refreshToken,
+        user: { id: user.id, email: user.email, nickname: user.nickname },
+        isNewUser: true,
+      };
+    }
 
+    // rememberMe=false 또는 미입력 → access token만 발급 // RememberMe
+    const accessToken = this.authTokenService.signAccessToken(user.id, user.email);
     return {
       accessToken,
-      refreshToken,
       user: { id: user.id, email: user.email, nickname: user.nickname },
       isNewUser: true,
     };
