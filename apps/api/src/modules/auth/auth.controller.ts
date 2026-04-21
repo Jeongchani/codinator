@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Headers, HttpCode, HttpStatus, Ip, Patch, Post } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -11,8 +11,10 @@ import {
   ApiNotFoundResponse,
   ApiResponse,
   ApiTooManyRequestsResponse,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { LoginResponseDto } from './dto/login-response.dto';
 import { SendPhoneVerificationDto } from './dto/send-phone-verification.dto';
 import { SignupRequestDto } from './dto/signup-request.dto';
 import { SignupResponseDto } from './dto/signup-response.dto';
@@ -146,8 +148,15 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '로그인 + Access/Refresh Token 발급' })
   @ApiBody({ type: LoginRequestDto })
-  async login(@Body() dto: LoginRequestDto): Promise<LoginResponse> {
-    return this.authService.login(dto);
+  @ApiOkResponse({ type: LoginResponseDto, description: '로그인 성공 — accessToken + refreshToken 발급' })
+  @ApiUnauthorizedResponse({ description: '이메일 또는 비밀번호 불일치' })
+  @ApiForbiddenResponse({ description: '로그인이 제한된 계정' })
+  async login(
+    @Body() dto: LoginRequestDto,
+    @Headers('user-agent') userAgent?: string,
+    @Ip() ipAddress?: string,
+  ): Promise<LoginResponse> {
+    return this.authService.login(dto, { userAgent, ipAddress });
   }
 
   // ── POST /auth/refresh ────────────────────────────────────────────────────
@@ -164,6 +173,16 @@ export class AuthController {
       },
     },
   })
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      properties: {
+        accessToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
+      },
+    },
+    description: 'Access Token 재발급 성공',
+  })
+  @ApiUnauthorizedResponse({ description: '유효하지 않거나 만료된 Refresh Token' })
   async refresh(@Body() dto: RefreshTokenRequest): Promise<RefreshTokenResponse> {
     return this.authService.refresh(dto);
   }
@@ -182,6 +201,17 @@ export class AuthController {
       },
     },
   })
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: '로그아웃되었습니다.' },
+      },
+    },
+    description: '로그아웃 성공 (이미 만료된 토큰도 200 반환)',
+  })
+  @ApiUnauthorizedResponse({ description: '유효하지 않은 Refresh Token 형식' })
   async logout(@Body() dto: LogoutRequest): Promise<LogoutResponse> {
     return this.authService.logout(dto);
   }
@@ -286,8 +316,10 @@ export class AuthController {
   @ApiForbiddenResponse({ description: '로그인이 제한된 계정' })
   async socialCompleteProfile(
     @Body() dto: SocialCompleteProfileRequest,
+    @Headers('user-agent') userAgent?: string,
+    @Ip() ipAddress?: string,
   ): Promise<SocialCompleteProfileResponse> {
-    return this.authService.socialCompleteProfile(dto);
+    return this.authService.socialCompleteProfile(dto, { userAgent, ipAddress });
   }
 
   // ── PATCH /auth/password-reset ────────────────────────────────────────────
