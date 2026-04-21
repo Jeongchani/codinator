@@ -9,6 +9,7 @@ import type { ManualBlurResponse, UploadPostImageResponse, UploadSearchImageResp
 import {
   AiBlurStatus,
   BlurMethod,
+  ImageAnalysisPurpose,
   ImageAssetSourceType,
   PostStatus,
 } from '@prisma/client';
@@ -17,6 +18,7 @@ import { promises as fs } from 'fs';
 import { extname, join } from 'path';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AiService } from '../ai/ai.service';
+import { ImageIndexingService } from '../ai/image-indexing.service';
 
 /**
  * Batch4 — blurMethod / aiBlurStatus 상태 전이 정책
@@ -45,6 +47,7 @@ export class UploadsService {
   constructor(
     private readonly aiService: AiService,
     private readonly prisma: PrismaService,
+    private readonly imageIndexingService: ImageIndexingService,
   ) {}
 
   async savePostImage(
@@ -118,6 +121,21 @@ export class UploadsService {
       },
       select: { id: true, updatedAt: true },
     });
+
+    try {
+      await this.imageIndexingService.invalidateCurrentRuns(
+        updatedAsset.id,
+        ImageAnalysisPurpose.POST_INDEX,
+      );
+      await this.imageIndexingService.ensureCurrentAnalysisRun(
+        updatedAsset.id,
+        ImageAnalysisPurpose.POST_INDEX,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `수동 블러 재분석 실패 — postId=${postId}, imageAssetId=${updatedAsset.id}, error=${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
 
     this.logger.log(
       `수동 블러 적용(postId) — postId=${postId}, imageAssetId=${updatedAsset.id}, ` +
