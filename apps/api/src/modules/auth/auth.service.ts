@@ -384,7 +384,10 @@ export class AuthService {
   // ──────────────────────────────────────────────────────────────────────────
   // POST /auth/login
   // ──────────────────────────────────────────────────────────────────────────
-  async login(dto: LoginRequestDto): Promise<LoginResponse> {
+  async login(
+    dto: LoginRequestDto,
+    meta?: { userAgent?: string; ipAddress?: string }, // V3-LoginSession: 디바이스 메타 저장용
+  ): Promise<LoginResponse> {
     const email = dto.email.trim().toLowerCase();
 
     const user = await this.prisma.user.findUnique({ where: { email } });
@@ -410,27 +413,21 @@ export class AuthService {
     // 활성 로그인 제한 제재 확인 (TEMP_SUSPENSION / PERMANENT_BAN)
     await this.assertNoActiveLoginSanction(user.id);
 
+    // rememberMe=true → refresh token 발급 + user_sessions 저장 // RememberMe
+    if (dto.rememberMe === true) {
+      const { accessToken, refreshToken } = await this.createSession(user.id, user.email, meta);
+      return {
+        user: { id: user.id, email: user.email, nickname: user.nickname },
+        accessToken,
+        refreshToken,
+      };
+    }
+
+    // rememberMe=false 또는 미입력 → access token만 발급, 세션 없음 // RememberMe
     const accessToken = this.authTokenService.signAccessToken(user.id, user.email);
-    const refreshToken = this.authTokenService.signRefreshToken(user.id, user.email);
-    const refreshTokenHash = this.hashToken(refreshToken);
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-    await this.prisma.userSession.create({
-      data: {
-        userId: user.id,
-        refreshTokenHash,
-        expiresAt,
-      },
-    });
-
     return {
-      user: {
-        id: user.id,
-        email: user.email,
-        nickname: user.nickname,
-      },
+      user: { id: user.id, email: user.email, nickname: user.nickname },
       accessToken,
-      refreshToken,
     };
   }
 
@@ -560,6 +557,7 @@ export class AuthService {
   // ──────────────────────────────────────────────────────────────────────────
   async socialCompleteProfile(
     dto: SocialCompleteProfileRequest,
+    meta?: { userAgent?: string; ipAddress?: string }, // V3-LoginSession
   ): Promise<SocialCompleteProfileResponse> {
     const provider = dto.provider as SocialProvider;
 
@@ -592,11 +590,21 @@ export class AuthService {
 
       await this.assertNoActiveLoginSanction(user.id);
 
-      const { accessToken, refreshToken } = await this.createSession(user.id, user.email ?? '');
+      // rememberMe=true → refresh token 발급 + user_sessions 저장 // RememberMe
+      if (dto.rememberMe === true) {
+        const { accessToken, refreshToken } = await this.createSession(user.id, user.email ?? '', meta);
+        return {
+          accessToken,
+          refreshToken,
+          user: { id: user.id, email: user.email, nickname: user.nickname },
+          isNewUser: false,
+        };
+      }
 
+      // rememberMe=false 또는 미입력 → access token만 발급 // RememberMe
+      const accessToken = this.authTokenService.signAccessToken(user.id, user.email ?? '');
       return {
         accessToken,
-        refreshToken,
         user: { id: user.id, email: user.email, nickname: user.nickname },
         isNewUser: false,
       };
@@ -739,11 +747,21 @@ export class AuthService {
       return created;
     });
 
-    const { accessToken, refreshToken } = await this.createSession(user.id, user.email);
+    // rememberMe=true → refresh token 발급 + user_sessions 저장 // RememberMe
+    if (dto.rememberMe === true) {
+      const { accessToken, refreshToken } = await this.createSession(user.id, user.email, meta);
+      return {
+        accessToken,
+        refreshToken,
+        user: { id: user.id, email: user.email, nickname: user.nickname },
+        isNewUser: true,
+      };
+    }
 
+    // rememberMe=false 또는 미입력 → access token만 발급 // RememberMe
+    const accessToken = this.authTokenService.signAccessToken(user.id, user.email);
     return {
       accessToken,
-      refreshToken,
       user: { id: user.id, email: user.email, nickname: user.nickname },
       isNewUser: true,
     };
@@ -841,18 +859,25 @@ export class AuthService {
     }
   }
 
-  /** 세션(Refresh Token) 생성 후 Access/Refresh Token 반환 */
+  /** 세션(Refresh Token) 생성 후 Access/Refresh Token 반환 // V3-LoginSession */
   private async createSession(
     userId: number,
     email: string,
+    meta?: { userAgent?: string; ipAddress?: string }, // V3-LoginSession: userAgent / ipAddress 저장
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const accessToken = this.authTokenService.signAccessToken(userId, email);
     const refreshToken = this.authTokenService.signRefreshToken(userId, email);
     const refreshTokenHash = this.hashToken(refreshToken);
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // refresh 7일
 
     await this.prisma.userSession.create({
-      data: { userId, refreshTokenHash, expiresAt },
+      data: {
+        userId,
+        refreshTokenHash,
+        expiresAt,
+        userAgent: meta?.userAgent ?? null,   // V3-LoginSession
+        ipAddress: meta?.ipAddress ?? null,   // V3-LoginSession
+      },
     });
 
     return { accessToken, refreshToken };
