@@ -140,11 +140,13 @@ def strip_internal_fields(garment: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_summary_tags(garments: list[dict[str, Any]]) -> list[str]:
-    tags = {"daily"}
+    tags: set[str] = set()
     categories = {garment["category"] for garment in garments}
 
     if "TOP" in categories:
         tags.add("top")
+    if "OUTER" in categories:
+        tags.add("outer")
     if "BOTTOM" in categories:
         tags.add("bottom")
     if "BAG" in categories:
