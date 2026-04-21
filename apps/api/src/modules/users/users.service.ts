@@ -1,10 +1,13 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import type {
+  ChangePhoneRequest,
+  ChangePhoneResponse,
   DeleteMeResponse,
   GetMeResponse,
   UpdateMeRequest,
@@ -12,15 +15,20 @@ import type {
   UpdatePasswordRequest,
   UpdatePasswordResponse,
 } from '@codinator/contracts';
-import { UserStatus } from '@prisma/client';
+import { PhoneVerificationPurpose, PhoneVerificationStatus, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { isValidPassword } from '../../common/helpers/password.helper';
+import { normalizePhoneNumber } from '../../common/helpers/phone.helper';
 import { syncAuthorSearchIndexes } from '../search/common/post-search-index.util';
+import { AuthTokenService } from '../auth/auth-token.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly authTokenService: AuthTokenService,
+  ) {}
 
   async getMe(userId: number): Promise<GetMeResponse> {
     const user = await this.prisma.user.findUnique({
@@ -147,6 +155,81 @@ export class UsersService {
 
     return { success: true, message: '회원 탈퇴가 완료되었습니다.' };
   }
+
+  // ── PATCH /users/me/phone ─────────────────────────────────────────────────
+
+  async changePhone(userId: number, body: ChangePhoneRequest): Promise<ChangePhoneResponse> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, status: true },
+    });
+
+    if (!user || user.status === UserStatus.DELETED) {
+      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    }
+
+    const phoneNumber = normalizePhoneNumber(body.phoneNumber);
+
+    // 전화번호 인증 토큰 검증 (purpose=PHONE_CHANGE)
+    const phonePayload = this.authTokenService.verifyPhoneVerificationToken(
+      body.phoneVerificationToken,
+    );
+
+    if (phonePayload.purpose !== PhoneVerificationPurpose.PHONE_CHANGE) {
+      throw new BadRequestException('전화번호 변경에 사용할 수 없는 인증 토큰입니다.');
+    }
+
+    if (phonePayload.phoneNumber !== phoneNumber) {
+      throw new BadRequestException('인증된 전화번호와 입력한 전화번호가 일치하지 않습니다.');
+    }
+
+    const phoneVerification = await this.prisma.phoneVerification.findUnique({
+      where: { id: phonePayload.phoneVerificationId },
+    });
+
+    if (
+      !phoneVerification ||
+      phoneVerification.status !== PhoneVerificationStatus.VERIFIED ||
+      phoneVerification.phoneNumber !== phoneNumber ||
+      phoneVerification.purpose !== PhoneVerificationPurpose.PHONE_CHANGE
+    ) {
+      throw new BadRequestException('유효하지 않은 전화번호 인증입니다. 다시 인증해 주세요.');
+    }
+
+    // 중복 전화번호 확인
+    const existingPhone = await this.prisma.user.findFirst({
+      where: { phoneNumber, NOT: { id: userId } },
+      select: { id: true },
+    });
+
+    if (existingPhone) {
+      throw new ConflictException('이미 사용 중인 전화번호입니다.');
+    }
+
+    // 트랜잭션: 전화번호 업데이트 + 인증 USED 처리
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id: userId },
+        data: { phoneNumber },
+        select: { id: true, phoneNumber: true, updatedAt: true },
+      });
+
+      await tx.phoneVerification.update({
+        where: { id: phoneVerification.id },
+        data: { status: PhoneVerificationStatus.USED, usedAt: new Date(), userId },
+      });
+
+      return updatedUser;
+    });
+
+    return {
+      userId: updated.id,
+      phoneNumber: updated.phoneNumber,
+      updatedAt: updated.updatedAt.toISOString(),
+    };
+  }
+
+  // ── PATCH /users/me/password ──────────────────────────────────────────────
 
   async updatePassword(
     userId: number,

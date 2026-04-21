@@ -1,19 +1,34 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import {
   LoginResponse,
   LogoutRequest,
   LogoutResponse,
+  PasswordResetRequest,
+  PasswordResetResponse,
   RefreshTokenRequest,
   RefreshTokenResponse,
+  SocialCompleteProfileRequest,
+  SocialCompleteProfileResponse,
+  SocialLoginRequest,
+  SocialLoginResponse,
 } from '@codinator/contracts';
-import { Gender, PhoneVerificationPurpose, PhoneVerificationStatus, UserStatus } from '@prisma/client';
+import {
+  Gender,
+  PhoneVerificationPurpose,
+  PhoneVerificationStatus,
+  SanctionType,
+  SocialProvider,
+  UserStatus,
+} from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { createHash, randomInt } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -25,6 +40,7 @@ import { SendPhoneVerificationDto } from './dto/send-phone-verification.dto';
 import { SignupRequestDto } from './dto/signup-request.dto';
 import { SignupResponseDto } from './dto/signup-response.dto';
 import { VerifyPhoneCodeDto } from './dto/verify-phone-code.dto';
+import { SocialProviderVerifierFactory } from './social/social-provider-verifier.factory';
 
 /** 인증번호 유효 시간 (분) */
 const CODE_TTL_MINUTES = 5;
@@ -40,6 +56,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly authTokenService: AuthTokenService,
+    private readonly socialVerifierFactory: SocialProviderVerifierFactory,
   ) {}
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -383,6 +400,9 @@ export class AuthService {
       throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.');
     }
 
+    // 활성 로그인 제한 제재 확인 (TEMP_SUSPENSION / PERMANENT_BAN)
+    await this.assertNoActiveLoginSanction(user.id);
+
     const accessToken = this.authTokenService.signAccessToken(user.id, user.email);
     const refreshToken = this.authTokenService.signRefreshToken(user.id, user.email);
     const refreshTokenHash = this.hashToken(refreshToken);
@@ -428,6 +448,17 @@ export class AuthService {
       throw new UnauthorizedException('다시 로그인해 주세요.');
     }
 
+    // 탈퇴/정지 계정 확인
+    if (
+      session.user.status === UserStatus.DELETED ||
+      session.user.status === UserStatus.SUSPENDED
+    ) {
+      throw new UnauthorizedException('사용할 수 없는 계정입니다. 고객센터에 문의해 주세요.');
+    }
+
+    // 활성 로그인 제한 제재 확인
+    await this.assertNoActiveLoginSanction(session.user.id);
+
     await this.prisma.userSession.update({
       where: { id: session.id },
       data: { lastUsedAt: new Date() },
@@ -468,8 +499,288 @@ export class AuthService {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
+  // POST /auth/social/login
+  // ──────────────────────────────────────────────────────────────────────────
+  async socialLogin(dto: SocialLoginRequest): Promise<SocialLoginResponse> {
+    const provider = dto.provider as SocialProvider;
+
+    // Provider 토큰 실제 검증 (Google: ID token, Kakao/Naver: access token)
+    const verifier = this.socialVerifierFactory.getVerifier(provider);
+    const profile = await verifier.verify(dto.providerToken);
+
+    // 기존 소셜 계정 조회
+    const socialAccount = await this.prisma.socialAccount.findUnique({
+      where: {
+        provider_providerUserId: { provider, providerUserId: profile.providerUserId },
+      },
+      include: { user: { select: { id: true, status: true } } },
+    });
+
+    const isNewUser = !socialAccount || socialAccount.user.status === UserStatus.DELETED;
+
+    // socialLoginToken: 클라이언트에 isNewUser 상태를 전달하는 마커 (complete-profile 에서는 미사용)
+    const socialLoginToken = this.authTokenService.signSocialLoginToken(
+      provider,
+      profile.providerUserId,
+      isNewUser ? undefined : socialAccount!.userId,
+    );
+
+    return { socialLoginToken, isNewUser };
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // POST /auth/social/complete-profile
+  // ──────────────────────────────────────────────────────────────────────────
+  async socialCompleteProfile(
+    dto: SocialCompleteProfileRequest,
+  ): Promise<SocialCompleteProfileResponse> {
+    const provider = dto.provider as SocialProvider;
+
+    // providerToken 재검증 — complete-profile 은 socialLoginToken 에 의존하지 않음
+    const verifier = this.socialVerifierFactory.getVerifier(provider);
+    const profile = await verifier.verify(dto.providerToken);
+
+    // 기존 소셜 계정 조회
+    const socialAccount = await this.prisma.socialAccount.findUnique({
+      where: {
+        provider_providerUserId: { provider, providerUserId: profile.providerUserId },
+      },
+      include: { user: { select: { id: true, email: true, nickname: true, status: true } } },
+    });
+
+    // ── 기존 회원 ─────────────────────────────────────────────────────────
+    if (socialAccount && socialAccount.user.status !== UserStatus.DELETED) {
+      const user = socialAccount.user;
+
+      if (user.status === UserStatus.SUSPENDED) {
+        throw new UnauthorizedException('사용할 수 없는 계정입니다. 고객센터에 문의해 주세요.');
+      }
+
+      await this.assertNoActiveLoginSanction(user.id);
+
+      const { accessToken, refreshToken } = await this.createSession(user.id, user.email ?? '');
+
+      return {
+        accessToken,
+        refreshToken,
+        user: { id: user.id, email: user.email, nickname: user.nickname },
+        isNewUser: false,
+      };
+    }
+
+    // ── 신규 회원 ─────────────────────────────────────────────────────────
+    const { nickname, birthDate, gender: genderStr, phoneNumber: rawPhone, phoneVerificationToken } = dto;
+
+    if (!nickname || !birthDate || !genderStr || !rawPhone || !phoneVerificationToken) {
+      throw new BadRequestException(
+        '신규 회원 가입 시 nickname, birthDate, gender, phoneNumber, phoneVerificationToken 은 필수입니다.',
+      );
+    }
+
+    const phoneNumber = normalizePhoneNumber(rawPhone);
+    const gender = this.normalizeGender(genderStr);
+    const parsedBirthDate = this.normalizeBirthDate(birthDate);
+
+    // 전화번호 인증 토큰 검증 (purpose=SIGN_UP)
+    const phonePayload = this.authTokenService.verifyPhoneVerificationToken(phoneVerificationToken);
+
+    if (phonePayload.purpose !== PhoneVerificationPurpose.SIGN_UP) {
+      throw new BadRequestException('소셜 회원가입에 사용할 수 없는 전화번호 인증 토큰입니다.');
+    }
+
+    if (phonePayload.phoneNumber !== phoneNumber) {
+      throw new BadRequestException('인증된 전화번호와 입력한 전화번호가 일치하지 않습니다.');
+    }
+
+    const phoneVerification = await this.prisma.phoneVerification.findUnique({
+      where: { id: phonePayload.phoneVerificationId },
+    });
+
+    if (
+      !phoneVerification ||
+      phoneVerification.status !== PhoneVerificationStatus.VERIFIED ||
+      phoneVerification.phoneNumber !== phoneNumber ||
+      phoneVerification.purpose !== PhoneVerificationPurpose.SIGN_UP
+    ) {
+      throw new BadRequestException('유효하지 않은 전화번호 인증입니다. 다시 인증해 주세요.');
+    }
+
+    const trimmedNickname = nickname.trim();
+
+    if (!trimmedNickname) {
+      throw new BadRequestException('닉네임은 빈 값일 수 없습니다.');
+    }
+
+    if (trimmedNickname.length > 30) {
+      throw new BadRequestException('닉네임은 최대 30자입니다.');
+    }
+
+    const [existingNickname, existingPhone] = await Promise.all([
+      this.prisma.user.findUnique({ where: { nickname: trimmedNickname }, select: { id: true } }),
+      this.prisma.user.findUnique({ where: { phoneNumber }, select: { id: true } }),
+    ]);
+
+    if (existingNickname) throw new ConflictException('이미 사용 중인 닉네임입니다.');
+    if (existingPhone) throw new ConflictException('이미 가입된 전화번호입니다.');
+
+    // 소셜 전용 계정: provider 제공 이메일 우선, 없으면 결정론적 합성 이메일
+    const email =
+      profile.providerEmail ??
+      `${profile.providerUserId.slice(0, 30)}@${provider.toLowerCase()}.social`;
+
+    // 트랜잭션: 유저 생성 + 소셜 계정 연결 + 전화번호 인증 USED 처리
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          email,
+          nickname: trimmedNickname,
+          birthDate: parsedBirthDate,
+          gender,
+          phoneNumber,
+          // passwordHash 없음 — 소셜 전용 계정
+        },
+      });
+
+      await tx.socialAccount.create({
+        data: {
+          userId: created.id,
+          provider,
+          providerUserId: profile.providerUserId,
+          providerEmail: profile.providerEmail ?? null,
+        },
+      });
+
+      await tx.phoneVerification.update({
+        where: { id: phoneVerification.id },
+        data: {
+          status: PhoneVerificationStatus.USED,
+          usedAt: new Date(),
+          userId: created.id,
+        },
+      });
+
+      return created;
+    });
+
+    const { accessToken, refreshToken } = await this.createSession(user.id, user.email);
+
+    return {
+      accessToken,
+      refreshToken,
+      user: { id: user.id, email: user.email, nickname: user.nickname },
+      isNewUser: true,
+    };
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // PATCH /auth/password-reset
+  // ──────────────────────────────────────────────────────────────────────────
+  async passwordReset(dto: PasswordResetRequest): Promise<PasswordResetResponse> {
+    const phoneNumber = normalizePhoneNumber(dto.phoneNumber);
+
+    // 전화번호 인증 토큰 검증 (purpose=PASSWORD_RESET)
+    const phonePayload = this.authTokenService.verifyPhoneVerificationToken(
+      dto.phoneVerificationToken,
+    );
+
+    if (phonePayload.purpose !== PhoneVerificationPurpose.PASSWORD_RESET) {
+      throw new BadRequestException('비밀번호 재설정에 사용할 수 없는 전화번호 인증 토큰입니다.');
+    }
+
+    if (phonePayload.phoneNumber !== phoneNumber) {
+      throw new BadRequestException('인증된 전화번호와 입력한 전화번호가 일치하지 않습니다.');
+    }
+
+    const phoneVerification = await this.prisma.phoneVerification.findUnique({
+      where: { id: phonePayload.phoneVerificationId },
+    });
+
+    if (
+      !phoneVerification ||
+      phoneVerification.status !== PhoneVerificationStatus.VERIFIED ||
+      phoneVerification.phoneNumber !== phoneNumber ||
+      phoneVerification.purpose !== PhoneVerificationPurpose.PASSWORD_RESET
+    ) {
+      throw new BadRequestException('유효하지 않은 전화번호 인증입니다. 다시 인증해 주세요.');
+    }
+
+    if (!isValidPassword(dto.newPassword)) {
+      throw new BadRequestException(
+        '비밀번호는 8자 이상이며 영문, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.',
+      );
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { phoneNumber },
+      select: { id: true, status: true, passwordHash: true },
+    });
+
+    if (!user || user.status === UserStatus.DELETED) {
+      throw new NotFoundException('해당 전화번호로 가입된 계정을 찾을 수 없습니다.');
+    }
+
+    if (!user.passwordHash) {
+      throw new BadRequestException(
+        '소셜 로그인 전용 계정은 비밀번호 재설정을 사용할 수 없습니다.',
+      );
+    }
+
+    const newHash = await bcrypt.hash(dto.newPassword, 10);
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash: newHash },
+      }),
+      this.prisma.phoneVerification.update({
+        where: { id: phoneVerification.id },
+        data: { status: PhoneVerificationStatus.USED, usedAt: new Date(), userId: user.id },
+      }),
+    ]);
+
+    return { success: true, message: '비밀번호가 재설정되었습니다.' };
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
   // Private helpers
   // ──────────────────────────────────────────────────────────────────────────
+
+  /** 활성 로그인 제한 제재(TEMP_SUSPENSION / PERMANENT_BAN) 존재 시 예외 */
+  private async assertNoActiveLoginSanction(userId: number): Promise<void> {
+    const now = new Date();
+    const sanction = await this.prisma.userSanction.findFirst({
+      where: {
+        sanctionedUserId: userId,
+        type: { in: [SanctionType.TEMP_SUSPENSION, SanctionType.PERMANENT_BAN] },
+        startsAt: { lte: now },
+        OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+      },
+      select: { type: true, endsAt: true },
+    });
+
+    if (sanction) {
+      const until = sanction.endsAt ? ` (${sanction.endsAt.toISOString()} 까지)` : '';
+      throw new ForbiddenException(`로그인이 제한된 계정입니다${until}. 고객센터에 문의해 주세요.`);
+    }
+  }
+
+  /** 세션(Refresh Token) 생성 후 Access/Refresh Token 반환 */
+  private async createSession(
+    userId: number,
+    email: string,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const accessToken = this.authTokenService.signAccessToken(userId, email);
+    const refreshToken = this.authTokenService.signRefreshToken(userId, email);
+    const refreshTokenHash = this.hashToken(refreshToken);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await this.prisma.userSession.create({
+      data: { userId, refreshTokenHash, expiresAt },
+    });
+
+    return { accessToken, refreshToken };
+  }
+
   private hashToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
   }
