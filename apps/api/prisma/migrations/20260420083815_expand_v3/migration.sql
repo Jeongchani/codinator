@@ -1,8 +1,8 @@
--- CreateEnum
 -- 1. EXTENSION 추가
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
+-- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('USER', 'SUPER_ADMIN', 'OPERATOR_ADMIN');
 
 -- CreateEnum
@@ -703,6 +703,8 @@ CREATE INDEX "user_reports_reviewed_by_id_idx" ON "user_reports"("reviewed_by_id
 -- CreateIndex
 CREATE INDEX "user_reports_reporter_id_reported_user_id_status_idx" ON "user_reports"("reporter_id", "reported_user_id", "status");
 
+CREATE UNIQUE INDEX "user_reports_pending_unique" ON "user_reports" ("reporter_id", "reported_user_id") WHERE "status" = 'PENDING';
+
 -- CreateIndex
 CREATE INDEX "admin_action_logs_admin_id_created_at_idx" ON "admin_action_logs"("admin_id", "created_at");
 
@@ -951,3 +953,51 @@ ALTER TABLE "search_histories" ADD CONSTRAINT "search_histories_user_id_fkey" FO
 
 -- AddForeignKey
 ALTER TABLE "search_histories" ADD CONSTRAINT "search_histories_image_asset_id_fkey" FOREIGN KEY ("image_asset_id") REFERENCES "image_assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+
+-- 2. ALTER TABLE / CHECK CONSTRAINT
+-- ImageVector scope / garment 체크 제약
+ALTER TABLE "image_vectors"
+ADD CONSTRAINT "image_vectors_scope_garment_check"
+CHECK (
+  ("target_scope" = 'OUTFIT' AND "garment_id" IS NULL)
+  OR
+  ("target_scope" = 'GARMENT' AND "garment_id" IS NOT NULL)
+);
+
+-- Ranking READY 상태면 generated_at 필수
+ALTER TABLE "rankings"
+ADD CONSTRAINT "rankings_ready_requires_generated_at"
+CHECK (
+  "status" != 'READY' OR "generated_at" IS NOT NULL
+);
+
+
+-- 3. UNIQUE INDEX 및 비즈니스 로직 제약용 인덱스
+
+
+-- current analysis partial unique
+CREATE UNIQUE INDEX uq_image_analysis_runs_current
+ON image_analysis_runs (image_asset_id, purpose)
+WHERE is_current = true;
+
+-- 4. 성능용 인덱스 (HNSW / GIN / TRGM)
+-- vector ANN index
+CREATE INDEX idx_image_vectors_outfit_hnsw
+ON image_vectors
+USING hnsw (vector vector_cosine_ops)
+WHERE target_scope = 'OUTFIT' AND is_active = true;
+
+CREATE INDEX idx_image_vectors_garment_hnsw
+ON image_vectors
+USING hnsw (vector vector_cosine_ops)
+WHERE target_scope = 'GARMENT' AND is_active = true;
+
+-- searchText용 full-text / trigram 인덱스
+CREATE INDEX "post_search_index_search_text_tsv_idx"
+ON "post_search_index"
+USING GIN (to_tsvector('simple', coalesce("search_text", '')));
+
+CREATE INDEX "post_search_index_search_text_trgm_idx"
+ON "post_search_index"
+USING GIN ("search_text" gin_trgm_ops);
