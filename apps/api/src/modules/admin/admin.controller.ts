@@ -288,7 +288,7 @@ export class AdminController {
       example: { total: 26, succeeded: 25, failed: 1, failedIds: [42] },
     },
   })
-  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  @ApiForbiddenResponse({ description: 'SUPER_ADMIN 권한 없음' })
   async reindexPostImages(
     @Headers('authorization') authorization?: string,
   ): Promise<{ total: number; succeeded: number; failed: number; failedIds: number[] }> {
@@ -296,10 +296,7 @@ export class AdminController {
       authorization,
       { required: true },
     );
-    // 관리자 권한 검증은 service 내부에서 처리하지 않으므로 여기서 직접 확인
-    // (기존 assertAdmin 은 private 이므로 간단히 userId 존재만 확인)
-    void adminId;
-    return this.adminService.reindexPostImages();
+    return this.adminService.reindexPostImages(adminId!); // Batch11-Fix: SUPER_ADMIN 검증은 service 내부 assertSuperAdmin에서 처리
   }
 
   // ─── [Batch10] GET /admin/keywords ──────────────────────────────────────────
@@ -539,26 +536,30 @@ export class AdminController {
     summary: '게시글 목록 조회 (ADMIN)',
     description: 'status 필터 및 커서 기반 페이지네이션(cursor=마지막 postId)을 지원합니다.',
   })
-  @ApiQuery({ name: 'status', required: false, enum: ['PUBLISHED', 'HIDDEN', 'DELETED'], description: '게시글 상태 필터' })
+  @ApiQuery({ name: 'status', required: false, enum: ['ACTIVE', 'HIDDEN', 'DELETED'], description: '게시글 상태 필터' }) // Batch11-Fix: PUBLISHED → ACTIVE
   @ApiQuery({ name: 'cursor', required: false, type: Number, description: '마지막 항목 postId' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: '페이지 크기 (기본 20, 최대 100)' })
   @ApiOkResponse({
     description: '게시글 목록',
     schema: {
-      example: {
+      example: { // Batch11-Fix: PUBLISHED→ACTIVE, hasMore 제거, total 추가 (contract 기준)
         items: [
           {
             postId: 12,
             authorId: 3,
             authorNickname: '닉네임',
-            status: 'PUBLISHED',
+            status: 'ACTIVE',
             thumbnailUrl: '/uploads/posts/processed/20260401/thumb-abc.jpg',
+            content: '오늘 코디',
+            publishedAt: '2026-04-01T10:00:00.000Z',
+            hiddenAt: null,
+            hiddenReason: null,
+            deletedAt: null,
             createdAt: '2026-04-01T10:00:00.000Z',
-            updatedAt: '2026-04-01T10:00:00.000Z',
           },
         ],
         nextCursor: 11,
-        hasMore: true,
+        total: 42,
       },
     },
   })
@@ -590,7 +591,7 @@ export class AdminController {
   @ApiOkResponse({
     description: '사용자 목록',
     schema: {
-      example: {
+      example: { // Batch11-Fix: hasMore 제거, total/deletedAt 추가 (contract 기준)
         items: [
           {
             userId: 5,
@@ -599,10 +600,11 @@ export class AdminController {
             role: 'USER',
             status: 'ACTIVE',
             createdAt: '2026-01-01T00:00:00.000Z',
+            deletedAt: null,
           },
         ],
         nextCursor: 4,
-        hasMore: true,
+        total: 120,
       },
     },
   })
@@ -670,7 +672,7 @@ export class AdminController {
   @ApiOkResponse({
     description: '제재 목록',
     schema: {
-      example: {
+      example: { // Batch11-Fix: hasMore 제거, total 추가, endedAt→endsAt(null=영구) (contract 기준)
         items: [
           {
             sanctionId: 1,
@@ -682,12 +684,11 @@ export class AdminController {
             reason: '반복 스팸 행위',
             startsAt: '2026-04-21T00:00:00.000Z',
             endsAt: '2026-05-21T00:00:00.000Z',
-            endedAt: null,
             createdAt: '2026-04-21T00:00:00.000Z',
           },
         ],
         nextCursor: null,
-        hasMore: false,
+        total: 3,
       },
     },
   })
@@ -794,7 +795,7 @@ export class AdminController {
   @ApiOkResponse({
     description: '관리자 액션 로그 목록',
     schema: {
-      example: {
+      example: { // Batch11-Fix: hasMore 제거, total 추가 (contract 기준)
         items: [
           {
             logId: 10,
@@ -809,7 +810,7 @@ export class AdminController {
           },
         ],
         nextCursor: 9,
-        hasMore: true,
+        total: 58,
       },
     },
   })
@@ -841,7 +842,7 @@ export class AdminController {
   @ApiOkResponse({
     description: '신고 이력 목록',
     schema: {
-      example: {
+      example: { // Batch11-Fix: hasMore 제거, total 추가 (contract 기준)
         items: [
           {
             historyId: 5,
@@ -855,7 +856,7 @@ export class AdminController {
           },
         ],
         nextCursor: 4,
-        hasMore: false,
+        total: 15,
       },
     },
   })

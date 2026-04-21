@@ -44,6 +44,7 @@ import {
   AdminActionTargetType,
   AdminActionType,
   ImageAnalysisPurpose,
+  Prisma,
   PostStatus,
   ReportHistoryActionType,
   ReportStatus,
@@ -134,7 +135,11 @@ export class AdminService {
           targetId: params.targetId,
           actionType: params.actionType,
           reason: params.reason ?? null,
-          metadataJson: params.metadataJson ?? undefined,
+          metadataJson: params.metadataJson === undefined
+            ? undefined
+            : params.metadataJson === null
+              ? Prisma.DbNull
+              : (params.metadataJson as Prisma.InputJsonValue),
         },
       });
     } catch (err) {
@@ -945,7 +950,7 @@ export class AdminService {
         adminNickname: l.admin.nickname,
         targetType: l.targetType as 'POST' | 'POST_REPORT' | 'USER_REPORT' | 'USER' | 'USER_SANCTION',
         targetId: l.targetId,
-        actionType: l.actionType as string,
+        actionType: l.actionType, // Prisma enum은 contracts AdminActionType과 동일한 string 리터럴 유니온
         reason: l.reason ?? null,
         metadataJson: l.metadataJson as Record<string, unknown> | null,
         createdAt: l.createdAt.toISOString(),
@@ -1013,7 +1018,8 @@ export class AdminService {
 
   // ─── [DEV] 게시글 이미지 일괄 재인덱싱 ─────────────────────────────────────────
 
-  async reindexPostImages(): Promise<{ total: number; succeeded: number; failed: number; failedIds: number[] }> {
+  async reindexPostImages(adminId: number): Promise<{ total: number; succeeded: number; failed: number; failedIds: number[] }> { // Batch11-Fix: SUPER_ADMIN 전용
+    await this.assertSuperAdmin(adminId);
     const primaryImages = await this.prisma.postImage.findMany({
       where: { isPrimary: true },
       select: { imageAssetId: true },
