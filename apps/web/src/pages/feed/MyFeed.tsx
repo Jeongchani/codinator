@@ -689,16 +689,30 @@ export default function MyFeed() {
     resetTouchDragging();
   };
 
-  const handleContentTouchStart = () => {
-    return;
+  const handleContentTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isSelectionMode) return;
+
+    const target = e.target as HTMLElement;
+    if (target.closest('button')) return;
+
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    startTouchDrag(touch.clientX, touch.clientY);
   };
 
-  const handleContentTouchMove = () => {
-    return;
+  const handleContentTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isSelectionMode || !isTouchDragging) return;
+
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    moveTouchDrag(touch.clientX, touch.clientY);
   };
 
   const handleContentTouchEnd = () => {
-    return;
+    if (!isSelectionMode) return;
+    endTouchDrag();
   };
 
   const handleCardTouchStart = (e: React.TouchEvent<HTMLButtonElement>, itemId: number) => {
@@ -801,6 +815,7 @@ export default function MyFeed() {
                   }}
                   onTouchStart={(e) => {
                     if (isSelectionMode) {
+                      handleCardTouchStart(e, item.postId);
                       return;
                     }
 
@@ -811,6 +826,7 @@ export default function MyFeed() {
                   }}
                   onTouchMove={(e) => {
                     if (isSelectionMode) {
+                      handleCardTouchMove(e);
                       return;
                     }
 
@@ -819,17 +835,21 @@ export default function MyFeed() {
 
                     moveCardLongPress(touch.clientX, touch.clientY);
                   }}
-                  onTouchEnd={() => {
+                  onTouchEnd={(e) => {
                     if (isSelectionMode) {
+                      handleCardTouchEnd(e, item.postId);
                       return;
                     }
 
                     endCardLongPress();
                   }}
                   onTouchCancel={() => {
-                    if (!isSelectionMode) {
-                      endCardLongPress();
+                    if (isSelectionMode) {
+                      resetTouchDragging();
+                      return;
                     }
+
+                    endCardLongPress();
                   }}
                   onMouseDown={(e) => {
                     if (e.button !== 0 || isSelectionMode) return;
@@ -1049,6 +1069,7 @@ export default function MyFeed() {
         onTouchStart={handleContentTouchStart}
         onTouchMove={handleContentTouchMove}
         onTouchEnd={handleContentTouchEnd}
+        onTouchCancel={handleContentTouchEnd}
       >
         <div className={styles.slideViewport}>
           {isAnimating && incomingTab ? (
