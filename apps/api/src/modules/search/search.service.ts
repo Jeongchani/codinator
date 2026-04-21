@@ -250,24 +250,38 @@ export class SearchService {
       }),
       this.prisma.imageGarment.findMany({
         where: { analysisRunId },
-        select: { areaRatio: true },
+        select: { areaRatio: true, confidence: true },
       }),
     ]);
 
     const faceCount = run?.faceDetected ?? 0;
-    const garmentCount = garments.length;
+
+    // confidence 낮은 garment 제거
+    const validGarments = garments.filter(
+    (g) => Number(g.areaRatio ?? 0) > 0.01,
+  );
+
+    const garmentCount = validGarments.length;
+    const largestArea = Math.max(
+    0,
+    ...validGarments.map((g) => Number(g.areaRatio ?? 0)),
+    );
+    
+    // 단품 우선 판별:
+    // 가장 큰 garment가 충분히 크고 얼굴이 없으면,
+    // garment가 2개로 쪼개져도 단품 가능성 높게 본다.
+    if (faceCount === 0 && largestArea >= 0.6) {
+    return ImageSearchMode.SINGLE_ITEM;
+    }
 
     // 복수 의류 또는 얼굴 감지 → 전체 착장 이미지
     if (garmentCount >= 2 || faceCount >= 1) {
       return ImageSearchMode.FULL_OUTFIT;
     }
 
-    // 단일 의류 + 대면적 + 얼굴 없음 → 단품 이미지
+    // 단일 의류면 단품
     if (garmentCount === 1) {
-      const areaRatio = Number(garments[0]?.areaRatio ?? 0);
-      if (areaRatio >= 0.6 && faceCount === 0) {
-        return ImageSearchMode.SINGLE_ITEM;
-      }
+      return ImageSearchMode.SINGLE_ITEM;
     }
 
     // 기본값: FULL_OUTFIT
