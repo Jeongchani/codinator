@@ -1,7 +1,5 @@
 import type {
   AiGarmentCategory,
-  FeedbackTagCode,
-  GarmentCategory,
   ImageSearchMode,
 } from '../common/enums';
 
@@ -61,21 +59,26 @@ export interface ImageSearchRequest {
   imageAssetId: number;
   mode?: ImageSearchMode;
   garmentCategory?: AiGarmentCategory;
+
+  /** 커서 (offset 기반). 생략 시 첫 페이지 */
+  cursor?: number;
+  /** 페이지 크기 (기본 20, 최대 50) */
   limit?: number;
 
-  /** publishedAt >= publishedFrom */
-  publishedFrom?: string;
-  /** publishedAt <= publishedTo */
-  publishedTo?: string;
+  /** publishedAt >= periodFrom (ISO 8601) */
+  periodFrom?: string;
+  /** publishedAt <= periodTo (ISO 8601) */
+  periodTo?: string;
 
-  /** 0.0 ~ 1.0 */
-  minLikeRatio?: number;
-  /** 0.0 ~ 1.0 */
-  maxLikeRatio?: number;
+  /** 0.0 ~ 1.0 최소 좋아요 비율 */
+  likeRatioMin?: number;
 
-  outfitCategories?: GarmentCategory[];
-  keywordCodes?: string[];
-  feedbackTagCodes?: FeedbackTagCode[];
+  /** 키워드 ID 필터 */
+  keywordIds?: number[];
+  /** 좋아요 피드백 태그 ID 필터 (voteChoice=LIKE) */
+  feedbackLikeTagIds?: number[];
+  /** 싫어요 피드백 태그 ID 필터 (voteChoice=DISLIKE) */
+  feedbackDislikeTagIds?: number[];
 }
 
 export interface ImageSearchItem {
@@ -89,8 +92,13 @@ export interface ImageSearchItem {
 }
 
 export interface ImageSearchResponse {
-  mode: ImageSearchMode;
+  /** 최종 사용된 검색 모드. mode를 명시했으면 그 값, 생략했으면 AI 분석 결과로 자동 판별된 값 */ // Batch9-AutoMode
+  resolvedMode: ImageSearchMode;
   queryImageAssetId: number;
   analysisRunId: number;
   items: ImageSearchItem[];
+  /** 다음 페이지 커서 (offset). 다음 페이지가 없으면 null */
+  nextCursor: number | null;
+  /** 다음 페이지 존재 여부 */
+  hasMore: boolean;
 }

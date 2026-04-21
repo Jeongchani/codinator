@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 class LoginUserDto {
   @ApiProperty({ example: 1, description: '유저 ID' })
@@ -18,6 +18,9 @@ export class LoginResponseDto {
   @ApiProperty({ example: 'jwt-access-token-string', description: '발급된 JWT Access Token' })
   accessToken: string;
 
-  @ApiProperty({ example: 'jwt-refresh-token-string', description: '발급된 JWT Refresh Token' })
-  refreshToken: string;
+  @ApiPropertyOptional({ // RememberMe
+    example: 'jwt-refresh-token-string',
+    description: 'rememberMe=true 일 때만 발급. 미포함이면 세션 없음 (재로그인 필요).',
+  })
+  refreshToken?: string;
 }

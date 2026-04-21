@@ -25,6 +25,16 @@ const userSeeds = [
     phoneNumber: '01000000000',
     role: UserRole.SUPER_ADMIN,
   },
+    {
+    key: 'admin2',
+    email: 'admin2@codinator.com',
+    nickname: '관리자2',
+    password: '1234',
+    gender: Gender.MALE,
+    birthDate: new Date('1990-01-01'),
+    phoneNumber: '01000000001',
+    role: UserRole.OPERATOR_ADMIN,
+  },
   {
     key: 'alice',
     email: 'alice@codinator.com',

@@ -4,6 +4,7 @@ export * from './bookmarks';
 export * from './common';
 export * from './evaluations';
 export * from './feedback';
+export * from './feedback-tags'; // Batch4
 export * from './feeds';
 export * from './health';
 export * from './keywords';

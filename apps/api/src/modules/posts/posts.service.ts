@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -19,10 +20,10 @@ import {
   AiBlurStatus,
   BlurMethod,
   EvaluationStatus,
-  GarmentCategory,
   ImageAnalysisPurpose,
   ImageAssetSourceType,
   PostStatus,
+  SanctionType,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -42,7 +43,6 @@ import {
   POST_KEYWORD_ORDER_BY,
 } from './common/post-presenter.util';
 import { ImageIndexingService } from '../ai/image-indexing.service';
-import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class PostsService {
@@ -53,6 +53,8 @@ export class PostsService {
     private readonly imageIndexingService: ImageIndexingService,
   ) {}
 
+  // ── POST /posts ──────────────────────────────────────────────────────────────
+
   async createPost(
     authorId: number,
     body: CreatePostRequest,
@@ -62,6 +64,9 @@ export class PostsService {
     if (!content) {
       throw new BadRequestException('게시글 내용(content)은 필수입니다.');
     }
+
+    // Batch5: POST_RESTRICTION 제재 대상 사용자 차단
+    await this.assertNoPostRestriction(authorId);
 
     const keywordIds = this.normalizeKeywordIds(body.keywordIds);
     const validKeywordIds = await this.loadValidKeywordIds(keywordIds);
@@ -136,71 +141,30 @@ export class PostsService {
     };
   }
 
-
-  private async resolvePostImageAssetId(
-    authorId: number,
-    body: CreatePostRequest,
-  ): Promise<number> {
-    if (Number.isInteger(body.imageAssetId) && Number(body.imageAssetId) > 0) {
-      const existingAsset = await this.prisma.imageAsset.findFirst({
-        where: {
-          id: Number(body.imageAssetId),
-          ownerUserId: authorId,
-          sourceType: ImageAssetSourceType.POST,
-        },
-        select: { id: true },
-      });
-
-      if (!existingAsset) {
-        throw new BadRequestException('유효한 게시글 이미지 자산이 아닙니다.');
-      }
-
-      return existingAsset.id;
-    }
-
-    if (!body.image) {
-      throw new BadRequestException('imageAssetId 또는 image 정보가 필요합니다.');
-    }
-
-    const createdAsset = await this.prisma.imageAsset.create({
-      data: {
-        ownerUserId: authorId,
-        sourceType: ImageAssetSourceType.POST,
-        storageKey: body.image.storageKey ?? null,
-        originalImageUrl: body.image.originalImageUrl,
-        processedImageUrl: body.image.processedImageUrl ?? body.image.originalImageUrl,
-        thumbnailUrl: body.image.thumbnailUrl ?? null,
-        blurMethod: body.image.blurMethod ?? BlurMethod.NONE,
-        aiBlurStatus: body.image.aiBlurStatus ?? AiBlurStatus.NONE,
-      },
-      select: { id: true },
-    });
-
-    return createdAsset.id;
-  }
+  // ── PATCH /posts/:postId ─────────────────────────────────────────────────────
+  // Batch5: V3 정책 — outfitItems 중심 수정. content / imageAssetId / keywordIds 수정 불가.
 
   async updatePost(
     userId: number,
     postId: number,
     body: UpdatePostRequest,
   ): Promise<UpdatePostResponse> {
-    const wantsContentUpdate = body.content !== undefined;
-    const wantsOutfitUpdate = body.outfitItems !== undefined;
-
-    if (!wantsContentUpdate && !wantsOutfitUpdate) {
-      throw new BadRequestException('수정할 내용을 1개 이상 입력해주세요.');
+    // Batch5: outfitItems 필수
+    if (body.outfitItems === undefined) {
+      throw new BadRequestException('수정할 내용(outfitItems)을 입력해주세요.');
     }
 
-    const normalizedContent = this.normalizeUpdatableContent(body.content);
+    // Batch5: POST_RESTRICTION 제재 대상 사용자 차단
+    await this.assertNoPostRestriction(userId);
 
-    const result = await this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx) => {
       const post = await tx.post.findUnique({
         where: { id: postId },
-        include: {
-          evaluation: true,
-          outfitItems: {
-            orderBy: { sortOrder: 'asc' },
-          },
+        select: {
+          id: true,
+          authorId: true,
+          status: true,
+          deletedAt: true,
         },
       });
 
@@ -212,78 +176,52 @@ export class PostsService {
         throw new ForbiddenException('본인 게시글만 수정할 수 있습니다.');
       }
 
+      // Batch5: HIDDEN 상태 수정 불가
       if (post.status === PostStatus.HIDDEN) {
-        throw new UnprocessableEntityException(
-          '숨김 상태의 게시글은 수정할 수 없습니다.',
-        );
+        throw new UnprocessableEntityException('숨김 상태의 게시글은 수정할 수 없습니다.');
       }
 
-      if (!post.evaluation) {
-        throw new UnprocessableEntityException(
-          '게시글 평가 상태를 확인할 수 없습니다.',
-        );
-      }
+      // outfitItems 전체 교체
+      await tx.postOutfit.deleteMany({ where: { postId } });
 
-      if (
-        normalizedContent !== undefined &&
-        post.evaluation.status === EvaluationStatus.OPEN
-      ) {
-        throw new BadRequestException(
-          '평가 진행 중에는 본문을 수정할 수 없습니다.',
-        );
-      }
-
-      let nextOutfitItems = this.mapUpdatedOutfitItems(post.outfitItems);
-
-      if (wantsOutfitUpdate) {
-        await tx.postOutfit.deleteMany({
-          where: { postId: post.id },
+      if (body.outfitItems.length > 0) {
+        await tx.postOutfit.createMany({
+          data: body.outfitItems.map((item, index) => ({
+            postId,
+            category: item.category,
+            itemName: item.itemName?.trim() || null,
+            brand: item.brand?.trim() || null,
+            sortOrder: index,
+          })),
         });
-
-        const requestOutfitItems = body.outfitItems ?? [];
-
-        if (requestOutfitItems.length > 0) {
-          await tx.postOutfit.createMany({
-            data: requestOutfitItems.map((item, index) => ({
-              postId: post.id,
-              category: item.category,
-              itemName: item.itemName?.trim() || null,
-              brand: item.brand?.trim() || null,
-              sortOrder: index,
-            })),
-          });
-        }
-
-        nextOutfitItems = requestOutfitItems.map((item, index) => ({
-          category: item.category,
-          itemName: item.itemName?.trim() || null,
-          brand: item.brand?.trim() || null,
-          sortOrder: index,
-        }));
       }
 
+      // updatedAt 갱신 (@updatedAt 자동 처리)
       const updatedPost = await tx.post.update({
-        where: { id: post.id },
-        data: normalizedContent !== undefined ? { content: normalizedContent } : {},
-        select: {
-          id: true,
-          content: true,
-          updatedAt: true,
-        },
+        where: { id: postId },
+        data: { updatedAt: new Date() },
+        select: { id: true, updatedAt: true },
       });
 
-      await syncPostSearchIndex(tx, post.id);
+      await syncPostSearchIndex(tx, postId);
+
+      const nextOutfitItems = body.outfitItems.map((item, index) => ({
+        category: item.category,
+        itemName: item.itemName?.trim() || null,
+        brand: item.brand?.trim() || null,
+        sortOrder: index,
+      }));
 
       return {
         postId: updatedPost.id,
-        content: updatedPost.content,
         outfitItems: nextOutfitItems,
         updatedAt: updatedPost.updatedAt.toISOString(),
       };
     });
-
-    return result;
   }
+
+  // ── DELETE /posts/:postId ────────────────────────────────────────────────────
+  // Batch5: 응답 shape V3 기준으로 보정 — { postId, status, deletedAt }
 
   async deletePost(userId: number, postId: number): Promise<DeletePostResponse> {
     const post = await this.prisma.post.findUnique({
@@ -299,15 +237,23 @@ export class PostsService {
       throw new ForbiddenException('본인 게시글만 삭제할 수 있습니다.');
     }
 
+    const now = new Date();
     await this.prisma.post.update({
       where: { id: postId },
-      data: { status: PostStatus.DELETED, deletedAt: new Date(), hiddenAt: null },
+      data: { status: PostStatus.DELETED, deletedAt: now, hiddenAt: null },
     });
 
     await syncPostSearchIndex(this.prisma, postId);
 
-    return { success: true };
+    return {
+      postId,
+      status: 'DELETED',
+      deletedAt: now.toISOString(),
+    };
   }
+
+  // ── PATCH /posts/:postId/hide ─────────────────────────────────────────────────
+  // Batch5: hiddenById / hiddenReason 기록 추가, 응답 shape V3 보정
 
   async hidePost(userId: number, postId: number): Promise<HidePostResponse> {
     return this.prisma.$transaction(async (tx) => {
@@ -330,28 +276,50 @@ export class PostsService {
         throw new BadRequestException('이미 숨긴 게시글입니다.');
       }
 
-      if (!post.evaluation || post.evaluation.status !== EvaluationStatus.ENDED) {
-        throw new BadRequestException(
-          '평가가 완료(ENDED)된 게시글만 숨길 수 있습니다.',
-        );
+      if (post.status !== PostStatus.ACTIVE) {
+        throw new BadRequestException('ACTIVE 상태의 게시글만 숨길 수 있습니다.');
       }
 
+      // Batch5: evaluation.status === ENDED 조건 (V3: rankingDetails 의존 없음)
+      if (!post.evaluation || post.evaluation.status !== EvaluationStatus.ENDED) {
+        throw new BadRequestException('평가가 완료(ENDED)된 게시글만 숨길 수 있습니다.');
+      }
+
+      const now = new Date();
       await tx.post.update({
         where: { id: postId },
-        data: { status: PostStatus.HIDDEN, hiddenAt: new Date() },
+        data: {
+          status: PostStatus.HIDDEN,
+          hiddenAt: now,
+          hiddenById: userId,        // Batch5: 작성자 직접 숨김 기록
+          hiddenReason: 'USER_HIDE', // Batch5: 사유 기록
+        },
       });
 
       await syncPostSearchIndex(tx, postId);
 
-      return { postId, hidden: true };
+      return {
+        postId,
+        status: 'HIDDEN',
+        hiddenAt: now.toISOString(),
+      };
     });
   }
+
+  // ── PATCH /posts/:postId/unhide ──────────────────────────────────────────────
+  // Batch5: 작성자 직접 숨김만 복구 허용, hiddenBy 구분, 응답 shape V3 보정
 
   async unhidePost(userId: number, postId: number): Promise<UnhidePostResponse> {
     return this.prisma.$transaction(async (tx) => {
       const post = await tx.post.findUnique({
         where: { id: postId },
-        select: { id: true, authorId: true, status: true, deletedAt: true },
+        select: {
+          id: true,
+          authorId: true,
+          status: true,
+          deletedAt: true,
+          hiddenById: true,
+        },
       });
 
       if (!post || post.status === PostStatus.DELETED || post.deletedAt) {
@@ -366,16 +334,36 @@ export class PostsService {
         throw new BadRequestException('숨김 상태의 게시글만 숨김 취소할 수 있습니다.');
       }
 
-      await tx.post.update({
+      // Batch5: 관리자 숨김은 이 API로 복구 불가
+      // hiddenById === null: 구버전 데이터 or 작성자 숨김 → 허용
+      // hiddenById === userId: 작성자 직접 숨김 → 허용
+      // hiddenById !== null && !== userId: 관리자 숨김 → 불가
+      if (post.hiddenById !== null && post.hiddenById !== userId) {
+        throw new ForbiddenException('관리자에 의해 숨겨진 게시글은 이 API로 복구할 수 없습니다.');
+      }
+
+      const updated = await tx.post.update({
         where: { id: postId },
-        data: { status: PostStatus.ACTIVE, hiddenAt: null },
+        data: {
+          status: PostStatus.ACTIVE,
+          hiddenAt: null,
+          hiddenById: null,    // Batch5: 초기화
+          hiddenReason: null,  // Batch5: 초기화
+        },
+        select: { id: true, updatedAt: true },
       });
 
       await syncPostSearchIndex(tx, postId);
 
-      return { postId, hidden: false };
+      return {
+        postId,
+        status: 'ACTIVE',
+        updatedAt: updated.updatedAt.toISOString(),
+      };
     });
   }
+
+  // ── GET /posts/me/:postId ────────────────────────────────────────────────────
 
   async getMyPostDetail(
     postId: number,
@@ -453,6 +441,79 @@ export class PostsService {
     };
   }
 
+  // ── Private helpers ──────────────────────────────────────────────────────────
+
+  /**
+   * Batch5: 활성 POST_RESTRICTION 제재 확인.
+   * startsAt <= now && (endsAt IS NULL || endsAt > now) 이면 제재 중.
+   */
+  private async assertNoPostRestriction(userId: number): Promise<void> {
+    const now = new Date();
+    const sanction = await this.prisma.userSanction.findFirst({
+      where: {
+        sanctionedUserId: userId,
+        type: SanctionType.POST_RESTRICTION,
+        startsAt: { lte: now },
+        OR: [
+          { endsAt: null },
+          { endsAt: { gt: now } },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (sanction) {
+      throw new ForbiddenException('게시글 작성/수정이 제한된 계정입니다.');
+    }
+  }
+
+  /**
+   * imageAssetId 우선 경로 (V3).
+   * image 필드는 구버전 호환용으로 유지하되 deprecated 처리.
+   */
+  private async resolvePostImageAssetId(
+    authorId: number,
+    body: CreatePostRequest,
+  ): Promise<number> {
+    if (Number.isInteger(body.imageAssetId) && Number(body.imageAssetId) > 0) {
+      const existingAsset = await this.prisma.imageAsset.findFirst({
+        where: {
+          id: Number(body.imageAssetId),
+          ownerUserId: authorId,
+          sourceType: ImageAssetSourceType.POST,
+        },
+        select: { id: true },
+      });
+
+      if (!existingAsset) {
+        throw new BadRequestException('유효한 게시글 이미지 자산이 아닙니다.');
+      }
+
+      return existingAsset.id;
+    }
+
+    // V2 compat: legacy image object 경로 (deprecated)
+    if (!body.image) {
+      throw new BadRequestException('imageAssetId 또는 image 정보가 필요합니다.');
+    }
+
+    const createdAsset = await this.prisma.imageAsset.create({
+      data: {
+        ownerUserId: authorId,
+        sourceType: ImageAssetSourceType.POST,
+        storageKey: body.image.storageKey ?? null,
+        originalImageUrl: body.image.originalImageUrl,
+        processedImageUrl: body.image.processedImageUrl ?? body.image.originalImageUrl,
+        thumbnailUrl: body.image.thumbnailUrl ?? null,
+        blurMethod: body.image.blurMethod ?? BlurMethod.NONE,
+        aiBlurStatus: body.image.aiBlurStatus ?? AiBlurStatus.NONE,
+      },
+      select: { id: true },
+    });
+
+    return createdAsset.id;
+  }
+
   private normalizeKeywordIds(keywordIds?: number[]): number[] {
     if (!keywordIds?.length) {
       return [];
@@ -461,9 +522,7 @@ export class PostsService {
     const normalized = keywordIds.map((value) => Number(value));
 
     if (normalized.some((value) => !Number.isInteger(value) || value <= 0)) {
-      throw new BadRequestException(
-        'keywordIds는 양의 정수 배열이어야 합니다.',
-      );
+      throw new BadRequestException('keywordIds는 양의 정수 배열이어야 합니다.');
     }
 
     const unique = Array.from(new Set(normalized));
@@ -499,35 +558,5 @@ export class PostsService {
     }
 
     return keywordIds;
-  }
-
-  private normalizeUpdatableContent(content?: string): string | undefined {
-    if (content === undefined) {
-      return undefined;
-    }
-
-    const normalized = content.trim();
-
-    if (!normalized) {
-      throw new BadRequestException('content는 빈 문자열일 수 없습니다.');
-    }
-
-    return normalized;
-  }
-
-  private mapUpdatedOutfitItems(
-    items: Array<{
-      category: GarmentCategory;
-      itemName: string | null;
-      brand: string | null;
-      sortOrder: number;
-    }>,
-  ): UpdatePostResponse['outfitItems'] {
-    return items.map((item) => ({
-      category: item.category,
-      itemName: item.itemName ?? null,
-      brand: item.brand ?? null,
-      sortOrder: item.sortOrder,
-    }));
   }
 }

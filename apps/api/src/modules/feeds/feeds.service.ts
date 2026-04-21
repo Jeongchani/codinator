@@ -32,11 +32,11 @@ export class FeedsService {
     private readonly rankingsService: RankingsService,
   ) {}
 
-  // ─── 내 피드 (V2) ────────────────────────────────────────────────────────────
+  // ─── 내 피드 ─────────────────────────────────────────────────────────────────
   /**
    * GET /users/me/feed
-   * V2 정책: postStatus=DELETED 제외, OPEN + HIDDEN + ENDED 모두 포함.
-   * 커서 기반 페이지네이션 (DESC 방향: cursor는 직전 페이지 마지막 postId).
+   * V3 정책: postStatus=DELETED 제외, OPEN / HIDDEN / ENDED 모두 포함.
+   * 커서 기반 페이지네이션 (DESC: cursor는 직전 페이지 마지막 postId).
    */
   async getMyOwnFeed(
     userId: number,
@@ -72,7 +72,7 @@ export class FeedsService {
             },
           },
         },
-        // READY 상태의 rankingDetails만 포함해 isRankingPublished / rankInfo 도출
+        // READY 상태의 rankingDetails 포함 — isRankingPublished / rankInfo 도출용
         rankingDetails: {
           where: {
             ranking: { status: RankingStatus.READY },
@@ -124,18 +124,24 @@ export class FeedsService {
     };
   }
 
-  // ─── 타 사용자 피드 (기존 유지) ───────────────────────────────────────────────
-
+  // ─── 타 사용자 피드 ──────────────────────────────────────────────────────────
+  /**
+   * GET /users/:userId/feed
+   * V3 공개 조건:
+   *   - posts.status = ACTIVE (HIDDEN/DELETED 제외)
+   *   - posts.hiddenAt IS NULL (안전 명시)
+   *   - posts.deletedAt IS NULL
+   *   - posts.publishedAt IS NOT NULL
+   *   - evaluations.status = ENDED
+   * ※ rankingDetails 등재 여부와 무관.
+   */
   async getUserFeed(targetUserId: number, _viewerUserId: number): Promise<GetUserFeedResponse> {
     await syncExpiredEvaluations(this.prisma);
     await syncCurrentRankings(this.prisma);
 
     const user = await this.prisma.user.findUnique({
       where: { id: targetUserId },
-      select: {
-        id: true,
-        nickname: true,
-      },
+      select: { id: true, nickname: true },
     });
 
     if (!user) {
@@ -146,12 +152,11 @@ export class FeedsService {
       where: {
         authorId: targetUserId,
         status: PostStatus.ACTIVE,
+        hiddenAt: null,          // Batch5: 명시적 공개 조건
         deletedAt: null,
         publishedAt: { not: null },
         evaluation: {
-          is: {
-            status: EvaluationStatus.ENDED,
-          },
+          is: { status: EvaluationStatus.ENDED },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -182,10 +187,10 @@ export class FeedsService {
     };
   }
 
-  // ─── 내 피드 게시글 상세 (소유자 전용) ──────────────────────────────────────────
+  // ─── 내 피드 게시글 상세 (소유자 전용) ─────────────────────────────────────────
   /**
-   * GET /users/me/feed/:postId  — 소유자 전용
-   * V2 정책: OPEN / ENDED / CLOSED 상태 모두 조회 가능, 랭킹 조건 없음.
+   * GET /users/me/feed/:postId — 소유자 전용
+   * OPEN / ENDED / CLOSED 상태 모두 조회 가능, 랭킹 조건 없음.
    * HIDDEN 게시글(작성자 직접 숨김)도 포함.
    */
   async getMyOwnFeedPostDetail(
@@ -201,12 +206,9 @@ export class FeedsService {
         authorId: userId,
         status: { not: PostStatus.DELETED },
         deletedAt: null,
-        // 평가 상태 / 랭킹 조건 없음 — OPEN / ENDED / CLOSED 모두 허용
       },
       include: {
-        author: {
-          select: { id: true, nickname: true },
-        },
+        author: { select: { id: true, nickname: true } },
         images: { orderBy: IMAGE_ORDER_BY, include: POST_IMAGE_INCLUDE },
         outfitItems: { orderBy: OUTFIT_ORDER_BY },
         postKeywords: {
@@ -250,6 +252,16 @@ export class FeedsService {
     };
   }
 
+  // ─── 타 사용자 피드 게시글 상세 ─────────────────────────────────────────────
+  /**
+   * GET /users/:userId/feed/:postId
+   * V3 공개 조건:
+   *   - posts.status = ACTIVE
+   *   - posts.hiddenAt IS NULL (안전 명시)
+   *   - posts.deletedAt IS NULL
+   *   - posts.publishedAt IS NOT NULL
+   *   - evaluations.status = ENDED
+   */
   async getFeedPostDetail(
     targetUserId: number,
     postId: number,
@@ -263,43 +275,26 @@ export class FeedsService {
         id: postId,
         authorId: targetUserId,
         status: PostStatus.ACTIVE,
+        hiddenAt: null,          // Batch5: 명시적 공개 조건
         deletedAt: null,
         publishedAt: { not: null },
         evaluation: {
-          is: {
-            status: EvaluationStatus.ENDED,
-          },
+          is: { status: EvaluationStatus.ENDED },
         },
       },
       include: {
-        author: {
-          select: {
-            id: true,
-            nickname: true,
-          },
-        },
-        images: {
-          orderBy: IMAGE_ORDER_BY,
-          include: POST_IMAGE_INCLUDE,
-        },
-        outfitItems: {
-          orderBy: OUTFIT_ORDER_BY,
-        },
+        author: { select: { id: true, nickname: true } },
+        images: { orderBy: IMAGE_ORDER_BY, include: POST_IMAGE_INCLUDE },
+        outfitItems: { orderBy: OUTFIT_ORDER_BY },
         postKeywords: {
           orderBy: POST_KEYWORD_ORDER_BY,
-          include: {
-            keyword: true,
-          },
+          include: { keyword: true },
         },
         evaluation: {
           include: {
             votes: {
               include: {
-                feedbacks: {
-                  include: {
-                    tag: true,
-                  },
-                },
+                feedbacks: { include: { tag: true } },
               },
             },
           },
@@ -313,10 +308,7 @@ export class FeedsService {
 
     return {
       postId: post.id,
-      author: {
-        userId: post.author.id,
-        nickname: post.author.nickname,
-      },
+      author: { userId: post.author.id, nickname: post.author.nickname },
       content: post.content,
       status: post.status,
       createdAt: post.createdAt.toISOString(),

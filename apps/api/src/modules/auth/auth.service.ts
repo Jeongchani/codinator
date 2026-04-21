@@ -122,7 +122,20 @@ export class AuthService {
     const purpose = dto.purpose as PhoneVerificationPurpose;
     const now = new Date();
 
-    // 현재 유효한(PENDING) 레코드 조회
+    // P0: status 무관하게 최신 레코드를 먼저 조회해 blockedUntil 우회 방지
+    // FAILED+blockedUntil 상태에서 새 row를 만들면 24h 차단이 무력화되므로
+    const latestRecord = await this.prisma.phoneVerification.findFirst({
+      where: { phoneNumber, purpose },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (latestRecord?.blockedUntil && latestRecord.blockedUntil > now) {
+      throw new ForbiddenException(
+        `인증 시도 차단 상태입니다. 차단 해제 시각: ${latestRecord.blockedUntil.toISOString()}`,
+      );
+    }
+
+    // 유효한(PENDING, 미만료) 레코드 조회 — 재전송 정책 적용 대상
     const existing = await this.prisma.phoneVerification.findFirst({
       where: {
         phoneNumber,
@@ -134,12 +147,6 @@ export class AuthService {
     });
 
     if (existing) {
-      // 차단 여부 확인
-      if (existing.blockedUntil && existing.blockedUntil > now) {
-        const unblockAt = existing.blockedUntil.toISOString();
-        throw new ForbiddenException(`인증 시도 차단 상태입니다. 차단 해제 시각: ${unblockAt}`);
-      }
-
       // 재전송 한도 확인
       if (existing.resendCount >= MAX_RESEND_COUNT) {
         throw new HttpException(
@@ -377,7 +384,10 @@ export class AuthService {
   // ──────────────────────────────────────────────────────────────────────────
   // POST /auth/login
   // ──────────────────────────────────────────────────────────────────────────
-  async login(dto: LoginRequestDto): Promise<LoginResponse> {
+  async login(
+    dto: LoginRequestDto,
+    meta?: { userAgent?: string; ipAddress?: string }, // V3-LoginSession: 디바이스 메타 저장용
+  ): Promise<LoginResponse> {
     const email = dto.email.trim().toLowerCase();
 
     const user = await this.prisma.user.findUnique({ where: { email } });
@@ -403,27 +413,21 @@ export class AuthService {
     // 활성 로그인 제한 제재 확인 (TEMP_SUSPENSION / PERMANENT_BAN)
     await this.assertNoActiveLoginSanction(user.id);
 
+    // rememberMe=true → refresh token 발급 + user_sessions 저장 // RememberMe
+    if (dto.rememberMe === true) {
+      const { accessToken, refreshToken } = await this.createSession(user.id, user.email, meta);
+      return {
+        user: { id: user.id, email: user.email, nickname: user.nickname },
+        accessToken,
+        refreshToken,
+      };
+    }
+
+    // rememberMe=false 또는 미입력 → access token만 발급, 세션 없음 // RememberMe
     const accessToken = this.authTokenService.signAccessToken(user.id, user.email);
-    const refreshToken = this.authTokenService.signRefreshToken(user.id, user.email);
-    const refreshTokenHash = this.hashToken(refreshToken);
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-    await this.prisma.userSession.create({
-      data: {
-        userId: user.id,
-        refreshTokenHash,
-        expiresAt,
-      },
-    });
-
     return {
-      user: {
-        id: user.id,
-        email: user.email,
-        nickname: user.nickname,
-      },
+      user: { id: user.id, email: user.email, nickname: user.nickname },
       accessToken,
-      refreshToken,
     };
   }
 
@@ -516,13 +520,33 @@ export class AuthService {
       include: { user: { select: { id: true, status: true } } },
     });
 
-    const isNewUser = !socialAccount || socialAccount.user.status === UserStatus.DELETED;
+    let isNewUser: boolean;
+    let existingUserId: number | undefined;
+
+    if (socialAccount) {
+      // DELETED 연결 계정: complete-profile에서 최종 차단 처리
+      isNewUser = socialAccount.user.status === UserStatus.DELETED;
+      existingUserId = isNewUser ? undefined : socialAccount.userId;
+    } else {
+      // P0: 소셜 계정 없음 — providerEmail로 기존 user 확인 (이메일 연동 여부 판단)
+      isNewUser = true;
+      if (profile.providerEmail) {
+        const emailUser = await this.prisma.user.findUnique({
+          where: { email: profile.providerEmail.toLowerCase() },
+          select: { id: true, status: true },
+        });
+        if (emailUser && emailUser.status === UserStatus.ACTIVE) {
+          isNewUser = false;
+          existingUserId = emailUser.id;
+        }
+      }
+    }
 
     // socialLoginToken: 클라이언트에 isNewUser 상태를 전달하는 마커 (complete-profile 에서는 미사용)
     const socialLoginToken = this.authTokenService.signSocialLoginToken(
       provider,
       profile.providerUserId,
-      isNewUser ? undefined : socialAccount!.userId,
+      existingUserId,
     );
 
     return { socialLoginToken, isNewUser };
@@ -533,6 +557,7 @@ export class AuthService {
   // ──────────────────────────────────────────────────────────────────────────
   async socialCompleteProfile(
     dto: SocialCompleteProfileRequest,
+    meta?: { userAgent?: string; ipAddress?: string }, // V3-LoginSession
   ): Promise<SocialCompleteProfileResponse> {
     const provider = dto.provider as SocialProvider;
 
@@ -548,8 +573,15 @@ export class AuthService {
       include: { user: { select: { id: true, email: true, nickname: true, status: true } } },
     });
 
-    // ── 기존 회원 ─────────────────────────────────────────────────────────
-    if (socialAccount && socialAccount.user.status !== UserStatus.DELETED) {
+    // P0: 소셜 계정은 있으나 연결된 user가 DELETED인 경우 → 재가입 차단
+    if (socialAccount && socialAccount.user.status === UserStatus.DELETED) {
+      throw new ForbiddenException(
+        '탈퇴 처리된 계정입니다. 재가입이 불가합니다. 고객센터에 문의해 주세요.',
+      );
+    }
+
+    // ── 기존 회원 (소셜 계정 정상 연결) ──────────────────────────────────
+    if (socialAccount) {
       const user = socialAccount.user;
 
       if (user.status === UserStatus.SUSPENDED) {
@@ -558,14 +590,67 @@ export class AuthService {
 
       await this.assertNoActiveLoginSanction(user.id);
 
-      const { accessToken, refreshToken } = await this.createSession(user.id, user.email ?? '');
+      // rememberMe=true → refresh token 발급 + user_sessions 저장 // RememberMe
+      if (dto.rememberMe === true) {
+        const { accessToken, refreshToken } = await this.createSession(user.id, user.email ?? '', meta);
+        return {
+          accessToken,
+          refreshToken,
+          user: { id: user.id, email: user.email, nickname: user.nickname },
+          isNewUser: false,
+        };
+      }
 
+      // rememberMe=false 또는 미입력 → access token만 발급 // RememberMe
+      const accessToken = this.authTokenService.signAccessToken(user.id, user.email ?? '');
       return {
         accessToken,
-        refreshToken,
         user: { id: user.id, email: user.email, nickname: user.nickname },
         isNewUser: false,
       };
+    }
+
+    // P0: 소셜 계정 없음 — providerEmail 기준으로 기존 user 조회 (이메일 연동)
+    if (profile.providerEmail) {
+      const emailUser = await this.prisma.user.findUnique({
+        where: { email: profile.providerEmail.toLowerCase() },
+        select: { id: true, email: true, nickname: true, status: true },
+      });
+
+      if (emailUser) {
+        if (emailUser.status === UserStatus.DELETED) {
+          throw new ForbiddenException(
+            '탈퇴 처리된 계정의 이메일과 동일합니다. 고객센터에 문의해 주세요.',
+          );
+        }
+        if (emailUser.status === UserStatus.SUSPENDED) {
+          throw new UnauthorizedException('사용할 수 없는 계정입니다. 고객센터에 문의해 주세요.');
+        }
+
+        // ACTIVE 기존 회원 → 소셜 계정 연결 후 세션 발급 (새 user 생성 없음) // P0
+        await this.assertNoActiveLoginSanction(emailUser.id);
+
+        await this.prisma.socialAccount.create({
+          data: {
+            userId: emailUser.id,
+            provider,
+            providerUserId: profile.providerUserId,
+            providerEmail: profile.providerEmail ?? null,
+          },
+        });
+
+        const { accessToken, refreshToken } = await this.createSession(
+          emailUser.id,
+          emailUser.email,
+        );
+
+        return {
+          accessToken,
+          refreshToken,
+          user: { id: emailUser.id, email: emailUser.email, nickname: emailUser.nickname },
+          isNewUser: false,
+        };
+      }
     }
 
     // ── 신규 회원 ─────────────────────────────────────────────────────────
@@ -662,11 +747,21 @@ export class AuthService {
       return created;
     });
 
-    const { accessToken, refreshToken } = await this.createSession(user.id, user.email);
+    // rememberMe=true → refresh token 발급 + user_sessions 저장 // RememberMe
+    if (dto.rememberMe === true) {
+      const { accessToken, refreshToken } = await this.createSession(user.id, user.email, meta);
+      return {
+        accessToken,
+        refreshToken,
+        user: { id: user.id, email: user.email, nickname: user.nickname },
+        isNewUser: true,
+      };
+    }
 
+    // rememberMe=false 또는 미입력 → access token만 발급 // RememberMe
+    const accessToken = this.authTokenService.signAccessToken(user.id, user.email);
     return {
       accessToken,
-      refreshToken,
       user: { id: user.id, email: user.email, nickname: user.nickname },
       isNewUser: true,
     };
@@ -764,18 +859,25 @@ export class AuthService {
     }
   }
 
-  /** 세션(Refresh Token) 생성 후 Access/Refresh Token 반환 */
+  /** 세션(Refresh Token) 생성 후 Access/Refresh Token 반환 // V3-LoginSession */
   private async createSession(
     userId: number,
     email: string,
+    meta?: { userAgent?: string; ipAddress?: string }, // V3-LoginSession: userAgent / ipAddress 저장
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const accessToken = this.authTokenService.signAccessToken(userId, email);
     const refreshToken = this.authTokenService.signRefreshToken(userId, email);
     const refreshTokenHash = this.hashToken(refreshToken);
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // refresh 7일
 
     await this.prisma.userSession.create({
-      data: { userId, refreshTokenHash, expiresAt },
+      data: {
+        userId,
+        refreshTokenHash,
+        expiresAt,
+        userAgent: meta?.userAgent ?? null,   // V3-LoginSession
+        ipAddress: meta?.ipAddress ?? null,   // V3-LoginSession
+      },
     });
 
     return { accessToken, refreshToken };

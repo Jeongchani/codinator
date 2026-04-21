@@ -1,5 +1,9 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import type { GetEvaluationPostDetailResponse, GetEvaluationsResponse } from '@codinator/contracts';
+import type {
+  GetEvaluationHistoryResponse,
+  GetEvaluationPostDetailResponse,
+  GetEvaluationsResponse,
+} from '@codinator/contracts';
 import { EvaluationStatus, PostStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -9,6 +13,7 @@ import {
 } from './common/evaluation-summary.util';
 import { syncExpiredEvaluations } from './common/sync-expired-evaluations.util';
 import {
+  buildContentPreview, // V3 Batch6-Fix: contentPreview 파생값 helper
   IMAGE_ORDER_BY,
   mapOutfitItems,
   mapPostImages,
@@ -173,11 +178,77 @@ export class EvaluationsService {
     };
   }
 
-  private normalizeLimit(limit?: number): number {
-    if (!limit || Number.isNaN(Number(limit))) {
-      return 10;
-    }
+  async getMyEvaluationHistory(params: {
+    cursor?: number;
+    limit?: number;
+    userId: number;
+  }): Promise<GetEvaluationHistoryResponse> {
+    // 만료된 평가를 ENDED로 전환한 뒤 조회 (stale 상태 방지)
+    await syncExpiredEvaluations(this.prisma);
 
-    return Math.min(Math.max(Number(limit), 1), 30);
+    const limit = this.normalizeLimit(params.limit);
+
+    const votes = await this.prisma.vote.findMany({
+      where: {
+        voterId: params.userId,
+        // 진행중인 평가 기록: evaluation.status = OPEN 인 건만 노출
+        // 평가 완료(ENDED/CLOSED)된 게시글은 목록에서 제외
+        evaluation: { status: EvaluationStatus.OPEN,
+                post: {
+        status: PostStatus.ACTIVE,
+        deletedAt: null,
+         },
+        },
+        ...(params.cursor !== undefined ? { id: { lt: params.cursor } } : {}),
+      },
+      orderBy: { id: 'desc' },
+      take: limit + 1,
+      include: {
+        evaluation: {
+          include: {
+            post: {
+              include: {
+                images: {
+                  orderBy: IMAGE_ORDER_BY,
+                  take: 1,
+                  include: POST_IMAGE_INCLUDE,
+                },
+              },
+            },
+          },
+        },
+        feedbacks: {
+          select: { tagId: true },
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
+    });
+
+    const hasMore = votes.length > limit;
+    const pageItems = hasMore ? votes.slice(0, limit) : votes;
+
+    return {
+      items: pageItems.map((vote) => ({
+        // ── 핵심 공개 필드 (API 명세서 ZIP 기준) ──────────────────────────── // V3 Batch6-Fix
+        postId: vote.evaluation.postId,
+        evaluationId: vote.evaluationId,
+        thumbnailUrl: pickPostThumbnail(vote.evaluation.post.images),
+        contentPreview: buildContentPreview(vote.evaluation.post.content), // V3 Batch6-Fix
+        myChoice: vote.choice,                                              // V3 Batch6-Fix: myVoteChoice → myChoice
+        votedAt: vote.createdAt.toISOString(),                              // V3 Batch6-Fix: votes.createdAt
+        // ── Optional extension 필드 (클라이언트 편의용) ───────────────────────
+        endsAt: vote.evaluation.endsAt.toISOString(),
+        evaluationStatus: vote.evaluation.status,
+        myVoteId: vote.id,
+        myFeedbackTagIds: vote.feedbacks.map((f) => f.tagId),
+      })),
+      nextCursor: hasMore ? (pageItems[pageItems.length - 1]?.id ?? null) : null,
+      hasMore,
+    };
+  }
+
+  private normalizeLimit(limit?: number): number {
+    if (!limit || Number.isNaN(Number(limit)) || Number(limit) <= 0) return 10;
+    return Math.min(Math.max(Math.floor(Number(limit)), 1), 30);
   }
 }

@@ -3,6 +3,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  UnprocessableEntityException, // V3 Batch9: SEARCH_QUERY 이미지 품질 불량 시 422 반환
 } from '@nestjs/common';
 import {
   AiGarmentCategory,
@@ -166,11 +167,21 @@ export class ImageIndexingService {
       select: { id: true },
     });
 
+    /** AI 서버 업로드 허용 최대 파일 크기 (10 MB) */
+    const MAX_AI_UPLOAD_BYTES = 10 * 1024 * 1024;
+
     try {
       const analysisInput = this.resolveAnalysisInput(imageAsset);
       const buffer = await fs.readFile(analysisInput.filePath);
       const filename = basename(analysisInput.filePath);
       const mimeType = imageAsset.mimeType ?? this.guessMimeType(filename);
+
+      // AI 서버에 보내기 전 파일 크기 사전 검사 — 초과 시 AI 호출 없이 즉시 실패
+      if (buffer.length > MAX_AI_UPLOAD_BYTES) {
+        throw new BadRequestException(
+          `이미지 파일이 너무 큽니다. AI 서버 허용 최대 크기는 10MB 입니다. (현재 ${(buffer.length / 1024 / 1024).toFixed(1)}MB)`,
+        );
+      }
 
       const result = await this.aiService.analyzeImageBinary({
         buffer,
@@ -182,18 +193,30 @@ export class ImageIndexingService {
 
       return run.id;
     } catch (error) {
+      // V3 Batch9: 분석 실패 이유를 errorCode/errorMessage 로 기록
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
       await this.prisma.imageAnalysisRun.update({
         where: { id: run.id },
         data: {
           status: ImageAnalysisStatus.FAILED,
           errorCode: 'ANALYSIS_FAILED',
-          errorMessage: error instanceof Error ? error.message : String(error),
+          errorMessage,
           finishedAt: new Date(),
         },
       });
 
+      // V3 Batch9: SEARCH_QUERY 목적의 분석 실패는 422(UnprocessableEntity) 반환.
+      // "이미지 품질이 너무 낮아 분석이 어려우면 검색 실패 메시지 제공" 정책 반영.
+      // POST_INDEX / REINDEX 목적은 기존과 동일하게 500 유지.
+      if (purpose === ImageAnalysisPurpose.SEARCH_QUERY) {
+        throw new UnprocessableEntityException(
+          '이미지를 분석할 수 없습니다. 전신 또는 의류가 명확히 보이는 이미지를 사용해 주세요.',
+        );
+      }
+
       throw new InternalServerErrorException(
-        error instanceof Error ? error.message : '이미지 분석 저장에 실패했습니다.',
+        errorMessage || '이미지 분석 저장에 실패했습니다.',
       );
     }
   }
