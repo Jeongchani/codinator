@@ -10,6 +10,7 @@ from app.services.image_utils import clamp_bbox
 
 CATEGORY_PRIORITY = {
     "TOP": 90,
+    "OUTER": 88,
     "BOTTOM": 85,
     "DRESS": 80,
     "BAG": 70,
@@ -32,6 +33,9 @@ COLOR_KO = {
     "red": "레드",
     "pink": "핑크",
     "green": "그린",
+    "orange": "오렌지",
+    "yellow": "옐로우",
+    "purple": "퍼플",
     "khaki": "카키",
 }
 
@@ -40,7 +44,7 @@ def infer_fit_tags(category: str, label: str, bbox: list[int], image_height: int
     box_width = bbox[2] - bbox[0]
     width_ratio = box_width / max(1, image_width)
 
-    if label in {"top", "dress"}:
+    if label in {"top", "dress"} or category == "OUTER":
         if width_ratio >= 0.45:
             return ["oversized"]
         if width_ratio <= 0.22:
@@ -59,56 +63,104 @@ def infer_fit_tags(category: str, label: str, bbox: list[int], image_height: int
 
 def infer_length_tags(label: str, bbox: list[int], image_height: int) -> list[str]:
     height_ratio = (bbox[3] - bbox[1]) / max(1, image_height)
+    top_ratio = bbox[1] / max(1, image_height)
+    bottom_ratio = bbox[3] / max(1, image_height)
 
     if label in {"top", "scarf", "belt", "hat"}:
-        return ["short"] if height_ratio < 0.22 else ["long"]
-    if label in {"pants", "dress"}:
-        return ["long"] if height_ratio >= 0.35 else ["short"]
-    if label == "skirt":
-        return ["long"] if height_ratio >= 0.24 else ["mini"]
-    return []
-
-
-def infer_material_tags(label: str, color: str) -> list[str]:
+        return ["short"] if height_ratio < 0.24 else ["long"]
     if label == "pants":
-        return ["denim"] if color in {"blue", "navy"} else ["cotton"]
-    if label == "top":
-        return ["knit"] if color in {"beige", "gray", "brown"} else ["cotton"]
+        if height_ratio >= 0.42:
+            return ["long"]
+        if bottom_ratio >= 0.82 and top_ratio <= 0.55:
+            return ["long"]
+        if height_ratio >= 0.32 and bottom_ratio >= 0.72:
+            return ["long"]
+        return ["short"]
     if label == "dress":
-        return ["cotton"]
-    if label == "bag":
-        return ["leather"]
-    if label == "shoes":
-        return ["leather"]
+        if height_ratio >= 0.48 or bottom_ratio >= 0.8:
+            return ["long"]
+        return ["short"]
+    if label == "skirt":
+        return ["long"] if height_ratio >= 0.3 or bottom_ratio >= 0.72 else ["mini"]
     return []
 
 
-def infer_style_tags(label: str, color: str) -> list[str]:
-    tags = {"daily"}
-    if color in {"black", "white", "gray", "navy", "beige"}:
+def infer_material_tags(label: str, color: str, category: str) -> list[str]:
+    if label == "pants" and color in {"blue", "navy"}:
+        return ["denim"]
+    if label in {"bag", "shoes", "belt"} and color in {"black", "brown", "beige", "ivory", "cream"}:
+        return ["leather"]
+    if label == "scarf":
+        return ["knit"]
+    if category == "OUTER" and color in {"gray", "brown", "beige", "black", "navy"}:
+        return ["knit"]
+    return []
+
+
+def infer_style_tags(label: str, color: str, category: str) -> list[str]:
+    tags: set[str] = set()
+    if color in {"black", "white", "gray", "navy", "beige", "ivory", "cream"}:
         tags.add("minimal")
     if label in {"bag", "hat", "glasses", "jewelry", "scarf", "belt", "feet"}:
         tags.add("accent")
     if label in {"pants", "top", "dress", "skirt"}:
         tags.add("casual")
+    if category == "OUTER":
+        tags.add("layered")
     return sorted(tags)
 
 
-def infer_season_tags(label: str, color: str) -> list[str]:
-    if label in {"scarf", "hat"}:
-        return ["fall", "winter"]
-    if color in {"black", "navy", "brown"}:
-        return ["fall", "winter"]
-    return ["spring", "summer"]
+def infer_season_tags(label: str, color: str, material_tags: list[str], category: str) -> list[str]:
+    if label == "scarf":
+        return ["winter"]
+    if category == "OUTER":
+        return ["fall"] if color in {"beige", "ivory", "cream"} else ["winter"]
+    if "knit" in material_tags:
+        return ["fall"]
+    if label in {"dress", "skirt"} and color in {"white", "ivory", "cream", "pink", "blue"}:
+        return ["spring"]
+    if label == "top" and color in {"white", "blue", "pink"}:
+        return ["summer"]
+    return []
 
 
-def infer_occasion_tags(label: str) -> list[str]:
-    if label in {"bag", "jewelry", "glasses"}:
-        return ["daily", "office"]
-    return ["daily"]
+def infer_occasion_tags(label: str, category: str) -> list[str]:
+    return []
 
 
-def map_label_to_category(label: str) -> str:
+def _is_probable_outerwear(
+    label: str,
+    bbox: list[int],
+    image_height: int,
+    image_width: int,
+    area_ratio: float,
+) -> bool:
+    if label != "top":
+        return False
+
+    width_ratio = (bbox[2] - bbox[0]) / max(1, image_width)
+    height_ratio = (bbox[3] - bbox[1]) / max(1, image_height)
+    top_ratio = bbox[1] / max(1, image_height)
+    bottom_ratio = bbox[3] / max(1, image_height)
+
+    return (
+        area_ratio >= 0.075
+        and width_ratio >= 0.3
+        and height_ratio >= 0.28
+        and top_ratio <= 0.28
+        and bottom_ratio >= 0.42
+    )
+
+
+def map_label_to_category(
+    label: str,
+    bbox: list[int],
+    image_height: int,
+    image_width: int,
+    area_ratio: float,
+) -> str:
+    if _is_probable_outerwear(label, bbox, image_height, image_width, area_ratio):
+        return "OUTER"
     if label == "top":
         return "TOP"
     if label in {"pants", "skirt"}:
@@ -176,8 +228,7 @@ def _dedupe_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         duplicated = False
         for existing in kept:
             same_bucket = existing["category"] == item["category"]
-            same_label = existing["parserLabel"] == item["parserLabel"]
-            if (same_bucket or same_label) and _bbox_iou(existing["bbox"], item["bbox"]) >= 0.65:
+            if same_bucket and _bbox_iou(existing["bbox"], item["bbox"]) >= 0.65:
                 duplicated = True
                 break
         if not duplicated:
@@ -217,7 +268,8 @@ def build_garment_responses(image_bgr: np.ndarray, parser_result: dict[str, Any]
         mask = np.asarray(item["mask"], dtype=bool)
         bbox = clamp_bbox(item["bbox"], width, height)
         color = infer_dominant_color(image_bgr, mask=mask)
-        category = map_label_to_category(label)
+        category = map_label_to_category(label, bbox, height, width, float(item["areaRatio"]))
+        material_tags = infer_material_tags(label, color, category)
 
         garment = {
             "category": category,
@@ -227,10 +279,10 @@ def build_garment_responses(image_bgr: np.ndarray, parser_result: dict[str, Any]
             "colorTags": [color],
             "fitTags": infer_fit_tags(category, label, bbox, height, width),
             "lengthTags": infer_length_tags(label, bbox, height),
-            "materialTags": infer_material_tags(label, color),
-            "styleTags": infer_style_tags(label, color),
-            "seasonTags": infer_season_tags(label, color),
-            "occasionTags": infer_occasion_tags(label),
+            "materialTags": material_tags,
+            "styleTags": infer_style_tags(label, color, category),
+            "seasonTags": infer_season_tags(label, color, material_tags, category),
+            "occasionTags": infer_occasion_tags(label, category),
             "parserLabel": label,
             "areaRatio": item["areaRatio"],
             "componentId": item.get("componentId"),
@@ -274,6 +326,7 @@ def build_caption_hint(garments: list[dict[str, Any]]) -> str:
         "TOP": "상의",
         "BOTTOM": "하의",
         "DRESS": "원피스",
+        "OUTER": "아우터",
         "BAG": "가방",
         "SHOES": "신발",
         "ACCESSORY": "액세서리",
