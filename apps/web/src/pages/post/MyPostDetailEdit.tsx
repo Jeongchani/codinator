@@ -129,6 +129,44 @@ function formatDate(value?: string) {
   }).format(date);
 }
 
+function calculateRemainingMs(endsAtText?: string) {
+  if (!endsAtText) return 0;
+
+  const endsAt = new Date(endsAtText);
+  if (Number.isNaN(endsAt.getTime())) return 0;
+
+  return endsAt.getTime() - Date.now();
+}
+
+function extractEvaluationPeriod(data: GetFeedPostDetailResponse | null) {
+  if (!data) {
+    return {
+      startsAt: undefined,
+      endsAt: undefined,
+      remainingDays: 0,
+      showRemainingDays: false,
+    };
+  }
+
+  const root = data as unknown as Record<string, unknown>;
+  const evaluation = isRecord(root.evaluation) ? root.evaluation : null;
+
+  const startsAt = toSafeString(evaluation?.startsAt);
+  const endsAt = toSafeString(evaluation?.endsAt);
+  const status = toSafeString(evaluation?.status)?.toUpperCase();
+
+  const remainingMs = calculateRemainingMs(endsAt);
+  const remainingDays = remainingMs > 0 ? Math.ceil(remainingMs / (1000 * 60 * 60 * 24)) : 0;
+  const isEnded = status === 'ENDED' || status === 'CLOSED' || remainingMs <= 0;
+
+  return {
+    startsAt,
+    endsAt,
+    remainingDays,
+    showRemainingDays: Boolean(endsAt) && !isEnded,
+  };
+}
+
 function decodeJwtPayload(token: string): Record<string, unknown> | undefined {
   try {
     const parts = token.split('.');
@@ -720,6 +758,8 @@ const MyPostDetailEdit: React.FC = () => {
     return 100 - likePercent;
   }, [likePercent, totalVoteCount]);
 
+  const evaluationPeriod = useMemo(() => extractEvaluationPeriod(data), [data]);
+  const remainingDays = evaluationPeriod.remainingDays;
   const keywordChips = useMemo(() => extractKeywordLabels(data), [data]);
   const structuredFeedback = useMemo(() => extractStructuredFeedback(data), [data]);
 
@@ -1029,20 +1069,13 @@ const MyPostDetailEdit: React.FC = () => {
 
           <section className={styles.sectionBlock}>
             <div className={styles.sectionHeaderRow}>
-              <h3 className={styles.sectionTitle}>평가</h3>
+              <div className={styles.sectionTitleGroup}>
+                <h3 className={styles.sectionTitle}>평가</h3>
+                {evaluationPeriod.showRemainingDays ? (
+                  <span className={styles.sectionAccentMetaText}>{remainingDays}일 남음</span>
+                ) : null}
+              </div>
               <span className={styles.sectionMetaText}>{formatCount(totalVoteCount)}명 참여</span>
-            </div>
-
-            <div className={styles.evaluationSummaryRow}>
-              <div className={`${styles.evaluationSummaryItem} ${styles.evaluationSummaryLike}`}>
-                <ThumbsUp size={13} strokeWidth={2.2} />
-                <span>{likePercent}%</span>
-              </div>
-
-              <div className={`${styles.evaluationSummaryItem} ${styles.evaluationSummaryDislike}`}>
-                <ThumbsDown size={13} strokeWidth={2.2} />
-                <span>{dislikePercent}%</span>
-              </div>
             </div>
 
             <div className={styles.evaluationTrack}>
@@ -1051,6 +1084,18 @@ const MyPostDetailEdit: React.FC = () => {
                 className={styles.evaluationDislikeFill}
                 style={{ width: `${dislikePercent}%` }}
               />
+            </div>
+
+            <div className={styles.evaluationSummaryRow}>
+              <div className={`${styles.evaluationSummaryItem} ${styles.evaluationSummaryLike}`}>
+                <ThumbsUp size={15} strokeWidth={2.2} />
+                <span>{likePercent}%</span>
+              </div>
+
+              <div className={`${styles.evaluationSummaryItem} ${styles.evaluationSummaryDislike}`}>
+                <span>{dislikePercent}%</span>
+                <ThumbsDown size={15} strokeWidth={2.2} />
+              </div>
             </div>
           </section>
 
