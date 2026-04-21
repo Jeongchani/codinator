@@ -1,6 +1,7 @@
 // V3 Batch11 — 관리자 제재 목록 조회 (GET /admin/sanctions)
 
-export type SanctionType = 'TEMP_SUSPENSION' | 'PERMANENT_BAN' | 'POST_RESTRICTION';
+import type { SanctionType } from '../common/enums'; // Batch11-Fix: common에서 가져옴 (중복 제거)
+export type { SanctionType }; // re-export so existing imports from './list-sanctions' still work
 
 export interface SanctionListItem {
   sanctionId: number;
