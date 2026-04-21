@@ -12,15 +12,26 @@ import type {
   AdminKeywordItem,
   ChangePostStatusRequest,
   ChangePostStatusResponse,
+  ChangeUserStatusRequest,
+  ChangeUserStatusResponse,
   CreateFeedbackTagRequest,
   CreateFeedbackTagResponse,
   CreateKeywordRequest,
   CreateKeywordResponse,
+  CreateSanctionRequest,
+  CreateSanctionResponse,
   DeleteFeedbackTagResponse,
   DeleteKeywordResponse,
+  EndSanctionRequest,
+  EndSanctionResponse,
   GetAdminFeedbackTagsResponse,
   GetAdminKeywordsResponse,
+  ListActionLogsResponse,
+  ListAdminPostsResponse,
+  ListAdminUsersResponse,
   ListPostReportsResponse,
+  ListReportHistoriesResponse,
+  ListSanctionsResponse,
   ListUserReportsResponse,
   ReviewReportRequest,
   ReviewReportResponse,
@@ -29,11 +40,28 @@ import type {
   UpdateKeywordRequest,
   UpdateKeywordResponse,
 } from '@codinator/contracts';
-import { ImageAnalysisPurpose, PostStatus, ReportStatus, UserRole, VoteChoice } from '@prisma/client';
+import {
+  AdminActionTargetType,
+  AdminActionType,
+  ImageAnalysisPurpose,
+  PostStatus,
+  ReportHistoryActionType,
+  ReportStatus,
+  ReportTargetType,
+  SanctionType,
+  UserRole,
+  UserStatus,
+  VoteChoice,
+} from '@prisma/client';
 import { POST_IMAGE_INCLUDE } from '../posts/common/post-presenter.util';
 import type { ListReportsQueryDto } from './dto/list-reports-query.dto';
 import type { ListAdminKeywordsQueryDto } from './dto/list-admin-keywords-query.dto';
 import type { ListAdminFeedbackTagsQueryDto } from './dto/list-admin-feedback-tags-query.dto';
+import type { ListAdminPostsQueryDto } from './dto/list-admin-posts-query.dto';
+import type { ListAdminUsersQueryDto } from './dto/list-admin-users-query.dto';
+import type { ListSanctionsQueryDto } from './dto/list-sanctions-query.dto';
+import type { ListActionLogsQueryDto } from './dto/list-action-logs-query.dto';
+import type { ListReportHistoriesQueryDto } from './dto/list-report-histories-query.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ImageIndexingService } from '../ai/image-indexing.service';
 import { syncPostSearchIndex } from '../search/common/post-search-index.util';
@@ -47,9 +75,13 @@ export class AdminService {
     private readonly imageIndexingService: ImageIndexingService,
   ) {}
 
-  // ─── ADMIN 권한 검증 헬퍼 ──────────────────────────────────────────────────────
+  // ─── 권한 검증 헬퍼 ────────────────────────────────────────────────────────────
 
-  private async assertAdmin(adminId: number): Promise<void> {
+  /**
+   * OPERATOR_ADMIN 이상 (OPERATOR_ADMIN + SUPER_ADMIN) 허용.
+   * 기존 assertAdmin과 동일하며 일상 운영 처리용. // V3 Batch11
+   */
+  private async assertOperatorAdmin(adminId: number): Promise<void> {
     const user = await this.prisma.user.findUnique({
       where: { id: adminId },
       select: { role: true },
@@ -64,15 +96,83 @@ export class AdminService {
     }
   }
 
-  // ─── 게시글 신고 처리 (PATCH /admin/reports/:id) ──────────────────────────────
+  /**
+   * SUPER_ADMIN 전용 작업 검증. // V3 Batch11
+   * 게시글 DELETED / 회원 DELETED / PERMANENT_BAN / 재인덱싱 / 키워드·피드백태그 CRUD 등에 사용.
+   */
+  private async assertSuperAdmin(adminId: number): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: adminId },
+      select: { role: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
+    }
+
+    if (user.role !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException('SUPER_ADMIN 권한이 필요합니다.');
+    }
+  }
+
+  // ─── 로그/이력 헬퍼 ────────────────────────────────────────────────────────────
+
+  /** admin_action_logs 단건 기록 // V3 Batch11 */
+  private async logAdminAction(params: {
+    adminId: number;
+    targetType: AdminActionTargetType;
+    targetId: number;
+    actionType: AdminActionType;
+    reason?: string | null;
+    metadataJson?: Record<string, unknown> | null;
+  }): Promise<void> {
+    try {
+      await this.prisma.adminActionLog.create({
+        data: {
+          adminId: params.adminId,
+          targetType: params.targetType,
+          targetId: params.targetId,
+          actionType: params.actionType,
+          reason: params.reason ?? null,
+          metadataJson: params.metadataJson ?? undefined,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(`[adminActionLog] 기록 실패: ${String(err)}`);
+    }
+  }
+
+  /** report_histories 단건 기록 // V3 Batch11 */
+  private async logReportHistory(params: {
+    targetType: ReportTargetType;
+    targetId: number;
+    actorId: number | null;
+    actionType: ReportHistoryActionType;
+    note?: string | null;
+  }): Promise<void> {
+    try {
+      await this.prisma.reportHistory.create({
+        data: {
+          targetType: params.targetType,
+          targetId: params.targetId,
+          actorId: params.actorId ?? null,
+          actionType: params.actionType,
+          note: params.note ?? null,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(`[reportHistory] 기록 실패: ${String(err)}`);
+    }
+  }
+
+  // ─── 게시글 신고 처리 (PATCH /admin/post-reports/:id) ────────────────────────
 
   async reviewReport(
     adminId: number,
     reportId: number,
     body: ReviewReportRequest,
   ): Promise<ReviewReportResponse> {
-    await this.assertAdmin(adminId);
-
+    await this.assertOperatorAdmin(adminId);
     this.validateReviewAction(body.action);
 
     const report = await this.prisma.report.findUnique({
@@ -95,9 +195,35 @@ export class AdminService {
         status: body.action as ReportStatus,
         reviewedAt: now,
         reviewedById: adminId,
+        reviewReason: body.reason?.trim() || null, // V3 Batch11: reviewReason 저장
       },
       select: { id: true, status: true, reviewedAt: true },
     });
+
+    // V3 Batch11: report_histories + admin_action_logs 동시 기록
+    const actionType = body.action === 'RESOLVED'
+      ? ReportHistoryActionType.RESOLVED
+      : ReportHistoryActionType.REJECTED;
+    const adminActionType = body.action === 'RESOLVED'
+      ? AdminActionType.RESOLVED
+      : AdminActionType.REJECTED;
+
+    await Promise.all([
+      this.logReportHistory({
+        targetType: ReportTargetType.POST_REPORT,
+        targetId: reportId,
+        actorId: adminId,
+        actionType,
+        note: body.reason?.trim() || null,
+      }),
+      this.logAdminAction({
+        adminId,
+        targetType: AdminActionTargetType.POST_REPORT,
+        targetId: reportId,
+        actionType: adminActionType,
+        reason: body.reason?.trim() || null,
+      }),
+    ]);
 
     return {
       reportId: updated.id,
@@ -113,8 +239,7 @@ export class AdminService {
     reportId: number,
     body: ReviewReportRequest,
   ): Promise<ReviewReportResponse> {
-    await this.assertAdmin(adminId);
-
+    await this.assertOperatorAdmin(adminId);
     this.validateReviewAction(body.action);
 
     const report = await this.prisma.userReport.findUnique({
@@ -137,9 +262,35 @@ export class AdminService {
         status: body.action as ReportStatus,
         reviewedAt: now,
         reviewedById: adminId,
+        reviewReason: body.reason?.trim() || null, // V3 Batch11: reviewReason 저장
       },
       select: { id: true, status: true, reviewedAt: true },
     });
+
+    // V3 Batch11: report_histories + admin_action_logs 동시 기록
+    const actionType = body.action === 'RESOLVED'
+      ? ReportHistoryActionType.RESOLVED
+      : ReportHistoryActionType.REJECTED;
+    const adminActionType = body.action === 'RESOLVED'
+      ? AdminActionType.RESOLVED
+      : AdminActionType.REJECTED;
+
+    await Promise.all([
+      this.logReportHistory({
+        targetType: ReportTargetType.USER_REPORT,
+        targetId: reportId,
+        actorId: adminId,
+        actionType,
+        note: body.reason?.trim() || null,
+      }),
+      this.logAdminAction({
+        adminId,
+        targetType: AdminActionTargetType.USER_REPORT,
+        targetId: reportId,
+        actionType: adminActionType,
+        reason: body.reason?.trim() || null,
+      }),
+    ]);
 
     return {
       reportId: updated.id,
@@ -155,9 +306,16 @@ export class AdminService {
     postId: number,
     body: ChangePostStatusRequest,
   ): Promise<ChangePostStatusResponse> {
-    await this.assertAdmin(adminId);
-
     this.validateChangePostStatusBody(body);
+
+    const targetStatus = body.status as PostStatus;
+
+    // V3 Batch11: DELETED는 SUPER_ADMIN만, 나머지는 OPERATOR_ADMIN 이상
+    if (targetStatus === PostStatus.DELETED) {
+      await this.assertSuperAdmin(adminId);
+    } else {
+      await this.assertOperatorAdmin(adminId);
+    }
 
     const post = await this.prisma.post.findUnique({
       where: { id: postId },
@@ -168,9 +326,7 @@ export class AdminService {
       throw new NotFoundException('게시글을 찾을 수 없습니다.');
     }
 
-    const targetStatus = body.status as PostStatus;
     const now = new Date();
-
     const updateData: {
       status: PostStatus;
       hiddenAt?: Date | null;
@@ -184,7 +340,6 @@ export class AdminService {
       updateData.hiddenReason = body.hiddenReason?.trim() || null;
       updateData.hiddenById = adminId;
     } else if (targetStatus === PostStatus.ACTIVE) {
-      // 숨김 해제: hidden 관련 필드 초기화
       updateData.hiddenAt = null;
       updateData.hiddenReason = null;
       updateData.hiddenById = null;
@@ -204,6 +359,28 @@ export class AdminService {
       },
     });
 
+    // V3 Batch11: search index 정합성 반영 (isSearchable 재계산)
+    try {
+      await syncPostSearchIndex(this.prisma, postId);
+    } catch (err) {
+      this.logger.warn(`[changePostStatus] search index sync 실패 postId=${postId}: ${String(err)}`);
+    }
+
+    // V3 Batch11: admin_action_logs 기록
+    const actionTypeMap: Record<PostStatus, AdminActionType> = {
+      [PostStatus.HIDDEN]: AdminActionType.HIDDEN,
+      [PostStatus.ACTIVE]: AdminActionType.UNHIDDEN,
+      [PostStatus.DELETED]: AdminActionType.DELETED,
+    };
+    await this.logAdminAction({
+      adminId,
+      targetType: AdminActionTargetType.POST,
+      targetId: postId,
+      actionType: actionTypeMap[targetStatus],
+      reason: body.hiddenReason?.trim() || null,
+      metadataJson: { previousStatus: post.status, newStatus: targetStatus },
+    });
+
     return {
       postId: updated.id,
       status: updated.status as 'ACTIVE' | 'HIDDEN' | 'DELETED',
@@ -219,7 +396,7 @@ export class AdminService {
     adminId: number,
     query: ListReportsQueryDto,
   ): Promise<ListPostReportsResponse> {
-    await this.assertAdmin(adminId);
+    await this.assertOperatorAdmin(adminId);
 
     const limit = Math.min(query.limit ?? 20, 100);
     const cursor = query.cursor;
@@ -294,7 +471,7 @@ export class AdminService {
     adminId: number,
     query: ListReportsQueryDto,
   ): Promise<ListUserReportsResponse> {
-    await this.assertAdmin(adminId);
+    await this.assertOperatorAdmin(adminId);
 
     const limit = Math.min(query.limit ?? 20, 100);
     const cursor = query.cursor;
@@ -352,28 +529,491 @@ export class AdminService {
     };
   }
 
-  // ─── private helpers ──────────────────────────────────────────────────────────
+  // ─── [Batch11] 관리자 게시글 목록 조회 (GET /admin/posts) ─────────────────────
 
-  private validateReviewAction(action: unknown): void {
-    if (action !== 'RESOLVED' && action !== 'REJECTED') {
-      throw new BadRequestException(
-        'action은 RESOLVED 또는 REJECTED 중 하나여야 합니다.',
-      );
+  async getAdminPosts(
+    adminId: number,
+    query: ListAdminPostsQueryDto,
+  ): Promise<ListAdminPostsResponse> {
+    await this.assertOperatorAdmin(adminId);
+
+    const limit = Math.min(query.limit ?? 20, 100);
+    const where: Record<string, unknown> = {};
+    if (query.status) where['status'] = query.status as PostStatus;
+    if (query.cursor) where['id'] = { lt: query.cursor };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.post.findMany({
+        where,
+        orderBy: { id: 'desc' },
+        take: limit + 1,
+        select: {
+          id: true,
+          authorId: true,
+          content: true,
+          status: true,
+          publishedAt: true,
+          hiddenAt: true,
+          hiddenReason: true,
+          deletedAt: true,
+          createdAt: true,
+          author: { select: { nickname: true } },
+          images: {
+            where: { isPrimary: true },
+            take: 1,
+            include: POST_IMAGE_INCLUDE,
+          },
+        },
+      }),
+      this.prisma.post.count({ where: query.status ? { status: query.status as PostStatus } : {} }),
+    ]);
+
+    const hasNext = items.length > limit;
+    if (hasNext) items.pop();
+
+    return {
+      items: items.map((p) => ({
+        postId: p.id,
+        authorId: p.authorId,
+        authorNickname: p.author.nickname,
+        status: p.status as 'ACTIVE' | 'HIDDEN' | 'DELETED',
+        thumbnailUrl:
+          p.images[0]?.imageAsset.thumbnailUrl ??
+          p.images[0]?.imageAsset.processedImageUrl ??
+          null,
+        content: p.content,
+        publishedAt: p.publishedAt ? p.publishedAt.toISOString() : null,
+        hiddenAt: p.hiddenAt ? p.hiddenAt.toISOString() : null,
+        hiddenReason: p.hiddenReason ?? null,
+        deletedAt: p.deletedAt ? p.deletedAt.toISOString() : null,
+        createdAt: p.createdAt.toISOString(),
+      })),
+      nextCursor: hasNext ? items[items.length - 1].id : null,
+      total,
+    };
+  }
+
+  // ─── [Batch11] 관리자 회원 목록 조회 (GET /admin/users) ──────────────────────
+
+  async getAdminUsers(
+    adminId: number,
+    query: ListAdminUsersQueryDto,
+  ): Promise<ListAdminUsersResponse> {
+    await this.assertOperatorAdmin(adminId);
+
+    const limit = Math.min(query.limit ?? 20, 100);
+    const where: Record<string, unknown> = {};
+    if (query.status) where['status'] = query.status as UserStatus;
+    if (query.role) where['role'] = query.role as UserRole;
+    if (query.cursor) where['id'] = { lt: query.cursor };
+
+    const countWhere: Record<string, unknown> = {};
+    if (query.status) countWhere['status'] = query.status as UserStatus;
+    if (query.role) countWhere['role'] = query.role as UserRole;
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where,
+        orderBy: { id: 'desc' },
+        take: limit + 1,
+        select: {
+          id: true,
+          nickname: true,
+          email: true,
+          role: true,
+          status: true,
+          createdAt: true,
+          deletedAt: true,
+        },
+      }),
+      this.prisma.user.count({ where: countWhere }),
+    ]);
+
+    const hasNext = items.length > limit;
+    if (hasNext) items.pop();
+
+    return {
+      items: items.map((u) => ({
+        userId: u.id,
+        nickname: u.nickname,
+        email: u.email,
+        role: u.role as 'USER' | 'SUPER_ADMIN' | 'OPERATOR_ADMIN',
+        status: u.status as 'ACTIVE' | 'SUSPENDED' | 'DELETED',
+        createdAt: u.createdAt.toISOString(),
+        deletedAt: u.deletedAt ? u.deletedAt.toISOString() : null,
+      })),
+      nextCursor: hasNext ? items[items.length - 1].id : null,
+      total,
+    };
+  }
+
+  // ─── [Batch11] 관리자 회원 상태 변경 (PATCH /admin/users/:userId/status) ───────
+
+  async changeUserStatus(
+    adminId: number,
+    userId: number,
+    body: ChangeUserStatusRequest,
+  ): Promise<ChangeUserStatusResponse> {
+    const targetStatus = body.status as UserStatus;
+
+    // V3 Batch11: DELETED는 SUPER_ADMIN만, 나머지는 OPERATOR_ADMIN 이상
+    if (targetStatus === UserStatus.DELETED) {
+      await this.assertSuperAdmin(adminId);
+    } else {
+      await this.assertOperatorAdmin(adminId);
     }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, status: true, deletedAt: true },
+    });
+
+    if (!user || user.status === UserStatus.DELETED || user.deletedAt) {
+      throw new NotFoundException('회원을 찾을 수 없습니다.');
+    }
+
+    if (user.status === targetStatus) {
+      throw new BadRequestException('이미 해당 상태입니다.');
+    }
+
+    const now = new Date();
+    const updateData: { status: UserStatus; deletedAt?: Date | null } = { status: targetStatus };
+    if (targetStatus === UserStatus.DELETED) {
+      updateData.deletedAt = now;
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: { id: true, status: true, updatedAt: true },
+    });
+
+    // V3 Batch11: admin_action_logs 기록
+    await this.logAdminAction({
+      adminId,
+      targetType: AdminActionTargetType.USER,
+      targetId: userId,
+      actionType: AdminActionType.USER_STATUS_UPDATED,
+      reason: body.reason?.trim() || null,
+      metadataJson: { previousStatus: user.status, newStatus: targetStatus },
+    });
+
+    return {
+      userId: updated.id,
+      status: updated.status as 'ACTIVE' | 'SUSPENDED' | 'DELETED',
+      updatedAt: updated.updatedAt.toISOString(),
+    };
+  }
+
+  // ─── [Batch11] 관리자 제재 목록 조회 (GET /admin/sanctions) ──────────────────
+
+  async getSanctions(
+    adminId: number,
+    query: ListSanctionsQueryDto,
+  ): Promise<ListSanctionsResponse> {
+    await this.assertOperatorAdmin(adminId);
+
+    const limit = Math.min(query.limit ?? 20, 100);
+    const where: Record<string, unknown> = {};
+    if (query.userId) where['sanctionedUserId'] = query.userId;
+    if (query.type) where['type'] = query.type as SanctionType;
+    if (query.cursor) where['id'] = { lt: query.cursor };
+
+    const countWhere: Record<string, unknown> = {};
+    if (query.userId) countWhere['sanctionedUserId'] = query.userId;
+    if (query.type) countWhere['type'] = query.type as SanctionType;
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.userSanction.findMany({
+        where,
+        orderBy: { id: 'desc' },
+        take: limit + 1,
+        select: {
+          id: true,
+          sanctionedUserId: true,
+          processedById: true,
+          type: true,
+          reason: true,
+          startsAt: true,
+          endsAt: true,
+          createdAt: true,
+          sanctionedUser: { select: { nickname: true } },
+          processedBy: { select: { nickname: true } },
+        },
+      }),
+      this.prisma.userSanction.count({ where: countWhere }),
+    ]);
+
+    const hasNext = items.length > limit;
+    if (hasNext) items.pop();
+
+    return {
+      items: items.map((s) => ({
+        sanctionId: s.id,
+        sanctionedUserId: s.sanctionedUserId,
+        sanctionedUserNickname: s.sanctionedUser.nickname,
+        processedById: s.processedById,
+        processedByNickname: s.processedBy.nickname,
+        type: s.type as 'TEMP_SUSPENSION' | 'PERMANENT_BAN' | 'POST_RESTRICTION',
+        reason: s.reason,
+        startsAt: s.startsAt.toISOString(),
+        endsAt: s.endsAt ? s.endsAt.toISOString() : null,
+        createdAt: s.createdAt.toISOString(),
+      })),
+      nextCursor: hasNext ? items[items.length - 1].id : null,
+      total,
+    };
+  }
+
+  // ─── [Batch11] 관리자 제재 생성 (POST /admin/sanctions) ──────────────────────
+
+  async createSanction(
+    adminId: number,
+    body: CreateSanctionRequest,
+  ): Promise<CreateSanctionResponse> {
+    const sanctionType = body.type as SanctionType;
+
+    // V3 Batch11: PERMANENT_BAN은 SUPER_ADMIN만, 나머지는 OPERATOR_ADMIN 이상
+    if (sanctionType === SanctionType.PERMANENT_BAN) {
+      await this.assertSuperAdmin(adminId);
+    } else {
+      await this.assertOperatorAdmin(adminId);
+    }
+
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: body.sanctionedUserId },
+      select: { id: true, status: true, deletedAt: true },
+    });
+
+    if (!targetUser || targetUser.status === UserStatus.DELETED || targetUser.deletedAt) {
+      throw new NotFoundException('제재 대상 회원을 찾을 수 없습니다.');
+    }
+
+    const startsAt = body.startsAt ? new Date(body.startsAt) : new Date();
+    const endsAt = body.endsAt ? new Date(body.endsAt) : null;
+
+    if (endsAt && endsAt <= startsAt) {
+      throw new BadRequestException('endsAt은 startsAt보다 늦어야 합니다.');
+    }
+
+    if (sanctionType === SanctionType.PERMANENT_BAN && endsAt) {
+      throw new BadRequestException('PERMANENT_BAN은 endsAt을 설정할 수 없습니다.');
+    }
+
+    const sanction = await this.prisma.userSanction.create({
+      data: {
+        sanctionedUserId: body.sanctionedUserId,
+        processedById: adminId,
+        type: sanctionType,
+        reason: body.reason.trim(),
+        startsAt,
+        endsAt,
+      },
+      select: {
+        id: true,
+        sanctionedUserId: true,
+        type: true,
+        reason: true,
+        startsAt: true,
+        endsAt: true,
+        createdAt: true,
+      },
+    });
+
+    // V3 Batch11: admin_action_logs 기록
+    await this.logAdminAction({
+      adminId,
+      targetType: AdminActionTargetType.USER_SANCTION,
+      targetId: sanction.id,
+      actionType: AdminActionType.CREATED,
+      reason: body.reason.trim(),
+      metadataJson: {
+        sanctionedUserId: body.sanctionedUserId,
+        type: sanctionType,
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt?.toISOString() ?? null,
+      },
+    });
+
+    return {
+      sanctionId: sanction.id,
+      sanctionedUserId: sanction.sanctionedUserId,
+      type: sanction.type as 'TEMP_SUSPENSION' | 'PERMANENT_BAN' | 'POST_RESTRICTION',
+      reason: sanction.reason,
+      startsAt: sanction.startsAt.toISOString(),
+      endsAt: sanction.endsAt ? sanction.endsAt.toISOString() : null,
+      createdAt: sanction.createdAt.toISOString(),
+    };
+  }
+
+  // ─── [Batch11] 관리자 제재 조기 종료 (PATCH /admin/sanctions/:sanctionId/end) ─
+
+  async endSanction(
+    adminId: number,
+    sanctionId: number,
+    body: EndSanctionRequest,
+  ): Promise<EndSanctionResponse> {
+    const sanction = await this.prisma.userSanction.findUnique({
+      where: { id: sanctionId },
+      select: { id: true, type: true, endsAt: true },
+    });
+
+    if (!sanction) {
+      throw new NotFoundException('제재를 찾을 수 없습니다.');
+    }
+
+    // V3 Batch11: PERMANENT_BAN 종료는 SUPER_ADMIN만
+    if (sanction.type === SanctionType.PERMANENT_BAN) {
+      await this.assertSuperAdmin(adminId);
+    } else {
+      await this.assertOperatorAdmin(adminId);
+    }
+
+    const now = new Date();
+    if (sanction.endsAt && sanction.endsAt <= now) {
+      throw new BadRequestException('이미 종료된 제재입니다.');
+    }
+
+    const updated = await this.prisma.userSanction.update({
+      where: { id: sanctionId },
+      data: { endsAt: now },
+      select: { id: true, endsAt: true },
+    });
+
+    // V3 Batch11: admin_action_logs 기록
+    await this.logAdminAction({
+      adminId,
+      targetType: AdminActionTargetType.USER_SANCTION,
+      targetId: sanctionId,
+      actionType: AdminActionType.SANCTION_ENDED,
+      reason: body.reason?.trim() || null,
+    });
+
+    return {
+      sanctionId: updated.id,
+      endsAt: updated.endsAt!.toISOString(),
+    };
+  }
+
+  // ─── [Batch11] 관리자 처리 로그 조회 (GET /admin/action-logs) ─────────────────
+
+  async getActionLogs(
+    adminId: number,
+    query: ListActionLogsQueryDto,
+  ): Promise<ListActionLogsResponse> {
+    await this.assertOperatorAdmin(adminId);
+
+    const limit = Math.min(query.limit ?? 20, 100);
+    const where: Record<string, unknown> = {};
+    if (query.adminId) where['adminId'] = query.adminId;
+    if (query.targetType) where['targetType'] = query.targetType;
+    if (query.actionType) where['actionType'] = query.actionType;
+    if (query.cursor) where['id'] = { lt: query.cursor };
+
+    const countWhere: Record<string, unknown> = {};
+    if (query.adminId) countWhere['adminId'] = query.adminId;
+    if (query.targetType) countWhere['targetType'] = query.targetType;
+    if (query.actionType) countWhere['actionType'] = query.actionType;
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.adminActionLog.findMany({
+        where,
+        orderBy: { id: 'desc' },
+        take: limit + 1,
+        select: {
+          id: true,
+          adminId: true,
+          targetType: true,
+          targetId: true,
+          actionType: true,
+          reason: true,
+          metadataJson: true,
+          createdAt: true,
+          admin: { select: { nickname: true } },
+        },
+      }),
+      this.prisma.adminActionLog.count({ where: countWhere }),
+    ]);
+
+    const hasNext = items.length > limit;
+    if (hasNext) items.pop();
+
+    return {
+      items: items.map((l) => ({
+        logId: l.id,
+        adminId: l.adminId,
+        adminNickname: l.admin.nickname,
+        targetType: l.targetType as 'POST' | 'POST_REPORT' | 'USER_REPORT' | 'USER' | 'USER_SANCTION',
+        targetId: l.targetId,
+        actionType: l.actionType as string,
+        reason: l.reason ?? null,
+        metadataJson: l.metadataJson as Record<string, unknown> | null,
+        createdAt: l.createdAt.toISOString(),
+      })),
+      nextCursor: hasNext ? items[items.length - 1].id : null,
+      total,
+    };
+  }
+
+  // ─── [Batch11] 신고 처리 이력 조회 (GET /admin/report-histories) ─────────────
+
+  async getReportHistories(
+    adminId: number,
+    query: ListReportHistoriesQueryDto,
+  ): Promise<ListReportHistoriesResponse> {
+    await this.assertOperatorAdmin(adminId);
+
+    const limit = Math.min(query.limit ?? 20, 100);
+    const where: Record<string, unknown> = {};
+    if (query.targetType) where['targetType'] = query.targetType;
+    if (query.targetId) where['targetId'] = query.targetId;
+    if (query.cursor) where['id'] = { lt: query.cursor };
+
+    const countWhere: Record<string, unknown> = {};
+    if (query.targetType) countWhere['targetType'] = query.targetType;
+    if (query.targetId) countWhere['targetId'] = query.targetId;
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.reportHistory.findMany({
+        where,
+        orderBy: { id: 'desc' },
+        take: limit + 1,
+        select: {
+          id: true,
+          targetType: true,
+          targetId: true,
+          actorId: true,
+          actionType: true,
+          note: true,
+          createdAt: true,
+          actor: { select: { nickname: true } },
+        },
+      }),
+      this.prisma.reportHistory.count({ where: countWhere }),
+    ]);
+
+    const hasNext = items.length > limit;
+    if (hasNext) items.pop();
+
+    return {
+      items: items.map((h) => ({
+        historyId: h.id,
+        targetType: h.targetType as 'POST_REPORT' | 'USER_REPORT',
+        targetId: h.targetId,
+        actorId: h.actorId ?? null,
+        actorNickname: h.actor?.nickname ?? null,
+        actionType: h.actionType as 'CREATED' | 'RESOLVED' | 'REJECTED' | 'REOPENED',
+        note: h.note ?? null,
+        createdAt: h.createdAt.toISOString(),
+      })),
+      nextCursor: hasNext ? items[items.length - 1].id : null,
+      total,
+    };
   }
 
   // ─── [DEV] 게시글 이미지 일괄 재인덱싱 ─────────────────────────────────────────
 
-  /**
-   * POST /admin/reindex-post-images
-   *
-   * 시드 데이터 등 POST_INDEX 분석이 누락된 게시글 이미지를 일괄 재인덱싱합니다.
-   * - is_primary=true 인 post_image 의 image_asset 을 대상으로 합니다.
-   * - 이미 SUCCEEDED 분석 run 이 존재하면 건너뜁니다.
-   * - AI 분석 실패 시 해당 건만 skip 하고 계속 진행합니다.
-   */
   async reindexPostImages(): Promise<{ total: number; succeeded: number; failed: number; failedIds: number[] }> {
-    // 주요 post 이미지 asset 조회 (PRIMARY 이미지만)
     const primaryImages = await this.prisma.postImage.findMany({
       where: { isPrimary: true },
       select: { imageAssetId: true },
@@ -407,17 +1047,15 @@ export class AdminService {
     return { total: assetIds.length, succeeded, failed, failedIds };
   }
 
-  // ─── [Batch10] 키워드 마스터 CRUD ─────────────────────────────────────────────
+  // ─── [Batch10] 키워드 마스터 CRUD (SUPER_ADMIN only) ──────────────────────────
 
-  /** GET /admin/keywords — 전체 키워드 목록 (isActive 필터 가능) */
   async getAdminKeywords(
     adminId: number,
     query: ListAdminKeywordsQueryDto,
   ): Promise<GetAdminKeywordsResponse> {
-    await this.assertAdmin(adminId);
+    await this.assertSuperAdmin(adminId); // V3 Batch11: SUPER_ADMIN only
 
     const where = query.isActive !== undefined ? { isActive: query.isActive } : {};
-
     const rows = await this.prisma.keyword.findMany({
       where,
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
@@ -436,12 +1074,11 @@ export class AdminService {
     };
   }
 
-  /** POST /admin/keywords — 키워드 생성 */
   async createKeyword(
     adminId: number,
     body: CreateKeywordRequest,
   ): Promise<CreateKeywordResponse> {
-    await this.assertAdmin(adminId);
+    await this.assertSuperAdmin(adminId); // V3 Batch11: SUPER_ADMIN only
 
     const exists = await this.prisma.keyword.findUnique({ where: { code: body.code } });
     if (exists) {
@@ -467,13 +1104,12 @@ export class AdminService {
     };
   }
 
-  /** PATCH /admin/keywords/:keywordId — 키워드 수정 (code 변경 불가) */
   async updateKeyword(
     adminId: number,
     keywordId: number,
     body: UpdateKeywordRequest,
   ): Promise<UpdateKeywordResponse> {
-    await this.assertAdmin(adminId);
+    await this.assertSuperAdmin(adminId); // V3 Batch11: SUPER_ADMIN only
 
     const keyword = await this.prisma.keyword.findUnique({ where: { id: keywordId } });
     if (!keyword) {
@@ -491,7 +1127,6 @@ export class AdminService {
       },
     });
 
-    // label이 변경된 경우 post_search_index 동기화
     if (labelChanged) {
       const affected = await this.prisma.postKeyword.findMany({
         where: { keywordId },
@@ -516,12 +1151,11 @@ export class AdminService {
     };
   }
 
-  /** DELETE /admin/keywords/:keywordId — 미사용 키워드 하드 삭제 */
   async deleteKeyword(
     adminId: number,
     keywordId: number,
   ): Promise<DeleteKeywordResponse> {
-    await this.assertAdmin(adminId);
+    await this.assertSuperAdmin(adminId); // V3 Batch11: SUPER_ADMIN only
 
     const keyword = await this.prisma.keyword.findUnique({ where: { id: keywordId } });
     if (!keyword) {
@@ -536,18 +1170,16 @@ export class AdminService {
     }
 
     await this.prisma.keyword.delete({ where: { id: keywordId } });
-
     return { success: true, message: '키워드가 삭제되었습니다.' };
   }
 
-  // ─── [Batch10] 피드백 태그 마스터 CRUD ───────────────────────────────────────
+  // ─── [Batch10] 피드백 태그 마스터 CRUD (SUPER_ADMIN only) ────────────────────
 
-  /** GET /admin/feedback-tags — 전체 피드백 태그 목록 */
   async getAdminFeedbackTags(
     adminId: number,
     query: ListAdminFeedbackTagsQueryDto,
   ): Promise<GetAdminFeedbackTagsResponse> {
-    await this.assertAdmin(adminId);
+    await this.assertSuperAdmin(adminId); // V3 Batch11: SUPER_ADMIN only
 
     const where: Record<string, unknown> = {};
     if (query.voteChoice !== undefined) where.voteChoice = query.voteChoice as VoteChoice;
@@ -574,12 +1206,11 @@ export class AdminService {
     };
   }
 
-  /** POST /admin/feedback-tags — 피드백 태그 생성 */
   async createFeedbackTag(
     adminId: number,
     body: CreateFeedbackTagRequest,
   ): Promise<CreateFeedbackTagResponse> {
-    await this.assertAdmin(adminId);
+    await this.assertSuperAdmin(adminId); // V3 Batch11: SUPER_ADMIN only
 
     const exists = await this.prisma.feedbackTag.findUnique({ where: { code: body.code } });
     if (exists) {
@@ -609,13 +1240,12 @@ export class AdminService {
     };
   }
 
-  /** PATCH /admin/feedback-tags/:tagId — 피드백 태그 수정 (code·voteChoice 변경 불가) */
   async updateFeedbackTag(
     adminId: number,
     tagId: number,
     body: UpdateFeedbackTagRequest,
   ): Promise<UpdateFeedbackTagResponse> {
-    await this.assertAdmin(adminId);
+    await this.assertSuperAdmin(adminId); // V3 Batch11: SUPER_ADMIN only
 
     const tag = await this.prisma.feedbackTag.findUnique({ where: { id: tagId } });
     if (!tag) {
@@ -644,12 +1274,11 @@ export class AdminService {
     };
   }
 
-  /** DELETE /admin/feedback-tags/:tagId — 미사용 피드백 태그 하드 삭제 */
   async deleteFeedbackTag(
     adminId: number,
     tagId: number,
   ): Promise<DeleteFeedbackTagResponse> {
-    await this.assertAdmin(adminId);
+    await this.assertSuperAdmin(adminId); // V3 Batch11: SUPER_ADMIN only
 
     const tag = await this.prisma.feedbackTag.findUnique({ where: { id: tagId } });
     if (!tag) {
@@ -664,8 +1293,17 @@ export class AdminService {
     }
 
     await this.prisma.feedbackTag.delete({ where: { id: tagId } });
-
     return { success: true, message: '피드백 태그가 삭제되었습니다.' };
+  }
+
+  // ─── private helpers ──────────────────────────────────────────────────────────
+
+  private validateReviewAction(action: unknown): void {
+    if (action !== 'RESOLVED' && action !== 'REJECTED') {
+      throw new BadRequestException(
+        'action은 RESOLVED 또는 REJECTED 중 하나여야 합니다.',
+      );
+    }
   }
 
   private validateChangePostStatusBody(body: ChangePostStatusRequest): void {

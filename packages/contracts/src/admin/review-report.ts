@@ -5,6 +5,8 @@ export type ReviewAction = 'RESOLVED' | 'REJECTED';
 
 export interface ReviewReportRequest {
   action: ReviewAction;
+  /** 처리 사유 (optional). DB의 review_reason 필드에 저장됨 */ // V3 Batch11
+  reason?: string;
 }
 
 export interface ReviewReportResponse {
