@@ -86,6 +86,76 @@ function createEmptyWearItem(id: number): WearItem {
   };
 }
 
+const HANGUL_BASE = 0xac00;
+const HANGUL_END = 0xd7a3;
+const HANGUL_INITIAL_INTERVAL = 588;
+const HANGUL_INITIALS = [
+  'ㄱ',
+  'ㄲ',
+  'ㄴ',
+  'ㄷ',
+  'ㄸ',
+  'ㄹ',
+  'ㅁ',
+  'ㅂ',
+  'ㅃ',
+  'ㅅ',
+  'ㅆ',
+  'ㅇ',
+  'ㅈ',
+  'ㅉ',
+  'ㅊ',
+  'ㅋ',
+  'ㅌ',
+  'ㅍ',
+  'ㅎ',
+] as const;
+
+function isHangulSyllable(char: string) {
+  if (!char) return false;
+  const code = char.charCodeAt(0);
+  return code >= HANGUL_BASE && code <= HANGUL_END;
+}
+
+function isKoreanConsonant(char: string) {
+  return /^[ㄱ-ㅎ]$/u.test(char);
+}
+
+function getChoseongText(text: string) {
+  return Array.from(text)
+    .map((char) => {
+      if (isHangulSyllable(char)) {
+        const code = char.charCodeAt(0) - HANGUL_BASE;
+        const initialIndex = Math.floor(code / HANGUL_INITIAL_INTERVAL);
+        return HANGUL_INITIALS[initialIndex] ?? char;
+      }
+
+      if (isKoreanConsonant(char)) {
+        return char;
+      }
+
+      return char.toLowerCase();
+    })
+    .join('');
+}
+
+function normalizeKeywordSearchText(text: string) {
+  return text.trim().toLowerCase();
+}
+
+function matchesKeywordSearch(label: string, query: string) {
+  const normalizedQuery = normalizeKeywordSearchText(query);
+  if (!normalizedQuery) return true;
+
+  const normalizedLabel = normalizeKeywordSearchText(label);
+  if (normalizedLabel.includes(normalizedQuery)) {
+    return true;
+  }
+
+  const labelChoseong = getChoseongText(label);
+  return labelChoseong.includes(normalizedQuery);
+}
+
 function mapWearTypeToCategory(type: WearType): GarmentCategory | null {
   switch (type) {
     case '상의':
@@ -797,10 +867,10 @@ export default function PostUpload() {
   const previewUrl = useMemo(() => approvedPreview || '', [approvedPreview]);
 
   const filteredKeywordOptions = useMemo(() => {
-    const normalized = keywordQuery.trim().toLowerCase();
+    const normalized = normalizeKeywordSearchText(keywordQuery);
     if (!normalized) return keywordOptions;
 
-    return keywordOptions.filter((keyword) => keyword.label.toLowerCase().includes(normalized));
+    return keywordOptions.filter((keyword) => matchesKeywordSearch(keyword.label, normalized));
   }, [keywordOptions, keywordQuery]);
 
   const selectedKeywordItems = useMemo(

@@ -404,6 +404,47 @@
   @apply text-[18px] leading-[22px] font-bold text-neutral-900;
 }
 
+.outfitCarousel {
+  @apply w-full;
+}
+
+.outfitCarouselViewport {
+  @apply w-full overflow-hidden;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.outfitCarouselTrack {
+  @apply flex;
+  will-change: transform;
+}
+
+.outfitCarouselItem {
+  @apply shrink-0;
+}
+
+.outfitCarouselDots {
+  @apply flex items-center justify-center gap-2;
+  margin-top: 10px;
+  margin-bottom: 2px;
+}
+
+.outfitCarouselDot {
+  @apply h-[6px] w-[6px] rounded-full border-0 p-0;
+  background: rgba(140, 149, 181, 0.34);
+  transition:
+    width 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.outfitCarouselDotActive {
+  width: 22px;
+  background: rgba(140, 149, 181, 0.96);
+}
+
 .itemScroll {
   @apply flex overflow-x-auto;
   gap: 12px;
