@@ -119,9 +119,16 @@ export class SearchController {
       'POST /uploads/search-image 로 업로드한 이미지를 기준으로',
       '공개 가능한 랭킹존 게시글만 vector 유사도 기반으로 검색합니다.',
       '',
-      '**모드**',
-      '- FULL_OUTFIT(기본): 전체 스타일·색감·실루엣 유사도 기반 (OUTFIT 벡터 사용)',
-      '- SINGLE_ITEM: 특정 의류와 유사한 아이템이 포함된 게시글 우선 (GARMENT 벡터 사용)',
+      '**모드 (mode 필드는 선택값)**',
+      '- 생략 시: AI 분석 결과(의류 수·면적·얼굴 감지 여부)를 기반으로 자동 판별합니다.',
+      '  · 복수 의류 감지 또는 얼굴 감지 → FULL_OUTFIT',
+      '  · 단일 의류 + 대면적(areaRatio≥0.6) + 얼굴 없음 → SINGLE_ITEM',
+      '  · 나머지 → FULL_OUTFIT(기본)',
+      '  · 1차 결과가 0건이면 반대 mode로 1회 fallback 재시도합니다.',
+      '- FULL_OUTFIT: 전체 스타일·색감·실루엣 유사도 기반 (OUTFIT 벡터 사용)',
+      '- SINGLE_ITEM: 특정 의류 단품 유사도 기반 (GARMENT 벡터 사용)',
+      '',
+      '**resolvedMode**: response에 최종 사용된 mode가 반환됩니다.',
       '',
       '**필터** — 아래 중 하나 이상 지정 시 교집합 조건으로 적용됩니다.',
       '- periodFrom/periodTo: 게시글 공개 시점(publishedAt) 범위 (ISO 8601)',
@@ -134,14 +141,14 @@ export class SearchController {
       'hiddenAt=null, deletedAt=null, isSearchable=true 인 게시글만 포함됩니다.',
       '',
       '처음 호출 시 AI 서버에서 이미지를 분석합니다. 이미지 품질이 너무 낮으면 422를 반환합니다.',
-    ].join('\n'),
+    ].join('\n'), // Batch9-AutoMode
   })
   @ApiBody({ type: SearchImageDto })
   @ApiOkResponse({
     description: '이미지 검색 결과 (유사도 내림차순, offset 기반 페이지네이션)',
     schema: {
       example: {
-        mode: 'FULL_OUTFIT',
+        resolvedMode: 'FULL_OUTFIT', // Batch9-AutoMode: mode → resolvedMode
         queryImageAssetId: 201,
         analysisRunId: 35,
         items: [

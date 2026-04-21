@@ -24,7 +24,10 @@ export class SearchImageDto implements ImageSearchRequest {
   @ApiPropertyOptional({
     enum: ['FULL_OUTFIT', 'SINGLE_ITEM'],
     example: 'FULL_OUTFIT',
-    description: '검색 모드 (기본: FULL_OUTFIT)',
+    description:
+      '검색 모드. 생략 시 AI 분석 결과(감지된 의류 수·면적·얼굴 감지 여부)를 기반으로 ' +
+      'FULL_OUTFIT 또는 SINGLE_ITEM 을 자동 판별합니다. ' +
+      '명시하면 해당 모드를 그대로 사용합니다.', // Batch9-AutoMode
   })
   @IsOptional()
   @IsEnum(['FULL_OUTFIT', 'SINGLE_ITEM'])

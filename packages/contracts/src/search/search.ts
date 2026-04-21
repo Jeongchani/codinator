@@ -92,7 +92,8 @@ export interface ImageSearchItem {
 }
 
 export interface ImageSearchResponse {
-  mode: ImageSearchMode;
+  /** 최종 사용된 검색 모드. mode를 명시했으면 그 값, 생략했으면 AI 분석 결과로 자동 판별된 값 */ // Batch9-AutoMode
+  resolvedMode: ImageSearchMode;
   queryImageAssetId: number;
   analysisRunId: number;
   items: ImageSearchItem[];

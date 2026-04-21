@@ -12,6 +12,7 @@ import type {
   UserSearchItem,
 } from '@codinator/contracts';
 import {
+  AiGarmentCategory,
   EvaluationStatus,
   ImageAnalysisPurpose,
   ImageAssetSourceType,
@@ -20,7 +21,7 @@ import {
   Prisma,
   SearchHistoryType,
   UserStatus,
-} from '@prisma/client'; // V3 Batch8: SearchHistoryType 추가
+} from '@prisma/client'; // V3 Batch8: SearchHistoryType 추가 | Batch9-AutoMode: AiGarmentCategory 추가
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   IMAGE_ORDER_BY,
@@ -120,10 +121,8 @@ export class SearchService {
       throw new BadRequestException('유효한 imageAssetId가 필요합니다.');
     }
 
-    const mode: ImageSearchMode = body.mode ?? 'FULL_OUTFIT';
     const limit = this.normalizeLimit(body.limit);
     const offset = body.cursor !== undefined ? Number(body.cursor) : 0;
-    const filters = await this.resolveImageSearchFilters(body);
 
     const imageAsset = await this.prisma.imageAsset.findFirst({
       where: {
@@ -143,15 +142,182 @@ export class SearchService {
       ImageAnalysisPurpose.SEARCH_QUERY,
     );
 
+    // Batch9-AutoMode: mode 명시 시 그대로 사용, 미입력 시 AI 분석 결과로 자동 판별
+    const resolvedMode = await this.resolveSearchMode(
+      analysisRunId,
+      body.mode as ImageSearchMode | undefined,
+    );
+
+    const filters = await this.resolveImageSearchFilters(body);
+
+    // 1차 vector 검색
+    let finalMode = resolvedMode;
+    let rows = await this.executeVectorSearch({
+      analysisRunId,
+      mode: resolvedMode,
+      garmentCategory: body.garmentCategory as AiGarmentCategory | undefined,
+      filters,
+      fetchLimit: limit + 1,
+      offset,
+    });
+
+    // Batch9-AutoMode: fallback — mode를 명시하지 않은 경우에만 반대 mode로 1회 재시도
+    if (rows.length === 0 && !body.mode) {
+      const fallbackMode: ImageSearchMode =
+        resolvedMode === ImageSearchMode.FULL_OUTFIT
+          ? ImageSearchMode.SINGLE_ITEM
+          : ImageSearchMode.FULL_OUTFIT;
+
+      try {
+        const fallbackRows = await this.executeVectorSearch({
+          analysisRunId,
+          mode: fallbackMode,
+          garmentCategory: body.garmentCategory as AiGarmentCategory | undefined,
+          filters,
+          fetchLimit: limit + 1,
+          offset,
+        });
+
+        if (fallbackRows.length > 0) {
+          finalMode = fallbackMode; // fallback mode 로 확정
+          rows = fallbackRows;
+        }
+      } catch {
+        // fallback 벡터 없음 또는 쿼리 실패 → 빈 결과 유지
+      }
+    }
+
+    const hasMore = rows.length > limit;
+    const pageRows = hasMore ? rows.slice(0, limit) : rows;
+    const nextCursor = hasMore ? offset + limit : null;
+
+    const postIds = pageRows.map((row) => row.postId);
+    const posts = postIds.length
+      ? await this.prisma.post.findMany({
+          where: { id: { in: postIds } },
+          select: this.postSearchSelect(),
+        })
+      : [];
+
+    const postMap = new Map(posts.map((post) => [post.id, post]));
+
+    const items = pageRows
+      .map((row) => {
+        const post = postMap.get(row.postId);
+        if (!post) return null;
+        return this.mapImageSearchItem(post, Number(row.similarity));
+      })
+      .filter((item): item is ImageSearchItem => item !== null);
+
+    await this.prisma.searchHistory.create({
+      data: {
+        userId,
+        searchType: 'IMAGE',
+        imageAssetId: imageAsset.id,
+        imageSearchMode: finalMode, // Batch9-AutoMode: 최종 resolvedMode 저장
+        resultCount: items.length,
+      },
+    });
+
+    return {
+      resolvedMode: finalMode, // Batch9-AutoMode: 최종 사용 mode 반환
+      queryImageAssetId: imageAsset.id,
+      analysisRunId,
+      items,
+      nextCursor,
+      hasMore,
+    };
+  }
+
+  /**
+   * [Batch9-AutoMode] mode 자동 판별.
+   * requestedMode가 있으면 그대로 반환.
+   * 없으면 imageAnalysisRun + imageGarments 기반 휴리스틱 규칙 적용:
+   *   - garment >= 2개 또는 faceDetected >= 1 → FULL_OUTFIT
+   *   - garment == 1 + areaRatio >= 0.6 + faceDetected == 0 → SINGLE_ITEM
+   *   - 나머지 → FULL_OUTFIT (기본값)
+   */
+  private async resolveSearchMode(
+    analysisRunId: number,
+    requestedMode?: ImageSearchMode,
+  ): Promise<ImageSearchMode> {
+    if (requestedMode) return requestedMode; // 명시된 mode 우선
+
+    const [run, garments] = await Promise.all([
+      this.prisma.imageAnalysisRun.findUnique({
+        where: { id: analysisRunId },
+        select: { faceDetected: true },
+      }),
+      this.prisma.imageGarment.findMany({
+        where: { analysisRunId },
+        select: { areaRatio: true, confidence: true },
+      }),
+    ]);
+
+    const faceCount = run?.faceDetected ?? 0;
+
+    // confidence 낮은 garment 제거
+    const validGarments = garments.filter(
+    (g) => Number(g.areaRatio ?? 0) > 0.01,
+  );
+
+    const garmentCount = validGarments.length;
+    const largestArea = Math.max(
+    0,
+    ...validGarments.map((g) => Number(g.areaRatio ?? 0)),
+    );
+    
+    // 단품 우선 판별:
+    // 가장 큰 garment가 충분히 크고 얼굴이 없으면,
+    // garment가 2개로 쪼개져도 단품 가능성 높게 본다.
+    if (faceCount === 0 && largestArea >= 0.6) {
+    return ImageSearchMode.SINGLE_ITEM;
+    }
+
+    // 복수 의류 또는 얼굴 감지 → 전체 착장 이미지
+    if (garmentCount >= 2 || faceCount >= 1) {
+      return ImageSearchMode.FULL_OUTFIT;
+    }
+
+    // 단일 의류면 단품
+    if (garmentCount === 1) {
+      return ImageSearchMode.SINGLE_ITEM;
+    }
+
+    // 기본값: FULL_OUTFIT
+    return ImageSearchMode.FULL_OUTFIT;
+  }
+
+  /**
+   * [Batch9-AutoMode] vector 유사도 검색 실행 helper.
+   * searchImage()에서 분리하여 1차 검색 + fallback 재시도에서 재사용.
+   */
+  private async executeVectorSearch(params: {
+    analysisRunId: number;
+    mode: ImageSearchMode;
+    garmentCategory?: AiGarmentCategory;
+    filters: {
+      periodFrom: Date | null;
+      periodTo: Date | null;
+      likeRatioMin: number | null;
+      keywordCodes: string[];
+      feedbackLikeCodes: string[];
+      feedbackDislikeCodes: string[];
+    };
+    fetchLimit: number;
+    offset: number;
+  }): Promise<Array<{ postId: number; similarity: number }>> {
+    const { analysisRunId, mode, garmentCategory, filters, fetchLimit, offset } = params;
+
     const queryVector = await this.imageIndexingService.getSearchVector(
       analysisRunId,
       mode,
-      body.garmentCategory,
+      garmentCategory,
     );
 
-    const vectorLiteral = `[${queryVector.map((value) => String(Number(value))).join(',')}]`;
+    const vectorLiteral = `[${queryVector.map((v) => String(Number(v))).join(',')}]`;
     const vectorSql = Prisma.raw(`'${vectorLiteral}'::vector`);
-    const targetScope = mode === 'FULL_OUTFIT' ? 'OUTFIT' : 'GARMENT';
+    const targetScope = mode === ImageSearchMode.FULL_OUTFIT ? 'OUTFIT' : 'GARMENT';
 
     const garmentJoinSql =
       targetScope === 'GARMENT'
@@ -159,8 +325,8 @@ export class SearchService {
         : Prisma.empty;
 
     const garmentCategorySql =
-      targetScope === 'GARMENT' && body.garmentCategory
-        ? Prisma.sql`AND ig."normalized_category" = ${body.garmentCategory}::"AiGarmentCategory"`
+      targetScope === 'GARMENT' && garmentCategory
+        ? Prisma.sql`AND ig."normalized_category" = ${garmentCategory}::"AiGarmentCategory"`
         : Prisma.empty;
 
     const periodFromSql = filters.periodFrom
@@ -189,10 +355,7 @@ export class SearchService {
       ? Prisma.sql`AND psi."feedback_dislike_codes" && ARRAY[${Prisma.join(filters.feedbackDislikeCodes)}]::text[]`
       : Prisma.empty;
 
-    // limit+1 조회 → hasMore 판별
-    const fetchLimit = limit + 1;
-
-    const rows = await this.prisma.$queryRaw<Array<{ postId: number; similarity: number }>>(Prisma.sql`
+    return this.prisma.$queryRaw<Array<{ postId: number; similarity: number }>>(Prisma.sql`
       WITH ranked_vectors AS (
         SELECT
           p.id AS "postId",
@@ -241,50 +404,6 @@ export class SearchService {
       LIMIT ${fetchLimit}
       OFFSET ${offset}
     `);
-
-    const hasMore = rows.length > limit;
-    const pageRows = hasMore ? rows.slice(0, limit) : rows;
-    const nextCursor = hasMore ? offset + limit : null;
-
-    const postIds = pageRows.map((row) => row.postId);
-    const posts = postIds.length
-      ? await this.prisma.post.findMany({
-          where: { id: { in: postIds } },
-          select: this.postSearchSelect(),
-        })
-      : [];
-
-    const postMap = new Map(posts.map((post) => [post.id, post]));
-
-    const items = pageRows
-      .map((row) => {
-        const post = postMap.get(row.postId);
-        if (!post) {
-          return null;
-        }
-
-        return this.mapImageSearchItem(post, Number(row.similarity));
-      })
-      .filter((item): item is ImageSearchItem => item !== null);
-
-    await this.prisma.searchHistory.create({
-      data: {
-        userId,
-        searchType: 'IMAGE',
-        imageAssetId: imageAsset.id,
-        imageSearchMode: mode,
-        resultCount: items.length,
-      },
-    });
-
-    return {
-      mode,
-      queryImageAssetId: imageAsset.id,
-      analysisRunId,
-      items,
-      nextCursor,
-      hasMore,
-    };
   }
 
   private async searchByNickname(
