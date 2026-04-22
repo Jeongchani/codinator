@@ -23,13 +23,6 @@ export type PhoneVerificationTokenPayload = JwtPayload & {
   type: 'phone_verification';
 };
 
-export type SocialLoginTokenPayload = JwtPayload & {
-  provider: string;
-  providerUserId: string;
-  /** 기존 회원일 경우에만 포함 */
-  userId?: number;
-  type: 'social_login';
-};
 
 @Injectable()
 export class AuthTokenService {
@@ -72,30 +65,6 @@ export class AuthTokenService {
       this.phoneVerificationTokenSecret,
       { expiresIn: '10m' },
     );
-  }
-
-  signSocialLoginToken(provider: string, providerUserId: string, userId?: number): string {
-    const payload: Record<string, unknown> = { provider, providerUserId, type: 'social_login' };
-
-    if (userId !== undefined) {
-      payload.userId = userId;
-    }
-
-    return jwt.sign(payload, this.accessTokenSecret, { expiresIn: '5m' });
-  }
-
-  verifySocialLoginToken(token: string): SocialLoginTokenPayload {
-    try {
-      const decoded = jwt.verify(token, this.accessTokenSecret);
-
-      if (!this.isSocialLoginTokenPayload(decoded)) {
-        throw new UnauthorizedException('유효하지 않은 소셜 로그인 토큰입니다.');
-      }
-
-      return decoded;
-    } catch {
-      throw new UnauthorizedException('유효하지 않거나 만료된 소셜 로그인 토큰입니다.');
-    }
   }
 
   verifyPhoneVerificationToken(token: string): PhoneVerificationTokenPayload {
@@ -188,17 +157,6 @@ export class AuthTokenService {
       typeof value.sub === 'number' &&
       typeof value.email === 'string' &&
       value.type === 'refresh'
-    );
-  }
-
-  private isSocialLoginTokenPayload(
-    value: string | JwtPayload,
-  ): value is SocialLoginTokenPayload {
-    return (
-      typeof value !== 'string' &&
-      typeof (value as SocialLoginTokenPayload).provider === 'string' &&
-      typeof (value as SocialLoginTokenPayload).providerUserId === 'string' &&
-      value.type === 'social_login'
     );
   }
 
