@@ -60,36 +60,6 @@
   object-position: center;
 }
 
-.bannerOverlay {
-  @apply absolute inset-0;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.92) 0%,
-    rgba(255, 255, 255, 0.84) 28%,
-    rgba(255, 255, 255, 0.46) 58%,
-    rgba(255, 255, 255, 0.08) 100%
-  );
-}
-
-.bannerContent {
-  @apply absolute inset-0 z-[2] flex flex-col justify-between text-left;
-  padding: 24px 16px;
-  box-sizing: border-box;
-}
-
-.bannerLabel {
-  @apply m-0 text-[12px] leading-4 font-normal text-neutral-900 whitespace-nowrap;
-}
-
-.bannerTitle {
-  @apply m-0 text-[20px] leading-7 font-bold text-neutral-900 whitespace-nowrap;
-  letter-spacing: -0.02em;
-}
-
-.bannerDescription {
-  @apply m-0 text-[12px] leading-4 font-normal text-neutral-900 whitespace-nowrap;
-}
-
 .contentArea {
   @apply absolute left-0 w-full overflow-y-auto px-4 z-10;
   top: 237px;

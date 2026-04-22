@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
-import { Bookmark, ChevronsUp, ThumbsDown, ThumbsUp, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import styles from "./RankingZone.module.css";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
+import { Bookmark, ChevronsUp, ThumbsDown, ThumbsUp, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import styles from './RankingZone.module.css';
+import rankingHeroBanner from '../../assets/ranking/랭킹존 배너.png';
+import algorithmBanner from '../../assets/ranking/알고리즘 배너.png';
 import {
   clearAuthTokens,
   fetcher,
@@ -12,24 +14,36 @@ import {
   isAuthError,
   subscribeBookmarkUpdated,
   togglePostBookmark,
-} from "../../lib/api";
-import type { GetRankingsResponse, RankingItem, RankingPeriod } from "@codinator/contracts";
-import Header from "../../components/Header";
-import PostDetailBottomSheet from "../../components/postdetail/PostDetailBottomSheet";
-import RankingDetail from "./RankingDetail";
+} from '../../lib/api';
+import type { GetRankingsResponse, RankingItem, RankingPeriod } from '@codinator/contracts';
+import Header from '../../components/Header';
+import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
+import RankingDetail from './RankingDetail';
 
 type RankingCardItem = {
-  id: number;
-  title: string;
   likeCount: number;
   dislikeCount: number;
   bookmarked?: boolean;
   imageUrl?: string;
   postId: number;
   period: RankingPeriod;
-  rank: number;
-  likeRate: number;
 };
+
+function HeroBanner() {
+  return (
+    <section className={`${styles.bannerBlock} ${styles.heroBanner}`} aria-label="랭킹존 배너">
+      <img src={rankingHeroBanner} alt="Ranking Zone banner" className={styles.bannerImage} />
+    </section>
+  );
+}
+
+function RecommendationBanner() {
+  return (
+    <section className={`${styles.bannerBlock} ${styles.recommendBanner}`} aria-label="추천 배너">
+      <img src={algorithmBanner} alt="추천 알고리즘 banner" className={styles.bannerImage} />
+    </section>
+  );
+}
 
 function RankingCard({
   item,
@@ -45,24 +59,42 @@ function RankingCard({
   isBookmarkPressed: boolean;
 }) {
   return (
-    <article className={`${styles.card} ${isBookmarkPressed ? styles.cardPressed : ""}`} onClick={() => onCardClick(item)}>
-      <div className={`${styles.thumbnail} ${isBookmarkPressed ? styles.thumbnailPressed : ""}`}>
-        {item.imageUrl ? <img src={item.imageUrl} alt={`ranking-${item.id}`} className={styles.cardImage} /> : <div className={styles.cardImageFallback}>이미지 없음</div>}
+    <article
+      className={`${styles.card} ${isBookmarkPressed ? styles.cardPressed : ''}`}
+      onClick={() => onCardClick(item)}
+    >
+      <div className={`${styles.thumbnail} ${isBookmarkPressed ? styles.thumbnailPressed : ''}`}>
+        {item.imageUrl ? (
+          <img src={item.imageUrl} alt={`ranking-${item.postId}`} className={styles.cardImage} />
+        ) : (
+          <div className={styles.cardImageFallback}>이미지 없음</div>
+        )}
         <div className={styles.thumbnailGradient} />
         <button
           type="button"
-          className={`${styles.bookmarkButton} ${isBookmarkPressed ? styles.bookmarkButtonPressed : ""}`}
-          aria-label={item.bookmarked ? "북마크 해제" : "북마크 추가"}
+          className={`${styles.bookmarkButton} ${isBookmarkPressed ? styles.bookmarkButtonPressed : ''}`}
+          aria-label={item.bookmarked ? '북마크 해제' : '북마크 추가'}
           onClick={(e) => onToggleBookmark(e, item.postId)}
           disabled={isBookmarkLoading}
         >
-          <Bookmark size={12} strokeWidth={2.2} className={item.bookmarked ? styles.bookmarkFilled : styles.bookmarkDefault} fill={item.bookmarked ? "currentColor" : "none"} />
+          <Bookmark
+            size={12}
+            strokeWidth={2.2}
+            className={item.bookmarked ? styles.bookmarkFilled : styles.bookmarkDefault}
+            fill={item.bookmarked ? 'currentColor' : 'none'}
+          />
         </button>
       </div>
-      <p className={styles.cardTitle}>랭킹 게시글 {item.rank}</p>
+
       <div className={styles.statsRow}>
-        <div className={styles.statItem}><ThumbsUp size={13} strokeWidth={2} className={styles.statIcon} /><span className={styles.statText}>{String(item.likeCount).padStart(3, "0")}</span></div>
-        <div className={styles.statItem}><ThumbsDown size={13} strokeWidth={2} className={styles.statIcon} /><span className={styles.statText}>{String(item.dislikeCount).padStart(3, "0")}</span></div>
+        <div className={styles.statItem}>
+          <ThumbsUp size={13} strokeWidth={2} className={styles.statIcon} />
+          <span className={styles.statText}>{String(item.likeCount).padStart(3, '0')}</span>
+        </div>
+        <div className={styles.statItem}>
+          <ThumbsDown size={13} strokeWidth={2} className={styles.statIcon} />
+          <span className={styles.statText}>{String(item.dislikeCount).padStart(3, '0')}</span>
+        </div>
       </div>
     </article>
   );
@@ -117,7 +149,7 @@ function VerticalSwipeIndicator({ above, below }: { above: number; below: number
             transition={{
               duration: 1.7,
               repeat: Infinity,
-              ease: "easeInOut",
+              ease: 'easeInOut',
               delay: 0.1 * (visibleAbove - index),
             }}
           />
@@ -126,7 +158,7 @@ function VerticalSwipeIndicator({ above, below }: { above: number; below: number
         <motion.div
           className={styles.swipeIndicatorActive}
           animate={{ opacity: [1, 0.84, 1], scaleY: [1, 0.94, 1] }}
-          transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
         />
 
         {Array.from({ length: visibleBelow }).map((_, index) => (
@@ -137,7 +169,7 @@ function VerticalSwipeIndicator({ above, below }: { above: number; below: number
             transition={{
               duration: 1.7,
               repeat: Infinity,
-              ease: "easeInOut",
+              ease: 'easeInOut',
               delay: 0.1 * (index + 1),
             }}
           />
@@ -152,7 +184,7 @@ export default function RankingZone() {
   const [weeklyRankings, setWeeklyRankings] = useState<RankingItem[]>([]);
   const [monthlyRankings, setMonthlyRankings] = useState<RankingItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [bookmarks, setBookmarks] = useState<Record<number, boolean>>({});
   const [bookmarkLoadingIds, setBookmarkLoadingIds] = useState<number[]>([]);
   const [bookmarkPressedIds, setBookmarkPressedIds] = useState<number[]>([]);
@@ -165,7 +197,7 @@ export default function RankingZone() {
 
   const moveToLogin = useCallback(() => {
     clearAuthTokens();
-    navigate("/login", { replace: true });
+    navigate('/login', { replace: true });
   }, [navigate]);
 
   const loadBookmarks = useCallback(async () => {
@@ -173,7 +205,7 @@ export default function RankingZone() {
       const nextMap = await fetchMyBookmarkMap();
       setBookmarks(nextMap);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "북마크 정보를 불러오지 못했습니다.";
+      const message = err instanceof Error ? err.message : '북마크 정보를 불러오지 못했습니다.';
       if (isAuthError(message)) moveToLogin();
     }
   }, [moveToLogin]);
@@ -198,16 +230,16 @@ export default function RankingZone() {
     const loadRankings = async () => {
       try {
         setLoading(true);
-        setError("");
+        setError('');
         const [weeklyData, monthlyData] = await Promise.all([
-          fetcher<GetRankingsResponse>("/rankings?period=WEEKLY", { headers: getAuthHeaders() }),
-          fetcher<GetRankingsResponse>("/rankings?period=MONTHLY", { headers: getAuthHeaders() }),
+          fetcher<GetRankingsResponse>('/rankings?period=WEEKLY', { headers: getAuthHeaders() }),
+          fetcher<GetRankingsResponse>('/rankings?period=MONTHLY', { headers: getAuthHeaders() }),
         ]);
         if (cancelled) return;
         setWeeklyRankings(weeklyData.items ?? []);
         setMonthlyRankings(monthlyData.items ?? []);
       } catch (err) {
-        const message = err instanceof Error ? err.message : "랭킹 데이터를 불러오지 못했습니다.";
+        const message = err instanceof Error ? err.message : '랭킹 데이터를 불러오지 못했습니다.';
         if (isAuthError(message)) {
           moveToLogin();
           return;
@@ -229,7 +261,9 @@ export default function RankingZone() {
 
   useEffect(() => {
     return () => {
-      Object.values(bookmarkAnimTimeoutMap.current).forEach((timeoutId) => window.clearTimeout(timeoutId));
+      Object.values(bookmarkAnimTimeoutMap.current).forEach((timeoutId) =>
+        window.clearTimeout(timeoutId),
+      );
     };
   }, []);
 
@@ -255,7 +289,7 @@ export default function RankingZone() {
       const nextValue = await togglePostBookmark(postId, isBookmarked);
       setBookmarks((prev) => ({ ...prev, [postId]: nextValue }));
     } catch (err) {
-      const message = err instanceof Error ? err.message : "북마크 처리에 실패했습니다.";
+      const message = err instanceof Error ? err.message : '북마크 처리에 실패했습니다.';
       setBookmarks((prev) => ({ ...prev, [postId]: isBookmarked }));
       if (isAuthError(message)) {
         moveToLogin();
@@ -268,20 +302,22 @@ export default function RankingZone() {
   };
 
   const convertRankingItem = (post: RankingItem, period: RankingPeriod): RankingCardItem => ({
-    id: post.postId,
-    title: `랭킹 게시글 ${post.rank}`,
     likeCount: post.likeCount ?? 0,
     dislikeCount: post.dislikeCount ?? 0,
     bookmarked: Boolean(bookmarks[post.postId]),
     imageUrl: resolveAssetUrl(post.thumbnailUrl),
     postId: post.postId,
     period,
-    rank: post.rank,
-    likeRate: post.likeRate ?? 0,
   });
 
-  const weeklyItems = useMemo(() => weeklyRankings.map((post) => convertRankingItem(post, "WEEKLY")), [weeklyRankings, bookmarks]);
-  const monthlyItems = useMemo(() => monthlyRankings.map((post) => convertRankingItem(post, "MONTHLY")), [monthlyRankings, bookmarks]);
+  const weeklyItems = useMemo(
+    () => weeklyRankings.map((post) => convertRankingItem(post, 'WEEKLY')),
+    [weeklyRankings, bookmarks],
+  );
+  const monthlyItems = useMemo(
+    () => monthlyRankings.map((post) => convertRankingItem(post, 'MONTHLY')),
+    [monthlyRankings, bookmarks],
+  );
   const focusedItem = focusItems[focusIndex] ?? null;
 
   const handleCardClick = (item: RankingCardItem, list: RankingCardItem[]) => {
@@ -317,7 +353,7 @@ export default function RankingZone() {
     const raf = window.requestAnimationFrame(() => {
       container.scrollTo({
         top: container.clientHeight * focusIndex,
-        behavior: "auto",
+        behavior: 'auto',
       });
     });
 
@@ -328,32 +364,52 @@ export default function RankingZone() {
   const nextSwipeCount = Math.min(Math.max(focusItems.length - focusIndex - 1, 0), 3);
 
   const totalCount = (focusedItem?.likeCount ?? 0) + (focusedItem?.dislikeCount ?? 0);
-  const likePercent = totalCount > 0 ? Math.round(((focusedItem?.likeCount ?? 0) / totalCount) * 100) : 0;
+  const likePercent =
+    totalCount > 0 ? Math.round(((focusedItem?.likeCount ?? 0) / totalCount) * 100) : 0;
   const dislikePercent = totalCount > 0 ? 100 - likePercent : 0;
 
   return (
     <div className={styles.container}>
       <Header />
       <div className={styles.contentArea}>
+        <HeroBanner />
+
         {loading ? (
           <div className={styles.messageBox}>데이터 불러오는 중...</div>
         ) : error ? (
           <div className={styles.messageBox}>{error}</div>
         ) : (
           <>
-            <RankingSection title="This Week" items={weeklyItems} bookmarkLoadingIds={bookmarkLoadingIds} bookmarkPressedIds={bookmarkPressedIds} onCardClick={handleCardClick} onToggleBookmark={handleToggleBookmark} />
-            <RankingSection title="This Month" items={monthlyItems} bookmarkLoadingIds={bookmarkLoadingIds} bookmarkPressedIds={bookmarkPressedIds} onCardClick={handleCardClick} onToggleBookmark={handleToggleBookmark} />
+            <RankingSection
+              title="This Week"
+              items={weeklyItems}
+              bookmarkLoadingIds={bookmarkLoadingIds}
+              bookmarkPressedIds={bookmarkPressedIds}
+              onCardClick={handleCardClick}
+              onToggleBookmark={handleToggleBookmark}
+            />
+            <RankingSection
+              title="This Month"
+              items={monthlyItems}
+              bookmarkLoadingIds={bookmarkLoadingIds}
+              bookmarkPressedIds={bookmarkPressedIds}
+              onCardClick={handleCardClick}
+              onToggleBookmark={handleToggleBookmark}
+            />
+            <RecommendationBanner />
           </>
         )}
       </div>
-
 
       {focusOpen && focusedItem && (
         <div className={styles.focusOverlay}>
           <div ref={focusScrollRef} className={styles.focusViewport} onScroll={handleFocusScroll}>
             {focusItems.map((item) => (
               <section key={`${item.period}-${item.postId}`} className={styles.focusSlide}>
-                <div className={styles.focusMainImage} style={{ backgroundImage: item.imageUrl ? `url(${item.imageUrl})` : undefined }} />
+                <div
+                  className={styles.focusMainImage}
+                  style={{ backgroundImage: item.imageUrl ? `url(${item.imageUrl})` : undefined }}
+                />
                 <div className={styles.topGradient} />
                 <div className={styles.bottomGradient} />
               </section>
@@ -369,16 +425,32 @@ export default function RankingZone() {
             />
           ) : null}
 
-          <div className={styles.headerTitle}>{focusedItem.period === "MONTHLY" ? "This Month" : "This Week"}</div>
+          <div className={styles.headerTitle}>
+            {focusedItem.period === 'MONTHLY' ? 'This Month' : 'This Week'}
+          </div>
 
-          <button type="button" onClick={() => { setSheetOpen(false); setFocusOpen(false); }} className={styles.closeBtn} aria-label="닫기">
+          <button
+            type="button"
+            onClick={() => {
+              setSheetOpen(false);
+              setFocusOpen(false);
+            }}
+            className={styles.closeBtn}
+            aria-label="닫기"
+          >
             <X size={18} strokeWidth={2.6} />
           </button>
 
-          {!sheetOpen ? <VerticalSwipeIndicator above={previousSwipeCount} below={nextSwipeCount} /> : null}
+          {!sheetOpen ? (
+            <VerticalSwipeIndicator above={previousSwipeCount} below={nextSwipeCount} />
+          ) : null}
 
           <div className={styles.focusFloatingArea}>
-            <button type="button" className={styles.detailButton} onClick={() => setSheetOpen(true)}>
+            <button
+              type="button"
+              className={styles.detailButton}
+              onClick={() => setSheetOpen(true)}
+            >
               <span className={styles.detailButtonText}>상세보기</span>
               <ChevronsUp size={16} strokeWidth={2.4} className={styles.detailButtonUpIcon} />
             </button>
@@ -387,10 +459,16 @@ export default function RankingZone() {
               <div className={styles.likeFill} style={{ width: `${likePercent}%` }} />
               <div className={styles.dislikeFill} style={{ width: `${dislikePercent}%` }} />
               {totalCount > 0 && likePercent > 0 && (
-                <div className={styles.leftPercent}><ThumbsUp size={12} strokeWidth={2} /><span>{likePercent}%</span></div>
+                <div className={styles.leftPercent}>
+                  <ThumbsUp size={12} strokeWidth={2} />
+                  <span>{likePercent}%</span>
+                </div>
               )}
               {totalCount > 0 && dislikePercent > 0 && (
-                <div className={styles.rightPercent}><ThumbsDown size={12} strokeWidth={2} /><span>{dislikePercent}%</span></div>
+                <div className={styles.rightPercent}>
+                  <ThumbsDown size={12} strokeWidth={2} />
+                  <span>{dislikePercent}%</span>
+                </div>
               )}
             </div>
           </div>

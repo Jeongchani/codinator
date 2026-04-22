@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronLeft, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import evaluationHistoryBanner from '../../assets/evaluation/평가기록 배너.png';
 import styles from './OngoingEvaluationHistory.module.css';
 
 type HistoryItem = {
@@ -25,9 +26,6 @@ type SelectionRect = {
 
 const LONG_PRESS_MS = 450;
 const LONG_PRESS_MOVE_THRESHOLD = 8;
-
-const BANNER_IMAGE_URL =
-  'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=1200&q=80';
 
 const INITIAL_ITEMS: HistoryItem[] = [
   {
@@ -529,15 +527,13 @@ export default function OngoingEvaluationHistory() {
         </div>
       </header>
 
-      <section className={styles.banner}>
-        <img src={BANNER_IMAGE_URL} alt="평가기록 배너 이미지" className={styles.bannerImage} />
-        <div className={styles.bannerOverlay} />
-
-        <div className={styles.bannerContent}>
-          <p className={styles.bannerLabel}>MY EVALUATION</p>
-          <h2 className={styles.bannerTitle}>내가 평가한 게시물 목록</h2>
-          <p className={styles.bannerDescription}>기간이 끝나면 자동으로 기록에서 사라져요</p>
-        </div>
+      <section className={styles.banner} aria-label="평가기록 배너">
+        <img
+          src={evaluationHistoryBanner}
+          alt="내가 평가한 게시물 목록 배너"
+          className={styles.bannerImage}
+          draggable={false}
+        />
       </section>
 
       <main

@@ -16,6 +16,24 @@
   display: none;
 }
 
+.bannerBlock {
+  @apply overflow-hidden;
+  width: calc(100% + 26px);
+  margin-left: -13px;
+}
+
+.heroBanner {
+  @apply mb-[12px];
+}
+
+.recommendBanner {
+  @apply mt-[4px];
+}
+
+.bannerImage {
+  @apply block w-full h-[120px] object-cover object-center;
+}
+
 .section {
   @apply mb-7;
 }
@@ -77,15 +95,8 @@
   @apply text-white;
 }
 
-.cardTitle {
-  @apply mt-2 text-black font-medium whitespace-pre-line;
-  font-size: 9px;
-  line-height: 12px;
-  word-break: keep-all;
-}
-
 .statsRow {
-  @apply mt-2 flex items-center justify-start gap-[8px];
+  @apply mt-[8px] flex items-center justify-start gap-[8px];
 }
 
 .statItem {
@@ -111,7 +122,6 @@
 .messageBox {
   @apply w-full min-h-[200px] flex items-center justify-center text-sm text-neutral-500;
 }
-
 
 .cardPressed {
   transform: scale(0.985);

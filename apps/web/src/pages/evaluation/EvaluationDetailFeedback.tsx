@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Bookmark, Siren, Tag, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -37,6 +37,8 @@ type EvaluationDetailFeedbackProps = {
   voteChoiceOverride?: VoteChoice | null;
   allowReadonlyDetail?: boolean;
 };
+
+type OutfitItem = NonNullable<GetEvaluationPostDetailResponse['outfitItems']>[number];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -284,6 +286,131 @@ function FeedbackPanel({
   );
 }
 
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+const OUTFIT_CARD_WIDTH = 168;
+const OUTFIT_CARD_GAP = 12;
+
+function OutfitItemsCarousel({ outfitItems }: { outfitItems: OutfitItem[] }) {
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const maxIndex = Math.max(0, outfitItems.length - 1);
+  const step = OUTFIT_CARD_WIDTH + OUTFIT_CARD_GAP;
+
+  const getSnapPoints = useCallback(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) {
+      return outfitItems.map((_, index) => index * step);
+    }
+
+    const maxScrollLeft = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+    return outfitItems.map((_, index) => Math.min(index * step, maxScrollLeft));
+  }, [outfitItems, step]);
+
+  const updateActiveIndex = useCallback(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const currentLeft = viewport.scrollLeft;
+    const snapPoints = getSnapPoints();
+
+    let nearestIndex = 0;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    snapPoints.forEach((point, index) => {
+      const distance = Math.abs(point - currentLeft);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    });
+
+    setActiveIndex(nearestIndex);
+  }, [getSnapPoints]);
+
+  useEffect(() => {
+    const rafId = window.requestAnimationFrame(() => {
+      updateActiveIndex();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [outfitItems.length, updateActiveIndex]);
+
+  const goTo = useCallback(
+    (index: number) => {
+      const viewport = viewportRef.current;
+      if (!viewport) return;
+
+      const targetIndex = clamp(index, 0, maxIndex);
+      const snapPoints = getSnapPoints();
+      viewport.scrollTo({
+        left: snapPoints[targetIndex] ?? 0,
+        behavior: 'smooth',
+      });
+    },
+    [getSnapPoints, maxIndex],
+  );
+
+  if (outfitItems.length === 0) {
+    return <div className={styles.emptyText}>등록된 아이템이 없습니다.</div>;
+  }
+
+  return (
+    <div className={styles.outfitCarousel}>
+      <div ref={viewportRef} className={styles.outfitCarouselViewport} onScroll={updateActiveIndex}>
+        <div className={styles.outfitCarouselTrack} style={{ gap: `${OUTFIT_CARD_GAP}px` }}>
+          {outfitItems.map((item, index) => (
+            <div
+              key={item.id ?? index}
+              className={styles.outfitCarouselItem}
+              style={{ width: `${OUTFIT_CARD_WIDTH}px` }}
+            >
+              <div className={styles.outfitCard}>
+                <div className={`${styles.outfitField} ${styles.outfitCategoryField}`}>
+                  <div className={styles.outfitCategoryInner}>
+                    <Tag size={13} strokeWidth={2} className={styles.outfitCategoryIcon} />
+                    <span className={styles.outfitFieldValue}>
+                      {formatCategoryLabel(item.category)}
+                    </span>
+                  </div>
+                </div>
+                <div className={styles.outfitField}>
+                  <span className={styles.outfitFieldValue}>{item.brand || '브랜드 미등록'}</span>
+                </div>
+                <div className={styles.outfitField}>
+                  <span className={styles.outfitFieldValue}>
+                    {item.itemName || '상품 이름 미등록'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {outfitItems.length > 1 ? (
+        <div className={styles.outfitCarouselDots}>
+          {outfitItems.map((item, index) => {
+            const label = item.itemName?.trim() || `${index + 1}번 아이템`;
+            return (
+              <button
+                key={item.id ?? `${label}-${index}`}
+                type="button"
+                aria-label={`${label} 카드로 이동`}
+                onClick={() => goTo(index)}
+                className={`${styles.outfitCarouselDot} ${
+                  activeIndex === index ? styles.outfitCarouselDotActive : ''
+                }`}
+              />
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 function EvaluationDetailFeedbackContent({
@@ -341,8 +468,7 @@ function EvaluationDetailFeedbackContent({
         return await requestDetail();
       } catch (err) {
         lastError = err;
-        const message =
-          err instanceof Error ? err.message : '평가 상세를 불러오지 못했습니다.';
+        const message = err instanceof Error ? err.message : '평가 상세를 불러오지 못했습니다.';
 
         if (isAuthError(message)) {
           throw err;
@@ -354,9 +480,7 @@ function EvaluationDetailFeedbackContent({
       }
     }
 
-    throw lastError instanceof Error
-      ? lastError
-      : new Error('평가 상세를 불러오지 못했습니다.');
+    throw lastError instanceof Error ? lastError : new Error('평가 상세를 불러오지 못했습니다.');
   }, [canWriteFeedback, requestDetail]);
 
   const loadDetail = useCallback(async () => {
@@ -386,9 +510,7 @@ function EvaluationDetailFeedbackContent({
       const message = err instanceof Error ? err.message : '평가 상세를 불러오지 못했습니다.';
       setData(null);
       setDetailError(
-        message.includes('403')
-          ? '이 게시글은 아직 평가 상세를 바로 열 수 없습니다.'
-          : message,
+        message.includes('403') ? '이 게시글은 아직 평가 상세를 바로 열 수 없습니다.' : message,
       );
 
       if (isAuthError(message)) {
@@ -411,9 +533,12 @@ function EvaluationDetailFeedbackContent({
       setTagLoading(true);
       setTagError('');
 
-      const response = await fetcher<GetTagsResponse>(`/evaluations/tags?voteChoice=${voteChoice}`, {
-        headers: getAuthHeaders(),
-      });
+      const response = await fetcher<GetTagsResponse>(
+        `/evaluations/tags?voteChoice=${voteChoice}`,
+        {
+          headers: getAuthHeaders(),
+        },
+      );
 
       setKeywords(response.items ?? []);
     } catch (err) {
@@ -547,7 +672,9 @@ function EvaluationDetailFeedbackContent({
   }
 
   if (!data) {
-    return <div className={styles.loadingBox}>{detailError || '평가 상세를 불러올 수 없습니다.'}</div>;
+    return (
+      <div className={styles.loadingBox}>{detailError || '평가 상세를 불러올 수 없습니다.'}</div>
+    );
   }
 
   return (
@@ -661,9 +788,7 @@ function EvaluationDetailFeedbackContent({
                         className={`${styles.selectChip} ${
                           isSelected ? styles.selectChipSelected : ''
                         } ${
-                          isSelected && voteChoice === 'LIKE'
-                            ? styles.selectChipSelectedLike
-                            : ''
+                          isSelected && voteChoice === 'LIKE' ? styles.selectChipSelectedLike : ''
                         } ${
                           isSelected && voteChoice === 'DISLIKE'
                             ? styles.selectChipSelectedDislike
@@ -727,32 +852,7 @@ function EvaluationDetailFeedbackContent({
           <div className={styles.outfitHeaderRow}>
             <h3 className={styles.outfitTitle}>착용 아이템</h3>
           </div>
-          <div className={styles.itemScroll}>
-            {outfitItems.length > 0 ? (
-              outfitItems.map((item, index) => (
-                <div key={item.id ?? index} className={styles.outfitCard}>
-                  <div className={`${styles.outfitField} ${styles.outfitCategoryField}`}>
-                    <div className={styles.outfitCategoryInner}>
-                      <Tag size={13} strokeWidth={2} className={styles.outfitCategoryIcon} />
-                      <span className={styles.outfitFieldValue}>
-                        {formatCategoryLabel(item.category)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className={styles.outfitField}>
-                    <span className={styles.outfitFieldValue}>{item.brand || '브랜드 미등록'}</span>
-                  </div>
-                  <div className={styles.outfitField}>
-                    <span className={styles.outfitFieldValue}>
-                      {item.itemName || '상품 이름 미등록'}
-                    </span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className={styles.emptyText}>등록된 아이템이 없습니다.</div>
-            )}
-          </div>
+          <OutfitItemsCarousel outfitItems={outfitItems} />
         </section>
 
         {detailError ? <p className={styles.feedbackErrorText}>{detailError}</p> : null}
