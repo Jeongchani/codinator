@@ -1,21 +1,36 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsArray,
+  IsDateString,
+  IsEnum,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  Max,
+  Min,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 import type {
   AiGarmentCategory,
-  FeedbackTagCode,
-  GarmentCategory,
   ImageSearchMode,
   ImageSearchRequest,
 } from '@codinator/contracts';
 
 export class SearchImageDto implements ImageSearchRequest {
   @ApiProperty({ example: 201, description: '검색용 업로드에서 받은 imageAssetId' })
+  @IsInt()
   imageAssetId!: number;
 
   @ApiPropertyOptional({
     enum: ['FULL_OUTFIT', 'SINGLE_ITEM'],
     example: 'FULL_OUTFIT',
-    description: '검색 모드',
+    description:
+      '검색 모드. 생략 시 AI 분석 결과(감지된 의류 수·면적·얼굴 감지 여부)를 기반으로 ' +
+      'FULL_OUTFIT 또는 SINGLE_ITEM 을 자동 판별합니다. ' +
+      '명시하면 해당 모드를 그대로 사용합니다.', // Batch9-AutoMode
   })
+  @IsOptional()
+  @IsEnum(['FULL_OUTFIT', 'SINGLE_ITEM'])
   mode?: ImageSearchMode;
 
   @ApiPropertyOptional({
@@ -23,53 +38,84 @@ export class SearchImageDto implements ImageSearchRequest {
     example: 'TOP',
     description: 'SINGLE_ITEM 모드에서 우선 사용할 의류 카테고리',
   })
+  @IsOptional()
+  @IsEnum(['TOP', 'BOTTOM', 'OUTER', 'SHOES', 'BAG', 'ACCESSORY', 'DRESS', 'ETC'])
   garmentCategory?: AiGarmentCategory;
 
-  @ApiPropertyOptional({ example: 20, description: '최대 결과 수 (기본 20, 최대 50)' })
+  @ApiPropertyOptional({
+    example: 0,
+    description: '커서 (offset 기반). 생략 시 첫 페이지 (기본 0)',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  cursor?: number;
+
+  @ApiPropertyOptional({
+    example: 20,
+    description: '페이지 크기 (기본 20, 최대 50)',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
   limit?: number;
 
   @ApiPropertyOptional({
     example: '2026-04-01T00:00:00.000Z',
-    description: 'publishedAt 시작 시점 이상',
+    description: 'publishedAt 시작 시점 이상 (ISO 8601)',
   })
-  publishedFrom?: string;
+  @IsOptional()
+  @IsDateString()
+  periodFrom?: string;
 
   @ApiPropertyOptional({
     example: '2026-04-30T23:59:59.999Z',
-    description: 'publishedAt 종료 시점 이하',
+    description: 'publishedAt 종료 시점 이하 (ISO 8601)',
   })
-  publishedTo?: string;
+  @IsOptional()
+  @IsDateString()
+  periodTo?: string;
 
   @ApiPropertyOptional({
     example: 0.6,
     description: '최소 좋아요 비율 (0.0 ~ 1.0)',
   })
-  minLikeRatio?: number;
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  likeRatioMin?: number;
 
   @ApiPropertyOptional({
-    example: 0.95,
-    description: '최대 좋아요 비율 (0.0 ~ 1.0)',
+    type: [Number],
+    example: [1, 2, 3],
+    description: '키워드 ID 필터 (keyword.id 배열)',
   })
-  maxLikeRatio?: number;
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  keywordIds?: number[];
 
   @ApiPropertyOptional({
-    type: [String],
-    enum: ['TOP', 'BOTTOM', 'OUTER', 'SHOES', 'BAG', 'ACCESSORY', 'ETC'],
-    description: 'outfit 카테고리 필터',
+    type: [Number],
+    example: [10, 11],
+    description: '좋아요 피드백 태그 ID 필터 (voteChoice=LIKE)',
   })
-  outfitCategories?: GarmentCategory[];
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  feedbackLikeTagIds?: number[];
 
   @ApiPropertyOptional({
-    type: [String],
-    example: ['DATE_LOOK', 'DAILY_LOOK'],
-    description: '키워드 코드 필터',
+    type: [Number],
+    example: [20, 21],
+    description: '싫어요 피드백 태그 ID 필터 (voteChoice=DISLIKE)',
   })
-  keywordCodes?: string[];
-
-  @ApiPropertyOptional({
-    type: [String],
-    example: ['POS_FIT_GOOD', 'NEG_COLOR_BAD'],
-    description: '피드백 태그 코드 필터',
-  })
-  feedbackTagCodes?: FeedbackTagCode[];
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  feedbackDislikeTagIds?: number[];
 }

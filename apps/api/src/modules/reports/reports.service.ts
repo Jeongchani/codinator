@@ -2,14 +2,17 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { CreateReportRequest, CreateReportResponse } from '@codinator/contracts';
-import { PostStatus, ReportReason, ReportStatus, UserStatus } from '@prisma/client';
+import { PostStatus, ReportHistoryActionType, ReportReason, ReportStatus, ReportTargetType, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class ReportsService {
+  private readonly logger = new Logger(ReportsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   // ─── 게시글 신고 (POST /posts/:postId/reports) ────────────────────────────────
@@ -61,6 +64,21 @@ export class ReportsService {
       },
       select: { id: true, status: true },
     });
+
+    // 신고 생성 이력 기록
+    try {
+      await this.prisma.reportHistory.create({
+        data: {
+          targetType: ReportTargetType.POST_REPORT,
+          targetId: report.id,
+          actorId: reporterId,
+          actionType: ReportHistoryActionType.CREATED,
+          note: null,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(`[ReportsService] reportPost history 기록 실패: reportId=${report.id}`, err);
+    }
 
     return { reportId: report.id, status: report.status };
   }
@@ -114,6 +132,21 @@ export class ReportsService {
       },
       select: { id: true, status: true },
     });
+
+    // 신고 생성 이력 기록
+    try {
+      await this.prisma.reportHistory.create({
+        data: {
+          targetType: ReportTargetType.USER_REPORT,
+          targetId: report.id,
+          actorId: reporterId,
+          actionType: ReportHistoryActionType.CREATED,
+          note: null,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(`[ReportsService] reportUser history 기록 실패: reportId=${report.id}`, err);
+    }
 
     return { reportId: report.id, status: report.status };
   }

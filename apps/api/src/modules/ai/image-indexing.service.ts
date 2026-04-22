@@ -3,9 +3,11 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  UnprocessableEntityException, // V3 Batch9: SEARCH_QUERY 이미지 품질 불량 시 422 반환
 } from '@nestjs/common';
 import {
   AiGarmentCategory,
+  BlurMethod,
   ImageAnalysisPurpose,
   ImageAnalysisStatus,
   ImageVectorScope,
@@ -36,14 +38,48 @@ export class ImageIndexingService {
         isCurrent: true,
         status: ImageAnalysisStatus.SUCCEEDED,
       },
-      select: { id: true },
+      select: {
+        id: true,
+        finishedAt: true,
+        imageAsset: {
+          select: {
+            updatedAt: true,
+          },
+        },
+      },
     });
 
-    if (current) {
+    if (
+      current &&
+      current.finishedAt &&
+      current.finishedAt >= current.imageAsset.updatedAt
+    ) {
       return current.id;
     }
 
     return this.analyzeAndPersist(imageAssetId, purpose);
+  }
+
+  async invalidateCurrentRuns(
+    imageAssetId: number,
+    purpose?: ImageAnalysisPurpose,
+  ): Promise<void> {
+    await this.prisma.imageAnalysisRun.updateMany({
+      where: {
+        imageAssetId,
+        isCurrent: true,
+        ...(purpose ? { purpose } : {}),
+      },
+      data: {
+        isCurrent: false,
+        status: ImageAnalysisStatus.STALE,
+      },
+    });
+  }
+
+  async reindexPostAsset(imageAssetId: number): Promise<number> {
+    await this.invalidateCurrentRuns(imageAssetId, ImageAnalysisPurpose.POST_INDEX);
+    return this.analyzeAndPersist(imageAssetId, ImageAnalysisPurpose.POST_INDEX);
   }
 
   async getSearchVector(
@@ -98,6 +134,8 @@ export class ImageIndexingService {
         id: true,
         storageKey: true,
         mimeType: true,
+        blurMethod: true,
+        processedImageUrl: true,
       },
     });
 
@@ -105,9 +143,6 @@ export class ImageIndexingService {
       throw new NotFoundException('이미지 자산을 찾을 수 없습니다.');
     }
 
-    if (!imageAsset.storageKey) {
-      throw new BadRequestException('storageKey가 없는 이미지 자산은 분석할 수 없습니다.');
-    }
 
     await this.prisma.imageAnalysisRun.updateMany({
       where: {
@@ -132,11 +167,21 @@ export class ImageIndexingService {
       select: { id: true },
     });
 
+    /** AI 서버 업로드 허용 최대 파일 크기 (10 MB) */
+    const MAX_AI_UPLOAD_BYTES = 10 * 1024 * 1024;
+
     try {
-      const filePath = join(this.uploadRoot, imageAsset.storageKey);
-      const buffer = await fs.readFile(filePath);
-      const filename = basename(filePath);
+      const analysisInput = this.resolveAnalysisInput(imageAsset);
+      const buffer = await fs.readFile(analysisInput.filePath);
+      const filename = basename(analysisInput.filePath);
       const mimeType = imageAsset.mimeType ?? this.guessMimeType(filename);
+
+      // AI 서버에 보내기 전 파일 크기 사전 검사 — 초과 시 AI 호출 없이 즉시 실패
+      if (buffer.length > MAX_AI_UPLOAD_BYTES) {
+        throw new BadRequestException(
+          `이미지 파일이 너무 큽니다. AI 서버 허용 최대 크기는 10MB 입니다. (현재 ${(buffer.length / 1024 / 1024).toFixed(1)}MB)`,
+        );
+      }
 
       const result = await this.aiService.analyzeImageBinary({
         buffer,
@@ -144,54 +189,78 @@ export class ImageIndexingService {
         mimeType,
       });
 
-      await this.persistAnalysisResult(run.id, result);
+      await this.persistAnalysisResult(run.id, result, analysisInput.isBlurredAsset);
 
       return run.id;
     } catch (error) {
+      // V3 Batch9: 분석 실패 이유를 errorCode/errorMessage 로 기록
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
       await this.prisma.imageAnalysisRun.update({
         where: { id: run.id },
         data: {
           status: ImageAnalysisStatus.FAILED,
           errorCode: 'ANALYSIS_FAILED',
-          errorMessage: error instanceof Error ? error.message : String(error),
+          errorMessage,
           finishedAt: new Date(),
         },
       });
 
+      // V3 Batch9: SEARCH_QUERY 목적의 분석 실패는 422(UnprocessableEntity) 반환.
+      // "이미지 품질이 너무 낮아 분석이 어려우면 검색 실패 메시지 제공" 정책 반영.
+      // POST_INDEX / REINDEX 목적은 기존과 동일하게 500 유지.
+      if (purpose === ImageAnalysisPurpose.SEARCH_QUERY) {
+        throw new UnprocessableEntityException(
+          '이미지를 분석할 수 없습니다. 전신 또는 의류가 명확히 보이는 이미지를 사용해 주세요.',
+        );
+      }
+
       throw new InternalServerErrorException(
-        error instanceof Error ? error.message : '이미지 분석 저장에 실패했습니다.',
+        errorMessage || '이미지 분석 저장에 실패했습니다.',
       );
     }
   }
 
-  private async persistAnalysisResult(runId: number, result: AnalyzeImageResult) {
+  private async persistAnalysisResult(
+    runId: number,
+    result: AnalyzeImageResult,
+    isBlurredAsset: boolean,
+  ) {
+    const storedResult: AnalyzeImageResult = {
+      ...result,
+      blur: {
+        ...result.blur,
+        blurred: result.blur.blurred || isBlurredAsset,
+      },
+    };
+
     await this.prisma.$transaction(async (tx) => {
       await tx.imageAnalysisRun.update({
         where: { id: runId },
         data: {
-                status: ImageAnalysisStatus.SUCCEEDED,
-                pipelineVersion: result.pipelineVersion,
-                parserModelName: result.meta.parserModelName,
-                parserModelVersion: result.meta.parserModelVersion,
-                embedModelName: result.meta.embedModelName,
-                embedModelVersion: result.meta.embedModelVersion,
-                captionModelName: result.meta.captionModelName,
-                captionModelVersion: result.meta.captionModelVersion,
-                captionFallbackUsed: result.meta.captionFallbackUsed,
-                warnings: result.meta.warnings,
-                imageWidth: result.image.width,
-                imageHeight: result.image.height,
-                faceDetected: result.blur.facesDetected,
-                blurred: result.blur.blurred,
-                caption: result.analysis.caption,
-                summaryTags: result.analysis.summaryTags,
-                rawResponseJson: result as unknown as Prisma.InputJsonValue,
-                finishedAt: new Date(),
-              },
+          status: ImageAnalysisStatus.SUCCEEDED,
+          pipelineVersion: storedResult.pipelineVersion,
+          parserModelName: storedResult.meta.parserModelName,
+          parserModelVersion: storedResult.meta.parserModelVersion,
+          embedModelName: storedResult.meta.embedModelName,
+          embedModelVersion: storedResult.meta.embedModelVersion,
+          captionModelName: storedResult.meta.captionModelName,
+          captionModelVersion: storedResult.meta.captionModelVersion,
+          captionFallbackUsed: storedResult.meta.captionFallbackUsed,
+          warnings: storedResult.meta.warnings,
+          imageWidth: storedResult.image.width,
+          imageHeight: storedResult.image.height,
+          faceDetected: storedResult.blur.facesDetected,
+          blurred: storedResult.blur.blurred,
+          caption: storedResult.analysis.caption,
+          summaryTags: storedResult.analysis.summaryTags,
+          rawResponseJson: storedResult as unknown as Prisma.InputJsonValue,
+          finishedAt: new Date(),
+        },
       });
 
       const garmentIds: number[] = [];
-      for (const [index, garment] of result.analysis.garments.entries()) {
+      for (const [index, garment] of storedResult.analysis.garments.entries()) {
         const created = await tx.imageGarment.create({
           data: {
             analysisRunId: runId,
@@ -222,13 +291,13 @@ export class ImageIndexingService {
         runId,
         null,
         ImageVectorScope.OUTFIT,
-        result.embeddings.outfit.modelName,
-        result.embeddings.outfit.modelVersion,
-        result.embeddings.outfit.dimension,
-        result.embeddings.outfit.vector,
+        storedResult.embeddings.outfit.modelName,
+        storedResult.embeddings.outfit.modelVersion,
+        storedResult.embeddings.outfit.dimension,
+        storedResult.embeddings.outfit.vector,
       );
 
-      for (const [index, embedding] of result.embeddings.garments.entries()) {
+      for (const [index, embedding] of storedResult.embeddings.garments.entries()) {
         const garmentId = garmentIds[index] ?? null;
         if (!garmentId) {
           continue;
@@ -246,6 +315,28 @@ export class ImageIndexingService {
         );
       }
     });
+  }
+
+  private resolveAnalysisInput(imageAsset: {
+    storageKey: string | null;
+    processedImageUrl: string | null;
+    blurMethod: BlurMethod;
+  }): { filePath: string; isBlurredAsset: boolean } {
+    const isBlurredAsset = imageAsset.blurMethod !== BlurMethod.NONE;
+
+    if (isBlurredAsset && imageAsset.processedImageUrl?.startsWith('/uploads/')) {
+      const processedRelativePath = imageAsset.processedImageUrl.replace(/^\/uploads\//, '');
+      return {
+        filePath: join(this.uploadRoot, processedRelativePath),
+        isBlurredAsset,
+      };
+    }
+
+
+    return {
+      filePath: join(this.uploadRoot, imageAsset.storageKey),
+      isBlurredAsset,
+    };
   }
 
   private async insertVectorRow(

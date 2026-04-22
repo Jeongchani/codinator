@@ -111,7 +111,7 @@ export interface RankingPostDetail extends PostCoreDetail, MyVoteContext {
 
 export interface FeedListItem {
   postId: Id;
-  thumbnailUrl: string;
+  thumbnailUrl: string | null;
   createdAt: string;
   rankingPeriods: RankingPeriod[];
 }

@@ -4,13 +4,16 @@ import { AiModule } from './modules/ai/ai.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BookmarksModule } from './modules/bookmarks/bookmarks.module';
 import { EvaluationsModule } from './modules/evaluations/evaluations.module';
+import { FeedbackTagsModule } from './modules/feedback-tags/feedback-tags.module';
 import { FeedsModule } from './modules/feeds/feeds.module';
 import { HealthModule } from './modules/health/health.module';
 import { KeywordsModule } from './modules/keywords/keywords.module';
 import { PostsModule } from './modules/posts/posts.module';
+import { PushTokensModule } from './modules/push-tokens/push-tokens.module';
 import { RankingsModule } from './modules/rankings/rankings.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { SearchModule } from './modules/search/search.module';
+import { SettingsModule } from './modules/settings/settings.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { UsersModule } from './modules/users/users.module';
 import { VotesModule } from './modules/votes/votes.module';
@@ -23,6 +26,8 @@ import { PrismaModule } from './prisma/prisma.module';
     AuthModule,
     AdminModule,
     UsersModule,
+    SettingsModule,
+    PushTokensModule,
     KeywordsModule,
     AiModule,
     PostsModule,
@@ -34,6 +39,7 @@ import { PrismaModule } from './prisma/prisma.module';
     VotesModule,
     RankingsModule,
     FeedsModule,
+    FeedbackTagsModule,
   ],
 })
 export class AppModule {}

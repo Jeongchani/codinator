@@ -1,5 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'; // V3 Batch8: ForbiddenException 추가
 import type {
+  DeleteSearchHistoryResponse,
+  GetSearchHistoriesResponse,
   ImageSearchItem,
   ImageSearchRequest,
   ImageSearchResponse,
@@ -10,14 +12,16 @@ import type {
   UserSearchItem,
 } from '@codinator/contracts';
 import {
+  AiGarmentCategory,
   EvaluationStatus,
   ImageAnalysisPurpose,
   ImageAssetSourceType,
   ImageSearchMode,
   PostStatus,
   Prisma,
+  SearchHistoryType,
   UserStatus,
-} from '@prisma/client';
+} from '@prisma/client'; // V3 Batch8: SearchHistoryType 추가 | Batch9-AutoMode: AiGarmentCategory 추가
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   IMAGE_ORDER_BY,
@@ -117,9 +121,8 @@ export class SearchService {
       throw new BadRequestException('유효한 imageAssetId가 필요합니다.');
     }
 
-    const mode: ImageSearchMode = body.mode ?? 'FULL_OUTFIT';
     const limit = this.normalizeLimit(body.limit);
-    const filters = this.normalizeImageSearchFilters(body);
+    const offset = body.cursor !== undefined ? Number(body.cursor) : 0;
 
     const imageAsset = await this.prisma.imageAsset.findFirst({
       where: {
@@ -139,15 +142,182 @@ export class SearchService {
       ImageAnalysisPurpose.SEARCH_QUERY,
     );
 
+    // Batch9-AutoMode: mode 명시 시 그대로 사용, 미입력 시 AI 분석 결과로 자동 판별
+    const resolvedMode = await this.resolveSearchMode(
+      analysisRunId,
+      body.mode as ImageSearchMode | undefined,
+    );
+
+    const filters = await this.resolveImageSearchFilters(body);
+
+    // 1차 vector 검색
+    let finalMode = resolvedMode;
+    let rows = await this.executeVectorSearch({
+      analysisRunId,
+      mode: resolvedMode,
+      garmentCategory: body.garmentCategory as AiGarmentCategory | undefined,
+      filters,
+      fetchLimit: limit + 1,
+      offset,
+    });
+
+    // Batch9-AutoMode: fallback — mode를 명시하지 않은 경우에만 반대 mode로 1회 재시도
+    if (rows.length === 0 && !body.mode) {
+      const fallbackMode: ImageSearchMode =
+        resolvedMode === ImageSearchMode.FULL_OUTFIT
+          ? ImageSearchMode.SINGLE_ITEM
+          : ImageSearchMode.FULL_OUTFIT;
+
+      try {
+        const fallbackRows = await this.executeVectorSearch({
+          analysisRunId,
+          mode: fallbackMode,
+          garmentCategory: body.garmentCategory as AiGarmentCategory | undefined,
+          filters,
+          fetchLimit: limit + 1,
+          offset,
+        });
+
+        if (fallbackRows.length > 0) {
+          finalMode = fallbackMode; // fallback mode 로 확정
+          rows = fallbackRows;
+        }
+      } catch {
+        // fallback 벡터 없음 또는 쿼리 실패 → 빈 결과 유지
+      }
+    }
+
+    const hasMore = rows.length > limit;
+    const pageRows = hasMore ? rows.slice(0, limit) : rows;
+    const nextCursor = hasMore ? offset + limit : null;
+
+    const postIds = pageRows.map((row) => row.postId);
+    const posts = postIds.length
+      ? await this.prisma.post.findMany({
+          where: { id: { in: postIds } },
+          select: this.postSearchSelect(),
+        })
+      : [];
+
+    const postMap = new Map(posts.map((post) => [post.id, post]));
+
+    const items = pageRows
+      .map((row) => {
+        const post = postMap.get(row.postId);
+        if (!post) return null;
+        return this.mapImageSearchItem(post, Number(row.similarity));
+      })
+      .filter((item): item is ImageSearchItem => item !== null);
+
+    await this.prisma.searchHistory.create({
+      data: {
+        userId,
+        searchType: 'IMAGE',
+        imageAssetId: imageAsset.id,
+        imageSearchMode: finalMode, // Batch9-AutoMode: 최종 resolvedMode 저장
+        resultCount: items.length,
+      },
+    });
+
+    return {
+      resolvedMode: finalMode, // Batch9-AutoMode: 최종 사용 mode 반환
+      queryImageAssetId: imageAsset.id,
+      analysisRunId,
+      items,
+      nextCursor,
+      hasMore,
+    };
+  }
+
+  /**
+   * [Batch9-AutoMode] mode 자동 판별.
+   * requestedMode가 있으면 그대로 반환.
+   * 없으면 imageAnalysisRun + imageGarments 기반 휴리스틱 규칙 적용:
+   *   - garment >= 2개 또는 faceDetected >= 1 → FULL_OUTFIT
+   *   - garment == 1 + areaRatio >= 0.6 + faceDetected == 0 → SINGLE_ITEM
+   *   - 나머지 → FULL_OUTFIT (기본값)
+   */
+  private async resolveSearchMode(
+    analysisRunId: number,
+    requestedMode?: ImageSearchMode,
+  ): Promise<ImageSearchMode> {
+    if (requestedMode) return requestedMode; // 명시된 mode 우선
+
+    const [run, garments] = await Promise.all([
+      this.prisma.imageAnalysisRun.findUnique({
+        where: { id: analysisRunId },
+        select: { faceDetected: true },
+      }),
+      this.prisma.imageGarment.findMany({
+        where: { analysisRunId },
+        select: { areaRatio: true, confidence: true },
+      }),
+    ]);
+
+    const faceCount = run?.faceDetected ?? 0;
+
+    // confidence 낮은 garment 제거
+    const validGarments = garments.filter(
+    (g) => Number(g.areaRatio ?? 0) > 0.01,
+  );
+
+    const garmentCount = validGarments.length;
+    const largestArea = Math.max(
+    0,
+    ...validGarments.map((g) => Number(g.areaRatio ?? 0)),
+    );
+    
+    // 단품 우선 판별:
+    // 가장 큰 garment가 충분히 크고 얼굴이 없으면,
+    // garment가 2개로 쪼개져도 단품 가능성 높게 본다.
+    if (faceCount === 0 && largestArea >= 0.6) {
+    return ImageSearchMode.SINGLE_ITEM;
+    }
+
+    // 복수 의류 또는 얼굴 감지 → 전체 착장 이미지
+    if (garmentCount >= 2 || faceCount >= 1) {
+      return ImageSearchMode.FULL_OUTFIT;
+    }
+
+    // 단일 의류면 단품
+    if (garmentCount === 1) {
+      return ImageSearchMode.SINGLE_ITEM;
+    }
+
+    // 기본값: FULL_OUTFIT
+    return ImageSearchMode.FULL_OUTFIT;
+  }
+
+  /**
+   * [Batch9-AutoMode] vector 유사도 검색 실행 helper.
+   * searchImage()에서 분리하여 1차 검색 + fallback 재시도에서 재사용.
+   */
+  private async executeVectorSearch(params: {
+    analysisRunId: number;
+    mode: ImageSearchMode;
+    garmentCategory?: AiGarmentCategory;
+    filters: {
+      periodFrom: Date | null;
+      periodTo: Date | null;
+      likeRatioMin: number | null;
+      keywordCodes: string[];
+      feedbackLikeCodes: string[];
+      feedbackDislikeCodes: string[];
+    };
+    fetchLimit: number;
+    offset: number;
+  }): Promise<Array<{ postId: number; similarity: number }>> {
+    const { analysisRunId, mode, garmentCategory, filters, fetchLimit, offset } = params;
+
     const queryVector = await this.imageIndexingService.getSearchVector(
       analysisRunId,
       mode,
-      body.garmentCategory,
+      garmentCategory,
     );
 
-    const vectorLiteral = `[${queryVector.map((value) => String(Number(value))).join(',')}]`;
+    const vectorLiteral = `[${queryVector.map((v) => String(Number(v))).join(',')}]`;
     const vectorSql = Prisma.raw(`'${vectorLiteral}'::vector`);
-    const targetScope = mode === 'FULL_OUTFIT' ? 'OUTFIT' : 'GARMENT';
+    const targetScope = mode === ImageSearchMode.FULL_OUTFIT ? 'OUTFIT' : 'GARMENT';
 
     const garmentJoinSql =
       targetScope === 'GARMENT'
@@ -155,44 +325,37 @@ export class SearchService {
         : Prisma.empty;
 
     const garmentCategorySql =
-      targetScope === 'GARMENT' && body.garmentCategory
-        ? Prisma.sql`AND ig."normalized_category" = ${body.garmentCategory}::"AiGarmentCategory"`
+      targetScope === 'GARMENT' && garmentCategory
+        ? Prisma.sql`AND ig."normalized_category" = ${garmentCategory}::"AiGarmentCategory"`
         : Prisma.empty;
 
-    const publishedFromSql = filters.publishedFrom
-      ? Prisma.sql`AND p."published_at" >= ${filters.publishedFrom}`
+    const periodFromSql = filters.periodFrom
+      ? Prisma.sql`AND p."published_at" >= ${filters.periodFrom}`
       : Prisma.empty;
 
-    const publishedToSql = filters.publishedTo
-      ? Prisma.sql`AND p."published_at" <= ${filters.publishedTo}`
+    const periodToSql = filters.periodTo
+      ? Prisma.sql`AND p."published_at" <= ${filters.periodTo}`
       : Prisma.empty;
 
-    const minLikeRatioSql =
-      filters.minLikeRatio !== null
-        ? Prisma.sql`AND psi."like_ratio" >= ${filters.minLikeRatio}`
+    const likeRatioMinSql =
+      filters.likeRatioMin !== null
+        ? Prisma.sql`AND psi."like_ratio" >= ${filters.likeRatioMin}`
         : Prisma.empty;
-
-    const maxLikeRatioSql =
-      filters.maxLikeRatio !== null
-        ? Prisma.sql`AND psi."like_ratio" <= ${filters.maxLikeRatio}`
-        : Prisma.empty;
-
-    const outfitCategoriesSql = filters.outfitCategories.length
-      ? Prisma.sql`AND psi."outfit_categories" && ARRAY[${Prisma.join(filters.outfitCategories)}]::text[]`
-      : Prisma.empty;
 
     const keywordCodesSql = filters.keywordCodes.length
       ? Prisma.sql`AND psi."keyword_codes" && ARRAY[${Prisma.join(filters.keywordCodes)}]::text[]`
       : Prisma.empty;
 
-    const feedbackTagCodesSql = filters.feedbackTagCodes.length
-      ? Prisma.sql`AND (
-          psi."feedback_like_codes" && ARRAY[${Prisma.join(filters.feedbackTagCodes)}]::text[]
-          OR psi."feedback_dislike_codes" && ARRAY[${Prisma.join(filters.feedbackTagCodes)}]::text[]
-        )`
+    // like / dislike 피드백 필터는 각각 독립 조건 (AND 교집합, OR 아님)
+    const feedbackLikeCodesSql = filters.feedbackLikeCodes.length
+      ? Prisma.sql`AND psi."feedback_like_codes" && ARRAY[${Prisma.join(filters.feedbackLikeCodes)}]::text[]`
       : Prisma.empty;
 
-    const rows = await this.prisma.$queryRaw<Array<{ postId: number; similarity: number }>>(Prisma.sql`
+    const feedbackDislikeCodesSql = filters.feedbackDislikeCodes.length
+      ? Prisma.sql`AND psi."feedback_dislike_codes" && ARRAY[${Prisma.join(filters.feedbackDislikeCodes)}]::text[]`
+      : Prisma.empty;
+
+    return this.prisma.$queryRaw<Array<{ postId: number; similarity: number }>>(Prisma.sql`
       WITH ranked_vectors AS (
         SELECT
           p.id AS "postId",
@@ -227,58 +390,20 @@ export class SearchService {
           AND p."hidden_at" IS NULL
           AND p."published_at" IS NOT NULL
           ${garmentCategorySql}
-          ${publishedFromSql}
-          ${publishedToSql}
-          ${minLikeRatioSql}
-          ${maxLikeRatioSql}
-          ${outfitCategoriesSql}
+          ${periodFromSql}
+          ${periodToSql}
+          ${likeRatioMinSql}
           ${keywordCodesSql}
-          ${feedbackTagCodesSql}
+          ${feedbackLikeCodesSql}
+          ${feedbackDislikeCodesSql}
       )
       SELECT "postId", similarity
       FROM ranked_vectors
       WHERE rn = 1
       ORDER BY similarity DESC, "postId" DESC
-      LIMIT ${limit}
+      LIMIT ${fetchLimit}
+      OFFSET ${offset}
     `);
-
-    const postIds = rows.map((row) => row.postId);
-    const posts = postIds.length
-      ? await this.prisma.post.findMany({
-          where: { id: { in: postIds } },
-          select: this.postSearchSelect(),
-        })
-      : [];
-
-    const postMap = new Map(posts.map((post) => [post.id, post]));
-
-    const items = rows
-      .map((row) => {
-        const post = postMap.get(row.postId);
-        if (!post) {
-          return null;
-        }
-
-        return this.mapImageSearchItem(post, Number(row.similarity));
-      })
-      .filter((item): item is ImageSearchItem => item !== null);
-
-    await this.prisma.searchHistory.create({
-      data: {
-        userId,
-        searchType: 'IMAGE',
-        imageAssetId: imageAsset.id,
-        imageSearchMode: mode,
-        resultCount: items.length,
-      },
-    });
-
-    return {
-      mode,
-      queryImageAssetId: imageAsset.id,
-      analysisRunId,
-      items,
-    };
   }
 
   private async searchByNickname(
@@ -540,35 +665,178 @@ export class SearchService {
     };
   }
 
+  // ── V3 Batch8: 최근 검색 기록 조회 ──────────────────────────────────────────
+
+  /**
+   * GET /users/me/search-histories
+   * - 본인 기록만 조회 (userId 필터)
+   * - searchType 필터 지원 (TEXT / IMAGE / 생략 시 전체)
+   * - 커서 기반 페이지네이션 (historyId DESC)
+   */
+  async getMySearchHistories(params: {
+    userId: number;
+    searchType?: 'TEXT' | 'IMAGE';
+    cursor?: number;
+    limit?: number;
+  }): Promise<GetSearchHistoriesResponse> {
+    const limit = this.normalizeLimit(params.limit);
+
+    const histories = await this.prisma.searchHistory.findMany({
+      where: {
+        userId: params.userId,
+        ...(params.searchType
+          ? { searchType: params.searchType as SearchHistoryType }
+          : {}),
+        ...(params.cursor !== undefined ? { id: { lt: params.cursor } } : {}),
+      },
+      orderBy: { id: 'desc' },
+      take: limit + 1,
+    });
+
+    const hasMore = histories.length > limit;
+    const pageItems = hasMore ? histories.slice(0, limit) : histories;
+
+    return {
+      items: pageItems.map((h) => ({
+        historyId: h.id,
+        searchType: h.searchType as 'TEXT' | 'IMAGE',
+        queryText: h.queryText ?? null,
+        imageAssetId: h.imageAssetId ?? null,
+        imageSearchMode: h.imageSearchMode ?? null,
+        resultCount: h.resultCount,
+        createdAt: h.createdAt.toISOString(),
+      })),
+      nextCursor: hasMore ? (pageItems[pageItems.length - 1]?.id ?? null) : null,
+      hasMore,
+    };
+  }
+
+  // ── V3 Batch8: 검색 기록 삭제 ──────────────────────────────────────────────
+
+  /**
+   * DELETE /search/histories/:historyId
+   * - 본인 기록만 삭제 가능
+   * - soft delete 없음 → 실제 delete
+   * - 존재하지 않으면 404, 타인 기록이면 403
+   */
+  async deleteSearchHistory(
+    userId: number,
+    historyId: number,
+  ): Promise<DeleteSearchHistoryResponse> {
+    const history = await this.prisma.searchHistory.findUnique({
+      where: { id: historyId },
+      select: { id: true, userId: true },
+    });
+
+    if (!history) {
+      throw new NotFoundException('검색 기록을 찾을 수 없습니다.');
+    }
+
+    if (history.userId !== userId) {
+      throw new ForbiddenException('본인의 검색 기록만 삭제할 수 있습니다.');
+    }
+
+    await this.prisma.searchHistory.delete({ where: { id: historyId } });
+
+    return { success: true, message: '검색 기록이 삭제되었습니다.' };
+  }
+
+  // ── Private helpers ──────────────────────────────────────────────────────
+
   private normalizeLimit(limit?: number): number {
     if (!limit || Number.isNaN(Number(limit))) return 20;
     return Math.min(Math.max(Number(limit), 1), 50);
   }
 
-  private normalizeImageSearchFilters(body: ImageSearchRequest) {
-    const publishedFrom = this.parseOptionalDate(body.publishedFrom, 'publishedFrom');
-    const publishedTo = this.parseOptionalDate(body.publishedTo, 'publishedTo');
+  /**
+   * [V3 Batch9] 이미지 검색 필터 정규화 — ID→code 비동기 매핑 포함
+   *
+   * - keywordIds: keyword.id 배열 → keyword.code 배열 변환
+   * - feedbackLikeTagIds: feedback_tag.id 배열 → voteChoice=LIKE 검증 후 code 배열 변환
+   * - feedbackDislikeTagIds: feedback_tag.id 배열 → voteChoice=DISLIKE 검증 후 code 배열 변환
+   */
+  private async resolveImageSearchFilters(body: ImageSearchRequest) {
+    const periodFrom = this.parseOptionalDate(body.periodFrom, 'periodFrom');
+    const periodTo = this.parseOptionalDate(body.periodTo, 'periodTo');
 
-    const minLikeRatio = this.parseOptionalRatio(body.minLikeRatio, 'minLikeRatio');
-    const maxLikeRatio = this.parseOptionalRatio(body.maxLikeRatio, 'maxLikeRatio');
-
-    if (minLikeRatio !== null && maxLikeRatio !== null && minLikeRatio > maxLikeRatio) {
-      throw new BadRequestException('minLikeRatio는 maxLikeRatio보다 클 수 없습니다.');
+    if (periodFrom && periodTo && periodFrom > periodTo) {
+      throw new BadRequestException('periodFrom은 periodTo보다 늦을 수 없습니다.');
     }
 
-    if (publishedFrom && publishedTo && publishedFrom > publishedTo) {
-      throw new BadRequestException('publishedFrom은 publishedTo보다 늦을 수 없습니다.');
-    }
+    const likeRatioMin = this.parseOptionalRatio(body.likeRatioMin, 'likeRatioMin');
+
+    const [keywordCodes, feedbackLikeCodes, feedbackDislikeCodes] = await Promise.all([
+      this.resolveKeywordCodes(body.keywordIds),
+      this.resolveFeedbackCodes(body.feedbackLikeTagIds, 'LIKE'),
+      this.resolveFeedbackCodes(body.feedbackDislikeTagIds, 'DISLIKE'),
+    ]);
 
     return {
-      publishedFrom,
-      publishedTo,
-      minLikeRatio,
-      maxLikeRatio,
-      outfitCategories: this.normalizeStringArray(body.outfitCategories),
-      keywordCodes: this.normalizeStringArray(body.keywordCodes),
-      feedbackTagCodes: this.normalizeStringArray(body.feedbackTagCodes),
+      periodFrom,
+      periodTo,
+      likeRatioMin,
+      keywordCodes,
+      feedbackLikeCodes,
+      feedbackDislikeCodes,
     };
+  }
+
+  /**
+   * keyword ID 배열 → keyword code 배열 변환.
+   * 존재하지 않는 ID가 있으면 400.
+   */
+  private async resolveKeywordCodes(ids?: number[]): Promise<string[]> {
+    if (!ids?.length) return [];
+    const uniqueIds = [...new Set(ids)];
+
+    const rows = await this.prisma.keyword.findMany({
+      where: { id: { in: uniqueIds }, isActive: true },
+      select: { id: true, code: true },
+    });
+
+    if (rows.length !== uniqueIds.length) {
+      const foundIds = new Set(rows.map((r) => r.id));
+      const missing = uniqueIds.filter((id) => !foundIds.has(id));
+      throw new BadRequestException(`유효하지 않은 keywordIds: ${missing.join(', ')}`);
+    }
+
+    return rows.map((r) => r.code);
+  }
+
+  /**
+   * feedback_tag ID 배열 → code 배열 변환 (voteChoice 검증 포함).
+   * 존재하지 않는 ID나 voteChoice 불일치 시 400.
+   */
+  private async resolveFeedbackCodes(
+    ids: number[] | undefined,
+    expectedVoteChoice: 'LIKE' | 'DISLIKE',
+  ): Promise<string[]> {
+    if (!ids?.length) return [];
+    const uniqueIds = [...new Set(ids)];
+
+    const rows = await this.prisma.feedbackTag.findMany({
+      where: { id: { in: uniqueIds }, isActive: true },
+      select: { id: true, code: true, voteChoice: true },
+    });
+
+    if (rows.length !== uniqueIds.length) {
+      const foundIds = new Set(rows.map((r) => r.id));
+      const missing = uniqueIds.filter((id) => !foundIds.has(id));
+      const fieldName =
+        expectedVoteChoice === 'LIKE' ? 'feedbackLikeTagIds' : 'feedbackDislikeTagIds';
+      throw new BadRequestException(`유효하지 않은 ${fieldName}: ${missing.join(', ')}`);
+    }
+
+    const wrongChoice = rows.filter((r) => r.voteChoice !== expectedVoteChoice);
+    if (wrongChoice.length) {
+      const fieldName =
+        expectedVoteChoice === 'LIKE' ? 'feedbackLikeTagIds' : 'feedbackDislikeTagIds';
+      throw new BadRequestException(
+        `${fieldName}에 ${expectedVoteChoice === 'LIKE' ? 'DISLIKE' : 'LIKE'} 태그가 포함되어 있습니다: ${wrongChoice.map((r) => r.id).join(', ')}`,
+      );
+    }
+
+    return rows.map((r) => r.code);
   }
 
   private parseOptionalDate(value: string | undefined, fieldName: string): Date | null {
@@ -595,19 +863,5 @@ export class SearchService {
     }
 
     return ratio;
-  }
-
-  private normalizeStringArray(values?: string[]): string[] {
-    if (!values?.length) {
-      return [];
-    }
-
-    return Array.from(
-      new Set(
-        values
-          .map((value) => String(value ?? '').trim())
-          .filter((value) => value.length > 0),
-      ),
-    );
   }
 }

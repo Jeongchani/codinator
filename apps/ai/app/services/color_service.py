@@ -19,6 +19,7 @@ COLOR_PALETTE: dict[str, tuple[int, int, int]] = {
     "beige": (210, 195, 160),
     "pink": (215, 150, 175),
     "purple": (140, 100, 165),
+    "khaki": (132, 128, 82),
 }
 
 
@@ -149,38 +150,44 @@ def infer_dominant_color(image_bgr: np.ndarray, mask: np.ndarray | None = None) 
 
     median_v = float(np.median(v))
     mean_b = float(np.mean(b))
-    neutral_mask = s < 40
-    neutral_ratio = float(np.mean(neutral_mask)) if len(s) > 0 else 0.0
+    very_low_sat_ratio = float(np.mean(s < 28)) if len(s) > 0 else 0.0
+    low_sat_ratio = float(np.mean(s < 45)) if len(s) > 0 else 0.0
 
-    if median_v < 45:
+    if median_v < 38:
         return "black"
 
-    # neutral 계열 우선 판정
-    if neutral_ratio >= 0.6:
+    # neutral 계열은 충분히 확실할 때만 우선 판정
+    if very_low_sat_ratio >= 0.72 or low_sat_ratio >= 0.82:
         if median_v >= 232:
             return "white"
-        if median_v >= 210:
-            if mean_b >= 140:
+        if median_v >= 212:
+            if mean_b >= 142:
                 return "cream"
-            if mean_b >= 133:
+            if mean_b >= 135:
                 return "ivory"
             return "white"
-        if median_v >= 175:
-            if mean_b >= 142:
+        if median_v >= 178:
+            if mean_b >= 145:
                 return "beige"
-            if mean_b >= 134:
+            if mean_b >= 136:
                 return "ivory"
             return "gray"
+        if mean_b >= 145 and median_v >= 115:
+            return "beige"
+        if mean_b >= 138 and median_v >= 90:
+            return "brown"
         return "gray"
 
     # 저채도 warm neutral 보정
-    low_sat_warm_ratio = float(np.mean((s < 65) & (v >= 150) & (b >= 138)))
-    if low_sat_warm_ratio >= 0.45:
-        if median_v >= 185:
+    low_sat_warm_ratio = float(np.mean((s < 70) & (v >= 145) & (b >= 138)))
+    if low_sat_warm_ratio >= 0.58:
+        if mean_b >= 145 and median_v >= 165:
             return "beige"
+        if mean_b >= 132 and median_v >= 130:
+            return "khaki"
         return "brown"
 
-    chroma_mask = s >= 40
+    chroma_mask = s >= 35
     if chroma_mask.sum() < max(10, int(len(s) * 0.15)):
         rep_bgr = _choose_representative_cluster(pixels)
         rep_rgb = np.array([[[rep_bgr[2], rep_bgr[1], rep_bgr[0]]]], dtype=np.uint8)
@@ -220,11 +227,18 @@ def infer_dominant_color(image_bgr: np.ndarray, mask: np.ndarray | None = None) 
 
     # warm 계열이 과하게 튀는 것 보정
     if dominant in {"orange", "yellow"}:
-        warm_low_sat_ratio = float(np.mean((h >= 10) & (h < 35) & (s < 70)))
-        if warm_low_sat_ratio >= 0.45:
-            if median_v >= 175:
+        warm_low_sat_ratio = float(np.mean((h >= 10) & (h < 35) & (s < 75)))
+        if warm_low_sat_ratio >= 0.5:
+            if median_v >= 180:
                 return "beige"
+            if mean_b >= 132:
+                return "khaki"
             return "brown"
+
+    if dominant == "green":
+        muted_green_ratio = float(np.mean((h >= 35) & (h < 80) & (s < 95)))
+        if muted_green_ratio >= 0.45:
+            return "khaki"
 
     # blue / navy 분리
     if dominant == "blue":
@@ -238,9 +252,9 @@ def infer_dominant_color(image_bgr: np.ndarray, mask: np.ndarray | None = None) 
 
     candidate_groups = {
         "red": ["red", "pink", "brown"],
-        "orange": ["orange", "brown", "beige"],
-        "yellow": ["yellow", "cream", "beige"],
-        "green": ["green"],
+        "orange": ["orange", "brown", "beige", "khaki"],
+        "yellow": ["yellow", "cream", "beige", "khaki"],
+        "green": ["green", "khaki"],
         "blue": ["blue", "navy"],
         "purple": ["purple", "pink"],
     }

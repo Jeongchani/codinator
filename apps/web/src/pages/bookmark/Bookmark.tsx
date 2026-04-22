@@ -988,7 +988,7 @@ export default function Bookmark() {
 
       <main
         className={`${styles.contentArea} ${deleteMode ? styles.contentAreaDeleteMode : ''}`}
-        style={{ touchAction: deleteMode ? 'none' : 'pan-y' }}
+        style={{ touchAction: 'pan-y' }}
         onTouchStart={handleContentTouchStart}
         onTouchMove={handleContentTouchMove}
         onTouchEnd={handleContentTouchEnd}
@@ -1149,7 +1149,7 @@ export default function Bookmark() {
                     transform: isPressing ? 'scale(0.96)' : 'scale(1)',
                     filter: isPressing ? 'brightness(0.9)' : 'brightness(1)',
                     transition: 'transform 140ms ease, filter 140ms ease, box-shadow 140ms ease',
-                    touchAction: deleteMode ? 'none' : 'manipulation',
+                    touchAction: deleteMode ? 'pan-y' : 'manipulation',
                   }}
                   onTouchStart={(e) => {
                     if (deleteMode) {
