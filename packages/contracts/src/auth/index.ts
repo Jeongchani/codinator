@@ -4,6 +4,7 @@ export * from './logout';
 export * from './refresh';
 export * from './phone';
 export * from './social';
+export * from './social-code-exchange'; // SocialCodeExchange
 export * from './password-reset';
 
 export interface VerifyPhoneCodeResponse {
