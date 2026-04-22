@@ -15,6 +15,8 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { ExchangeKakaoCodeDto } from './dto/exchange-kakao-code.dto'; // SocialCodeExchange
+import { ExchangeNaverCodeDto } from './dto/exchange-naver-code.dto'; // SocialCodeExchange
 import { LoginResponseDto } from './dto/login-response.dto';
 import { SendPhoneVerificationDto } from './dto/send-phone-verification.dto';
 import { SignupRequestDto } from './dto/signup-request.dto';
@@ -29,6 +31,7 @@ import {
   PasswordResetResponse,
   RefreshTokenRequest,
   RefreshTokenResponse,
+  SocialCodeExchangeResponse,
   SocialCompleteProfileRequest,
   SocialCompleteProfileResponse,
   SocialLoginRequest,
@@ -251,10 +254,10 @@ export class AuthController {
     schema: {
       type: 'object',
       properties: {
-        socialLoginToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
         isNewUser: { type: 'boolean', example: false },
       },
     },
+    description: 'isNewUser=false: complete-profile 바로 호출 가능. true: 프로필 입력 필요.',
   })
   @ApiBadRequestResponse({ description: 'provider 오류' })
   @ApiResponse({ status: 401, description: '유효하지 않은 providerToken' })
@@ -370,5 +373,81 @@ export class AuthController {
   @ApiNotFoundResponse({ description: '해당 전화번호로 가입된 계정 없음' })
   async passwordReset(@Body() dto: PasswordResetRequest): Promise<PasswordResetResponse> {
     return this.authService.passwordReset(dto);
+  }
+
+  // ── POST /auth/social/kakao/exchange-code ─────────────────────────────────
+  // SocialCodeExchange
+
+  @Post('social/kakao/exchange-code')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Kakao 인가코드 교환 — code → access token → 소셜 로그인 판정',
+    description:
+      '프론트에서 Kakao 인가코드(code)를 받아 백엔드에서 access token 으로 교환하고, ' +
+      '기존 회원 여부 판정까지 한 번에 처리합니다.\n\n' +
+      '✅ **Swagger 테스트 방법 (개발 환경 / KAKAO_REAL_VERIFY_ENABLED=false)**\n' +
+      '`code` 에 임의의 문자열(예: `test_kakao_001`), `redirectUri` 에 아무 URL 을 입력하세요. ' +
+      '실제 Kakao API 를 호출하지 않고 stub token 을 반환합니다.\n\n' +
+      '응답의 `providerToken` 을 POST /auth/social/complete-profile 의 `providerToken` 으로 그대로 사용하세요.',
+  })
+  @ApiBody({ type: ExchangeKakaoCodeDto })
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      properties: {
+        providerToken: {
+          type: 'string',
+          description: '교환된 Kakao access token. complete-profile 의 providerToken 으로 사용',
+        },
+        isNewUser: { type: 'boolean', example: false },
+      },
+    },
+    description: '인가코드 교환 성공. isNewUser=false: 바로 complete-profile 호출 가능',
+  })
+  @ApiUnauthorizedResponse({ description: '유효하지 않거나 만료된 Kakao 인가코드' })
+  @ApiBadRequestResponse({ description: 'code / redirectUri 누락' })
+  @ApiResponse({ status: 502, description: 'Kakao 인증 서버 일시 장애' })
+  async exchangeKakaoCode(
+    @Body() dto: ExchangeKakaoCodeDto,
+  ): Promise<SocialCodeExchangeResponse> {
+    return this.authService.exchangeKakaoCode(dto);
+  }
+
+  // ── POST /auth/social/naver/exchange-code ─────────────────────────────────
+  // SocialCodeExchange
+
+  @Post('social/naver/exchange-code')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Naver 인가코드 교환 — code + state → access token → 소셜 로그인 판정',
+    description:
+      '프론트에서 Naver 인가코드(code)와 state 를 받아 백엔드에서 access token 으로 교환하고, ' +
+      '기존 회원 여부 판정까지 한 번에 처리합니다.\n\n' +
+      '✅ **Swagger 테스트 방법 (개발 환경 / NAVER_REAL_VERIFY_ENABLED=false)**\n' +
+      '`code` 에 임의의 문자열(예: `test_naver_001`), `state` 에 아무 값, `redirectUri` 에 아무 URL 을 입력하세요. ' +
+      '실제 Naver API 를 호출하지 않고 stub token 을 반환합니다.\n\n' +
+      '응답의 `providerToken` 을 POST /auth/social/complete-profile 의 `providerToken` 으로 그대로 사용하세요.',
+  })
+  @ApiBody({ type: ExchangeNaverCodeDto })
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      properties: {
+        providerToken: {
+          type: 'string',
+          description: '교환된 Naver access token. complete-profile 의 providerToken 으로 사용',
+        },
+        isNewUser: { type: 'boolean', example: false },
+      },
+    },
+    description: '인가코드 교환 성공. isNewUser=false: 바로 complete-profile 호출 가능',
+  })
+  @ApiUnauthorizedResponse({ description: '유효하지 않거나 만료된 Naver 인가코드' })
+  @ApiBadRequestResponse({ description: 'code / state / redirectUri 누락' })
+  @ApiResponse({ status: 502, description: 'Naver 인증 서버 일시 장애' })
+  async exchangeNaverCode(
+    @Body() dto: ExchangeNaverCodeDto,
+  ): Promise<SocialCodeExchangeResponse> {
+    return this.authService.exchangeNaverCode(dto);
   }
 }
