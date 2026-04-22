@@ -7,9 +7,10 @@
 }
 
 .contentArea {
-  @apply w-full flex-1 px-[13px] pt-[4px] pb-24 overflow-y-auto;
+  @apply w-full flex-1 overflow-y-auto overflow-x-hidden px-[13px] pt-[4px] pb-24;
   -ms-overflow-style: none;
   scrollbar-width: none;
+  overscroll-behavior-x: none;
 }
 
 .contentArea::-webkit-scrollbar {
@@ -27,7 +28,7 @@
 }
 
 .recommendBanner {
-  @apply mt-[4px];
+  @apply mt-[4px] mb-[12px];
 }
 
 .bannerImage {
@@ -43,13 +44,19 @@
 }
 
 .horizontalScroll {
-  @apply flex gap-[10px] overflow-x-auto overflow-y-hidden pr-3;
+  @apply flex gap-[10px] overflow-x-auto overflow-y-hidden;
   -ms-overflow-style: none;
   scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .horizontalScroll::-webkit-scrollbar {
   display: none;
+}
+
+.sectionEmpty {
+  @apply w-full h-[172px] rounded-[10px] border border-dashed border-neutral-300 flex items-center justify-center text-[12px] text-neutral-500 bg-[#fafafa];
 }
 
 .card {
@@ -160,96 +167,41 @@
 }
 
 .focusMainImage {
-  @apply absolute inset-0;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  @apply absolute inset-0 bg-cover bg-center bg-no-repeat;
 }
 
 .topGradient {
-  @apply absolute left-0 top-0 w-full h-36;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0) 100%);
+  @apply absolute top-0 left-0 w-full h-28;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.36) 0%, rgba(0, 0, 0, 0) 100%);
 }
 
 .bottomGradient {
-  @apply absolute left-0 bottom-0 w-full h-52;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.2) 100%);
+  @apply absolute bottom-0 left-0 w-full h-48;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0) 100%);
 }
 
-.headerTitle {
-  @apply absolute left-4 z-[60] text-white text-[20px] font-semibold leading-7;
-  top: 66px;
-  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+.overlay {
+  @apply absolute inset-0 z-20 pointer-events-none;
 }
 
-.closeBtn {
-  @apply absolute right-4 z-[60] flex items-center justify-center rounded-[10px] border-0 p-0 text-white;
-  top: 63px;
-  width: 28px;
-  height: 28px;
-  background: rgba(0, 0, 0, 0.45);
+.topBar {
+  @apply absolute top-[32px] left-5 right-5 z-30 flex items-center justify-between;
 }
 
-.focusFloatingArea {
-  @apply absolute left-0 right-0 px-5 z-[60];
-  bottom: 44px;
+.backButton {
+  @apply h-8 w-8 rounded-full border-0 flex items-center justify-center pointer-events-auto;
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
 }
 
-.detailButton {
-  @apply h-[30px] rounded-[999px] border-0 flex items-center justify-between text-white px-4 mb-4;
-  width: 118px;
-  background: rgba(0, 0, 0, 0.45);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
-  transition:
-    background 0.16s ease,
-    transform 0.16s ease,
-    box-shadow 0.16s ease,
-    opacity 0.16s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.detailButton:active {
-  background: rgba(0, 0, 0, 0.68);
-  transform: translateY(1px) scale(0.98);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
-}
-
-.detailButtonText {
-  @apply text-[12px] font-semibold leading-4;
-}
-
-.detailButtonUpIcon {
-  @apply shrink-0 text-white;
-}
-
-.progressTrack {
-  @apply relative w-full h-5 rounded-[10px] overflow-hidden;
-  background: rgba(255, 255, 255, 0.22);
-}
-
-.likeFill {
-  @apply absolute left-0 top-0 h-full rounded-l-[10px];
-  background: linear-gradient(90deg, rgba(244, 125, 114, 0.72) 0%, #f47d72 100%);
-}
-
-.dislikeFill {
-  @apply absolute right-0 top-0 h-full rounded-r-[10px];
-  background: linear-gradient(270deg, rgba(140, 149, 181, 0.72) 0%, #8c95b5 100%);
-}
-
-.leftPercent {
-  @apply absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-white text-[10px] leading-3 font-medium;
-}
-
-.rightPercent {
-  @apply absolute right-3 top-1/2 flex items-center text-white text-[10px] leading-3 font-medium;
-  transform: translateY(-50%);
-  flex-direction: row-reverse;
-  gap: 4px;
+.reportPlaceholder {
+  @apply h-8 w-[54px];
 }
 
 .swipeIndicator {
-  @apply absolute top-1/2 right-4 z-[60] -translate-y-1/2 pointer-events-none;
+  @apply absolute top-1/2 right-4 z-30 -translate-y-1/2 pointer-events-none;
 }
 
 .swipeIndicatorStack {
@@ -270,4 +222,84 @@
   height: 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.32);
+}
+
+.voteGraphArea {
+  @apply absolute left-[22px] right-[22px] top-[703px] z-30 pointer-events-none;
+}
+
+.progressTrack {
+  @apply relative h-[30px] px-2.5 py-[5px] rounded-[10px] inline-flex justify-start items-center gap-[5px] overflow-hidden w-full;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
+}
+
+.likeFill {
+  @apply absolute left-0 top-0 h-full;
+  background: rgba(234, 138, 120, 0.82);
+}
+
+.dislikeFill {
+  @apply absolute right-0 top-0 h-full;
+  background: rgba(174, 178, 214, 0.78);
+}
+
+.leftPercent,
+.rightPercent {
+  @apply absolute top-1/2 -translate-y-1/2 flex items-center text-white text-[11px] font-semibold leading-none;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+
+.leftPercent {
+  @apply left-[12px] gap-[6px];
+}
+
+.rightPercent {
+  @apply right-[12px] gap-[6px];
+}
+
+.voteDetailButtonWrap {
+  @apply absolute left-1/2 top-[747px] -translate-x-1/2 z-30;
+}
+
+.voteDetailButton {
+  @apply flex items-center justify-center gap-2 border-0 bg-transparent px-0 py-0 text-[18px] font-semibold pointer-events-auto;
+  color: rgba(232, 232, 232, 0.82);
+  text-shadow:
+    0 0 10px rgba(255, 255, 255, 0.12),
+    0 6px 16px rgba(0, 0, 0, 0.22);
+  animation: detailButtonGlow 2.2s ease-in-out infinite;
+}
+
+.voteDetailButton:active {
+  opacity: 0.72;
+}
+
+.voteDetailIcon {
+  @apply flex items-center justify-center;
+}
+
+@keyframes detailButtonGlow {
+  0% {
+    opacity: 0.38;
+    text-shadow:
+      0 0 6px rgba(255, 255, 255, 0.06),
+      0 6px 16px rgba(0, 0, 0, 0.18);
+  }
+
+  50% {
+    opacity: 0.84;
+    text-shadow:
+      0 0 16px rgba(255, 255, 255, 0.18),
+      0 6px 16px rgba(0, 0, 0, 0.24);
+  }
+
+  100% {
+    opacity: 0.38;
+    text-shadow:
+      0 0 6px rgba(255, 255, 255, 0.06),
+      0 6px 16px rgba(0, 0, 0, 0.18);
+  }
 }

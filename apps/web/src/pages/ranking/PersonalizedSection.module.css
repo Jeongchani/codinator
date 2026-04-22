@@ -1,0 +1,99 @@
+.section {
+  @apply mb-7;
+}
+
+.sectionTitle {
+  @apply text-[20px] font-semibold text-black mb-[14px];
+}
+
+.horizontalScroll {
+  @apply flex gap-[10px] overflow-x-auto overflow-y-hidden;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.horizontalScroll::-webkit-scrollbar {
+  display: none;
+}
+
+.sectionEmpty {
+  @apply w-full h-[172px] rounded-[10px] border border-dashed border-neutral-300 flex items-center justify-center text-[12px] text-neutral-500 bg-[#fafafa];
+}
+
+.card {
+  @apply w-[126px] shrink-0 flex flex-col cursor-pointer;
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: center center;
+}
+
+.cardPressed {
+  transform: scale(0.985);
+}
+
+.thumbnail {
+  @apply relative w-[126px] h-[172px] rounded-[10px] bg-[#d9d9d9] overflow-hidden;
+  transition:
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: center center;
+  will-change: transform, filter;
+}
+
+.thumbnailPressed {
+  transform: scale(0.965);
+  filter: brightness(0.92);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.thumbnailGradient {
+  @apply absolute inset-x-0 bottom-0 h-[54px];
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(0, 0, 0, 0.08) 100%);
+}
+
+.cardImage {
+  @apply w-full h-full object-cover block;
+}
+
+.cardImageFallback {
+  @apply w-full h-full flex items-center justify-center text-[12px] text-neutral-400 bg-[#f3f3f3];
+}
+
+.bookmarkButton {
+  @apply absolute top-[8px] right-[8px] z-10 flex items-center justify-center
+    w-5 h-5 rounded-full bg-black/45 border border-white/15;
+  transition:
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 180ms ease,
+    opacity 180ms ease;
+}
+
+.bookmarkButtonPressed {
+  transform: scale(0.9);
+}
+
+.bookmarkDefault {
+  @apply text-white;
+}
+
+.bookmarkFilled {
+  @apply text-white;
+}
+
+.statsRow {
+  @apply mt-[8px] flex items-center justify-start gap-[8px];
+}
+
+.statItem {
+  @apply flex items-center gap-[5px];
+}
+
+.statIcon {
+  @apply text-neutral-400 shrink-0;
+}
+
+.statText {
+  @apply text-[10px] leading-[10px] text-black font-medium;
+}

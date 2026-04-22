@@ -1,5 +1,15 @@
 .container {
-  @apply w-[375px] h-[812px] mx-auto overflow-hidden bg-white;
+  @apply w-[375px] h-[812px] mx-auto overflow-hidden bg-white relative;
+}
+
+.heroTopFade {
+  @apply absolute left-0 top-0 w-full h-28 pointer-events-none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.22) 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+.heroBottomFade {
+  @apply absolute left-0 bottom-0 w-full h-40 pointer-events-none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.16) 100%);
 }
 
 .scrollArea {
