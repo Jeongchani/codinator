@@ -14,12 +14,6 @@ export interface SocialLoginRequest {
 }
 
 export interface SocialLoginResponse {
-  /**
-   * 임시 소셜 로그인 상태 토큰 (5분 유효).
-   * isNewUser 여부를 클라이언트에 전달하기 위한 마커.
-   * complete-profile 에는 원본 providerToken 을 그대로 사용.
-   */
-  socialLoginToken: string;
   isNewUser: boolean;
 }
 

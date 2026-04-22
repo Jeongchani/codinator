@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   BadRequestException,
   ConflictException,
   ForbiddenException,
@@ -8,7 +9,10 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import axios from 'axios'; // SocialCodeExchange
 import {
+  ExchangeKakaoCodeRequest,
+  ExchangeNaverCodeRequest,
   LoginResponse,
   LogoutRequest,
   LogoutResponse,
@@ -16,6 +20,7 @@ import {
   PasswordResetResponse,
   RefreshTokenRequest,
   RefreshTokenResponse,
+  SocialCodeExchangeResponse,
   SocialCompleteProfileRequest,
   SocialCompleteProfileResponse,
   SocialLoginRequest,
@@ -542,14 +547,8 @@ export class AuthService {
       }
     }
 
-    // socialLoginToken: 클라이언트에 isNewUser 상태를 전달하는 마커 (complete-profile 에서는 미사용)
-    const socialLoginToken = this.authTokenService.signSocialLoginToken(
-      provider,
-      profile.providerUserId,
-      existingUserId,
-    );
 
-    return { socialLoginToken, isNewUser };
+    return { isNewUser };
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -561,7 +560,7 @@ export class AuthService {
   ): Promise<SocialCompleteProfileResponse> {
     const provider = dto.provider as SocialProvider;
 
-    // providerToken 재검증 — complete-profile 은 socialLoginToken 에 의존하지 않음
+    // providerToken 재검증 — Provider API 직접 호출로 신뢰성 보장
     const verifier = this.socialVerifierFactory.getVerifier(provider);
     const profile = await verifier.verify(dto.providerToken);
 
@@ -837,6 +836,42 @@ export class AuthService {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
+  // POST /auth/social/kakao/exchange-code // SocialCodeExchange
+  // ──────────────────────────────────────────────────────────────────────────
+  async exchangeKakaoCode(
+    dto: ExchangeKakaoCodeRequest,
+  ): Promise<SocialCodeExchangeResponse> {
+    // 1) 인가코드 → access token 교환 // SocialCodeExchange
+    const providerToken = await this.fetchKakaoAccessToken(dto.code, dto.redirectUri);
+
+    // 2) 기존 socialLogin 로직 재사용 (계정 조회 + isNewUser 판정) // SocialCodeExchange
+    const { isNewUser } = await this.socialLogin({
+      provider: SocialProvider.KAKAO,
+      providerToken,
+    });
+
+    return { providerToken, isNewUser };
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // POST /auth/social/naver/exchange-code // SocialCodeExchange
+  // ──────────────────────────────────────────────────────────────────────────
+  async exchangeNaverCode(
+    dto: ExchangeNaverCodeRequest,
+  ): Promise<SocialCodeExchangeResponse> {
+    // 1) 인가코드 → access token 교환 // SocialCodeExchange
+    const providerToken = await this.fetchNaverAccessToken(dto.code, dto.state, dto.redirectUri);
+
+    // 2) 기존 socialLogin 로직 재사용 (계정 조회 + isNewUser 판정) // SocialCodeExchange
+    const { isNewUser } = await this.socialLogin({
+      provider: SocialProvider.NAVER,
+      providerToken,
+    });
+
+    return { providerToken, isNewUser };
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
   // Private helpers
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -885,6 +920,122 @@ export class AuthService {
 
   private hashToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
+  }
+
+  /**
+   * Kakao 인가코드 → access token 교환.
+   * real verify OFF 시 결정론적 stub token 반환 (기존 KakaoSocialVerifier stub 과 호환).
+   */ // SocialCodeExchange
+  private async fetchKakaoAccessToken(code: string, redirectUri: string): Promise<string> {
+    const realVerifyEnabled =
+      process.env.KAKAO_REAL_VERIFY_ENABLED === 'true' ||
+      process.env.SOCIAL_LOGIN_REAL_VERIFY_ENABLED === 'true';
+
+    if (!realVerifyEnabled) {
+      // stub: code 해시 기반 결정론적 mock token → KakaoSocialVerifier.stubProfile() 과 호환
+      return `stub_kakao_${createHash('sha256').update(code).digest('hex').slice(0, 20)}`;
+    }
+
+    const clientId = process.env.KAKAO_REST_API_KEY;
+    if (!clientId) {
+      throw new BadGatewayException('KAKAO_REST_API_KEY 환경변수가 설정되지 않았습니다.');
+    }
+
+    const params = new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      code,
+    });
+    const clientSecret = process.env.KAKAO_CLIENT_SECRET;
+    if (clientSecret) params.append('client_secret', clientSecret);
+
+    interface KakaoTokenResponse {
+      access_token?: string;
+      error?: string;
+      error_description?: string;
+    }
+
+    try {
+      const { data } = await axios.post<KakaoTokenResponse>(
+        'https://kauth.kakao.com/oauth/token',
+        params.toString(),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 10_000 },
+      );
+      if (!data.access_token) {
+        throw new UnauthorizedException(data.error_description ?? '유효하지 않은 Kakao 인가코드입니다.');
+      }
+      return data.access_token;
+    } catch (err: unknown) {
+      if (err instanceof UnauthorizedException) throw err;
+      if (axios.isAxiosError(err)) {
+        const errData = err.response?.data as KakaoTokenResponse | undefined;
+        if (errData?.error) {
+          throw new UnauthorizedException(errData.error_description ?? `Kakao 인가코드 교환 실패: ${errData.error}`);
+        }
+      }
+      throw new BadGatewayException('Kakao 인증 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.');
+    }
+  }
+
+  /**
+   * Naver 인가코드 → access token 교환.
+   * real verify OFF 시 결정론적 stub token 반환 (기존 NaverSocialVerifier stub 과 호환).
+   */ // SocialCodeExchange
+  private async fetchNaverAccessToken(
+    code: string,
+    state: string,
+    redirectUri: string,
+  ): Promise<string> {
+    const realVerifyEnabled =
+      process.env.NAVER_REAL_VERIFY_ENABLED === 'true' ||
+      process.env.SOCIAL_LOGIN_REAL_VERIFY_ENABLED === 'true';
+
+    if (!realVerifyEnabled) {
+      return `stub_naver_${createHash('sha256').update(code).digest('hex').slice(0, 20)}`;
+    }
+
+    const clientId = process.env.NAVER_CLIENT_ID;
+    const clientSecret = process.env.NAVER_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
+      throw new BadGatewayException('NAVER_CLIENT_ID 또는 NAVER_CLIENT_SECRET 환경변수가 설정되지 않았습니다.');
+    }
+
+    const params = new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
+      code,
+      state,
+    });
+
+    interface NaverTokenResponse {
+      access_token?: string;
+      error?: string;
+      error_description?: string;
+    }
+
+    try {
+      const { data } = await axios.post<NaverTokenResponse>(
+        'https://nid.naver.com/oauth2.0/token',
+        params.toString(),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 10_000 },
+      );
+      if (!data.access_token) {
+        throw new UnauthorizedException(data.error_description ?? '유효하지 않은 Naver 인가코드입니다.');
+      }
+      return data.access_token;
+    } catch (err: unknown) {
+      if (err instanceof UnauthorizedException) throw err;
+      if (axios.isAxiosError(err)) {
+        const errData = err.response?.data as NaverTokenResponse | undefined;
+        if (errData?.error) {
+          throw new UnauthorizedException(errData.error_description ?? `Naver 인가코드 교환 실패: ${errData.error}`);
+        }
+      }
+      throw new BadGatewayException('Naver 인증 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.');
+    }
   }
 
   private normalizeBirthDate(birthDate: string): Date {
