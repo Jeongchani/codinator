@@ -33,6 +33,8 @@ import type {
   ListReportHistoriesResponse,
   ListSanctionsResponse,
   ListUserReportsResponse,
+  ReopenReportRequest,
+  ReopenReportResponse,
   ReviewReportRequest,
   ReviewReportResponse,
   UpdateFeedbackTagRequest,
@@ -301,6 +303,122 @@ export class AdminService {
       reportId: updated.id,
       status: updated.status as 'RESOLVED' | 'REJECTED',
       reviewedAt: updated.reviewedAt!.toISOString(),
+    };
+  }
+
+  // ─── 게시글 신고 재오픈 (PATCH /admin/post-reports/:id/reopen) ───────────────
+
+  async reopenPostReport(
+    adminId: number,
+    reportId: number,
+    body: ReopenReportRequest,
+  ): Promise<ReopenReportResponse> {
+    await this.assertOperatorAdmin(adminId);
+
+    const report = await this.prisma.report.findUnique({
+      where: { id: reportId },
+      select: { id: true, status: true },
+    });
+
+    if (!report) {
+      throw new NotFoundException('신고를 찾을 수 없습니다.');
+    }
+
+    if (report.status === ReportStatus.PENDING) {
+      throw new BadRequestException('이미 PENDING 상태인 신고입니다.');
+    }
+
+    const now = new Date();
+    const updated = await this.prisma.report.update({
+      where: { id: reportId },
+      data: {
+        status: ReportStatus.PENDING,
+        reviewedAt: null,
+        reviewedById: null,
+        reviewReason: null,
+      },
+      select: { id: true, status: true },
+    });
+
+    await Promise.all([
+      this.logReportHistory({
+        targetType: ReportTargetType.POST_REPORT,
+        targetId: reportId,
+        actorId: adminId,
+        actionType: ReportHistoryActionType.REOPENED,
+        note: body.reason?.trim() || null,
+      }),
+      this.logAdminAction({
+        adminId,
+        targetType: AdminActionTargetType.POST_REPORT,
+        targetId: reportId,
+        actionType: AdminActionType.REOPENED,
+        reason: body.reason?.trim() || null,
+      }),
+    ]);
+
+    return {
+      reportId: updated.id,
+      status: 'PENDING',
+      reopenedAt: now.toISOString(),
+    };
+  }
+
+  // ─── 유저 신고 재오픈 (PATCH /admin/user-reports/:id/reopen) ─────────────────
+
+  async reopenUserReport(
+    adminId: number,
+    reportId: number,
+    body: ReopenReportRequest,
+  ): Promise<ReopenReportResponse> {
+    await this.assertOperatorAdmin(adminId);
+
+    const report = await this.prisma.userReport.findUnique({
+      where: { id: reportId },
+      select: { id: true, status: true },
+    });
+
+    if (!report) {
+      throw new NotFoundException('신고를 찾을 수 없습니다.');
+    }
+
+    if (report.status === ReportStatus.PENDING) {
+      throw new BadRequestException('이미 PENDING 상태인 신고입니다.');
+    }
+
+    const now = new Date();
+    const updated = await this.prisma.userReport.update({
+      where: { id: reportId },
+      data: {
+        status: ReportStatus.PENDING,
+        reviewedAt: null,
+        reviewedById: null,
+        reviewReason: null,
+      },
+      select: { id: true, status: true },
+    });
+
+    await Promise.all([
+      this.logReportHistory({
+        targetType: ReportTargetType.USER_REPORT,
+        targetId: reportId,
+        actorId: adminId,
+        actionType: ReportHistoryActionType.REOPENED,
+        note: body.reason?.trim() || null,
+      }),
+      this.logAdminAction({
+        adminId,
+        targetType: AdminActionTargetType.USER_REPORT,
+        targetId: reportId,
+        actionType: AdminActionType.REOPENED,
+        reason: body.reason?.trim() || null,
+      }),
+    ]);
+
+    return {
+      reportId: updated.id,
+      status: 'PENDING',
+      reopenedAt: now.toISOString(),
     };
   }
 
