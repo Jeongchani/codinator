@@ -1,12 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import type {
-  DeleteMeResponse,
-  GetMeResponse,
-  GetMyActivitySummaryResponse,
-} from '@codinator/contracts';
-import { clearAuthTokens, fetcher, getAuthHeaders } from '../../lib/api';
+import type { GetMeResponse, GetMyActivitySummaryResponse } from '@codinator/contracts';
+import { fetcher, getAuthHeaders } from '../../lib/api';
 import SideMenu from '../../components/SideMenu';
 import styles from './MyPage.module.css';
 
@@ -20,18 +16,6 @@ type ActivitySummaryState = {
   top10Count: number;
   myPostCount: number;
   votedPostCount: number;
-};
-
-type ConfirmModalProps = {
-  open: boolean;
-  title: string;
-  description?: string;
-  confirmText: string;
-  cancelText?: string;
-  confirmTone?: 'default' | 'danger';
-  onConfirm: () => void;
-  onClose: () => void;
-  loading?: boolean;
 };
 
 type PasswordModalProps = {
@@ -68,59 +52,6 @@ const verifyCurrentPassword = async (payload: {
     body: JSON.stringify(payload),
   });
 };
-
-const deleteMyAccount = async (): Promise<DeleteMeResponse> => {
-  return fetcher<DeleteMeResponse>('/users/me', {
-    method: 'DELETE',
-    headers: getAuthHeaders(),
-  });
-};
-
-function ConfirmModal({
-  open,
-  title,
-  description,
-  confirmText,
-  cancelText = '취소',
-  confirmTone = 'default',
-  onConfirm,
-  onClose,
-  loading = false,
-}: ConfirmModalProps) {
-  if (!open) {
-    return null;
-  }
-
-  return (
-    <div className={styles.modalOverlay} role="presentation" onClick={onClose}>
-      <div
-        className={styles.modalCard}
-        role="dialog"
-        aria-modal="true"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <h2 className={styles.modalTitle}>{title}</h2>
-        {description ? <p className={styles.modalDescription}>{description}</p> : null}
-
-        <div className={styles.modalButtonRow}>
-          <button type="button" className={styles.modalCancelButton} onClick={onClose}>
-            {cancelText}
-          </button>
-          <button
-            type="button"
-            className={
-              confirmTone === 'danger' ? styles.modalDangerButton : styles.modalConfirmButton
-            }
-            onClick={onConfirm}
-            disabled={loading}
-          >
-            {loading ? '처리 중...' : confirmText}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function PasswordModal({
   open,
@@ -192,7 +123,10 @@ const formatPhoneNumber = (value: string) => {
   }
 
   const middleLength = digits.length === 10 ? 3 : 4;
-  return `${digits.slice(0, 3)}-${digits.slice(3, 3 + middleLength)}-${digits.slice(3 + middleLength, 3 + middleLength + 4)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 3 + middleLength)}-${digits.slice(
+    3 + middleLength,
+    3 + middleLength + 4,
+  )}`;
 };
 
 export default function MyPage() {
@@ -215,9 +149,6 @@ export default function MyPage() {
   const [verifyPassword, setVerifyPassword] = useState('');
   const [verifyErrorMessage, setVerifyErrorMessage] = useState('');
   const [verifying, setVerifying] = useState(false);
-
-  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
-  const [withdrawing, setWithdrawing] = useState(false);
 
   useEffect(() => {
     const loadMyPage = async () => {
@@ -284,22 +215,6 @@ export default function MyPage() {
     }
   };
 
-  const handleWithdraw = async () => {
-    setWithdrawing(true);
-
-    try {
-      await deleteMyAccount();
-      clearAuthTokens();
-      navigate('/loginSelect', { replace: true });
-    } catch (error) {
-      console.error('회원 탈퇴 실패:', error);
-      window.alert(error instanceof Error ? error.message : '회원 탈퇴에 실패했습니다.');
-    } finally {
-      setWithdrawing(false);
-      setWithdrawModalOpen(false);
-    }
-  };
-
   return (
     <>
       <div className={styles.container}>
@@ -328,13 +243,7 @@ export default function MyPage() {
         </header>
 
         <main className={styles.contentArea}>
-          <section className={styles.nicknameSection}>
-            <strong className={styles.nicknameText}>
-              {loading ? '불러오는 중...' : profile.nickname || '닉네임'}
-            </strong>
-          </section>
-
-          <section className={styles.sectionBlock}>
+          <section className={styles.summarySection}>
             <h2 className={styles.sectionTitle}>내 활동 요약</h2>
 
             <div className={styles.summaryGrid}>
@@ -378,7 +287,7 @@ export default function MyPage() {
               <h2 className={styles.sectionTitle}>계정 정보</h2>
 
               <button type="button" className={styles.changeButton} onClick={handleOpenEdit}>
-                <span>변경하기</span>
+                <span>계정 정보 수정</span>
                 <ChevronRight size={18} strokeWidth={2.2} />
               </button>
             </div>
@@ -410,14 +319,6 @@ export default function MyPage() {
               </div>
             </div>
           </section>
-
-          <button
-            type="button"
-            className={styles.withdrawButton}
-            onClick={() => setWithdrawModalOpen(true)}
-          >
-            회원탈퇴
-          </button>
         </main>
       </div>
 
@@ -434,20 +335,6 @@ export default function MyPage() {
           setPasswordModalOpen(false);
         }}
         onConfirm={handleVerifyBeforeEdit}
-      />
-
-      <ConfirmModal
-        open={withdrawModalOpen}
-        title="회원탈퇴 하시겠습니까?"
-        description="탈퇴 후에는 계정을 복구할 수 없습니다."
-        confirmText="회원탈퇴"
-        confirmTone="danger"
-        loading={withdrawing}
-        onClose={() => {
-          if (withdrawing) return;
-          setWithdrawModalOpen(false);
-        }}
-        onConfirm={handleWithdraw}
       />
     </>
   );

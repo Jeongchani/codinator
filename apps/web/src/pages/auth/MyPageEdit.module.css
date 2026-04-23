@@ -29,7 +29,7 @@
 }
 
 .contentArea {
-  @apply flex-1 overflow-y-auto px-4 pb-4 pt-[18px];
+  @apply flex-1 overflow-y-auto px-4 pb-6 pt-[18px];
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -55,7 +55,7 @@
 }
 
 .inputRowBox {
-  @apply flex h-[52px] items-center gap-2 rounded-[18px] border border-[#cfc7c1] bg-white px-4;
+  @apply flex h-[52px] items-center gap-2 rounded-[18px] border border-[#cfc7c1] bg-white pl-4 pr-2;
 }
 
 .input {
@@ -70,12 +70,37 @@
   @apply text-[#a6a6a6];
 }
 
-.inlineButton {
-  @apply shrink-0 rounded-[10px] border border-[#a6a6a6] bg-white px-3 py-[8px] text-[13px] font-medium leading-4 text-[#171717];
+/* 공통 액션 버튼 베이스 */
+.fieldActionButton {
+  @apply shrink-0 rounded-[10px] border px-3 py-[8px] text-[13px] font-medium leading-4 transition-colors;
 }
 
-.inlineButton:disabled {
+.fieldActionButton:disabled {
   @apply cursor-not-allowed opacity-50;
+}
+
+.fieldActionButtonDisabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
+/* 중복 확인 버튼 */
+.nicknameCheckButton {
+  @apply ml-auto border-[#a6a6a6] bg-white text-[#171717];
+}
+
+/* 인증번호 발송 버튼 */
+.sendCodeButton {
+  @apply border-[#a6a6a6] bg-white text-[#171717];
+}
+
+/* 인증하기 버튼 */
+.verifyCodeButton {
+  @apply ml-auto border-[#a6a6a6] bg-white text-[#171717];
+}
+
+/* 재요청 버튼 - 다른 버튼과 라운드 동일 */
+.resendButton {
+  @apply rounded-[10px] border-[#d4cdc7] bg-white text-[#171717];
 }
 
 .helperText {
@@ -99,7 +124,7 @@
 }
 
 .phoneTopRow {
-  @apply flex min-h-[28px] items-center justify-between gap-2;
+  @apply flex min-h-[52px] items-center justify-between gap-2;
 }
 
 .sentText {
@@ -114,28 +139,24 @@
   @apply text-[12px] font-medium leading-4 text-[#7b7b7b];
 }
 
-.resendButton {
-  @apply rounded-[999px] border border-[#d4cdc7] bg-white px-3 py-[6px] text-[12px] font-medium leading-4 text-[#171717] transition-colors;
-}
-
-.resendButton:hover {
-  @apply bg-[#f5f5f5];
-}
-
-.resendButtonDisabled {
-  @apply cursor-not-allowed border-[#e1e1e1] text-[#b8b8b8];
-}
-
 .verificationRow {
-  @apply mt-3 flex h-[48px] items-center gap-2 rounded-[16px] border border-[#cfc7c1] bg-white px-4;
+  @apply mt-3 flex h-[52px] items-center gap-2 rounded-[16px] border border-[#cfc7c1] bg-white px-4;
 }
 
 .debugCodeText {
   @apply mt-1 text-[12px] leading-4 text-[#8a8a8a];
 }
 
-.submitArea {
-  @apply shrink-0 bg-[#f7f7f7] px-4 pb-4 pt-2;
+.actionSection {
+  @apply mt-5;
+}
+
+.withdrawButton {
+  @apply mb-3 ml-auto flex rounded-[10px] border border-[#efb3ab] bg-[#fff5f3] px-3 py-[8px] text-[13px] font-medium leading-4 text-[#dc4d36] transition-colors;
+}
+
+.withdrawButton:hover {
+  @apply bg-[#ffe9e5];
 }
 
 .submitButton {
@@ -174,6 +195,11 @@
   @apply h-12 flex-1 rounded-[14px] bg-black text-[15px] font-medium text-white;
 }
 
-.modalConfirmButton:disabled {
+.modalDangerButton {
+  @apply h-12 flex-1 rounded-[14px] bg-[#dc4d36] text-[15px] font-medium text-white;
+}
+
+.modalConfirmButton:disabled,
+.modalDangerButton:disabled {
   @apply cursor-not-allowed opacity-50;
 }

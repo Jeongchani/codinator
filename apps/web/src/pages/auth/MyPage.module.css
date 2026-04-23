@@ -11,25 +11,25 @@
 }
 
 .headerIconButton {
-  @apply absolute left-5 w-6 h-6 flex items-center justify-center text-[#7a7a7a] bg-transparent p-0 border-0;
+  @apply absolute left-5 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0 text-[#7a7a7a];
   top: 59px;
   transform: translateY(-50%);
 }
 
 .menuButton {
-  @apply absolute right-5 w-6 h-6 flex items-center justify-center text-[#7a7a7a] bg-transparent p-0 border-0;
+  @apply absolute right-5 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0 text-[#7a7a7a];
   top: 59px;
   transform: translateY(-50%);
 }
 
 .title {
-  @apply absolute left-1/2 -translate-x-1/2 text-[20px] font-semibold leading-7 text-black;
+  @apply absolute left-1/2 whitespace-nowrap text-[20px] font-semibold leading-7 text-black;
   top: 59px;
   transform: translate(-50%, -50%);
 }
 
 .contentArea {
-  @apply flex-1 overflow-y-auto px-4 pb-10 pt-[22px];
+  @apply flex-1 overflow-y-auto px-4 pb-10 pt-[12px];
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -38,16 +38,12 @@
   display: none;
 }
 
-.nicknameSection {
-  @apply flex items-center justify-center;
-}
-
-.nicknameText {
-  @apply text-center text-[32px] font-medium leading-[40px] text-black;
+.summarySection {
+  @apply mt-0;
 }
 
 .sectionBlock {
-  @apply mt-[40px];
+  @apply mt-[36px];
 }
 
 .sectionTitle {
@@ -98,10 +94,6 @@
   @apply h-px w-full bg-[#d2cbc4];
 }
 
-.withdrawButton {
-  @apply mt-[22px] ml-auto block border-0 bg-transparent p-0 text-[15px] font-medium leading-5 text-[#dc4d36];
-}
-
 .modalOverlay {
   @apply fixed inset-0 z-[200] flex items-center justify-center bg-black/45 px-6;
 }
@@ -146,11 +138,6 @@
   @apply h-12 flex-1 rounded-[14px] bg-black text-[15px] font-medium text-white;
 }
 
-.modalConfirmButton:disabled,
-.modalDangerButton:disabled {
+.modalConfirmButton:disabled {
   @apply cursor-not-allowed opacity-50;
-}
-
-.modalDangerButton {
-  @apply h-12 flex-1 rounded-[14px] bg-[#dc4d36] text-[15px] font-medium text-white;
 }
