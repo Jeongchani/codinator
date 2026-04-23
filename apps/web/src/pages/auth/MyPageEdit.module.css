@@ -55,11 +55,11 @@
 }
 
 .inputRowBox {
-  @apply flex h-[52px] items-center gap-2 rounded-[18px] border border-[#cfc7c1] bg-white pl-4 pr-2;
+  @apply flex h-[52px] items-center gap-[10px] rounded-[18px] border border-[#cfc7c1] bg-white pl-[14px] pr-[10px];
 }
 
 .input {
-  @apply w-full border-0 bg-transparent p-0 text-[15px] leading-5 text-[#111111] outline-none;
+  @apply min-w-0 flex-1 border-0 bg-transparent p-0 text-[15px] leading-5 text-[#111111] outline-none;
 }
 
 .input::placeholder {
@@ -70,9 +70,33 @@
   @apply text-[#a6a6a6];
 }
 
+.phoneCard {
+  @apply rounded-[18px] border border-[#cfc7c1] bg-white px-[10px] py-[10px];
+}
+
+.phoneCardExpanded {
+  @apply pb-[10px];
+}
+
+.phoneTopRow {
+  @apply flex h-[32px] items-center gap-[10px];
+}
+
+.verificationMetaRow {
+  @apply mt-3 flex items-center justify-between;
+}
+
+.timerText {
+  @apply text-[12px] font-medium leading-4 text-[#7b7b7b];
+}
+
+.verificationRow {
+  @apply mt-3 flex h-[52px] items-center gap-[10px] rounded-[18px] border border-[#cfc7c1] bg-white pl-[14px] pr-[10px];
+}
+
 /* 공통 액션 버튼 베이스 */
 .fieldActionButton {
-  @apply shrink-0 rounded-[10px] border px-3 py-[8px] text-[13px] font-medium leading-4 transition-colors;
+  @apply inline-flex h-[32px] shrink-0 items-center justify-center rounded-[10px] border px-[14px] text-[13px] font-medium leading-4 transition-colors;
 }
 
 .fieldActionButton:disabled {
@@ -83,24 +107,25 @@
   @apply cursor-not-allowed opacity-50;
 }
 
-/* 중복 확인 버튼 */
+/* 버튼별 스타일 */
 .nicknameCheckButton {
-  @apply ml-auto border-[#a6a6a6] bg-white text-[#171717];
+  @apply ml-auto border-[#d3ccc6] bg-white text-[#6a6a6a];
 }
 
-/* 인증번호 발송 버튼 */
 .sendCodeButton {
-  @apply border-[#a6a6a6] bg-white text-[#171717];
+  @apply ml-auto border-[#d3ccc6] bg-white text-[#6a6a6a];
 }
 
-/* 인증하기 버튼 */
 .verifyCodeButton {
-  @apply ml-auto border-[#a6a6a6] bg-white text-[#171717];
+  @apply ml-auto border-[#d3ccc6] bg-white text-[#171717];
 }
 
-/* 재요청 버튼 - 다른 버튼과 라운드 동일 */
 .resendButton {
-  @apply rounded-[10px] border-[#d4cdc7] bg-white text-[#171717];
+  @apply rounded-[10px] border-[#d3ccc6] bg-white text-[#171717];
+}
+
+.sentText {
+  @apply shrink-0 text-right text-[12px] leading-4 text-[#8a8a8a];
 }
 
 .helperText {
@@ -113,34 +138,6 @@
 
 .errorText {
   @apply text-[#dc4d36];
-}
-
-.phoneCard {
-  @apply rounded-[18px] border border-[#cfc7c1] bg-white px-4 py-3;
-}
-
-.phoneCardExpanded {
-  @apply pb-4;
-}
-
-.phoneTopRow {
-  @apply flex min-h-[52px] items-center justify-between gap-2;
-}
-
-.sentText {
-  @apply shrink-0 text-right text-[12px] leading-4 text-[#8a8a8a];
-}
-
-.verificationMetaRow {
-  @apply mt-3 flex items-center justify-between;
-}
-
-.timerText {
-  @apply text-[12px] font-medium leading-4 text-[#7b7b7b];
-}
-
-.verificationRow {
-  @apply mt-3 flex h-[52px] items-center gap-2 rounded-[16px] border border-[#cfc7c1] bg-white px-4;
 }
 
 .debugCodeText {
