@@ -11,7 +11,13 @@
 }
 
 .headerIconButton {
-  @apply absolute left-4 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0 text-black;
+  @apply absolute left-5 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0 text-[#7a7a7a];
+  top: 59px;
+  transform: translateY(-50%);
+}
+
+.cancelButton {
+  @apply absolute right-5 border-0 bg-transparent p-0 text-[15px] font-medium leading-5 text-black;
   top: 59px;
   transform: translateY(-50%);
 }
@@ -22,14 +28,8 @@
   transform: translate(-50%, -50%);
 }
 
-.cancelButton {
-  @apply absolute right-4 border-0 bg-transparent p-0 text-[15px] font-medium leading-5 text-black;
-  top: 59px;
-  transform: translateY(-50%);
-}
-
 .contentArea {
-  @apply flex-1 overflow-y-auto px-4 pb-4 pt-[14px];
+  @apply flex-1 overflow-y-auto px-4 pb-6 pt-[18px];
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -39,7 +39,7 @@
 }
 
 .sectionBlock {
-  @apply mt-[14px];
+  @apply mb-[18px];
 }
 
 .label {
@@ -47,19 +47,19 @@
 }
 
 .inputBox {
-  @apply flex h-[52px] items-center rounded-[16px] border border-[#cfc7c1] bg-white px-5;
-}
-
-.inputRowBox {
-  @apply flex h-[52px] items-center gap-2 rounded-[16px] border border-[#cfc7c1] bg-white px-4;
+  @apply flex h-[52px] items-center rounded-[18px] border border-[#cfc7c1] bg-white px-4;
 }
 
 .inputBoxDisabled {
   @apply bg-[#e8e8e8];
 }
 
+.inputRowBox {
+  @apply flex h-[52px] items-center gap-[10px] rounded-[18px] border border-[#cfc7c1] bg-white pl-[14px] pr-[10px];
+}
+
 .input {
-  @apply h-full w-full border-0 bg-transparent p-0 text-[15px] leading-5 text-[#111111] outline-none;
+  @apply min-w-0 flex-1 border-0 bg-transparent p-0 text-[15px] leading-5 text-[#111111] outline-none;
 }
 
 .input::placeholder {
@@ -70,16 +70,66 @@
   @apply text-[#a6a6a6];
 }
 
-.inlineButton {
-  @apply shrink-0 rounded-[10px] border border-[#a6a6a6] bg-white px-3 py-[8px] text-[13px] font-medium leading-4 text-[#171717];
+.phoneCard {
+  @apply rounded-[18px] border border-[#cfc7c1] bg-white px-[10px] py-[10px];
 }
 
-.inlineButton:disabled {
-  @apply cursor-not-allowed opacity-45;
+.phoneCardExpanded {
+  @apply pb-[10px];
+}
+
+.phoneTopRow {
+  @apply flex h-[32px] items-center gap-[10px];
+}
+
+.verificationMetaRow {
+  @apply mt-3 flex items-center justify-between;
+}
+
+.timerText {
+  @apply text-[12px] font-medium leading-4 text-[#7b7b7b];
+}
+
+.verificationRow {
+  @apply mt-3 flex h-[52px] items-center gap-[10px] rounded-[18px] border border-[#cfc7c1] bg-white pl-[14px] pr-[10px];
+}
+
+/* 공통 액션 버튼 베이스 */
+.fieldActionButton {
+  @apply inline-flex h-[32px] shrink-0 items-center justify-center rounded-[10px] border px-[14px] text-[13px] font-medium leading-4 transition-colors;
+}
+
+.fieldActionButton:disabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
+.fieldActionButtonDisabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
+/* 버튼별 스타일 */
+.nicknameCheckButton {
+  @apply ml-auto border-[#d3ccc6] bg-white text-[#6a6a6a];
+}
+
+.sendCodeButton {
+  @apply ml-auto border-[#d3ccc6] bg-white text-[#6a6a6a];
+}
+
+.verifyCodeButton {
+  @apply ml-auto border-[#d3ccc6] bg-white text-[#171717];
+}
+
+.resendButton {
+  @apply rounded-[10px] border-[#d3ccc6] bg-white text-[#171717];
+}
+
+.sentText {
+  @apply shrink-0 text-right text-[12px] leading-4 text-[#8a8a8a];
 }
 
 .helperText {
-  @apply mt-[6px] min-h-[16px] text-[12px] leading-4 text-[#a6a6a6];
+  @apply mt-2 min-h-[16px] text-[12px] leading-4 text-[#a6a6a6];
 }
 
 .successText {
@@ -90,36 +140,28 @@
   @apply text-[#dc4d36];
 }
 
-.phoneCard {
-  @apply rounded-[16px] border border-[#cfc7c1] bg-white px-4 py-3;
+.debugCodeText {
+  @apply mt-1 text-[12px] leading-4 text-[#8a8a8a];
 }
 
-.phoneCardExpanded {
-  @apply pb-3;
+.actionSection {
+  @apply mt-5;
 }
 
-.phoneTopRow {
-  @apply flex h-[26px] items-center gap-2;
+.withdrawButton {
+  @apply mb-3 ml-auto flex rounded-[10px] border border-[#efb3ab] bg-[#fff5f3] px-3 py-[8px] text-[13px] font-medium leading-4 text-[#dc4d36] transition-colors;
 }
 
-.sentText {
-  @apply shrink-0 text-right text-[12px] leading-4 text-[#a6a6a6];
-}
-
-.verificationRow {
-  @apply mt-3 flex h-[48px] items-center gap-2 rounded-[14px] border border-[#cfc7c1] bg-white px-4;
-}
-
-.submitArea {
-  @apply shrink-0 bg-[#f7f7f7] px-4 pb-4 pt-2;
+.withdrawButton:hover {
+  @apply bg-[#ffe9e5];
 }
 
 .submitButton {
-  @apply flex h-[54px] w-full items-center justify-center rounded-[16px] bg-black text-[20px] font-semibold leading-7 text-white;
+  @apply h-[54px] w-full rounded-[18px] border-0 bg-black text-[20px] font-semibold leading-7 text-white;
 }
 
 .submitButtonDisabled {
-  @apply cursor-not-allowed bg-[#b9b9b9] text-white;
+  @apply cursor-not-allowed bg-[#bdbdbd] text-white;
 }
 
 .modalOverlay {
@@ -150,6 +192,11 @@
   @apply h-12 flex-1 rounded-[14px] bg-black text-[15px] font-medium text-white;
 }
 
-.modalConfirmButton:disabled {
+.modalDangerButton {
+  @apply h-12 flex-1 rounded-[14px] bg-[#dc4d36] text-[15px] font-medium text-white;
+}
+
+.modalConfirmButton:disabled,
+.modalDangerButton:disabled {
   @apply cursor-not-allowed opacity-50;
 }

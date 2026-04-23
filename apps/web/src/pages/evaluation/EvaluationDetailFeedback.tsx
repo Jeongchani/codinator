@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Bookmark, Siren, Tag, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -17,6 +17,7 @@ import {
   isAuthError,
   subscribeBookmarkUpdated,
   togglePostBookmark,
+  resolveAssetUrl,
 } from '../../lib/api';
 import Reports from '../../components/Reports';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
@@ -36,7 +37,31 @@ type EvaluationDetailFeedbackProps = {
   voteIdOverride?: number | null;
   voteChoiceOverride?: VoteChoice | null;
   allowReadonlyDetail?: boolean;
+  hideFeedbackSectionOverride?: boolean;
 };
+
+type OutfitItem = NonNullable<GetEvaluationPostDetailResponse['outfitItems']>[number];
+
+function getPrimaryEvaluationImageUrl(data: GetEvaluationPostDetailResponse | null): string {
+  if (!data || !Array.isArray(data.images) || data.images.length === 0) {
+    return '';
+  }
+
+  const primaryImage =
+    data.images.find((image) => image?.isPrimary) ??
+    [...data.images].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
+
+  if (!primaryImage) {
+    return '';
+  }
+
+  return resolveAssetUrl(
+    primaryImage.processedImageUrl ??
+      primaryImage.originalImageUrl ??
+      primaryImage.thumbnailUrl ??
+      '',
+  );
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -284,6 +309,131 @@ function FeedbackPanel({
   );
 }
 
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+const OUTFIT_CARD_WIDTH = 168;
+const OUTFIT_CARD_GAP = 12;
+
+function OutfitItemsCarousel({ outfitItems }: { outfitItems: OutfitItem[] }) {
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const maxIndex = Math.max(0, outfitItems.length - 1);
+  const step = OUTFIT_CARD_WIDTH + OUTFIT_CARD_GAP;
+
+  const getSnapPoints = useCallback(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) {
+      return outfitItems.map((_, index) => index * step);
+    }
+
+    const maxScrollLeft = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+    return outfitItems.map((_, index) => Math.min(index * step, maxScrollLeft));
+  }, [outfitItems, step]);
+
+  const updateActiveIndex = useCallback(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const currentLeft = viewport.scrollLeft;
+    const snapPoints = getSnapPoints();
+
+    let nearestIndex = 0;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    snapPoints.forEach((point, index) => {
+      const distance = Math.abs(point - currentLeft);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    });
+
+    setActiveIndex(nearestIndex);
+  }, [getSnapPoints]);
+
+  useEffect(() => {
+    const rafId = window.requestAnimationFrame(() => {
+      updateActiveIndex();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [outfitItems.length, updateActiveIndex]);
+
+  const goTo = useCallback(
+    (index: number) => {
+      const viewport = viewportRef.current;
+      if (!viewport) return;
+
+      const targetIndex = clamp(index, 0, maxIndex);
+      const snapPoints = getSnapPoints();
+      viewport.scrollTo({
+        left: snapPoints[targetIndex] ?? 0,
+        behavior: 'smooth',
+      });
+    },
+    [getSnapPoints, maxIndex],
+  );
+
+  if (outfitItems.length === 0) {
+    return <div className={styles.emptyText}>등록된 아이템이 없습니다.</div>;
+  }
+
+  return (
+    <div className={styles.outfitCarousel}>
+      <div ref={viewportRef} className={styles.outfitCarouselViewport} onScroll={updateActiveIndex}>
+        <div className={styles.outfitCarouselTrack} style={{ gap: `${OUTFIT_CARD_GAP}px` }}>
+          {outfitItems.map((item, index) => (
+            <div
+              key={item.id ?? index}
+              className={styles.outfitCarouselItem}
+              style={{ width: `${OUTFIT_CARD_WIDTH}px` }}
+            >
+              <div className={styles.outfitCard}>
+                <div className={`${styles.outfitField} ${styles.outfitCategoryField}`}>
+                  <div className={styles.outfitCategoryInner}>
+                    <Tag size={13} strokeWidth={2} className={styles.outfitCategoryIcon} />
+                    <span className={styles.outfitFieldValue}>
+                      {formatCategoryLabel(item.category)}
+                    </span>
+                  </div>
+                </div>
+                <div className={styles.outfitField}>
+                  <span className={styles.outfitFieldValue}>{item.brand || '브랜드 미등록'}</span>
+                </div>
+                <div className={styles.outfitField}>
+                  <span className={styles.outfitFieldValue}>
+                    {item.itemName || '상품 이름 미등록'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {outfitItems.length > 1 ? (
+        <div className={styles.outfitCarouselDots}>
+          {outfitItems.map((item, index) => {
+            const label = item.itemName?.trim() || `${index + 1}번 아이템`;
+            return (
+              <button
+                key={item.id ?? `${label}-${index}`}
+                type="button"
+                aria-label={`${label} 카드로 이동`}
+                onClick={() => goTo(index)}
+                className={`${styles.outfitCarouselDot} ${
+                  activeIndex === index ? styles.outfitCarouselDotActive : ''
+                }`}
+              />
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 function EvaluationDetailFeedbackContent({
@@ -291,11 +441,15 @@ function EvaluationDetailFeedbackContent({
   voteId,
   voteChoice,
   allowReadonlyDetail = false,
+  hideFeedbackSection = false,
+  onHeroImageChange,
 }: {
   postId: number | null;
   voteId: number | null;
   voteChoice: VoteChoice | null;
   allowReadonlyDetail?: boolean;
+  hideFeedbackSection?: boolean;
+  onHeroImageChange?: (url: string) => void;
 }) {
   const navigate = useNavigate();
 
@@ -314,6 +468,7 @@ function EvaluationDetailFeedbackContent({
 
   const canWriteFeedback = Boolean(postId && voteId && voteChoice);
   const isReadOnlyDetail = Boolean(postId) && allowReadonlyDetail && !canWriteFeedback;
+  const shouldLoadTags = canWriteFeedback && !hideFeedbackSection;
 
   const requestDetail = useCallback(async () => {
     if (!postId) throw new Error('게시글 정보가 없습니다.');
@@ -341,8 +496,7 @@ function EvaluationDetailFeedbackContent({
         return await requestDetail();
       } catch (err) {
         lastError = err;
-        const message =
-          err instanceof Error ? err.message : '평가 상세를 불러오지 못했습니다.';
+        const message = err instanceof Error ? err.message : '평가 상세를 불러오지 못했습니다.';
 
         if (isAuthError(message)) {
           throw err;
@@ -354,9 +508,7 @@ function EvaluationDetailFeedbackContent({
       }
     }
 
-    throw lastError instanceof Error
-      ? lastError
-      : new Error('평가 상세를 불러오지 못했습니다.');
+    throw lastError instanceof Error ? lastError : new Error('평가 상세를 불러오지 못했습니다.');
   }, [canWriteFeedback, requestDetail]);
 
   const loadDetail = useCallback(async () => {
@@ -386,9 +538,7 @@ function EvaluationDetailFeedbackContent({
       const message = err instanceof Error ? err.message : '평가 상세를 불러오지 못했습니다.';
       setData(null);
       setDetailError(
-        message.includes('403')
-          ? '이 게시글은 아직 평가 상세를 바로 열 수 없습니다.'
-          : message,
+        message.includes('403') ? '이 게시글은 아직 평가 상세를 바로 열 수 없습니다.' : message,
       );
 
       if (isAuthError(message)) {
@@ -401,7 +551,7 @@ function EvaluationDetailFeedbackContent({
   }, [allowReadonlyDetail, canWriteFeedback, navigate, postId, requestDetailWithRetry]);
 
   const loadTags = useCallback(async () => {
-    if (!voteChoice) {
+    if (!shouldLoadTags || !voteChoice) {
       setKeywords([]);
       setTagLoading(false);
       return;
@@ -411,9 +561,12 @@ function EvaluationDetailFeedbackContent({
       setTagLoading(true);
       setTagError('');
 
-      const response = await fetcher<GetTagsResponse>(`/evaluations/tags?voteChoice=${voteChoice}`, {
-        headers: getAuthHeaders(),
-      });
+      const response = await fetcher<GetTagsResponse>(
+        `/evaluations/tags?voteChoice=${voteChoice}`,
+        {
+          headers: getAuthHeaders(),
+        },
+      );
 
       setKeywords(response.items ?? []);
     } catch (err) {
@@ -427,7 +580,7 @@ function EvaluationDetailFeedbackContent({
     } finally {
       setTagLoading(false);
     }
-  }, [navigate, voteChoice]);
+  }, [navigate, shouldLoadTags, voteChoice]);
 
   useEffect(() => {
     void loadDetail();
@@ -454,6 +607,11 @@ function EvaluationDetailFeedbackContent({
 
     return unsubscribe;
   }, [postId]);
+
+  useEffect(() => {
+    if (!onHeroImageChange) return;
+    onHeroImageChange(getPrimaryEvaluationImageUrl(data));
+  }, [data, onHeroImageChange]);
 
   const handleToggleBookmark = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -547,7 +705,9 @@ function EvaluationDetailFeedbackContent({
   }
 
   if (!data) {
-    return <div className={styles.loadingBox}>{detailError || '평가 상세를 불러올 수 없습니다.'}</div>;
+    return (
+      <div className={styles.loadingBox}>{detailError || '평가 상세를 불러올 수 없습니다.'}</div>
+    );
   }
 
   return (
@@ -622,137 +782,118 @@ function EvaluationDetailFeedbackContent({
           </div>
         </section>
 
-        <div className={styles.sectionDivider} />
-        <section className={styles.sectionBlock}>
-          <div className={styles.sectionHeaderRow}>
-            <h3 className={styles.sectionTitle}>피드백</h3>
-          </div>
+        {!hideFeedbackSection ? (
+          <>
+            <div className={styles.sectionDivider} />
+            <section className={styles.sectionBlock}>
+              <div className={styles.sectionHeaderRow}>
+                <h3 className={styles.sectionTitle}>피드백</h3>
+              </div>
 
-          {canWriteFeedback ? (
-            <div
-              className={`${styles.feedbackComposerCard} ${
-                savedKeywordIds.length > 0
-                  ? styles.feedbackComposerCardFlat
-                  : styles.feedbackComposerCardRaised
-              } ${
-                voteChoice === 'LIKE'
-                  ? styles.feedbackComposerCardLike
-                  : voteChoice === 'DISLIKE'
-                    ? styles.feedbackComposerCardDislike
-                    : ''
-              }`}
-            >
-              {tagLoading ? (
-                <div className={styles.feedbackEmptyBox}>피드백 항목을 불러오는 중...</div>
-              ) : tagError && keywords.length === 0 ? (
-                <div className={styles.feedbackErrorText}>{tagError}</div>
-              ) : keywords.length > 0 ? (
-                <div className={styles.feedbackSelectGrid}>
-                  {keywords.map((keyword) => {
-                    const isSelected = selectedKeywordIds.has(keyword.id);
-                    const isMaxReached = selectedKeywordIds.size >= 3 && !isSelected;
-
-                    return (
-                      <button
-                        key={keyword.id}
-                        type="button"
-                        onClick={() => handleKeywordClick(keyword.id)}
-                        disabled={savedKeywordIds.length > 0 || isMaxReached}
-                        className={`${styles.selectChip} ${
-                          isSelected ? styles.selectChipSelected : ''
-                        } ${
-                          isSelected && voteChoice === 'LIKE'
-                            ? styles.selectChipSelectedLike
-                            : ''
-                        } ${
-                          isSelected && voteChoice === 'DISLIKE'
-                            ? styles.selectChipSelectedDislike
-                            : ''
-                        }`}
-                      >
-                        {keyword.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className={styles.feedbackEmptyBox}>선택 가능한 피드백 항목이 없습니다.</div>
-              )}
-
-              {savedKeywordIds.length > 0 ? (
-                <p className={styles.feedbackSavedText}>피드백이 저장되었습니다.</p>
-              ) : (
-                <p className={styles.feedbackHintText}>
-                  최대 3개까지 선택할 수 있어요. ({selectedKeywordIds.size}/3)
-                </p>
-              )}
-
-              {tagError && keywords.length > 0 ? (
-                <p className={styles.feedbackErrorText}>{tagError}</p>
-              ) : null}
-
-              <div className={styles.feedbackCompleteInset}>
-                <button
-                  type="button"
-                  onClick={handleSaveFeedback}
-                  disabled={saveButtonDisabled}
-                  className={`${styles.feedbackCompleteButton} ${
-                    saveButtonDisabled ? styles.feedbackCompleteButtonDisabled : ''
+              {canWriteFeedback ? (
+                <div
+                  className={`${styles.feedbackComposerCard} ${
+                    savedKeywordIds.length > 0
+                      ? styles.feedbackComposerCardFlat
+                      : styles.feedbackComposerCardRaised
+                  } ${
+                    voteChoice === 'LIKE'
+                      ? styles.feedbackComposerCardLike
+                      : voteChoice === 'DISLIKE'
+                        ? styles.feedbackComposerCardDislike
+                        : ''
                   }`}
                 >
-                  {submitting ? '저장 중...' : '피드백 완료'}
-                </button>
-              </div>
-            </div>
-          ) : null}
+                  {tagLoading ? (
+                    <div className={styles.feedbackEmptyBox}>피드백 항목을 불러오는 중...</div>
+                  ) : tagError && keywords.length === 0 ? (
+                    <div className={styles.feedbackErrorText}>{tagError}</div>
+                  ) : keywords.length > 0 ? (
+                    <div className={styles.feedbackSelectGrid}>
+                      {keywords.map((keyword) => {
+                        const isSelected = selectedKeywordIds.has(keyword.id);
+                        const isMaxReached = selectedKeywordIds.size >= 3 && !isSelected;
 
-          <div className={styles.feedbackPanelsWrap}>
-            <FeedbackPanel
-              title="좋아요"
-              side="LIKE"
-              count={structuredFeedback.likeTotalCount}
-              rows={structuredFeedback.likeRows}
-            />
-            <FeedbackPanel
-              title="싫어요"
-              side="DISLIKE"
-              count={structuredFeedback.dislikeTotalCount}
-              rows={structuredFeedback.dislikeRows}
-            />
-          </div>
-        </section>
+                        return (
+                          <button
+                            key={keyword.id}
+                            type="button"
+                            onClick={() => handleKeywordClick(keyword.id)}
+                            disabled={savedKeywordIds.length > 0 || isMaxReached}
+                            className={`${styles.selectChip} ${
+                              isSelected ? styles.selectChipSelected : ''
+                            } ${
+                              isSelected && voteChoice === 'LIKE'
+                                ? styles.selectChipSelectedLike
+                                : ''
+                            } ${
+                              isSelected && voteChoice === 'DISLIKE'
+                                ? styles.selectChipSelectedDislike
+                                : ''
+                            }`}
+                          >
+                            {keyword.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className={styles.feedbackEmptyBox}>
+                      선택 가능한 피드백 항목이 없습니다.
+                    </div>
+                  )}
+
+                  {savedKeywordIds.length > 0 ? (
+                    <p className={styles.feedbackSavedText}>피드백이 저장되었습니다.</p>
+                  ) : (
+                    <p className={styles.feedbackHintText}>
+                      최대 3개까지 선택할 수 있어요. ({selectedKeywordIds.size}/3)
+                    </p>
+                  )}
+
+                  {tagError && keywords.length > 0 ? (
+                    <p className={styles.feedbackErrorText}>{tagError}</p>
+                  ) : null}
+
+                  <div className={styles.feedbackCompleteInset}>
+                    <button
+                      type="button"
+                      onClick={handleSaveFeedback}
+                      disabled={saveButtonDisabled}
+                      className={`${styles.feedbackCompleteButton} ${
+                        saveButtonDisabled ? styles.feedbackCompleteButtonDisabled : ''
+                      }`}
+                    >
+                      {submitting ? '저장 중...' : '피드백 완료'}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className={styles.feedbackPanelsWrap}>
+                <FeedbackPanel
+                  title="좋아요"
+                  side="LIKE"
+                  count={structuredFeedback.likeTotalCount}
+                  rows={structuredFeedback.likeRows}
+                />
+                <FeedbackPanel
+                  title="싫어요"
+                  side="DISLIKE"
+                  count={structuredFeedback.dislikeTotalCount}
+                  rows={structuredFeedback.dislikeRows}
+                />
+              </div>
+            </section>
+          </>
+        ) : null}
 
         <div className={styles.sectionDivider} />
         <section className={styles.sectionBlock}>
           <div className={styles.outfitHeaderRow}>
             <h3 className={styles.outfitTitle}>착용 아이템</h3>
           </div>
-          <div className={styles.itemScroll}>
-            {outfitItems.length > 0 ? (
-              outfitItems.map((item, index) => (
-                <div key={item.id ?? index} className={styles.outfitCard}>
-                  <div className={`${styles.outfitField} ${styles.outfitCategoryField}`}>
-                    <div className={styles.outfitCategoryInner}>
-                      <Tag size={13} strokeWidth={2} className={styles.outfitCategoryIcon} />
-                      <span className={styles.outfitFieldValue}>
-                        {formatCategoryLabel(item.category)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className={styles.outfitField}>
-                    <span className={styles.outfitFieldValue}>{item.brand || '브랜드 미등록'}</span>
-                  </div>
-                  <div className={styles.outfitField}>
-                    <span className={styles.outfitFieldValue}>
-                      {item.itemName || '상품 이름 미등록'}
-                    </span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className={styles.emptyText}>등록된 아이템이 없습니다.</div>
-            )}
-          </div>
+          <OutfitItemsCarousel outfitItems={outfitItems} />
         </section>
 
         {detailError ? <p className={styles.feedbackErrorText}>{detailError}</p> : null}
@@ -775,6 +916,7 @@ const EvaluationDetailFeedback: React.FC<EvaluationDetailFeedbackProps> = ({
   voteIdOverride,
   voteChoiceOverride,
   allowReadonlyDetail = false,
+  hideFeedbackSectionOverride = false,
 }) => {
   const navigate = useNavigate();
   const { postId } = useParams();
@@ -789,6 +931,7 @@ const EvaluationDetailFeedback: React.FC<EvaluationDetailFeedbackProps> = ({
   const rawVoteChoice = embedded ? voteChoiceOverride : searchParams.get('voteChoice');
   const voteChoice: VoteChoice | null =
     rawVoteChoice === 'LIKE' || rawVoteChoice === 'DISLIKE' ? rawVoteChoice : null;
+  const [heroImageUrl, setHeroImageUrl] = useState('');
 
   if (embedded) {
     return (
@@ -797,18 +940,40 @@ const EvaluationDetailFeedback: React.FC<EvaluationDetailFeedbackProps> = ({
         voteId={voteId}
         voteChoice={voteChoice}
         allowReadonlyDetail={allowReadonlyDetail}
+        hideFeedbackSection={Boolean(hideFeedbackSectionOverride)}
       />
     );
   }
 
   return (
     <div className={styles.container}>
+      <div className={styles.heroSection}>
+        <div className={styles.heroMediaFrame}>
+          {heroImageUrl ? (
+            <img
+              src={heroImageUrl}
+              alt="평가 기록 게시글 이미지"
+              className={styles.heroImage}
+              draggable={false}
+            />
+          ) : (
+            <div className={styles.heroPlaceholder}>
+              <p className={styles.heroPlaceholderText}>이미지를 불러오는 중입니다.</p>
+            </div>
+          )}
+          <div className={styles.heroTopFade} />
+          <div className={styles.heroBottomFade} />
+        </div>
+      </div>
+
       <PostDetailBottomSheet isOpen onCloseRequest={() => navigate(-1)}>
         <EvaluationDetailFeedbackContent
           postId={numericPostId}
           voteId={voteId}
           voteChoice={voteChoice}
           allowReadonlyDetail={allowReadonlyDetail}
+          hideFeedbackSection
+          onHeroImageChange={setHeroImageUrl}
         />
       </PostDetailBottomSheet>
     </div>

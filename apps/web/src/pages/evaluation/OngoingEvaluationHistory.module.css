@@ -1,5 +1,8 @@
 .container {
-  @apply w-[375px] h-[812px] mx-auto bg-white relative overflow-hidden;
+  @apply w-full max-w-[375px] h-[812px] mx-auto bg-white relative overflow-hidden;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
 }
 
 .deleteMode {
@@ -28,7 +31,7 @@
 }
 
 .headerTextButton {
-  @apply absolute right-4 flex items-center justify-center rounded-[999px] border-0 px-[8px] h-[30px] text-[11px] font-medium text-white;
+  @apply absolute right-4 flex items-center justify-center rounded-[999px] border-0 px-[10px] h-[30px] text-[11px] font-medium text-white;
   top: 59px;
   transform: translateY(-50%);
   background: rgba(0, 0, 0, 0.62);
@@ -40,6 +43,10 @@
     box-shadow 140ms ease;
 }
 
+.headerTextButton:disabled {
+  opacity: 0.74;
+}
+
 .headerTextButtonPressed {
   transform: translateY(-50%) scale(0.96);
   opacity: 0.94;
@@ -49,7 +56,7 @@
 
 .banner {
   @apply absolute left-0 top-[105px] overflow-hidden;
-  width: 375px;
+  width: 100%;
   height: 120px;
   background: #e5e5e5;
 }
@@ -60,43 +67,16 @@
   object-position: center;
 }
 
-.bannerOverlay {
-  @apply absolute inset-0;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.92) 0%,
-    rgba(255, 255, 255, 0.84) 28%,
-    rgba(255, 255, 255, 0.46) 58%,
-    rgba(255, 255, 255, 0.08) 100%
-  );
-}
-
-.bannerContent {
-  @apply absolute inset-0 z-[2] flex flex-col justify-between text-left;
-  padding: 24px 16px;
-  box-sizing: border-box;
-}
-
-.bannerLabel {
-  @apply m-0 text-[12px] leading-4 font-normal text-neutral-900 whitespace-nowrap;
-}
-
-.bannerTitle {
-  @apply m-0 text-[20px] leading-7 font-bold text-neutral-900 whitespace-nowrap;
-  letter-spacing: -0.02em;
-}
-
-.bannerDescription {
-  @apply m-0 text-[12px] leading-4 font-normal text-neutral-900 whitespace-nowrap;
-}
-
 .contentArea {
   @apply absolute left-0 w-full overflow-y-auto px-4 z-10;
   top: 237px;
   bottom: 0;
-  padding-bottom: 16px;
+  padding-bottom: 20px;
   -ms-overflow-style: none;
   scrollbar-width: none;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
 }
 
 .contentAreaDeleteMode {
@@ -108,15 +88,28 @@
   display: none;
 }
 
+.groupList {
+  @apply flex flex-col gap-[18px] pb-8;
+}
+
+.groupSection {
+  @apply w-full;
+}
+
+.groupTitle {
+  @apply m-0 mb-[10px] text-[16px] leading-[20px] font-bold text-black;
+}
+
 .cardGrid {
-  @apply grid grid-cols-3 gap-x-[9px] gap-y-[12px] pb-8;
+  @apply grid grid-cols-3 gap-x-[9px] gap-y-[12px];
 }
 
 .card {
-  @apply relative w-full aspect-[109/152] rounded-[10px] overflow-hidden bg-[#dddddd] border-0 p-0 select-none;
+  @apply relative w-full aspect-[109/152] rounded-[10px] overflow-hidden bg-[#dddddd] border-0 p-0 text-left;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+  overscroll-behavior-x: none;
 }
 
 .cardImage {
@@ -124,12 +117,35 @@
 }
 
 .cardImageFallback {
-  @apply absolute inset-0 flex items-center justify-center text-[12px] text-neutral-400 bg-[#f3f3f3];
+  @apply absolute inset-0 flex items-center justify-center px-3 text-center text-[12px] leading-[16px] text-neutral-500 bg-[#f3f3f3];
+}
+
+.cardTopRow {
+  @apply absolute left-[8px] right-[8px] top-[8px] z-10 flex items-start justify-start;
+}
+
+.choiceBadge {
+  @apply inline-flex items-center justify-center rounded-full text-white;
+  width: 20px;
+  height: 20px;
+}
+
+.choiceBadgeLike {
+  background: rgba(244, 125, 114, 0.78);
+}
+
+.choiceBadgeDislike {
+  background: rgba(140, 149, 181, 0.78);
+}
+
+.choiceBadgeIcon {
+  width: 10px;
+  height: 10px;
 }
 
 .cardGradient {
-  @apply absolute left-0 right-0 bottom-0 h-16;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.25) 100%);
+  @apply absolute left-0 right-0 bottom-0 h-[54px];
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.68) 100%);
 }
 
 .cardSelected {
@@ -142,15 +158,32 @@
 }
 
 .selectionDot {
-  @apply absolute left-[8px] top-[8px] z-10 w-5 h-5 rounded-full bg-[#6f6f6f] flex items-center justify-center text-transparent;
+  @apply absolute right-[8px] top-[8px] z-10 w-5 h-5 rounded-full bg-[#6f6f6f] flex items-center justify-center text-transparent;
 }
 
 .selectionDotSelected {
   @apply bg-black text-white;
 }
 
+.stateBox {
+  @apply w-full min-h-[220px] flex flex-col items-center justify-center px-6 text-center;
+}
+
+.stateTitle {
+  @apply m-0 text-[14px] leading-[20px] font-medium text-neutral-700;
+}
+
+.stateDescription {
+  @apply mt-2 m-0 text-[12px] leading-[18px] text-neutral-500;
+}
+
+.retryButton {
+  @apply mt-4 inline-flex items-center justify-center rounded-[999px] border-0 px-4 h-[36px] text-[12px] font-semibold text-white;
+  background: #111111;
+}
+
 .emptyState {
-  @apply w-full h-full flex items-center justify-center text-sm text-neutral-500 pt-20;
+  @apply w-full min-h-[220px] flex items-center justify-center text-sm text-neutral-500 text-center px-6;
 }
 
 .modalOverlay {
@@ -282,4 +315,98 @@
 
 .selectionActionIconSvg {
   @apply w-[16px] h-[16px] text-white;
+}
+
+.focusOverlay {
+  @apply absolute inset-0 z-[120] overflow-hidden bg-neutral-300;
+}
+
+.focusImageSection {
+  @apply absolute inset-0 bg-cover bg-center bg-no-repeat;
+}
+
+.focusTopGradient {
+  @apply absolute top-0 left-0 w-full h-28;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.36) 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+.focusBottomGradient {
+  @apply absolute bottom-0 left-0 w-full h-48;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+.focusOverlayLayer {
+  @apply absolute inset-0 z-20 pointer-events-none;
+}
+
+.focusTopBar {
+  @apply absolute top-[32px] left-5 right-5 z-30 flex items-center justify-between;
+}
+
+.focusBackButton {
+  @apply h-8 w-8 rounded-full border-0 flex items-center justify-center pointer-events-auto;
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+}
+
+.focusTopBarPlaceholder {
+  @apply h-8 w-[54px];
+}
+
+.focusVoteGraphArea {
+  @apply absolute left-[22px] right-[22px] top-[703px] z-30 pointer-events-none;
+}
+
+.focusProgressTrack {
+  @apply relative h-[30px] px-2.5 py-[5px] rounded-[10px] inline-flex justify-start items-center gap-[5px] overflow-hidden w-full;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
+}
+
+.focusLikeFill {
+  @apply absolute left-0 top-0 h-full;
+  background: rgba(234, 138, 120, 0.82);
+}
+
+.focusDislikeFill {
+  @apply absolute right-0 top-0 h-full;
+  background: rgba(174, 178, 214, 0.78);
+}
+
+.focusLeftPercent,
+.focusRightPercent {
+  @apply absolute top-1/2 -translate-y-1/2 flex items-center text-white text-[11px] font-semibold leading-none;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+
+.focusLeftPercent {
+  @apply left-[12px] gap-[6px];
+}
+
+.focusRightPercent {
+  @apply right-[12px] gap-[6px];
+}
+
+.focusDetailButtonWrap {
+  @apply absolute left-1/2 top-[747px] -translate-x-1/2 z-30;
+}
+
+.focusDetailButton {
+  @apply flex items-center justify-center gap-2 border-0 bg-transparent px-0 py-0 text-[18px] font-semibold pointer-events-auto;
+  color: rgba(232, 232, 232, 0.82);
+  text-shadow:
+    0 0 10px rgba(255, 255, 255, 0.12),
+    0 6px 16px rgba(0, 0, 0, 0.22);
+}
+
+.focusDetailButton:active {
+  opacity: 0.72;
+}
+
+.focusDetailIcon {
+  @apply flex items-center justify-center;
 }

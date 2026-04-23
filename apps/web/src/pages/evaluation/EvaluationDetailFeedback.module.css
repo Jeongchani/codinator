@@ -1,5 +1,15 @@
 .container {
-  @apply w-[375px] h-[812px] mx-auto overflow-hidden bg-white;
+  @apply w-[375px] h-[812px] mx-auto overflow-hidden bg-white relative;
+}
+
+.heroTopFade {
+  @apply absolute left-0 top-0 w-full h-28 pointer-events-none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.22) 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+.heroBottomFade {
+  @apply absolute left-0 bottom-0 w-full h-40 pointer-events-none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.16) 100%);
 }
 
 .scrollArea {
@@ -366,35 +376,55 @@
   @apply text-[18px] leading-[22px] font-bold text-neutral-900;
 }
 
-.itemScroll {
-  @apply flex overflow-x-auto;
-  gap: 12px;
-  padding: 2px 0 16px 0;
-  margin-bottom: 2px;
-  scroll-snap-type: x proximity;
-  scroll-padding-left: 0;
+.outfitCarousel {
+  @apply w-full;
+}
+
+.outfitCarouselViewport {
+  @apply w-full overflow-x-auto overflow-y-hidden;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(140, 149, 181, 0.8) rgba(0, 0, 0, 0.08);
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  user-select: none;
+  -webkit-user-select: none;
+  padding-bottom: 2px;
 }
 
-.itemScroll::-webkit-scrollbar {
-  display: block;
-  height: 6px;
+.outfitCarouselViewport::-webkit-scrollbar {
+  display: none;
 }
 
-.itemScroll::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.08);
-  border-radius: 999px;
+.outfitCarouselTrack {
+  @apply flex;
+  width: max-content;
+  min-width: 100%;
 }
 
-.itemScroll::-webkit-scrollbar-thumb {
-  background: rgba(140, 149, 181, 0.8);
-  border-radius: 999px;
+.outfitCarouselItem {
+  @apply shrink-0;
 }
 
-.itemScroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(140, 149, 181, 0.95);
+.outfitCarouselDots {
+  @apply flex items-center justify-center gap-2;
+  margin-top: 10px;
+  margin-bottom: 2px;
+}
+
+.outfitCarouselDot {
+  @apply h-[6px] w-[6px] rounded-full border-0 p-0;
+  background: rgba(140, 149, 181, 0.34);
+  transition:
+    width 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.outfitCarouselDotActive {
+  width: 22px;
+  background: rgba(140, 149, 181, 0.96);
 }
 
 .outfitCard {
@@ -404,7 +434,6 @@
   background: #f5f5f5;
   border: 1px solid #e7e7e7;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  scroll-snap-align: start;
   margin-bottom: 4px;
 }
 

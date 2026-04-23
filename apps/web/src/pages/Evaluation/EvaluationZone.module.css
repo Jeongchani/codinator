@@ -30,34 +30,41 @@
 }
 
 .topGradient {
-  @apply absolute top-0 left-0 w-full h-28 bg-gradient-to-b from-black/45 to-transparent;
+  @apply absolute top-0 left-0 w-full h-28;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.36) 0%, rgba(0, 0, 0, 0) 100%);
 }
 
 .bottomGradient {
-  @apply absolute bottom-0 left-0 w-full h-40 bg-gradient-to-t from-black/55 to-transparent;
+  @apply absolute bottom-0 left-0 w-full h-48;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0) 100%);
 }
 
 .overlay {
   @apply absolute inset-0 z-20 pointer-events-none;
 }
 
-.topActionGroup {
-  @apply absolute top-[66px] right-4 flex items-center gap-2 pointer-events-auto;
+.topBar {
+  @apply absolute top-[32px] left-5 right-5 z-30 flex items-center justify-between;
+}
+
+.backButton {
+  @apply h-8 w-8 rounded-full border-0 flex items-center justify-center pointer-events-auto;
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
 }
 
 .reportButton {
-  @apply h-8 rounded-full border-0 px-3 text-[12px] font-semibold text-white backdrop-blur-[10px] active:scale-95 transition-transform;
-  background: rgba(0, 0, 0, 0.42);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+  @apply h-8 rounded-full border-0 px-3 text-[12px] font-semibold text-white pointer-events-auto;
+  background: rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
 }
 
-.closeButton {
-  @apply flex items-center justify-center bg-transparent border-0 p-0 cursor-pointer active:scale-95 transition-transform;
-}
-
-.title {
-  @apply absolute top-[68px] left-4 text-white text-2xl font-bold leading-8;
-  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+.reportPlaceholder {
+  @apply h-8 w-[54px];
 }
 
 .swipeIndicator {
@@ -85,106 +92,129 @@
 }
 
 .helperText {
-  @apply absolute left-6 right-6 bottom-[132px] text-center text-white text-[14px] leading-[1.6] pointer-events-none;
+  @apply absolute left-6 right-6 bottom-[156px] text-center text-white text-[14px] leading-[1.6] pointer-events-none;
   text-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
 }
 
+.contentPreview {
+  @apply absolute left-[36px] right-[36px] bottom-[104px] z-30 pointer-events-none flex justify-center;
+}
+
+.contentPreviewBox {
+  @apply max-w-full rounded-full px-4 py-[9px];
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.contentPreviewText {
+  @apply m-0 w-full whitespace-nowrap overflow-hidden text-ellipsis text-center text-[12px] leading-none font-medium text-white;
+  opacity: 0.9;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
 .voteGraphArea {
-  @apply absolute left-1/2 -translate-x-1/2 z-30 w-[334px] pointer-events-none;
-  bottom: 118px;
+  @apply absolute left-[22px] right-[22px] top-[703px] z-30 pointer-events-none;
 }
 
 .progressTrack {
-  @apply relative w-full h-[18px] rounded-full overflow-hidden;
+  @apply relative h-[30px] px-2.5 py-[5px] rounded-[10px] inline-flex justify-start items-center gap-[5px] overflow-hidden w-full;
   background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(3px) saturate(108%);
+  -webkit-backdrop-filter: blur(14px) saturate(108%);
+}
+
+.progressTrack::after {
+  content: '';
+  @apply absolute inset-0 pointer-events-none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%);
+}
+
+.likeFill,
+.dislikeFill {
+  @apply absolute top-0 h-full;
 }
 
 .likeFill {
-  @apply absolute left-0 top-0 h-full rounded-l-full;
-  background: linear-gradient(90deg, rgba(234, 138, 120, 0.72) 0%, rgba(239, 154, 139, 0.72) 100%);
+  @apply left-0;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.1) 100%);
 }
 
 .dislikeFill {
-  @apply absolute right-0 top-0 h-full rounded-r-full;
-  background: linear-gradient(90deg, rgba(143, 150, 200, 0.72) 0%, rgba(119, 129, 188, 0.72) 100%);
+  @apply right-0;
+  background: linear-gradient(90deg, rgba(74, 74, 74, 0.54) 0%, rgba(56, 56, 56, 0.68) 100%);
+}
+
+.leftPercent,
+.rightPercent {
+  @apply absolute top-1/2 -translate-y-1/2 flex items-center text-[11px] font-semibold leading-none;
+  z-index: 1;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.22);
+}
+
+.leftPercent svg,
+.rightPercent svg {
+  flex-shrink: 0;
 }
 
 .leftPercent {
-  @apply absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-white text-[10px] font-semibold;
+  @apply left-[12px] gap-[6px];
+  color: rgba(255, 255, 255, 0.94);
 }
 
 .rightPercent {
-  @apply absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-white text-[10px] font-semibold;
+  @apply right-[12px] gap-[6px];
+  color: rgba(233, 233, 233, 0.78);
 }
 
-.leftPercent :global(svg),
-.rightPercent :global(svg) {
-  @apply w-[11px] h-[11px];
+.voteDetailButtonWrap {
+  @apply absolute left-1/2 top-[747px] -translate-x-1/2 z-30;
+}
+
+.voteDetailButton {
+  @apply flex items-center justify-center gap-2 border-0 bg-transparent px-0 py-0 text-[18px] font-semibold pointer-events-auto;
+  color: rgba(232, 232, 232, 0.82);
+  text-shadow:
+    0 0 10px rgba(255, 255, 255, 0.12),
+    0 6px 16px rgba(0, 0, 0, 0.22);
+  animation: detailButtonGlow 2.2s ease-in-out infinite;
+}
+
+.voteDetailButton:active {
+  opacity: 0.72;
+}
+
+.voteDetailIcon {
+  @apply flex items-center justify-center;
 }
 
 .bottomActionArea {
-  @apply absolute left-4 right-4 bottom-11 h-16;
+  @apply absolute inset-x-0 bottom-[42px] h-12 z-30;
 }
 
 .circleButton {
-  @apply absolute top-[5px] h-[54px] w-[54px] rounded-full flex items-center justify-center shadow-[0px_4px_18px_rgba(0,0,0,0.25)] transition-all duration-200 active:scale-95 pointer-events-auto z-20;
+  @apply absolute top-0 h-12 w-12 rounded-full flex items-center justify-center border-0 pointer-events-auto;
+  background: rgba(0, 0, 0, 0.44);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.circleButton:disabled {
+  opacity: 0.65;
 }
 
 .leftButton {
-  @apply left-0;
+  left: 36px;
 }
 
 .rightButton {
-  @apply right-0;
+  right: 36px;
 }
 
 .circleButtonInactive {
-  @apply bg-black/50 backdrop-blur-[10px];
-}
-
-.circleButtonPassive {
-  @apply bg-black/50 backdrop-blur-[10px] opacity-65;
-}
-
-.circleButtonActive {
-  @apply bg-white;
-}
-
-.dragTrack {
-  @apply absolute top-0 h-16 rounded-full bg-black/55 backdrop-blur-[12px] shadow-[0px_4px_18px_rgba(0,0,0,0.25)] overflow-hidden pointer-events-auto;
-}
-
-.dragTrackFromLeft {
-  left: 0;
-  right: 82px;
-}
-
-.dragTrackFromRight {
-  left: 82px;
-  right: 0;
-}
-
-.trackText {
-  @apply absolute inset-0 flex items-center justify-center text-white text-base font-medium whitespace-nowrap;
-}
-
-.trackHintRight {
-  @apply absolute right-5 top-1/2 -translate-y-1/2 flex items-center gap-0;
-}
-
-.trackHintLeft {
-  @apply absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-0;
-}
-
-.dragThumb {
-  @apply absolute top-[7px] rounded-full bg-white flex items-center justify-center cursor-grab active:cursor-grabbing shadow-md z-10;
-}
-
-.dragThumb:active {
-  cursor: grabbing;
+  background: rgba(0, 0, 0, 0.44);
 }
 
 .loadingState {
@@ -195,37 +225,29 @@
   @apply text-white text-2xl font-bold mb-4;
 }
 
-.emptyState {
-  @apply absolute inset-0 bg-neutral-900;
-}
-
 .statusText {
-  @apply absolute left-6 right-6 top-1/2 -translate-y-1/2 text-center text-white text-[14px] leading-[1.7];
+  @apply text-center text-white text-[14px] leading-[1.7];
 }
 
-.emptyModalBackdrop {
-  @apply absolute inset-0 z-40 flex items-center justify-center px-6;
-  background: rgba(0, 0, 0, 0.34);
-  pointer-events: auto;
-}
+@keyframes detailButtonGlow {
+  0% {
+    opacity: 0.38;
+    text-shadow:
+      0 0 6px rgba(255, 255, 255, 0.06),
+      0 6px 16px rgba(0, 0, 0, 0.18);
+  }
 
-.emptyModalCard {
-  @apply w-full max-w-[290px] rounded-[26px] px-6 pt-7 pb-5 text-center;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
+  50% {
+    opacity: 0.84;
+    text-shadow:
+      0 0 16px rgba(255, 255, 255, 0.18),
+      0 6px 16px rgba(0, 0, 0, 0.24);
+  }
 
-.emptyModalTitle {
-  @apply text-[20px] font-bold leading-7 text-black;
-}
-
-.emptyModalDescription {
-  @apply mt-3 text-[14px] leading-[1.65] text-neutral-600;
-}
-
-.emptyModalButton {
-  @apply mt-6 w-full h-12 rounded-full text-[15px] font-semibold text-white border-0;
-  background: linear-gradient(90deg, #111111 0%, #2a2a2a 100%);
+  100% {
+    opacity: 0.38;
+    text-shadow:
+      0 0 6px rgba(255, 255, 255, 0.06),
+      0 6px 16px rgba(0, 0, 0, 0.18);
+  }
 }

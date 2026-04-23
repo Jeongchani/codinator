@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import type {
   ChangePhoneRequest,
   ChangePhoneResponse,
+  DeleteMeResponse,
   GetMeResponse,
   SendPhoneVerificationRequest,
   SendPhoneVerificationResponse,
@@ -13,7 +14,7 @@ import type {
   UpdatePasswordResponse,
   VerifyPhoneCodeRequest,
 } from '@codinator/contracts';
-import { fetcher, getAuthHeaders } from '../../lib/api';
+import { clearAuthTokens, fetcher, getAuthHeaders } from '../../lib/api';
 import styles from './MyPageEdit.module.css';
 
 type LocationState = {
@@ -27,6 +28,7 @@ type ConfirmModalProps = {
   confirmText: string;
   cancelText?: string;
   loading?: boolean;
+  confirmTone?: 'default' | 'danger';
   onConfirm: () => void;
   onClose: () => void;
 };
@@ -40,6 +42,8 @@ type SignupAvailabilityResponse = {
   available: boolean;
   message: string;
 };
+
+const PHONE_CODE_TTL_SECONDS = 5 * 60;
 
 const getMyProfile = async (): Promise<GetMeResponse> => {
   return fetcher<GetMeResponse>('/users/me', {
@@ -110,6 +114,13 @@ const changeMyPhoneNumber = async (payload: ChangePhoneRequest): Promise<ChangeP
   });
 };
 
+const deleteMyAccount = async (): Promise<DeleteMeResponse> => {
+  return fetcher<DeleteMeResponse>('/users/me', {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+};
+
 function ConfirmModal({
   open,
   title,
@@ -117,6 +128,7 @@ function ConfirmModal({
   confirmText,
   cancelText = '취소',
   loading = false,
+  confirmTone = 'default',
   onConfirm,
   onClose,
 }: ConfirmModalProps) {
@@ -141,7 +153,9 @@ function ConfirmModal({
           </button>
           <button
             type="button"
-            className={styles.modalConfirmButton}
+            className={
+              confirmTone === 'danger' ? styles.modalDangerButton : styles.modalConfirmButton
+            }
             onClick={onConfirm}
             disabled={loading}
           >
@@ -163,7 +177,18 @@ const formatPhoneNumber = (value: string) => {
   if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
 
   const middleLength = digits.length === 10 ? 3 : 4;
-  return `${digits.slice(0, 3)}-${digits.slice(3, 3 + middleLength)}-${digits.slice(3 + middleLength, 3 + middleLength + 4)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 3 + middleLength)}-${digits.slice(
+    3 + middleLength,
+    3 + middleLength + 4,
+  )}`;
+};
+
+const formatCountdown = (seconds: number) => {
+  const safeSeconds = Math.max(seconds, 0);
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainSeconds = safeSeconds % 60;
+
+  return `${String(minutes).padStart(2, '0')}:${String(remainSeconds).padStart(2, '0')}`;
 };
 
 const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
@@ -191,6 +216,7 @@ export default function MyPageEdit() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [phoneSendMessage, setPhoneSendMessage] = useState('');
+  const [phoneDebugCode, setPhoneDebugCode] = useState('');
   const [phoneErrorMessage, setPhoneErrorMessage] = useState('');
   const [sendingCode, setSendingCode] = useState(false);
   const [verifyingCode, setVerifyingCode] = useState(false);
@@ -198,9 +224,12 @@ export default function MyPageEdit() {
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [verifiedPhoneDigits, setVerifiedPhoneDigits] = useState('');
   const [phoneVerificationToken, setPhoneVerificationToken] = useState('');
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
 
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
 
   useEffect(() => {
     if (!verifiedCurrentPassword) {
@@ -231,6 +260,27 @@ export default function MyPageEdit() {
     void loadProfile();
   }, [navigate, verifiedCurrentPassword]);
 
+  useEffect(() => {
+    if (!phoneVerificationSent || phoneVerified || remainingSeconds <= 0) {
+      return;
+    }
+
+    const timerId = window.setInterval(() => {
+      setRemainingSeconds((prev) => {
+        if (prev <= 1) {
+          window.clearInterval(timerId);
+          return 0;
+        }
+
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [phoneVerificationSent, phoneVerified, remainingSeconds]);
+
   const currentPhoneDigits = useMemo(() => normalizePhoneDigits(phoneNumber), [phoneNumber]);
   const trimmedNickname = useMemo(() => nickname.trim(), [nickname]);
   const nicknameChanged = trimmedNickname !== '' && trimmedNickname !== originalNickname;
@@ -247,6 +297,10 @@ export default function MyPageEdit() {
     phoneVerified &&
     phoneVerificationToken !== '' &&
     verifiedPhoneDigits === currentPhoneDigits;
+
+  const timerExpired = phoneVerificationSent && !phoneVerified && remainingSeconds === 0;
+
+  const canResendCode = phoneChanged && phoneVerificationSent && !phoneVerified && !sendingCode;
 
   const hasAnyReadyChange = nicknameReady || passwordReady || phoneReady;
 
@@ -302,6 +356,7 @@ export default function MyPageEdit() {
 
   const handlePhoneNumberChange = (value: string) => {
     const formatted = formatPhoneNumber(value);
+
     setPhoneNumber(formatted);
     setPhoneVerificationSent(false);
     setPhoneVerified(false);
@@ -309,7 +364,9 @@ export default function MyPageEdit() {
     setVerifiedPhoneDigits('');
     setVerificationCode('');
     setPhoneSendMessage('');
+    setPhoneDebugCode('');
     setPhoneErrorMessage('');
+    setRemainingSeconds(0);
   };
 
   const handleSendPhoneCode = async () => {
@@ -319,6 +376,8 @@ export default function MyPageEdit() {
       setPhoneErrorMessage('올바른 전화번호를 입력해 주세요.');
       return;
     }
+
+    const isResend = phoneVerificationSent;
 
     setSendingCode(true);
     setPhoneErrorMessage('');
@@ -333,11 +392,10 @@ export default function MyPageEdit() {
       setPhoneVerified(false);
       setPhoneVerificationToken('');
       setVerifiedPhoneDigits('');
-      setPhoneSendMessage(
-        response.debugCode
-          ? `인증번호 발송됨 (테스트 코드: ${response.debugCode})`
-          : '인증번호 발송됨',
-      );
+      setVerificationCode('');
+      setRemainingSeconds(PHONE_CODE_TTL_SECONDS);
+      setPhoneSendMessage(isResend ? '인증번호를 재요청했습니다.' : '인증번호가 발송되었습니다.');
+      setPhoneDebugCode(response.debugCode ?? '');
     } catch (error) {
       console.error('인증번호 발송 실패:', error);
       setPhoneErrorMessage(
@@ -350,6 +408,11 @@ export default function MyPageEdit() {
 
   const handleVerifyPhoneCode = async () => {
     const digits = normalizePhoneDigits(phoneNumber);
+
+    if (timerExpired) {
+      setPhoneErrorMessage('인증시간이 만료되었습니다. 재요청해 주세요.');
+      return;
+    }
 
     if (!verificationCode.trim()) {
       setPhoneErrorMessage('인증번호를 입력해 주세요.');
@@ -412,14 +475,30 @@ export default function MyPageEdit() {
         });
       }
 
-      window.alert('회원정보가 변경되었습니다.');
+      window.alert('회원정보가 수정되었습니다.');
       navigate('/myPage', { replace: true });
     } catch (error) {
       console.error('회원정보 변경 실패:', error);
-      window.alert(error instanceof Error ? error.message : '회원정보 변경에 실패했습니다.');
+      window.alert(error instanceof Error ? error.message : '회원정보 수정에 실패했습니다.');
     } finally {
       setSaving(false);
       setConfirmModalOpen(false);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    setWithdrawing(true);
+
+    try {
+      await deleteMyAccount();
+      clearAuthTokens();
+      navigate('/loginSelect', { replace: true });
+    } catch (error) {
+      console.error('회원 탈퇴 실패:', error);
+      window.alert(error instanceof Error ? error.message : '회원 탈퇴에 실패했습니다.');
+    } finally {
+      setWithdrawing(false);
+      setWithdrawModalOpen(false);
     }
   };
 
@@ -434,10 +513,10 @@ export default function MyPageEdit() {
               onClick={() => navigate('/myPage')}
               aria-label="뒤로가기"
             >
-              <ChevronLeft size={25} strokeWidth={2.2} />
+              <ChevronLeft size={23} strokeWidth={2.2} />
             </button>
 
-            <h1 className={styles.title}>정보 변경</h1>
+            <h1 className={styles.title}>정보 수정</h1>
 
             <button
               type="button"
@@ -476,7 +555,7 @@ export default function MyPageEdit() {
               />
               <button
                 type="button"
-                className={styles.inlineButton}
+                className={`${styles.fieldActionButton} ${styles.nicknameCheckButton}`}
                 onClick={handleCheckNickname}
                 disabled={
                   nicknameChecking || !trimmedNickname || trimmedNickname === originalNickname
@@ -540,10 +619,9 @@ export default function MyPageEdit() {
 
           <section className={styles.sectionBlock}>
             <h2 className={styles.label}>전화번호</h2>
+
             <div
-              className={`${styles.phoneCard} ${
-                phoneVerificationSent ? styles.phoneCardExpanded : ''
-              }`}
+              className={`${styles.phoneCard} ${phoneVerificationSent ? styles.phoneCardExpanded : ''}`}
             >
               <div className={styles.phoneTopRow}>
                 <input
@@ -557,7 +635,7 @@ export default function MyPageEdit() {
                 {!phoneVerificationSent ? (
                   <button
                     type="button"
-                    className={styles.inlineButton}
+                    className={`${styles.fieldActionButton} ${styles.sendCodeButton}`}
                     onClick={handleSendPhoneCode}
                     disabled={sendingCode || !phoneChanged}
                   >
@@ -569,27 +647,52 @@ export default function MyPageEdit() {
               </div>
 
               {phoneVerificationSent ? (
-                <div className={styles.verificationRow}>
-                  <input
-                    type="text"
-                    value={verificationCode}
-                    onChange={(event) =>
-                      setVerificationCode(event.target.value.replace(/[^0-9]/g, '').slice(0, 6))
-                    }
-                    placeholder="인증번호"
-                    className={styles.input}
-                  />
-                  <button
-                    type="button"
-                    className={styles.inlineButton}
-                    onClick={handleVerifyPhoneCode}
-                    disabled={verifyingCode || !verificationCode.trim()}
-                  >
-                    {verifyingCode ? '확인중' : '인증하기'}
-                  </button>
-                </div>
+                <>
+                  <div className={styles.verificationMetaRow}>
+                    <span className={styles.timerText}>
+                      {phoneVerified
+                        ? '인증 완료'
+                        : `남은 시간 ${formatCountdown(remainingSeconds)}`}
+                    </span>
+
+                    <button
+                      type="button"
+                      className={`${styles.fieldActionButton} ${styles.resendButton} ${
+                        !canResendCode ? styles.fieldActionButtonDisabled : ''
+                      }`}
+                      onClick={handleSendPhoneCode}
+                      disabled={!canResendCode}
+                    >
+                      {sendingCode ? '재요청중' : '재요청'}
+                    </button>
+                  </div>
+
+                  <div className={styles.verificationRow}>
+                    <input
+                      type="text"
+                      value={verificationCode}
+                      onChange={(event) =>
+                        setVerificationCode(event.target.value.replace(/[^0-9]/g, '').slice(0, 6))
+                      }
+                      placeholder="인증번호"
+                      className={styles.input}
+                    />
+
+                    <button
+                      type="button"
+                      className={`${styles.fieldActionButton} ${styles.verifyCodeButton}`}
+                      onClick={handleVerifyPhoneCode}
+                      disabled={
+                        verifyingCode || !verificationCode.trim() || timerExpired || phoneVerified
+                      }
+                    >
+                      {phoneVerified ? '인증완료' : verifyingCode ? '확인중' : '인증하기'}
+                    </button>
+                  </div>
+                </>
               ) : null}
             </div>
+
             <p
               className={`${styles.helperText} ${
                 phoneErrorMessage ? styles.errorText : phoneReady ? styles.successText : ''
@@ -598,38 +701,66 @@ export default function MyPageEdit() {
               {phoneErrorMessage ||
                 (phoneReady
                   ? '인증이 완료 되었습니다'
-                  : phoneChanged
-                    ? '전화번호를 변경한 경우 인증이 필요합니다.'
-                    : ' ')}
+                  : timerExpired
+                    ? '인증시간이 만료되었습니다. 재요청해 주세요.'
+                    : phoneChanged
+                      ? '전화번호를 변경한 경우 인증이 필요합니다.'
+                      : ' ')}
             </p>
-          </section>
-        </main>
 
-        <div className={styles.submitArea}>
-          <button
-            type="button"
-            className={`${styles.submitButton} ${
-              !hasAnyReadyChange ? styles.submitButtonDisabled : ''
-            }`}
-            disabled={!hasAnyReadyChange || saving}
-            onClick={() => setConfirmModalOpen(true)}
-          >
-            {saving ? '변경 중...' : '변경 완료'}
-          </button>
-        </div>
+            {phoneDebugCode ? (
+              <p className={styles.debugCodeText}>테스트 코드: {phoneDebugCode}</p>
+            ) : null}
+          </section>
+
+          <div className={styles.actionSection}>
+            <button
+              type="button"
+              className={styles.withdrawButton}
+              onClick={() => setWithdrawModalOpen(true)}
+            >
+              회원 탈퇴
+            </button>
+
+            <button
+              type="button"
+              className={`${styles.submitButton} ${
+                !hasAnyReadyChange ? styles.submitButtonDisabled : ''
+              }`}
+              disabled={!hasAnyReadyChange || saving}
+              onClick={() => setConfirmModalOpen(true)}
+            >
+              {saving ? '수정 중...' : '수정 완료'}
+            </button>
+          </div>
+        </main>
       </div>
 
       <ConfirmModal
         open={confirmModalOpen}
-        title="변경하시겠습니까?"
+        title="수정하시겠습니까?"
         description="완료된 수정사항만 반영됩니다."
-        confirmText="변경하기"
+        confirmText="수정하기"
         loading={saving}
         onClose={() => {
           if (saving) return;
           setConfirmModalOpen(false);
         }}
         onConfirm={handleSubmitChanges}
+      />
+
+      <ConfirmModal
+        open={withdrawModalOpen}
+        title="회원 탈퇴 하시겠습니까?"
+        description="탈퇴 후에는 계정을 복구할 수 없습니다."
+        confirmText="회원 탈퇴"
+        confirmTone="danger"
+        loading={withdrawing}
+        onClose={() => {
+          if (withdrawing) return;
+          setWithdrawModalOpen(false);
+        }}
+        onConfirm={handleWithdraw}
       />
     </>
   );
