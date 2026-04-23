@@ -17,7 +17,8 @@ import type {
  *   - 기간 필터는 publishedAt 기준
  */
 
-export type SearchType = 'ALL' | 'NICKNAME' | 'KEYWORD' | 'POST';
+// TextSearchAdvanced: OUTFIT_ITEM / OUTFIT_BRAND 추가
+export type SearchType = 'ALL' | 'NICKNAME' | 'KEYWORD' | 'POST' | 'OUTFIT_ITEM' | 'OUTFIT_BRAND';
 
 export interface UserSearchItem {
   userId: number;
@@ -45,6 +46,22 @@ export interface SearchRequest {
   type?: SearchType;
   cursor?: number;
   limit?: number;
+
+  // TextSearchAdvanced: 고급 필터 (이미지 검색과 동일 구조)
+  /** publishedAt >= periodFrom (ISO 8601) */
+  periodFrom?: string;
+  /** publishedAt <= periodTo (ISO 8601) */
+  periodTo?: string;
+  /** 0.0 ~ 1.0 최소 좋아요 비율 */
+  likeRatioMin?: number;
+  /** 착용 아이템 카테고리 필터 (post_search_index.outfitCategories 기준) */
+  outfitCategories?: string[];
+  /** 키워드 ID 필터 → 내부에서 keywordCode로 변환 후 keywordCodes 매칭 */
+  keywordIds?: number[];
+  /** 좋아요 피드백 태그 ID 필터 (voteChoice=LIKE) */
+  feedbackLikeTagIds?: number[];
+  /** 싫어요 피드백 태그 ID 필터 (voteChoice=DISLIKE) */
+  feedbackDislikeTagIds?: number[];
 }
 
 export interface SearchResponse {
