@@ -18,7 +18,7 @@ import EvaluationDetailFeedback from './pages/evaluation/EvaluationDetailFeedbac
 import RankingDetail from './pages/ranking/RankingDetail';
 import UserFeed from './pages/feed/UserFeed';
 import OngoingEvaluationHistory from './pages/evaluation/OngoingEvaluationHistory';
-import Settings from './pages/settins/Settings';
+import Settings from './pages/settings/Settings';
 
 function AppRoutes() {
   const navigate = useNavigate();
