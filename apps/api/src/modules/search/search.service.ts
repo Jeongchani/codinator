@@ -31,6 +31,81 @@ import {
 } from '../posts/common/post-presenter.util';
 import { ImageIndexingService } from '../ai/image-indexing.service';
 
+// ── TextSearchAdvanced: 텍스트 검색 필터 해결 결과 타입 ────────────────────────
+interface ResolvedTextFilters {
+  periodFrom: Date | null;
+  periodTo: Date | null;
+  likeRatioMin: number | null;
+  outfitCategories: string[];   // 정규화(대문자) 완료
+  keywordCodes: string[];        // keyword id → code 변환 완료
+  feedbackLikeCodes: string[];   // feedbackTag id → code 변환 완료
+  feedbackDislikeCodes: string[]; // feedbackTag id → code 변환 완료
+}
+
+// ── TextSearchAdvanced: 빈 필터 (고급 필터 없는 경우) ───────────────────────────
+function emptyFilters(): ResolvedTextFilters {
+  return {
+    periodFrom: null,
+    periodTo: null,
+    likeRatioMin: null,
+    outfitCategories: [],
+    keywordCodes: [],
+    feedbackLikeCodes: [],
+    feedbackDislikeCodes: [],
+  };
+}
+
+// ── TextSearchAdvanced: postSearchIndex 레벨 필터 조건 빌더 ─────────────────────
+function buildPostIndexFilterConditions(filters: ResolvedTextFilters) {
+  const cond: Record<string, unknown> = {};
+  if (filters.likeRatioMin !== null) {
+    cond['likeRatio'] = { gte: filters.likeRatioMin };
+  }
+  if (filters.outfitCategories.length > 0) {
+    cond['outfitCategories'] = { hasSome: filters.outfitCategories };
+  }
+  if (filters.keywordCodes.length > 0) {
+    cond['keywordCodes'] = { hasSome: filters.keywordCodes };
+  }
+  if (filters.feedbackLikeCodes.length > 0) {
+    cond['feedbackLikeCodes'] = { hasSome: filters.feedbackLikeCodes };
+  }
+  if (filters.feedbackDislikeCodes.length > 0) {
+    cond['feedbackDislikeCodes'] = { hasSome: filters.feedbackDislikeCodes };
+  }
+  return cond;
+}
+
+// ── TextSearchAdvanced: publishedAt 날짜 필터 빌더 ──────────────────────────────
+function buildPublishedAtFilter(filters: ResolvedTextFilters): Record<string, unknown> {
+  const dateFilter: Record<string, unknown> = { not: null };
+  if (filters.periodFrom) dateFilter['gte'] = filters.periodFrom;
+  if (filters.periodTo) dateFilter['lte'] = filters.periodTo;
+  return dateFilter;
+}
+
+// ── TextSearchAdvanced: 공개 게시글 + 고급 필터 통합 WHERE 빌더 ─────────────────
+function buildTextSearchPostWhere(filters: ResolvedTextFilters) {
+  return {
+    status: PostStatus.ACTIVE,
+    deletedAt: null,
+    hiddenAt: null,
+    publishedAt: buildPublishedAtFilter(filters),
+    evaluation: {
+      is: {
+        status: EvaluationStatus.ENDED,
+      },
+    },
+    postSearchIndex: {
+      is: {
+        isSearchable: true,
+        ...buildPostIndexFilterConditions(filters),
+      },
+    },
+  };
+}
+
+// ── 공개 게시글 기본 WHERE (고급 필터 없음, 하위 호환) ───────────────────────────
 function publicPostWhere() {
   return {
     status: PostStatus.ACTIVE,
@@ -70,6 +145,14 @@ export class SearchService {
     type?: SearchType;
     cursor?: number;
     limit?: number;
+    // TextSearchAdvanced: 고급 필터
+    periodFrom?: string;
+    periodTo?: string;
+    likeRatioMin?: number;
+    outfitCategories?: string[];
+    keywordIds?: number[];
+    feedbackLikeTagIds?: number[];
+    feedbackDislikeTagIds?: number[];
   }): Promise<SearchResponse> {
     const q = (params.q ?? '').trim();
 
@@ -83,20 +166,30 @@ export class SearchService {
     const limit = this.normalizeLimit(params.limit);
     const cursor = params.cursor;
 
+    // TextSearchAdvanced: 고급 필터 정규화 (ID → code 변환 포함)
+    const filters = await this.resolveTextSearchFilters(params);
+
     let response: SearchResponse;
 
     switch (params.type) {
       case 'NICKNAME':
+        // NICKNAME은 유저 검색 — 고급 필터 적용 불가 (유저는 likeRatio/category 없음)
         response = await this.searchByNickname(q, cursor, limit);
         break;
       case 'KEYWORD':
-        response = await this.searchByKeyword(q, cursor, limit);
+        response = await this.searchByKeyword(q, cursor, limit, filters); // TextSearchAdvanced
         break;
       case 'POST':
-        response = await this.searchByText(q, cursor, limit);
+        response = await this.searchByText(q, cursor, limit, filters); // TextSearchAdvanced
+        break;
+      case 'OUTFIT_ITEM': // TextSearchAdvanced: 착용 아이템 상품명 검색
+        response = await this.searchByOutfitItem(q, cursor, limit, filters);
+        break;
+      case 'OUTFIT_BRAND': // TextSearchAdvanced: 착용 아이템 브랜드 검색
+        response = await this.searchByOutfitBrand(q, cursor, limit, filters);
         break;
       default:
-        response = await this.searchAll(q, limit);
+        response = await this.searchAll(q, limit, filters); // TextSearchAdvanced
         break;
     }
 
@@ -266,7 +359,7 @@ export class SearchService {
     0,
     ...validGarments.map((g) => Number(g.areaRatio ?? 0)),
     );
-    
+
     // 단품 우선 판별:
     // 가장 큰 garment가 충분히 크고 얼굴이 없으면,
     // garment가 2개로 쪼개져도 단품 가능성 높게 본다.
@@ -406,6 +499,8 @@ export class SearchService {
     `);
   }
 
+  // ── 닉네임 검색 (고급 필터 미적용 — 유저 검색은 post 속성과 무관) ──────────────
+
   private async searchByNickname(
     q: string,
     cursor: number | undefined,
@@ -455,14 +550,17 @@ export class SearchService {
     };
   }
 
+  // ── 키워드 라벨 기반 검색 (type=KEYWORD) + TextSearchAdvanced 고급 필터 적용 ──
+
   private async searchByKeyword(
     q: string,
     cursor: number | undefined,
     limit: number,
+    filters: ResolvedTextFilters, // TextSearchAdvanced
   ): Promise<SearchResponse> {
     const posts = await this.prisma.post.findMany({
       where: {
-        ...publicPostWhere(),
+        ...buildTextSearchPostWhere(filters), // TextSearchAdvanced
         postKeywords: {
           some: {
             keyword: {
@@ -489,17 +587,21 @@ export class SearchService {
     };
   }
 
+  // ── searchText 기반 게시글 검색 (type=POST) + TextSearchAdvanced 고급 필터 적용 ─
+
   private async searchByText(
     q: string,
     cursor: number | undefined,
     limit: number,
+    filters: ResolvedTextFilters, // TextSearchAdvanced
   ): Promise<SearchResponse> {
     const posts = await this.prisma.post.findMany({
       where: {
-        ...publicPostWhere(),
+        ...buildTextSearchPostWhere(filters), // TextSearchAdvanced
         postSearchIndex: {
           is: {
             isSearchable: true,
+            ...buildPostIndexFilterConditions(filters), // TextSearchAdvanced
             searchText: { contains: q, mode: 'insensitive' },
           },
         },
@@ -522,8 +624,85 @@ export class SearchService {
     };
   }
 
-  private async searchAll(q: string, limit: number): Promise<SearchResponse> {
+  // ── TextSearchAdvanced: 착용 아이템 상품명 검색 (type=OUTFIT_ITEM) ──────────────
+
+  private async searchByOutfitItem(
+    q: string,
+    cursor: number | undefined,
+    limit: number,
+    filters: ResolvedTextFilters,
+  ): Promise<SearchResponse> {
+    const posts = await this.prisma.post.findMany({
+      where: {
+        ...buildTextSearchPostWhere(filters),
+        outfitItems: {
+          some: {
+            itemName: { contains: q, mode: 'insensitive' },
+          },
+        },
+        ...(cursor !== undefined ? { id: { lt: cursor } } : {}),
+      },
+      orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      select: this.postSearchSelect(),
+    });
+
+    const hasMore = posts.length > limit;
+    const pageItems = hasMore ? posts.slice(0, limit) : posts;
+
+    return {
+      type: 'OUTFIT_ITEM',
+      users: [],
+      posts: pageItems.map((p) => this.mapPostItem(p)),
+      nextCursor: hasMore ? (pageItems[pageItems.length - 1]?.id ?? null) : null,
+      hasMore,
+    };
+  }
+
+  // ── TextSearchAdvanced: 착용 아이템 브랜드 검색 (type=OUTFIT_BRAND) ───────────
+
+  private async searchByOutfitBrand(
+    q: string,
+    cursor: number | undefined,
+    limit: number,
+    filters: ResolvedTextFilters,
+  ): Promise<SearchResponse> {
+    const posts = await this.prisma.post.findMany({
+      where: {
+        ...buildTextSearchPostWhere(filters),
+        outfitItems: {
+          some: {
+            brand: { contains: q, mode: 'insensitive' },
+          },
+        },
+        ...(cursor !== undefined ? { id: { lt: cursor } } : {}),
+      },
+      orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      select: this.postSearchSelect(),
+    });
+
+    const hasMore = posts.length > limit;
+    const pageItems = hasMore ? posts.slice(0, limit) : posts;
+
+    return {
+      type: 'OUTFIT_BRAND',
+      users: [],
+      posts: pageItems.map((p) => this.mapPostItem(p)),
+      nextCursor: hasMore ? (pageItems[pageItems.length - 1]?.id ?? null) : null,
+      hasMore,
+    };
+  }
+
+  // ── 통합 검색 (type=ALL or default) + TextSearchAdvanced 고급 필터 적용 ─────────
+
+  private async searchAll(
+    q: string,
+    limit: number,
+    filters: ResolvedTextFilters, // TextSearchAdvanced
+  ): Promise<SearchResponse> {
     const [users, posts] = await Promise.all([
+      // 유저 검색: 고급 필터 미적용 (유저 속성 아님)
       this.prisma.user.findMany({
         where: {
           ...publicUserWhere(),
@@ -548,9 +727,11 @@ export class SearchService {
           },
         },
       }),
+      // 게시글 검색: searchText(=content+nickname+keyword+outfit) OR keyword label
+      // TextSearchAdvanced: 고급 필터 적용
       this.prisma.post.findMany({
         where: {
-          ...publicPostWhere(),
+          ...buildTextSearchPostWhere(filters), // TextSearchAdvanced
           OR: [
             {
               postSearchIndex: {
@@ -746,6 +927,64 @@ export class SearchService {
   private normalizeLimit(limit?: number): number {
     if (!limit || Number.isNaN(Number(limit))) return 20;
     return Math.min(Math.max(Number(limit), 1), 50);
+  }
+
+  /**
+   * TextSearchAdvanced: 텍스트 검색 고급 필터 정규화.
+   * 이미지 검색의 resolveImageSearchFilters와 동일한 helpers를 재사용.
+   * outfitCategories는 대문자로 정규화.
+   */
+  private async resolveTextSearchFilters(params: {
+    periodFrom?: string;
+    periodTo?: string;
+    likeRatioMin?: number;
+    outfitCategories?: string[];
+    keywordIds?: number[];
+    feedbackLikeTagIds?: number[];
+    feedbackDislikeTagIds?: number[];
+  }): Promise<ResolvedTextFilters> {
+    // 고급 필터가 하나도 없으면 빠른 반환
+    if (
+      !params.periodFrom &&
+      !params.periodTo &&
+      params.likeRatioMin === undefined &&
+      !params.outfitCategories?.length &&
+      !params.keywordIds?.length &&
+      !params.feedbackLikeTagIds?.length &&
+      !params.feedbackDislikeTagIds?.length
+    ) {
+      return emptyFilters();
+    }
+
+    const periodFrom = this.parseOptionalDate(params.periodFrom, 'periodFrom');
+    const periodTo = this.parseOptionalDate(params.periodTo, 'periodTo');
+
+    if (periodFrom && periodTo && periodFrom > periodTo) {
+      throw new BadRequestException('periodFrom은 periodTo보다 늦을 수 없습니다.');
+    }
+
+    const likeRatioMin = this.parseOptionalRatio(params.likeRatioMin, 'likeRatioMin');
+
+    // outfitCategories: 대소문자 무관 → 대문자 정규화 (post-search-index.util의 normalizeCategory와 동일)
+    const outfitCategories = (params.outfitCategories ?? [])
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
+
+    const [keywordCodes, feedbackLikeCodes, feedbackDislikeCodes] = await Promise.all([
+      this.resolveKeywordCodes(params.keywordIds),
+      this.resolveFeedbackCodes(params.feedbackLikeTagIds, 'LIKE'),
+      this.resolveFeedbackCodes(params.feedbackDislikeTagIds, 'DISLIKE'),
+    ]);
+
+    return {
+      periodFrom,
+      periodTo,
+      likeRatioMin,
+      outfitCategories,
+      keywordCodes,
+      feedbackLikeCodes,
+      feedbackDislikeCodes,
+    };
   }
 
   /**

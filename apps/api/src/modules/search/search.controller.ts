@@ -31,8 +31,29 @@ export class SearchController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: '랭킹존 텍스트 검색',
-    description:
-      '닉네임 / 키워드 / 게시글 본문 검색을 지원합니다. 평가완료되어 공개 가능한 게시글만 검색합니다.',
+    description: [
+      '닉네임 / 키워드 / 게시글 본문 / 착용 아이템 검색을 지원합니다.',
+      '평가완료되어 공개 가능한 게시글만 검색합니다.',
+      '',
+      '**검색 타입 (type)**',
+      '- ALL: 닉네임 + 게시글 전체(searchText + keyword label) 통합 검색 (기본값)',
+      '- NICKNAME: 닉네임 검색 (유저 반환)',
+      '- KEYWORD: 키워드 라벨 기반 검색 (게시글 반환)',
+      '- POST: 게시글 본문·닉네임·착용정보 통합 searchText 검색 (게시글 반환)',
+      '- OUTFIT_ITEM: 착용 아이템 상품명(itemName) 중심 검색 (게시글 반환)',
+      '- OUTFIT_BRAND: 착용 아이템 브랜드(brand) 중심 검색 (게시글 반환)',
+      '',
+      '**고급 필터** (NICKNAME 제외 모든 타입에 적용)',
+      '- periodFrom/periodTo: 게시글 공개 시점(publishedAt) 범위 (ISO 8601)',
+      '- likeRatioMin: 0.0~1.0 최소 좋아요 비율',
+      '- outfitCategories: 착용 아이템 카테고리 필터 (반복 파라미터)',
+      '- keywordIds: 키워드 ID 배열 필터 (반복 파라미터)',
+      '- feedbackLikeTagIds: 좋아요 피드백 태그 ID 배열 (반복 파라미터)',
+      '- feedbackDislikeTagIds: 싫어요 피드백 태그 ID 배열 (반복 파라미터)',
+      '',
+      '**검색 대상**: evaluation.status=ENDED, post.status=ACTIVE,',
+      'publishedAt IS NOT NULL, hiddenAt=null, deletedAt=null, isSearchable=true 인 게시글만 포함됩니다.',
+    ].join('\n'), // TextSearchAdvanced
   })
   @ApiQuery({
     name: 'q',
@@ -41,10 +62,11 @@ export class SearchController {
     description: '검색어 (1자 이상, 최대 100자)',
     example: '블랙',
   })
+  // TextSearchAdvanced: OUTFIT_ITEM / OUTFIT_BRAND 추가
   @ApiQuery({
     name: 'type',
     required: false,
-    enum: ['ALL', 'NICKNAME', 'KEYWORD', 'POST'],
+    enum: ['ALL', 'NICKNAME', 'KEYWORD', 'POST', 'OUTFIT_ITEM', 'OUTFIT_BRAND'],
     description: '검색 타입. 생략 또는 ALL이면 통합 검색',
   })
   @ApiQuery({
@@ -59,8 +81,55 @@ export class SearchController {
     type: Number,
     description: '페이지 크기 (기본 20, 최대 50)',
   })
+  // TextSearchAdvanced: 고급 필터 파라미터 문서화
+  @ApiQuery({
+    name: 'periodFrom',
+    required: false,
+    type: String,
+    description: 'publishedAt 시작 시점 이상 (ISO 8601). 예: 2026-04-01T00:00:00.000Z',
+  })
+  @ApiQuery({
+    name: 'periodTo',
+    required: false,
+    type: String,
+    description: 'publishedAt 종료 시점 이하 (ISO 8601). 예: 2026-04-30T23:59:59.999Z',
+  })
+  @ApiQuery({
+    name: 'likeRatioMin',
+    required: false,
+    type: Number,
+    description: '최소 좋아요 비율 (0.0 ~ 1.0)',
+  })
+  @ApiQuery({
+    name: 'outfitCategories',
+    required: false,
+    isArray: true,
+    type: String,
+    description: '착용 아이템 카테고리 필터. 반복 파라미터: outfitCategories=TOP&outfitCategories=OUTER',
+  })
+  @ApiQuery({
+    name: 'keywordIds',
+    required: false,
+    isArray: true,
+    type: Number,
+    description: '키워드 ID 필터. 반복 파라미터: keywordIds=1&keywordIds=2',
+  })
+  @ApiQuery({
+    name: 'feedbackLikeTagIds',
+    required: false,
+    isArray: true,
+    type: Number,
+    description: '좋아요 피드백 태그 ID 필터. 반복 파라미터',
+  })
+  @ApiQuery({
+    name: 'feedbackDislikeTagIds',
+    required: false,
+    isArray: true,
+    type: Number,
+    description: '싫어요 피드백 태그 ID 필터. 반복 파라미터',
+  })
   @ApiOkResponse({ description: '텍스트 검색 결과' })
-  @ApiBadRequestResponse({ description: 'q/type/cursor/limit 형식이 잘못된 경우' })
+  @ApiBadRequestResponse({ description: 'q/type/cursor/limit/필터 형식이 잘못된 경우' })
   @ApiUnauthorizedResponse({ description: 'Bearer Token 누락 또는 만료' })
   async search(
     @Query() query: SearchQueryDto,
@@ -76,6 +145,14 @@ export class SearchController {
       type: query.type,
       cursor: query.cursor !== undefined ? Number(query.cursor) : undefined,
       limit: query.limit !== undefined ? Number(query.limit) : undefined,
+      // TextSearchAdvanced: 고급 필터 전달
+      periodFrom: query.periodFrom,
+      periodTo: query.periodTo,
+      likeRatioMin: query.likeRatioMin !== undefined ? Number(query.likeRatioMin) : undefined,
+      outfitCategories: query.outfitCategories,
+      keywordIds: query.keywordIds,
+      feedbackLikeTagIds: query.feedbackLikeTagIds,
+      feedbackDislikeTagIds: query.feedbackDislikeTagIds,
     });
   }
 
