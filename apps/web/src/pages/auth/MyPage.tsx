@@ -1,446 +1,302 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from "react";
-import { useNavigate } from "react-router-dom";
-import { ChevronLeft, Menu, Pencil } from "lucide-react";
-import SideMenu from "../../components/SideMenu";
-import { clearAuthTokens, fetcher, getAuthHeaders } from "../../lib/api";
-import styles from "./MyPage.module.css";
+import { useEffect, useState } from 'react';
+import { ChevronLeft, ChevronRight, Menu } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import type {
+  DeleteMeResponse,
+  GetMeResponse,
+  GetMyActivitySummaryResponse,
+} from '@codinator/contracts';
+import { clearAuthTokens, fetcher, getAuthHeaders } from '../../lib/api';
+import SideMenu from '../../components/SideMenu';
+import styles from './MyPage.module.css';
 
-type ActiveSection = "nickname" | "password" | "phone" | null;
-
-type MeResponse = {
-  id?: number;
-  email?: string;
-  nickname?: string;
-  phoneNumber?: string | null;
+type ProfileState = {
+  email: string;
+  nickname: string;
+  phoneNumber: string;
 };
 
-type UpdateMeRequest = {
-  nickname?: string;
-  phoneNumber?: string;
+type ActivitySummaryState = {
+  top10Count: number;
+  myPostCount: number;
+  votedPostCount: number;
 };
 
-type UpdatePasswordRequest = {
-  currentPassword: string;
-  newPassword: string;
+type ConfirmModalProps = {
+  open: boolean;
+  title: string;
+  description?: string;
+  confirmText: string;
+  cancelText?: string;
+  confirmTone?: 'default' | 'danger';
+  onConfirm: () => void;
+  onClose: () => void;
+  loading?: boolean;
 };
 
-type LoginRequest = {
+type PasswordModalProps = {
+  open: boolean;
+  password: string;
+  errorMessage: string;
+  loading: boolean;
+  onPasswordChange: (value: string) => void;
+  onClose: () => void;
+  onConfirm: () => void;
+};
+
+const getMyProfile = async (): Promise<GetMeResponse> => {
+  return fetcher<GetMeResponse>('/users/me', {
+    headers: getAuthHeaders(),
+  });
+};
+
+const getMyActivitySummary = async (): Promise<GetMyActivitySummaryResponse> => {
+  return fetcher<GetMyActivitySummaryResponse>('/users/me/activity-summary', {
+    headers: getAuthHeaders(),
+  });
+};
+
+const verifyCurrentPassword = async (payload: {
   email: string;
   password: string;
+}): Promise<void> => {
+  await fetcher('/auth/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
 };
 
-const normalizePhoneDigits = (value: string) => value.replace(/[^0-9]/g, "");
+const deleteMyAccount = async (): Promise<DeleteMeResponse> => {
+  return fetcher<DeleteMeResponse>('/users/me', {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+};
 
-const splitPhoneDigits = (value: string) => {
-  const digits = normalizePhoneDigits(value);
-
-  if (!digits) {
-    return { phone1: "", phone2: "", phone3: "" };
+function ConfirmModal({
+  open,
+  title,
+  description,
+  confirmText,
+  cancelText = '취소',
+  confirmTone = 'default',
+  onConfirm,
+  onClose,
+  loading = false,
+}: ConfirmModalProps) {
+  if (!open) {
+    return null;
   }
 
-  const phone1 = digits.slice(0, 3);
+  return (
+    <div className={styles.modalOverlay} role="presentation" onClick={onClose}>
+      <div
+        className={styles.modalCard}
+        role="dialog"
+        aria-modal="true"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h2 className={styles.modalTitle}>{title}</h2>
+        {description ? <p className={styles.modalDescription}>{description}</p> : null}
+
+        <div className={styles.modalButtonRow}>
+          <button type="button" className={styles.modalCancelButton} onClick={onClose}>
+            {cancelText}
+          </button>
+          <button
+            type="button"
+            className={
+              confirmTone === 'danger' ? styles.modalDangerButton : styles.modalConfirmButton
+            }
+            onClick={onConfirm}
+            disabled={loading}
+          >
+            {loading ? '처리 중...' : confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PasswordModal({
+  open,
+  password,
+  errorMessage,
+  loading,
+  onPasswordChange,
+  onClose,
+  onConfirm,
+}: PasswordModalProps) {
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div className={styles.modalOverlay} role="presentation" onClick={onClose}>
+      <div
+        className={styles.modalCard}
+        role="dialog"
+        aria-modal="true"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h2 className={styles.modalTitle}>비밀번호 확인</h2>
+        <p className={styles.modalDescription}>회원정보 변경 전 현재 비밀번호를 입력해 주세요.</p>
+
+        <input
+          type="password"
+          value={password}
+          onChange={(event) => onPasswordChange(event.target.value)}
+          placeholder="현재 비밀번호"
+          className={styles.passwordModalInput}
+        />
+
+        <p className={`${styles.modalHelperText} ${errorMessage ? styles.modalHelperError : ''}`}>
+          {errorMessage || '정보 변경 페이지 진입 전에 한 번만 확인합니다.'}
+        </p>
+
+        <div className={styles.modalButtonRow}>
+          <button type="button" className={styles.modalCancelButton} onClick={onClose}>
+            취소
+          </button>
+          <button
+            type="button"
+            className={styles.modalConfirmButton}
+            onClick={onConfirm}
+            disabled={!password.trim() || loading}
+          >
+            {loading ? '확인 중...' : '확인'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const formatPhoneNumber = (value: string) => {
+  const digits = value.replace(/[^0-9]/g, '');
+
+  if (!digits) {
+    return '-';
+  }
 
   if (digits.length <= 3) {
-    return { phone1, phone2: "", phone3: "" };
+    return digits;
   }
 
   if (digits.length <= 7) {
-    return {
-      phone1,
-      phone2: digits.slice(3),
-      phone3: "",
-    };
+    return `${digits.slice(0, 3)}-${digits.slice(3)}`;
   }
 
   const middleLength = digits.length === 10 ? 3 : 4;
-
-  return {
-    phone1,
-    phone2: digits.slice(3, 3 + middleLength),
-    phone3: digits.slice(3 + middleLength, 3 + middleLength + 4),
-  };
-};
-
-const formatPhoneNumber = (value: string) => {
-  const digits = normalizePhoneDigits(value);
-
-  if (!digits) return "전화번호";
-
-  const { phone1, phone2, phone3 } = splitPhoneDigits(digits);
-
-  if (!phone2 && !phone3) return phone1;
-  if (!phone3) return `${phone1}-${phone2}`;
-
-  return `${phone1}-${phone2}-${phone3}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 3 + middleLength)}-${digits.slice(3 + middleLength, 3 + middleLength + 4)}`;
 };
 
 export default function MyPage() {
   const navigate = useNavigate();
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState<ActiveSection>(null);
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<ProfileState>({
+    email: '',
+    nickname: '',
+    phoneNumber: '',
+  });
+  const [summary, setSummary] = useState<ActivitySummaryState>({
+    top10Count: 0,
+    myPostCount: 0,
+    votedPostCount: 0,
+  });
 
-  const [originalNickname, setOriginalNickname] = useState("닉네임");
-  const [originalEmail, setOriginalEmail] = useState("이메일");
-  const [originalPhoneDigits, setOriginalPhoneDigits] = useState("");
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [verifyPassword, setVerifyPassword] = useState('');
+  const [verifyErrorMessage, setVerifyErrorMessage] = useState('');
+  const [verifying, setVerifying] = useState(false);
 
-  const [nicknameDraft, setNicknameDraft] = useState("닉네임");
-
-  const [phone1, setPhone1] = useState("");
-  const [phone2, setPhone2] = useState("");
-  const [phone3, setPhone3] = useState("");
-
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [currentPasswordChecked, setCurrentPasswordChecked] = useState(false);
-  const [checkingCurrentPassword, setCheckingCurrentPassword] = useState(false);
-  const [passwordCheckMessage, setPasswordCheckMessage] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
-
-  const [pendingNickname, setPendingNickname] = useState<string | null>(null);
-  const [pendingPhoneDigits, setPendingPhoneDigits] = useState<string | null>(
-    null,
-  );
-  const [pendingPassword, setPendingPassword] =
-    useState<UpdatePasswordRequest | null>(null);
-
-  const [loadingProfile, setLoadingProfile] = useState(true);
-  const [savingAll, setSavingAll] = useState(false);
-
-  const nicknameInputRef = useRef<HTMLInputElement>(null);
-  const currentPasswordRef = useRef<HTMLInputElement>(null);
-  const phone1Ref = useRef<HTMLInputElement>(null);
-  const phone2Ref = useRef<HTMLInputElement>(null);
-  const phone3Ref = useRef<HTMLInputElement>(null);
-
-  const nicknameMeasureRef = useRef<HTMLSpanElement>(null);
-  const [nicknameWidth, setNicknameWidth] = useState(120);
-
-  const displayedNickname = pendingNickname ?? originalNickname;
-  const displayedPhone = pendingPhoneDigits ?? originalPhoneDigits;
-
-  const phoneRegex = useMemo(() => /^01[0-9]\d{3,4}\d{4}$/, []);
-  const isNicknameActive = activeSection === "nickname";
-  const isPasswordActive = activeSection === "password";
-  const isPhoneActive = activeSection === "phone";
-
-  const phoneDigits = `${phone1}${phone2}${phone3}`;
-  const isPhoneValid = phoneRegex.test(phoneDigits);
-  const isPasswordReady =
-    currentPassword.trim() !== "" &&
-    currentPasswordChecked &&
-    newPassword.trim() !== "" &&
-    newPasswordConfirm.trim() !== "" &&
-    newPassword === newPasswordConfirm;
-
-  const hasPendingChanges =
-    pendingNickname !== null ||
-    pendingPhoneDigits !== null ||
-    pendingPassword !== null;
-
-  const canSubmitAll = hasPendingChanges && !savingAll;
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
 
   useEffect(() => {
-    const loadMe = async () => {
+    const loadMyPage = async () => {
       try {
-        const data = await fetcher<MeResponse>("/users/me", {
-          headers: getAuthHeaders(),
+        const [profileResponse, summaryResponse] = await Promise.all([
+          getMyProfile(),
+          getMyActivitySummary(),
+        ]);
+
+        setProfile({
+          email: profileResponse.email,
+          nickname: profileResponse.nickname,
+          phoneNumber: profileResponse.phoneNumber,
         });
-
-        const fetchedNickname = data.nickname?.trim() || "닉네임";
-        const fetchedEmail = data.email?.trim() || "이메일";
-        const fetchedPhoneDigits = normalizePhoneDigits(data.phoneNumber ?? "");
-
-        setOriginalNickname(fetchedNickname);
-        setOriginalEmail(fetchedEmail);
-        setOriginalPhoneDigits(fetchedPhoneDigits);
-        setNicknameDraft(fetchedNickname);
-
-        const split = splitPhoneDigits(fetchedPhoneDigits);
-        setPhone1(split.phone1);
-        setPhone2(split.phone2);
-        setPhone3(split.phone3);
+        setSummary({
+          top10Count: summaryResponse.top10Count,
+          myPostCount: summaryResponse.myPostCount,
+          votedPostCount: summaryResponse.votedPostCount,
+        });
       } catch (error) {
-        console.error("마이페이지 정보 조회 실패:", error);
+        console.error('마이페이지 조회 실패:', error);
+        window.alert(
+          error instanceof Error ? error.message : '마이페이지 정보를 불러오지 못했습니다.',
+        );
       } finally {
-        setLoadingProfile(false);
+        setLoading(false);
       }
     };
 
-    void loadMe();
+    void loadMyPage();
   }, []);
 
-  useEffect(() => {
-    if (isNicknameActive) {
-      nicknameInputRef.current?.focus();
-      const length = nicknameDraft.length;
-      nicknameInputRef.current?.setSelectionRange(length, length);
-    }
-
-    if (isPasswordActive) {
-      currentPasswordRef.current?.focus();
-    }
-
-    if (isPhoneActive) {
-      phone1Ref.current?.focus();
-    }
-  }, [isNicknameActive, isPasswordActive, isPhoneActive, nicknameDraft]);
-
-  useEffect(() => {
-    if (nicknameMeasureRef.current) {
-      setNicknameWidth(Math.max(48, nicknameMeasureRef.current.offsetWidth));
-    }
-  }, [isNicknameActive, nicknameDraft, displayedNickname]);
-
-  const closeActiveEditor = () => {
-    if (activeSection === "nickname") {
-      setNicknameDraft(displayedNickname);
-    }
-
-    if (activeSection === "password") {
-      setCurrentPassword("");
-      setCurrentPasswordChecked(false);
-      setCheckingCurrentPassword(false);
-      setPasswordCheckMessage("");
-      setNewPassword("");
-      setNewPasswordConfirm("");
-    }
-
-    if (activeSection === "phone") {
-      const split = splitPhoneDigits(displayedPhone);
-      setPhone1(split.phone1);
-      setPhone2(split.phone2);
-      setPhone3(split.phone3);
-    }
-
-    setActiveSection(null);
+  const handleOpenEdit = () => {
+    setVerifyPassword('');
+    setVerifyErrorMessage('');
+    setPasswordModalOpen(true);
   };
 
-  const handleBack = () => {
-    if (activeSection) {
-      closeActiveEditor();
+  const handleVerifyBeforeEdit = async () => {
+    if (!verifyPassword.trim()) {
       return;
     }
 
-    navigate(-1);
-  };
-
-  const openNicknameEditor = () => {
-    setNicknameDraft(displayedNickname);
-    setActiveSection("nickname");
-  };
-
-  const openPasswordEditor = () => {
-    setCurrentPassword("");
-    setCurrentPasswordChecked(false);
-    setCheckingCurrentPassword(false);
-    setPasswordCheckMessage("");
-    setNewPassword("");
-    setNewPasswordConfirm("");
-    setActiveSection("password");
-  };
-
-  const openPhoneEditor = () => {
-    setPhone1("");
-    setPhone2("");
-    setPhone3("");
-    setActiveSection("phone");
-  };
-
-  const handlePhone1Change = (value: string) => {
-    const next = value.replace(/[^0-9]/g, "").slice(0, 3);
-    setPhone1(next);
-
-    if (next.length === 3) {
-      phone2Ref.current?.focus();
-    }
-  };
-
-  const handlePhone2Change = (value: string) => {
-    const next = value.replace(/[^0-9]/g, "").slice(0, 4);
-    setPhone2(next);
-
-    if (next.length === 4) {
-      phone3Ref.current?.focus();
-    }
-  };
-
-  const handlePhone3Change = (value: string) => {
-    const next = value.replace(/[^0-9]/g, "").slice(0, 4);
-    setPhone3(next);
-  };
-
-  const handlePhoneKeyDown = (
-    e: KeyboardEvent<HTMLInputElement>,
-    currentValue: string,
-    prevRef?: React.RefObject<HTMLInputElement | null>,
-  ) => {
-    if (e.key === "Backspace" && currentValue.length === 0) {
-      prevRef?.current?.focus();
-    }
-  };
-
-  const handleCurrentPasswordCheck = async () => {
-    if (!currentPassword.trim()) return;
-    if (!originalEmail.trim()) return;
-
-    setCheckingCurrentPassword(true);
-    setPasswordCheckMessage("");
+    setVerifying(true);
+    setVerifyErrorMessage('');
 
     try {
-      await fetcher("/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: originalEmail,
-          password: currentPassword.trim(),
-        } satisfies LoginRequest),
+      await verifyCurrentPassword({
+        email: profile.email,
+        password: verifyPassword.trim(),
       });
 
-      setCurrentPasswordChecked(true);
-      setPasswordCheckMessage("현재 비밀번호가 확인되었습니다.");
+      setPasswordModalOpen(false);
+      navigate('/myPage/edit', {
+        state: {
+          verifiedCurrentPassword: verifyPassword.trim(),
+        },
+      });
     } catch (error) {
-      console.error("현재 비밀번호 확인 실패:", error);
-      setCurrentPasswordChecked(false);
-      setPasswordCheckMessage("현재 비밀번호가 일치하지 않습니다.");
+      console.error('비밀번호 인증 실패:', error);
+      setVerifyErrorMessage('비밀번호가 올바르지 않습니다.');
     } finally {
-      setCheckingCurrentPassword(false);
+      setVerifying(false);
     }
-  };
-
-  const applyNicknameChange = () => {
-    const nextNickname = nicknameDraft.trim();
-    if (!nextNickname) return;
-
-    if (nextNickname === originalNickname) {
-      setPendingNickname(null);
-    } else {
-      setPendingNickname(nextNickname);
-    }
-
-    setActiveSection(null);
-  };
-
-  const applyPasswordChange = () => {
-    if (!isPasswordReady) return;
-
-    setPendingPassword({
-      currentPassword: currentPassword.trim(),
-      newPassword: newPassword.trim(),
-    });
-
-    setActiveSection(null);
-  };
-
-  const applyPhoneChange = () => {
-    if (!isPhoneValid) return;
-
-    if (phoneDigits === originalPhoneDigits) {
-      setPendingPhoneDigits(null);
-    } else {
-      setPendingPhoneDigits(phoneDigits);
-    }
-
-    setActiveSection(null);
   };
 
   const handleWithdraw = async () => {
-    const confirmed = window.confirm("정말 회원 탈퇴하시겠습니까? 탈퇴 후에는 다시 복구할 수 없습니다.");
-
-    if (!confirmed) {
-      return;
-    }
+    setWithdrawing(true);
 
     try {
-      await fetcher<{ success: boolean; message: string }>("/users/me", {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      });
-
+      await deleteMyAccount();
       clearAuthTokens();
-      navigate("/loginSelect", { replace: true });
+      navigate('/loginSelect', { replace: true });
     } catch (error) {
-      console.error("회원 탈퇴 실패:", error);
-      window.alert(
-        error instanceof Error ? error.message : "회원 탈퇴에 실패했습니다.",
-      );
-    }
-  };
-
-  const handleSubmitAll = async () => {
-    if (!canSubmitAll) return;
-
-    setSavingAll(true);
-
-    try {
-      const profileUpdateBody: UpdateMeRequest = {};
-
-      if (pendingNickname !== null) {
-        profileUpdateBody.nickname = pendingNickname;
-      }
-
-      if (pendingPhoneDigits !== null) {
-        profileUpdateBody.phoneNumber = pendingPhoneDigits;
-      }
-
-      if (Object.keys(profileUpdateBody).length > 0) {
-        await fetcher("/users/me", {
-          method: "PATCH",
-          headers: {
-            ...getAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(profileUpdateBody),
-        });
-      }
-
-      if (pendingPassword) {
-        await fetcher("/users/me/password", {
-          method: "PATCH",
-          headers: {
-            ...getAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(pendingPassword),
-        });
-      }
-
-      if (pendingNickname !== null) {
-        setOriginalNickname(pendingNickname);
-        setNicknameDraft(pendingNickname);
-        localStorage.setItem("nickname", pendingNickname);
-      }
-
-      if (pendingPhoneDigits !== null) {
-        setOriginalPhoneDigits(pendingPhoneDigits);
-        const split = splitPhoneDigits(pendingPhoneDigits);
-        setPhone1(split.phone1);
-        setPhone2(split.phone2);
-        setPhone3(split.phone3);
-      }
-
-      setPendingNickname(null);
-      setPendingPhoneDigits(null);
-      setPendingPassword(null);
-
-      setCurrentPassword("");
-      setCurrentPasswordChecked(false);
-      setCheckingCurrentPassword(false);
-      setPasswordCheckMessage("");
-      setNewPassword("");
-      setNewPasswordConfirm("");
-    } catch (error) {
-      console.error("마이페이지 수정 실패:", error);
+      console.error('회원 탈퇴 실패:', error);
+      window.alert(error instanceof Error ? error.message : '회원 탈퇴에 실패했습니다.');
     } finally {
-      setSavingAll(false);
+      setWithdrawing(false);
+      setWithdrawModalOpen(false);
     }
   };
 
@@ -452,10 +308,10 @@ export default function MyPage() {
             <button
               type="button"
               className={styles.headerIconButton}
-              onClick={handleBack}
+              onClick={() => navigate(-1)}
               aria-label="뒤로가기"
             >
-              <ChevronLeft size={25} strokeWidth={2.2} />
+              <ChevronLeft size={23} strokeWidth={2.2} />
             </button>
 
             <h1 className={styles.title}>마이 페이지</h1>
@@ -464,7 +320,7 @@ export default function MyPage() {
               type="button"
               className={styles.menuButton}
               onClick={() => setMenuOpen(true)}
-              aria-label="메뉴 열기"
+              aria-label="사이드 메뉴 열기"
             >
               <Menu size={25} strokeWidth={2.2} />
             </button>
@@ -473,282 +329,126 @@ export default function MyPage() {
 
         <main className={styles.contentArea}>
           <section className={styles.nicknameSection}>
-            <span ref={nicknameMeasureRef} className={styles.nicknameMeasure}>
-              {(isNicknameActive ? nicknameDraft : displayedNickname) || "닉네임"}
-            </span>
+            <strong className={styles.nicknameText}>
+              {loading ? '불러오는 중...' : profile.nickname || '닉네임'}
+            </strong>
+          </section>
 
-            <div className={styles.nicknameTopRow}>
-              <div className={styles.nicknameTextWrap}>
-                <input
-                  ref={nicknameInputRef}
-                  type="text"
-                  value={isNicknameActive ? nicknameDraft : displayedNickname}
-                  onChange={(e) => setNicknameDraft(e.target.value)}
-                  readOnly={!isNicknameActive}
-                  className={`${styles.nicknameInput} ${
-                    isNicknameActive
-                      ? styles.nicknameInputActive
-                      : styles.nicknameInputInactive
-                  }`}
-                  style={{ width: `${nicknameWidth + 4}px` }}
-                  aria-label="닉네임"
-                />
+          <section className={styles.sectionBlock}>
+            <h2 className={styles.sectionTitle}>내 활동 요약</h2>
 
-                {isNicknameActive && (
-                  <div
-                    className={styles.nicknameUnderline}
-                    style={{ width: `${nicknameWidth + 4}px` }}
-                  />
-                )}
-              </div>
+            <div className={styles.summaryGrid}>
+              <article className={styles.summaryCard}>
+                <p className={styles.summaryLabel}>
+                  TOP 10
+                  <br />
+                  진입
+                </p>
+                <strong className={styles.summaryValue}>
+                  {loading ? '-' : `${summary.top10Count}회`}
+                </strong>
+              </article>
 
-              {isNicknameActive ? (
-                <button
-                  type="button"
-                  className={styles.actionButton}
-                  onClick={applyNicknameChange}
-                  disabled={!nicknameDraft.trim()}
-                >
-                  수정하기
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className={`${styles.iconButton} ${styles.nicknameEditButton}`}
-                  onClick={openNicknameEditor}
-                  aria-label="닉네임 수정"
-                >
-                  <Pencil size={18} strokeWidth={2.2} />
-                </button>
-              )}
+              <article className={styles.summaryCard}>
+                <p className={styles.summaryLabel}>
+                  올린
+                  <br />
+                  게시글
+                </p>
+                <strong className={styles.summaryValue}>
+                  {loading ? '-' : `${summary.myPostCount}개`}
+                </strong>
+              </article>
+
+              <article className={styles.summaryCard}>
+                <p className={styles.summaryLabel}>
+                  평가한
+                  <br />
+                  게시글
+                </p>
+                <strong className={styles.summaryValue}>
+                  {loading ? '-' : `${summary.votedPostCount}개`}
+                </strong>
+              </article>
             </div>
           </section>
 
-          <section className={styles.fieldList}>
-            <div className={styles.fieldCard}>
-              <input
-                type="text"
-                value={loadingProfile ? "불러오는 중..." : originalEmail}
-                readOnly
-                className={`${styles.fieldInput} ${styles.readonlyInput}`}
-                aria-label="이메일"
-              />
+          <section className={styles.sectionBlock}>
+            <div className={styles.sectionHeaderRow}>
+              <h2 className={styles.sectionTitle}>계정 정보</h2>
+
+              <button type="button" className={styles.changeButton} onClick={handleOpenEdit}>
+                <span>변경하기</span>
+                <ChevronRight size={18} strokeWidth={2.2} />
+              </button>
             </div>
 
-            <div className={styles.fieldGroup}>
-              <div className={styles.fieldCard}>
-                <div className={styles.fieldText}>비밀번호</div>
-
-                {isPasswordActive ? (
-                  <button
-                    type="button"
-                    className={styles.actionButton}
-                    onClick={applyPasswordChange}
-                    disabled={!isPasswordReady}
-                  >
-                    수정하기
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className={styles.iconButton}
-                    onClick={openPasswordEditor}
-                    aria-label="비밀번호 수정"
-                  >
-                    <Pencil size={18} strokeWidth={2.2} />
-                  </button>
-                )}
+            <div className={styles.accountCard}>
+              <div className={styles.accountRow}>
+                <span className={styles.accountLabel}>닉네임</span>
+                <span className={styles.accountValue}>{loading ? '-' : profile.nickname}</span>
               </div>
+              <div className={styles.divider} />
 
-              {isPasswordActive && (
-                <div className={styles.editorBlock}>
-                  <div className={styles.editorField}>
-                    <div className={styles.fieldHeader}>
-                      <label className={styles.editorLabel}>현재 비밀번호</label>
-                      <button
-                        type="button"
-                        className={`${styles.checkButton} ${
-                          currentPasswordChecked ? styles.checkButtonDone : ""
-                        }`}
-                        onClick={handleCurrentPasswordCheck}
-                        disabled={
-                          !currentPassword.trim() || checkingCurrentPassword
-                        }
-                      >
-                        {checkingCurrentPassword
-                          ? "확인중..."
-                          : currentPasswordChecked
-                          ? "확인완료"
-                          : "확인"}
-                      </button>
-                    </div>
-
-                    <input
-                      ref={currentPasswordRef}
-                      type="password"
-                      value={currentPassword}
-                      onChange={(e) => {
-                        setCurrentPassword(e.target.value);
-                        setCurrentPasswordChecked(false);
-                        setPasswordCheckMessage("");
-                      }}
-                      placeholder="현재 비밀번호를 입력하세요"
-                      className={styles.editorInput}
-                    />
-
-                    <p
-                      className={`${styles.helperText} ${
-                        passwordCheckMessage ===
-                        "현재 비밀번호가 일치하지 않습니다."
-                          ? styles.helperTextError
-                          : ""
-                      }`}
-                    >
-                      {passwordCheckMessage ||
-                        (!currentPassword.trim() &&
-                          "현재 비밀번호를 입력해주세요.")}
-                    </p>
-                  </div>
-
-                  <div className={styles.editorField}>
-                    <label className={styles.editorLabel}>새 비밀번호</label>
-                    <input
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="새 비밀번호를 입력하세요"
-                      className={styles.editorInput}
-                    />
-                  </div>
-
-                  <div className={styles.editorField}>
-                    <label className={styles.editorLabel}>새 비밀번호 확인</label>
-                    <input
-                      type="password"
-                      value={newPasswordConfirm}
-                      onChange={(e) => setNewPasswordConfirm(e.target.value)}
-                      placeholder="새 비밀번호를 다시 입력하세요"
-                      className={styles.editorInput}
-                    />
-
-                    <p className={styles.helperText}>
-                      {(newPassword.trim() !== "" &&
-                        newPasswordConfirm.trim() !== "" &&
-                        newPassword !== newPasswordConfirm &&
-                        "새 비밀번호가 일치하지 않습니다.") ||
-                        (isPasswordReady &&
-                          "비밀번호 변경 항목이 수정완료에 반영됩니다.")}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className={styles.fieldGroup}>
-              <div className={styles.fieldCard}>
-                <div className={styles.fieldText}>
-                  {formatPhoneNumber(displayedPhone)}
-                </div>
-
-                {isPhoneActive ? (
-                  <button
-                    type="button"
-                    className={styles.actionButton}
-                    onClick={applyPhoneChange}
-                    disabled={!isPhoneValid}
-                  >
-                    수정하기
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className={styles.iconButton}
-                    onClick={openPhoneEditor}
-                    aria-label="전화번호 수정"
-                  >
-                    <Pencil size={18} strokeWidth={2.2} />
-                  </button>
-                )}
+              <div className={styles.accountRow}>
+                <span className={styles.accountLabel}>이메일</span>
+                <span className={styles.accountValue}>{loading ? '-' : profile.email}</span>
               </div>
+              <div className={styles.divider} />
 
-              {isPhoneActive && (
-                <div className={styles.editorBlock}>
-                  <label className={styles.editorLabel}>전화번호</label>
+              <div className={styles.accountRow}>
+                <span className={styles.accountLabel}>비밀번호</span>
+                <span className={styles.accountValue}>********</span>
+              </div>
+              <div className={styles.divider} />
 
-                  <div className={styles.phoneRow}>
-                    <input
-                      ref={phone1Ref}
-                      type="text"
-                      inputMode="numeric"
-                      className={styles.phoneInput}
-                      value={phone1}
-                      onChange={(e) => handlePhone1Change(e.target.value)}
-                      onKeyDown={(e) => handlePhoneKeyDown(e, phone1)}
-                      placeholder="010"
-                      maxLength={3}
-                    />
-                    <span className={styles.phoneDash}>-</span>
-                    <input
-                      ref={phone2Ref}
-                      type="text"
-                      inputMode="numeric"
-                      className={styles.phoneInput}
-                      value={phone2}
-                      onChange={(e) => handlePhone2Change(e.target.value)}
-                      onKeyDown={(e) => handlePhoneKeyDown(e, phone2, phone1Ref)}
-                      placeholder="1234"
-                      maxLength={4}
-                    />
-                    <span className={styles.phoneDash}>-</span>
-                    <input
-                      ref={phone3Ref}
-                      type="text"
-                      inputMode="numeric"
-                      className={styles.phoneInput}
-                      value={phone3}
-                      onChange={(e) => handlePhone3Change(e.target.value)}
-                      onKeyDown={(e) => handlePhoneKeyDown(e, phone3, phone2Ref)}
-                      placeholder="5678"
-                      maxLength={4}
-                    />
-                  </div>
-
-                  <p className={styles.helperText}>
-                    {!phone1 && !phone2 && !phone3 && "전화번호를 입력해주세요."}
-                    {(phone1 || phone2 || phone3) &&
-                      !isPhoneValid &&
-                      "올바른 전화번호 형식으로 입력해주세요."}
-                    {isPhoneValid && "전화번호 변경 항목이 수정완료에 반영됩니다."}
-                  </p>
-                </div>
-              )}
+              <div className={styles.accountRow}>
+                <span className={styles.accountLabel}>전화번호</span>
+                <span className={styles.accountValue}>
+                  {loading ? '-' : formatPhoneNumber(profile.phoneNumber)}
+                </span>
+              </div>
             </div>
           </section>
 
           <button
             type="button"
             className={styles.withdrawButton}
-            onClick={handleWithdraw}
+            onClick={() => setWithdrawModalOpen(true)}
           >
-            회원 탈퇴
+            회원탈퇴
           </button>
         </main>
-
-        <div className={styles.finalSubmitWrap}>
-          <button
-            type="button"
-            className={`${styles.finalSubmitButton} ${
-              !canSubmitAll ? styles.buttonDisabled : ""
-            }`}
-            onClick={handleSubmitAll}
-            disabled={!canSubmitAll}
-          >
-            {savingAll ? "수정 중..." : "수정완료"}
-          </button>
-        </div>
       </div>
 
       <SideMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+
+      <PasswordModal
+        open={passwordModalOpen}
+        password={verifyPassword}
+        errorMessage={verifyErrorMessage}
+        loading={verifying}
+        onPasswordChange={setVerifyPassword}
+        onClose={() => {
+          if (verifying) return;
+          setPasswordModalOpen(false);
+        }}
+        onConfirm={handleVerifyBeforeEdit}
+      />
+
+      <ConfirmModal
+        open={withdrawModalOpen}
+        title="회원탈퇴 하시겠습니까?"
+        description="탈퇴 후에는 계정을 복구할 수 없습니다."
+        confirmText="회원탈퇴"
+        confirmTone="danger"
+        loading={withdrawing}
+        onClose={() => {
+          if (withdrawing) return;
+          setWithdrawModalOpen(false);
+        }}
+        onConfirm={handleWithdraw}
+      />
     </>
   );
 }
