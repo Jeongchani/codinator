@@ -43,6 +43,7 @@ import type {
   ListReportHistoriesResponse,
   ListSanctionsResponse,
   ListUserReportsResponse,
+  ReopenReportResponse,
   ReviewReportResponse,
   UpdateFeedbackTagResponse,
   UpdateKeywordResponse,
@@ -65,6 +66,8 @@ import { CreateSanctionDto } from './dto/create-sanction.dto';
 import { EndSanctionDto } from './dto/end-sanction.dto';
 import { ListActionLogsQueryDto } from './dto/list-action-logs-query.dto';
 import { ListReportHistoriesQueryDto } from './dto/list-report-histories-query.dto';
+import { ReopenReportDto } from './dto/reopen-report.dto';
+import { CreateUserRestrictionDto } from './dto/create-user-restriction.dto';
 import { AdminService } from './admin.service';
 
 @ApiTags('admin')
@@ -870,5 +873,244 @@ export class AdminController {
       { required: true },
     );
     return this.adminService.getReportHistories(adminId!, query);
+  }
+
+  // ─── [Batch12] PATCH /admin/post-reports/:reportId/reopen ────────────────────
+
+  @Patch('post-reports/:reportId/reopen')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '게시글 신고 재오픈 (ADMIN)',
+    description: 'RESOLVED / REJECTED 처리된 신고를 PENDING 으로 되돌립니다. reviewedAt / reviewedById / reviewReason 이 초기화됩니다.',
+  })
+  @ApiParam({ name: 'reportId', type: Number, example: 3, description: '신고 ID' })
+  @ApiBody({ type: ReopenReportDto })
+  @ApiOkResponse({
+    description: '재오픈 완료',
+    schema: {
+      example: { reportId: 3, status: 'PENDING', reopenedAt: '2026-04-23T10:00:00.000Z' },
+    },
+  })
+  @ApiBadRequestResponse({ description: '이미 PENDING 상태인 신고' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  @ApiNotFoundResponse({ description: '신고를 찾을 수 없음' })
+  async reopenPostReport(
+    @Param('reportId', ParseIntPipe) reportId: number,
+    @Body() body: ReopenReportDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ReopenReportResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.reopenPostReport(adminId!, reportId, body);
+  }
+
+  // ─── [Batch12] PATCH /admin/user-reports/:reportId/reopen ────────────────────
+
+  @Patch('user-reports/:reportId/reopen')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '유저 신고 재오픈 (ADMIN)',
+    description: 'RESOLVED / REJECTED 처리된 유저 신고를 PENDING 으로 되돌립니다. reviewedAt / reviewedById / reviewReason 이 초기화됩니다.',
+  })
+  @ApiParam({ name: 'reportId', type: Number, example: 5, description: '유저 신고 ID' })
+  @ApiBody({ type: ReopenReportDto })
+  @ApiOkResponse({
+    description: '재오픈 완료',
+    schema: {
+      example: { reportId: 5, status: 'PENDING', reopenedAt: '2026-04-23T10:00:00.000Z' },
+    },
+  })
+  @ApiBadRequestResponse({ description: '이미 PENDING 상태인 신고' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  @ApiNotFoundResponse({ description: '신고를 찾을 수 없음' })
+  async reopenUserReport(
+    @Param('reportId', ParseIntPipe) reportId: number,
+    @Body() body: ReopenReportDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ReopenReportResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.reopenUserReport(adminId!, reportId, body);
+  }
+
+  // ─── [Batch12] GET /admin/user-sanctions ─────────────────────────────────────
+
+  @Get('user-sanctions')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '유저 제재 목록 조회 (ADMIN) — /admin/sanctions 명세 호환 alias',
+    description: 'userId / type 필터 및 커서 기반 페이지네이션(cursor=마지막 sanctionId)을 지원합니다.',
+  })
+  @ApiQuery({ name: 'userId', required: false, type: Number, description: '대상 사용자 ID 필터' })
+  @ApiQuery({ name: 'type', required: false, enum: ['TEMP_SUSPENSION', 'PERMANENT_BAN', 'POST_RESTRICTION'], description: '제재 유형 필터' })
+  @ApiQuery({ name: 'cursor', required: false, type: Number, description: '마지막 항목 sanctionId' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: '페이지 크기 (기본 20, 최대 100)' })
+  @ApiOkResponse({
+    description: '유저 제재 목록',
+    schema: {
+      example: {
+        items: [
+          {
+            sanctionId: 1,
+            sanctionedUserId: 5,
+            sanctionedUserNickname: '사용자닉',
+            processedById: 2,
+            processedByNickname: '관리자닉',
+            type: 'TEMP_SUSPENSION',
+            reason: '반복 스팸 행위',
+            startsAt: '2026-04-21T00:00:00.000Z',
+            endsAt: '2026-05-21T00:00:00.000Z',
+            createdAt: '2026-04-21T00:00:00.000Z',
+          },
+        ],
+        nextCursor: null,
+        total: 3,
+      },
+    },
+  })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  async getUserSanctions(
+    @Query() query: ListSanctionsQueryDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ListSanctionsResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.getSanctions(adminId!, query);
+  }
+
+  // ─── [Batch12] PATCH /admin/user-sanctions/:sanctionId/end ──────────────────
+
+  @Patch('user-sanctions/:sanctionId/end')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '유저 제재 조기 종료 (ADMIN) — /admin/sanctions/:id/end 명세 호환 alias',
+    description: 'PERMANENT_BAN 제재 종료는 SUPER_ADMIN만 가능합니다. endsAt을 현재 시각으로 업데이트합니다.',
+  })
+  @ApiParam({ name: 'sanctionId', type: Number, example: 1, description: '제재 ID' })
+  @ApiBody({ type: EndSanctionDto })
+  @ApiOkResponse({
+    description: '제재 종료 완료',
+    schema: {
+      example: {
+        sanctionId: 1,
+        endsAt: '2026-04-23T12:00:00.000Z',
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: '이미 종료된 제재' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음 또는 SUPER_ADMIN 전용 작업' })
+  @ApiNotFoundResponse({ description: '제재를 찾을 수 없음' })
+  async endUserSanction(
+    @Param('sanctionId', ParseIntPipe) sanctionId: number,
+    @Body() body: EndSanctionDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<EndSanctionResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.endSanction(adminId!, sanctionId, body);
+  }
+
+  // ─── [Batch12] POST /admin/users/:userId/sanctions/post-restriction ──────────
+
+  @Post('users/:userId/sanctions/post-restriction')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '게시글 제한 제재 생성 (ADMIN)',
+    description: '특정 사용자에게 POST_RESTRICTION 제재를 부여합니다. (type 고정, userId 는 path param)',
+  })
+  @ApiParam({ name: 'userId', type: Number, example: 5, description: '제재 대상 사용자 ID' })
+  @ApiBody({ type: CreateUserRestrictionDto })
+  @ApiOkResponse({
+    description: '게시글 제한 제재 생성 완료',
+    schema: {
+      example: {
+        sanctionId: 2,
+        sanctionedUserId: 5,
+        type: 'POST_RESTRICTION',
+        reason: '부적절한 게시글 반복 게시',
+        startsAt: '2026-04-23T00:00:00.000Z',
+        endsAt: '2026-05-23T00:00:00.000Z',
+        createdAt: '2026-04-23T00:00:00.000Z',
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: '유효성 검사 실패 또는 endsAt이 startsAt보다 이전' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  @ApiNotFoundResponse({ description: '대상 사용자를 찾을 수 없음' })
+  async createPostRestriction(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body() body: CreateUserRestrictionDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<CreateSanctionResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.createSanction(adminId!, {
+      sanctionedUserId: userId,
+      type: 'POST_RESTRICTION',
+      reason: body.reason,
+      startsAt: body.startsAt,
+      endsAt: body.endsAt,
+    });
+  }
+
+  // ─── [Batch12] POST /admin/users/:userId/sanctions/login-restriction ─────────
+
+  @Post('users/:userId/sanctions/login-restriction')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '로그인 제한 제재 생성 (ADMIN)',
+    description: '특정 사용자에게 TEMP_SUSPENSION(로그인 제한) 제재를 부여합니다. (type 고정, userId 는 path param)',
+  })
+  @ApiParam({ name: 'userId', type: Number, example: 5, description: '제재 대상 사용자 ID' })
+  @ApiBody({ type: CreateUserRestrictionDto })
+  @ApiOkResponse({
+    description: '로그인 제한 제재 생성 완료',
+    schema: {
+      example: {
+        sanctionId: 3,
+        sanctionedUserId: 5,
+        type: 'TEMP_SUSPENSION',
+        reason: '반복 욕설 및 스팸 행위',
+        startsAt: '2026-04-23T00:00:00.000Z',
+        endsAt: '2026-05-23T00:00:00.000Z',
+        createdAt: '2026-04-23T00:00:00.000Z',
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: '유효성 검사 실패 또는 endsAt이 startsAt보다 이전' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  @ApiNotFoundResponse({ description: '대상 사용자를 찾을 수 없음' })
+  async createLoginRestriction(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body() body: CreateUserRestrictionDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<CreateSanctionResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.createSanction(adminId!, {
+      sanctionedUserId: userId,
+      type: 'TEMP_SUSPENSION',
+      reason: body.reason,
+      startsAt: body.startsAt,
+      endsAt: body.endsAt,
+    });
   }
 }

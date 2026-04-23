@@ -12,3 +12,5 @@ export * from './create-sanction'; // V3 Batch11
 export * from './end-sanction'; // V3 Batch11
 export * from './list-action-logs'; // V3 Batch11
 export * from './list-report-histories'; // V3 Batch11
+export * from './reopen-report'; // V3 Batch12
+export * from './create-user-sanction'; // V3 Batch12
