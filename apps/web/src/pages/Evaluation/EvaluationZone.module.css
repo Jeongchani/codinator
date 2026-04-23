@@ -119,34 +119,52 @@
 
 .progressTrack {
   @apply relative h-[30px] px-2.5 py-[5px] rounded-[10px] inline-flex justify-start items-center gap-[5px] overflow-hidden w-full;
-  background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(3px) saturate(108%);
+  -webkit-backdrop-filter: blur(14px) saturate(108%);
+}
+
+.progressTrack::after {
+  content: '';
+  @apply absolute inset-0 pointer-events-none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%);
+}
+
+.likeFill,
+.dislikeFill {
+  @apply absolute top-0 h-full;
 }
 
 .likeFill {
-  @apply absolute left-0 top-0 h-full;
-  background: rgba(234, 138, 120, 0.82);
+  @apply left-0;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.1) 100%);
 }
 
 .dislikeFill {
-  @apply absolute right-0 top-0 h-full;
-  background: rgba(174, 178, 214, 0.78);
+  @apply right-0;
+  background: linear-gradient(90deg, rgba(74, 74, 74, 0.54) 0%, rgba(56, 56, 56, 0.68) 100%);
 }
 
 .leftPercent,
 .rightPercent {
-  @apply absolute top-1/2 -translate-y-1/2 flex items-center text-white text-[11px] font-semibold leading-none;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  @apply absolute top-1/2 -translate-y-1/2 flex items-center text-[11px] font-semibold leading-none;
+  z-index: 1;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.22);
+}
+
+.leftPercent svg,
+.rightPercent svg {
+  flex-shrink: 0;
 }
 
 .leftPercent {
   @apply left-[12px] gap-[6px];
+  color: rgba(255, 255, 255, 0.94);
 }
 
 .rightPercent {
   @apply right-[12px] gap-[6px];
+  color: rgba(233, 233, 233, 0.78);
 }
 
 .voteDetailButtonWrap {
