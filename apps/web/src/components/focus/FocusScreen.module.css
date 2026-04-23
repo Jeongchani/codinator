@@ -1,0 +1,230 @@
+.absoluteRoot {
+  @apply absolute inset-0 z-[70] bg-black;
+}
+
+.modalRoot {
+  @apply fixed inset-0 z-[2200] flex items-center justify-center bg-black/35;
+}
+
+.pageRoot {
+  @apply relative w-full h-full bg-black;
+}
+
+.frame {
+  @apply relative w-full h-full overflow-hidden bg-black;
+}
+
+.modalRoot .frame {
+  width: 375px;
+  height: 812px;
+}
+
+.viewport {
+  @apply absolute inset-0 overflow-y-auto snap-y snap-mandatory;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.slide {
+  @apply relative w-full h-[812px] snap-start;
+}
+
+.mainImage {
+  @apply absolute inset-0 bg-cover bg-center bg-no-repeat;
+}
+
+.imageFallback {
+  @apply absolute inset-0 flex items-center justify-center text-[14px] font-medium text-white;
+  background: #6c6c6c;
+}
+
+.topGradient {
+  @apply absolute left-0 top-0 w-full h-36;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+.bottomGradient {
+  @apply absolute left-0 bottom-0 w-full h-52;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.22) 100%);
+}
+
+.sheetBackdrop {
+  @apply absolute inset-0 z-[55] border-0 p-0 bg-transparent;
+}
+
+.overlay {
+  @apply absolute inset-0 z-[60] pointer-events-none;
+}
+
+.topBar {
+  @apply absolute left-4 right-4 top-[63px] z-[70] flex items-center justify-between;
+}
+
+.headerTitle {
+  @apply min-w-0 pr-4 text-white text-[20px] font-semibold leading-7;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+}
+
+.topBarActions {
+  @apply flex items-center gap-2 pointer-events-auto shrink-0;
+}
+
+.closeButton {
+  @apply flex items-center justify-center rounded-[10px] border-0 p-0 text-white pointer-events-auto;
+  width: 28px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.swipeIndicator {
+  @apply absolute top-1/2 right-4 z-[70] -translate-y-1/2 pointer-events-none;
+}
+
+.swipeIndicatorStack {
+  @apply flex flex-col items-center;
+  gap: 8px;
+}
+
+.swipeIndicatorActive {
+  width: 8px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.28);
+  animation: focusSwipePulse 1.4s ease-in-out infinite;
+}
+
+.swipeIndicatorDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.32);
+  animation: focusSwipeDot 1.7s ease-in-out infinite;
+}
+
+.bottomStack {
+  @apply absolute left-0 right-0 px-5 z-[70];
+}
+
+.detailButton {
+  @apply h-[30px] rounded-[999px] border-0 flex items-center justify-between text-white px-4 mb-4 pointer-events-auto;
+  width: 118px;
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+  transition:
+    background 0.16s ease,
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.16s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.detailButton:active {
+  background: rgba(0, 0, 0, 0.68);
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+}
+
+.detailButton:disabled {
+  opacity: 0.56;
+}
+
+.detailButtonText {
+  @apply text-[12px] font-semibold leading-4;
+}
+
+.detailButtonIcon {
+  @apply shrink-0 text-white;
+}
+
+.voteGraphArea {
+  @apply w-full pointer-events-none;
+}
+
+.progressTrack {
+  @apply relative h-[30px] px-2.5 py-[5px] rounded-[10px] inline-flex justify-start items-center gap-[5px] overflow-hidden w-full;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(3px) saturate(108%);
+  -webkit-backdrop-filter: blur(14px) saturate(108%);
+}
+
+.progressTrack::after {
+  content: '';
+  @apply absolute inset-0 pointer-events-none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%);
+}
+
+.likeFill,
+.dislikeFill {
+  @apply absolute top-0 h-full;
+}
+
+.likeFill {
+  @apply left-0;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.1) 100%);
+}
+
+.dislikeFill {
+  @apply right-0;
+  background: linear-gradient(90deg, rgba(74, 74, 74, 0.54) 0%, rgba(56, 56, 56, 0.68) 100%);
+}
+
+.leftPercent,
+.rightPercent {
+  @apply absolute top-1/2 -translate-y-1/2 flex items-center text-[11px] font-semibold leading-none;
+  z-index: 1;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.22);
+}
+
+.leftPercent > :global(svg),
+.rightPercent > :global(svg) {
+  flex-shrink: 0;
+}
+
+.leftPercent {
+  @apply left-[12px] gap-[6px];
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.rightPercent {
+  @apply right-[12px] gap-[6px];
+  color: rgba(233, 233, 233, 0.78);
+}
+
+@keyframes focusSwipePulse {
+  0% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+
+  50% {
+    opacity: 0.84;
+    transform: scaleY(0.94);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes focusSwipeDot {
+  0% {
+    opacity: 0.2;
+    transform: translateY(0);
+  }
+
+  50% {
+    opacity: 0.44;
+    transform: translateY(1.5px);
+  }
+
+  100% {
+    opacity: 0.2;
+    transform: translateY(0);
+  }
+}

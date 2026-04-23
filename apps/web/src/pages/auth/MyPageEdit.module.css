@@ -153,3 +153,7 @@
 .modalConfirmButton:disabled {
   @apply cursor-not-allowed opacity-50;
 }
+
+.debugCodeText {
+  @apply mt-1 text-[12px] leading-4 text-[#8a8a8a];
+}

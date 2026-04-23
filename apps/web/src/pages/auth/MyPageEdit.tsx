@@ -191,6 +191,7 @@ export default function MyPageEdit() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [phoneSendMessage, setPhoneSendMessage] = useState('');
+  const [phoneDebugCode, setPhoneDebugCode] = useState('');
   const [phoneErrorMessage, setPhoneErrorMessage] = useState('');
   const [sendingCode, setSendingCode] = useState(false);
   const [verifyingCode, setVerifyingCode] = useState(false);
@@ -309,6 +310,7 @@ export default function MyPageEdit() {
     setVerifiedPhoneDigits('');
     setVerificationCode('');
     setPhoneSendMessage('');
+    setPhoneDebugCode('');
     setPhoneErrorMessage('');
   };
 
@@ -333,11 +335,8 @@ export default function MyPageEdit() {
       setPhoneVerified(false);
       setPhoneVerificationToken('');
       setVerifiedPhoneDigits('');
-      setPhoneSendMessage(
-        response.debugCode
-          ? `인증번호 발송됨 (테스트 코드: ${response.debugCode})`
-          : '인증번호 발송됨',
-      );
+      setPhoneSendMessage('인증번호 발송됨');
+      setPhoneDebugCode(response.debugCode ?? '');
     } catch (error) {
       console.error('인증번호 발송 실패:', error);
       setPhoneErrorMessage(
@@ -602,6 +601,10 @@ export default function MyPageEdit() {
                     ? '전화번호를 변경한 경우 인증이 필요합니다.'
                     : ' ')}
             </p>
+
+            {phoneDebugCode ? (
+              <p className={styles.debugCodeText}>테스트 코드: {phoneDebugCode}</p>
+            ) : null}
           </section>
         </main>
 
