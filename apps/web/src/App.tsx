@@ -11,6 +11,7 @@ import AppLayout from './AppLayout';
 import TestPage from './TestPage';
 import Bookmark from './pages/bookmark/Bookmark';
 import MyPage from './pages/auth/MyPage';
+import MyPageEdit from './pages/auth/MyPageEdit';
 import Search from './pages/search/Search';
 import EvaluationZone from './pages/evaluation/EvaluationZone';
 import EvaluationDetailFeedback from './pages/evaluation/EvaluationDetailFeedback';
@@ -31,13 +32,14 @@ function AppRoutes() {
       <Route path="/evaluationDetailFeedback/:postId" element={<EvaluationDetailFeedback />} />
       <Route path="/postUpload" element={<PostUpload />} />
       <Route path="/rankingDetail/:postId" element={<RankingDetail />} />
-      <Route path="/myPage" element={<MyPage />} />
+      <Route path="/myPage/edit" element={<MyPageEdit />} />
       <Route path="/settings" element={<MyPage />} />
       <Route path="/ongoingEvaluationHistory" element={<OngoingEvaluationHistory />} />
 
       <Route path="/test" element={<TestPage />} />
 
       <Route element={<AppLayout />}>
+        <Route path="/myPage" element={<MyPage />} />
         <Route path="/rankingZone" element={<RankingZone />} />
         <Route path="/user/:userId/feed" element={<UserFeed />} />
         <Route path="/myFeed" element={<MyFeed />} />

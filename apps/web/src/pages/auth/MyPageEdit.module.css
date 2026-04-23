@@ -1,0 +1,155 @@
+.container {
+  @apply relative mx-auto flex h-[812px] w-[375px] flex-col overflow-hidden bg-[#f7f7f7];
+}
+
+.header {
+  @apply h-[93px] w-full shrink-0 bg-white;
+}
+
+.headerInner {
+  @apply relative h-full w-full px-4;
+}
+
+.headerIconButton {
+  @apply absolute left-4 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0 text-black;
+  top: 59px;
+  transform: translateY(-50%);
+}
+
+.title {
+  @apply absolute left-1/2 whitespace-nowrap text-[20px] font-semibold leading-7 text-black;
+  top: 59px;
+  transform: translate(-50%, -50%);
+}
+
+.cancelButton {
+  @apply absolute right-4 border-0 bg-transparent p-0 text-[15px] font-medium leading-5 text-black;
+  top: 59px;
+  transform: translateY(-50%);
+}
+
+.contentArea {
+  @apply flex-1 overflow-y-auto px-4 pb-4 pt-[14px];
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.contentArea::-webkit-scrollbar {
+  display: none;
+}
+
+.sectionBlock {
+  @apply mt-[14px];
+}
+
+.label {
+  @apply mb-2 text-[16px] font-bold leading-[22px] text-black;
+}
+
+.inputBox {
+  @apply flex h-[52px] items-center rounded-[16px] border border-[#cfc7c1] bg-white px-5;
+}
+
+.inputRowBox {
+  @apply flex h-[52px] items-center gap-2 rounded-[16px] border border-[#cfc7c1] bg-white px-4;
+}
+
+.inputBoxDisabled {
+  @apply bg-[#e8e8e8];
+}
+
+.input {
+  @apply h-full w-full border-0 bg-transparent p-0 text-[15px] leading-5 text-[#111111] outline-none;
+}
+
+.input::placeholder {
+  @apply text-[#b0b0b0];
+}
+
+.input:disabled {
+  @apply text-[#a6a6a6];
+}
+
+.inlineButton {
+  @apply shrink-0 rounded-[10px] border border-[#a6a6a6] bg-white px-3 py-[8px] text-[13px] font-medium leading-4 text-[#171717];
+}
+
+.inlineButton:disabled {
+  @apply cursor-not-allowed opacity-45;
+}
+
+.helperText {
+  @apply mt-[6px] min-h-[16px] text-[12px] leading-4 text-[#a6a6a6];
+}
+
+.successText {
+  @apply text-[#62ae29];
+}
+
+.errorText {
+  @apply text-[#dc4d36];
+}
+
+.phoneCard {
+  @apply rounded-[16px] border border-[#cfc7c1] bg-white px-4 py-3;
+}
+
+.phoneCardExpanded {
+  @apply pb-3;
+}
+
+.phoneTopRow {
+  @apply flex h-[26px] items-center gap-2;
+}
+
+.sentText {
+  @apply shrink-0 text-right text-[12px] leading-4 text-[#a6a6a6];
+}
+
+.verificationRow {
+  @apply mt-3 flex h-[48px] items-center gap-2 rounded-[14px] border border-[#cfc7c1] bg-white px-4;
+}
+
+.submitArea {
+  @apply shrink-0 bg-[#f7f7f7] px-4 pb-4 pt-2;
+}
+
+.submitButton {
+  @apply flex h-[54px] w-full items-center justify-center rounded-[16px] bg-black text-[20px] font-semibold leading-7 text-white;
+}
+
+.submitButtonDisabled {
+  @apply cursor-not-allowed bg-[#b9b9b9] text-white;
+}
+
+.modalOverlay {
+  @apply fixed inset-0 z-[200] flex items-center justify-center bg-black/45 px-6;
+}
+
+.modalCard {
+  @apply w-full max-w-[320px] rounded-[20px] bg-white px-5 pb-5 pt-6 shadow-[0_16px_40px_rgba(0,0,0,0.2)];
+}
+
+.modalTitle {
+  @apply text-center text-[20px] font-semibold leading-7 text-black;
+}
+
+.modalDescription {
+  @apply mt-2 whitespace-pre-line text-center text-[14px] leading-5 text-[#666666];
+}
+
+.modalButtonRow {
+  @apply mt-5 flex gap-3;
+}
+
+.modalCancelButton {
+  @apply h-12 flex-1 rounded-[14px] border border-[#d4cdc7] bg-white text-[15px] font-medium text-black;
+}
+
+.modalConfirmButton {
+  @apply h-12 flex-1 rounded-[14px] bg-black text-[15px] font-medium text-white;
+}
+
+.modalConfirmButton:disabled {
+  @apply cursor-not-allowed opacity-50;
+}
