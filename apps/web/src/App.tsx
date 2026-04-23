@@ -18,6 +18,7 @@ import EvaluationDetailFeedback from './pages/evaluation/EvaluationDetailFeedbac
 import RankingDetail from './pages/ranking/RankingDetail';
 import UserFeed from './pages/feed/UserFeed';
 import OngoingEvaluationHistory from './pages/evaluation/OngoingEvaluationHistory';
+import Settings from './pages/settins/Settings';
 
 function AppRoutes() {
   const navigate = useNavigate();
@@ -33,12 +34,12 @@ function AppRoutes() {
       <Route path="/postUpload" element={<PostUpload />} />
       <Route path="/rankingDetail/:postId" element={<RankingDetail />} />
       <Route path="/myPage/edit" element={<MyPageEdit />} />
-      <Route path="/settings" element={<MyPage />} />
       <Route path="/ongoingEvaluationHistory" element={<OngoingEvaluationHistory />} />
 
       <Route path="/test" element={<TestPage />} />
 
       <Route element={<AppLayout />}>
+        <Route path="/settings" element={<Settings />} />
         <Route path="/myPage" element={<MyPage />} />
         <Route path="/rankingZone" element={<RankingZone />} />
         <Route path="/user/:userId/feed" element={<UserFeed />} />
