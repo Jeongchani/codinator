@@ -17,12 +17,13 @@
 
 .overlay {
   @apply absolute inset-0;
-  background: rgba(0, 0, 0, 0.24);
+  background: var(--app-overlay);
   transition: opacity 0.28s ease;
 }
 
 .panel {
-  @apply absolute right-0 top-0 h-full w-[293px] bg-white;
+  @apply absolute right-0 top-0 h-full w-[293px];
+  background: var(--app-surface);
   transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
   box-shadow: -10px 0 32px rgba(0, 0, 0, 0.12);
@@ -37,14 +38,13 @@
 }
 
 .closeButton {
-  @apply absolute right-5 top-[59px] -translate-y-1/2
-    flex h-6 w-6 items-center justify-center
-    border-0 bg-transparent p-0 text-[#7a7a7a]
-    transition-transform duration-150 active:scale-95;
+  @apply absolute right-5 top-[59px] -translate-y-1/2 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0 transition-transform duration-150 active:scale-95;
+  color: var(--app-text-secondary);
 }
 
 .mainTitle {
-  @apply absolute left-4 top-[111px] text-[20px] font-bold leading-7 text-black;
+  @apply absolute left-4 top-[111px] text-[20px] font-bold leading-7;
+  color: var(--app-text);
 }
 
 .mainOptions {
@@ -52,7 +52,8 @@
 }
 
 .otherTitle {
-  @apply absolute left-4 top-[507px] text-[20px] font-bold leading-7 text-black;
+  @apply absolute left-4 top-[507px] text-[20px] font-bold leading-7;
+  color: var(--app-text);
 }
 
 .otherOptions {
@@ -60,17 +61,17 @@
 }
 
 .menuItem {
-  @apply flex h-14 w-full items-center justify-between
-    bg-white pl-7 pr-6 text-left
-    transition-all duration-150;
+  @apply flex h-14 w-full items-center justify-between pl-7 pr-6 text-left transition-all duration-150;
+  background: var(--app-surface);
 }
 
 .menuItem:hover {
-  @apply bg-neutral-50;
+  background: var(--app-surface-muted);
 }
 
 .menuItem:active {
-  @apply scale-[0.985] bg-neutral-100;
+  @apply scale-[0.985];
+  background: var(--app-surface-muted);
 }
 
 .menuItemLeft {
@@ -78,15 +79,18 @@
 }
 
 .iconWrap {
-  @apply flex h-5 w-5 shrink-0 items-center justify-center text-black;
+  @apply flex h-5 w-5 shrink-0 items-center justify-center;
+  color: var(--app-text);
 }
 
 .menuLabel {
-  @apply truncate text-[15px] font-bold leading-5 text-black;
+  @apply truncate text-[15px] font-bold leading-5;
+  color: var(--app-text);
 }
 
 .arrowIcon {
-  @apply flex shrink-0 items-center justify-center text-black;
+  @apply flex shrink-0 items-center justify-center;
+  color: var(--app-text);
 }
 
 .logoutArea {
@@ -102,11 +106,13 @@
 }
 
 .logoutIcon {
-  @apply flex h-[25px] w-[25px] items-center justify-center text-black;
+  @apply flex h-[25px] w-[25px] items-center justify-center;
+  color: var(--app-text);
 }
 
 .logoutText {
-  @apply text-[15px] font-bold leading-5 text-black;
+  @apply text-[15px] font-bold leading-5;
+  color: var(--app-text);
 }
 
 @media (prefers-reduced-motion: reduce) {

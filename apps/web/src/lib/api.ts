@@ -4,9 +4,12 @@ import type {
   EvaluationHistoryItem,
   GetEvaluationHistoryResponse,
   GetMyBookmarksResponse,
+  GetSettingsResponse,
   LogoutResponse,
   RefreshTokenResponse,
   RemoveBookmarkResponse,
+  UpdateSettingsRequest,
+  UpdateSettingsResponse,
 } from "@codinator/contracts";
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v3";
@@ -344,6 +347,22 @@ export const fetcher = async <T>(endpoint: string, options?: RequestInit): Promi
   }
 
   return response.json() as Promise<T>;
+};
+
+export const fetchMySettings = async (): Promise<GetSettingsResponse> => {
+  return fetcher<GetSettingsResponse>("/users/me/settings", {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const updateMySettings = async (
+  body: UpdateSettingsRequest,
+): Promise<UpdateSettingsResponse> => {
+  return fetcher<UpdateSettingsResponse>("/users/me/settings", {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(body),
+  });
 };
 
 export const uploadPostImage = async (file: File): Promise<UploadedPostImageResponse> => {

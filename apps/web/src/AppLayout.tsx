@@ -4,8 +4,12 @@ import Footer from "./components/Footer";
 export default function AppLayout() {
   return (
     <div
-      className="mx-auto relative overflow-hidden bg-white shadow-2xl"
-      style={{ width: "var(--app-width)", height: "var(--app-height)" }}
+      className="mx-auto relative overflow-hidden shadow-2xl"
+      style={{
+        width: "var(--app-width)",
+        height: "var(--app-height)",
+        backgroundColor: "var(--app-surface)",
+      }}
     >
       <div className="w-full h-full overflow-hidden">
         <Outlet />

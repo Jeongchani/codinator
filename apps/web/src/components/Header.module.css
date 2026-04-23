@@ -1,7 +1,7 @@
 .header {
-  @apply bg-white shrink-0;
   width: var(--app-width);
   height: var(--app-header-height);
+  background: var(--app-surface);
 }
 
 .inner {
@@ -9,19 +9,22 @@
 }
 
 .title {
-  @apply absolute left-1/2 -translate-x-1/2 text-[18px] leading-[22px] font-bold text-black;
+  @apply absolute left-1/2 -translate-x-1/2 text-[18px] leading-[22px] font-bold;
   top: 59px;
   transform: translateX(-50%) translateY(-50%);
+  color: var(--app-text);
 }
 
 .searchButton {
-  @apply absolute left-5 w-6 h-6 flex items-center justify-center text-[#7a7a7a] bg-transparent p-0 border-0;
+  @apply absolute left-5 w-6 h-6 flex items-center justify-center bg-transparent p-0 border-0;
   top: 59px;
   transform: translateY(-50%);
+  color: var(--app-text-secondary);
 }
 
 .menuButton {
-  @apply absolute right-5 w-6 h-6 flex items-center justify-center text-[#7a7a7a] bg-transparent p-0 border-0;
+  @apply absolute right-5 w-6 h-6 flex items-center justify-center bg-transparent p-0 border-0;
   top: 59px;
   transform: translateY(-50%);
+  color: var(--app-text-secondary);
 }

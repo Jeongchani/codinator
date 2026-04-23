@@ -1,9 +1,11 @@
 .container {
-  @apply relative mx-auto flex h-[812px] w-[375px] flex-col overflow-hidden bg-white;
+  @apply relative mx-auto flex h-[812px] w-[375px] flex-col overflow-hidden;
+  background: var(--app-surface);
 }
 
 .header {
-  @apply h-[93px] w-full shrink-0 bg-white;
+  @apply h-[93px] w-full shrink-0;
+  background: var(--app-surface);
 }
 
 .headerInner {
@@ -11,21 +13,24 @@
 }
 
 .headerIconButton {
-  @apply absolute left-5 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0 text-[#7a7a7a];
+  @apply absolute left-5 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0;
   top: 59px;
   transform: translateY(-50%);
+  color: var(--app-text-secondary);
 }
 
 .menuButton {
-  @apply absolute right-5 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0 text-[#7a7a7a];
+  @apply absolute right-5 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0;
   top: 59px;
   transform: translateY(-50%);
+  color: var(--app-text-secondary);
 }
 
 .title {
-  @apply absolute left-1/2 whitespace-nowrap text-[20px] font-semibold leading-7 text-black;
+  @apply absolute left-1/2 whitespace-nowrap text-[20px] font-semibold leading-7;
   top: 59px;
   transform: translate(-50%, -50%);
+  color: var(--app-text);
 }
 
 .contentArea {
@@ -43,11 +48,14 @@
 }
 
 .sectionTitle {
-  @apply mb-4 text-[16px] font-bold leading-[22px] text-black;
+  @apply mb-4 text-[16px] font-bold leading-[22px];
+  color: var(--app-text);
 }
 
 .card {
-  @apply overflow-hidden rounded-[12px] border border-[#c8c8c8] bg-white;
+  @apply overflow-hidden rounded-[12px];
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
 }
 
 .row {
@@ -59,7 +67,8 @@
 }
 
 .rowDivider {
-  @apply absolute left-3 right-3 top-0 h-px bg-[#c8c8c8];
+  @apply absolute left-3 right-3 top-0 h-px;
+  background: var(--app-border-soft);
 }
 
 .rowLeft {
@@ -71,15 +80,18 @@
 }
 
 .iconToneGray {
-  @apply bg-[#e8e8e8] text-[#8a8a8a];
+  background: rgba(138, 138, 138, 0.12);
+  color: var(--app-text-secondary);
 }
 
 .iconToneGreen {
-  @apply bg-[#e5f7e8] text-[#369a00];
+  background: rgba(54, 154, 0, 0.12);
+  color: #369a00;
 }
 
 .iconToneBlue {
-  @apply bg-[#ebeffc] text-[#385acd];
+  background: rgba(56, 90, 205, 0.12);
+  color: #385acd;
 }
 
 .textWrap {
@@ -87,15 +99,21 @@
 }
 
 .rowTitle {
-  @apply text-[15px] font-normal leading-5 text-[#171717];
+  @apply text-[15px] font-normal leading-5;
+  color: var(--app-text);
 }
 
 .rowDescription {
-  @apply mt-[2px] overflow-hidden text-ellipsis whitespace-nowrap text-[11px] leading-4 text-[#9f9f9f];
+  @apply mt-[2px] overflow-hidden text-ellipsis whitespace-nowrap text-[11px] leading-4;
+  color: var(--app-text-muted);
 }
 
 .toggle {
   @apply relative h-[31px] w-[51px] shrink-0 rounded-full border-0 p-0 transition-colors duration-200;
+}
+
+.toggle:disabled {
+  @apply cursor-not-allowed;
 }
 
 .toggleOn {
@@ -103,11 +121,16 @@
 }
 
 .toggleOff {
-  @apply bg-[#e9e9ea];
+  background: #e9e9ea;
+}
+
+:global(html.dark) .toggleOff {
+  background: #313844;
 }
 
 .toggleThumb {
-  @apply absolute left-[2px] top-[2px] h-[27px] w-[27px] rounded-full bg-white;
+  @apply absolute left-[2px] top-[2px] h-[27px] w-[27px] rounded-full;
+  background: #ffffff;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
   transition: transform 0.2s ease;
 }
@@ -116,22 +139,60 @@
   transform: translateX(20px);
 }
 
+.toggleSpinner {
+  @apply absolute left-[8px] top-1/2 z-[1] -translate-y-1/2;
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.toggleOff .toggleSpinner {
+  color: var(--app-text-secondary);
+}
+
+.spinnerIcon {
+  animation: settingsSpin 0.9s linear infinite;
+}
+
 .infoSection {
   @apply mt-[4px];
 }
 
 .infoCard {
-  @apply flex min-h-[68px] items-center gap-3 rounded-[12px] bg-[#f7f7f7] px-3 py-3;
+  @apply flex min-h-[68px] items-center gap-3 rounded-[12px] px-3 py-3;
+  background: var(--app-surface-muted);
+}
+
+.infoCardError {
+  background: rgba(220, 77, 54, 0.1);
 }
 
 .infoIconWrap {
-  @apply flex h-5 w-5 shrink-0 items-center justify-center text-[#b0b0b0];
+  @apply flex h-5 w-5 shrink-0 items-center justify-center;
+  color: var(--app-text-muted);
+}
+
+.infoCardError .infoIconWrap {
+  color: #dc4d36;
 }
 
 .infoText {
-  @apply text-[12px] leading-4 text-[#a4a4a4];
+  @apply text-[12px] leading-4;
+  color: var(--app-text-muted);
+}
+
+.infoCardError .infoText {
+  color: #dc4d36;
 }
 
 .bottomSpacer {
   @apply h-[90px] w-full shrink-0;
+}
+
+@keyframes settingsSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
