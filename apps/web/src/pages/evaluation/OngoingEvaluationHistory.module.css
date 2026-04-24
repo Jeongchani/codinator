@@ -410,3 +410,124 @@
 .focusDetailIcon {
   @apply flex items-center justify-center;
 }
+
+
+/* Dark mode */
+.container,
+.header,
+.contentArea,
+.modalCard {
+  background: var(--color-page-bg);
+}
+
+.title,
+.groupTitle,
+.selectionCountText,
+.modalTitle {
+  color: var(--color-text-strong);
+}
+
+.headerIconButton,
+.headerTextButton,
+.stateDescription,
+.emptyState,
+.modalDesc {
+  color: var(--color-text-muted);
+}
+
+.stateBox,
+.selectionActionSurface,
+.modalCard {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.retryButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.selectionGlassButton {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.container {
+  background: var(--color-surface);
+}
+
+.header {
+  background: var(--color-surface);
+}
+
+.title {
+  color: var(--color-text-strong);
+}
+
+.headerIconButton {
+  color: var(--color-text-strong);
+}
+
+.groupTitle {
+  color: var(--color-text-strong);
+}
+
+.cardImageFallback {
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+
+.cardSelected::after {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.selectionDotSelected {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.stateTitle {
+  color: var(--color-text-soft);
+}
+
+.stateDescription {
+  color: var(--color-text-muted);
+}
+
+.retryButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.emptyState {
+  color: var(--color-text-muted);
+}
+
+.modalOverlay {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.modalCard {
+  background: var(--color-surface);
+}
+
+.modalTitle {
+  color: var(--color-text-strong);
+}
+
+.modalDesc {
+  color: var(--color-text-muted);
+}
+
+.modalCancelButton {
+  background: var(--color-surface-2);
+  color: var(--color-text-strong);
+}
+
+.focusOverlay {
+  background: var(--color-surface-3);
+}

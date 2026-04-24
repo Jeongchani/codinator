@@ -17,13 +17,12 @@
 
 .overlay {
   @apply absolute inset-0;
-  background: var(--app-overlay);
+  background: rgba(0, 0, 0, 0.24);
   transition: opacity 0.28s ease;
 }
 
 .panel {
-  @apply absolute right-0 top-0 h-full w-[293px];
-  background: var(--app-surface);
+  @apply absolute right-0 top-0 h-full w-[293px] bg-white;
   transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
   box-shadow: -10px 0 32px rgba(0, 0, 0, 0.12);
@@ -38,13 +37,14 @@
 }
 
 .closeButton {
-  @apply absolute right-5 top-[59px] -translate-y-1/2 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0 transition-transform duration-150 active:scale-95;
-  color: var(--app-text-secondary);
+  @apply absolute right-5 top-[59px] -translate-y-1/2
+    flex h-6 w-6 items-center justify-center
+    border-0 bg-transparent p-0 text-[#7a7a7a]
+    transition-transform duration-150 active:scale-95;
 }
 
 .mainTitle {
-  @apply absolute left-4 top-[111px] text-[20px] font-bold leading-7;
-  color: var(--app-text);
+  @apply absolute left-4 top-[111px] text-[20px] font-bold leading-7 text-black;
 }
 
 .mainOptions {
@@ -52,8 +52,7 @@
 }
 
 .otherTitle {
-  @apply absolute left-4 top-[507px] text-[20px] font-bold leading-7;
-  color: var(--app-text);
+  @apply absolute left-4 top-[507px] text-[20px] font-bold leading-7 text-black;
 }
 
 .otherOptions {
@@ -61,17 +60,17 @@
 }
 
 .menuItem {
-  @apply flex h-14 w-full items-center justify-between pl-7 pr-6 text-left transition-all duration-150;
-  background: var(--app-surface);
+  @apply flex h-14 w-full items-center justify-between
+    bg-white pl-7 pr-6 text-left
+    transition-all duration-150;
 }
 
 .menuItem:hover {
-  background: var(--app-surface-muted);
+  @apply bg-neutral-50;
 }
 
 .menuItem:active {
-  @apply scale-[0.985];
-  background: var(--app-surface-muted);
+  @apply scale-[0.985] bg-neutral-100;
 }
 
 .menuItemLeft {
@@ -79,18 +78,15 @@
 }
 
 .iconWrap {
-  @apply flex h-5 w-5 shrink-0 items-center justify-center;
-  color: var(--app-text);
+  @apply flex h-5 w-5 shrink-0 items-center justify-center text-black;
 }
 
 .menuLabel {
-  @apply truncate text-[15px] font-bold leading-5;
-  color: var(--app-text);
+  @apply truncate text-[15px] font-bold leading-5 text-black;
 }
 
 .arrowIcon {
-  @apply flex shrink-0 items-center justify-center;
-  color: var(--app-text);
+  @apply flex shrink-0 items-center justify-center text-black;
 }
 
 .logoutArea {
@@ -106,13 +102,11 @@
 }
 
 .logoutIcon {
-  @apply flex h-[25px] w-[25px] items-center justify-center;
-  color: var(--app-text);
+  @apply flex h-[25px] w-[25px] items-center justify-center text-black;
 }
 
 .logoutText {
-  @apply text-[15px] font-bold leading-5;
-  color: var(--app-text);
+  @apply text-[15px] font-bold leading-5 text-black;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -124,4 +118,83 @@
   .logoutButton {
     transition: none;
   }
+}
+
+
+/* Dark mode */
+.panel,
+.menuItem {
+  background: var(--color-surface);
+}
+
+.mainTitle,
+.otherTitle,
+.iconWrap,
+.menuLabel,
+.arrowIcon,
+.logoutIcon,
+.logoutText {
+  color: var(--color-text-strong);
+}
+
+.closeButton {
+  color: var(--color-text-soft);
+}
+
+.menuItem:hover {
+  background: var(--color-surface-2);
+}
+
+.menuItem:active {
+  background: var(--color-surface-3);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.panel {
+  background: var(--color-surface);
+}
+
+.closeButton {
+  color: var(--color-text-muted);
+}
+
+.mainTitle {
+  color: var(--color-text-strong);
+}
+
+.otherTitle {
+  color: var(--color-text-strong);
+}
+
+.menuItem {
+  background: var(--color-surface);
+}
+
+.menuItem:hover {
+  background: var(--color-surface-2);
+}
+
+.menuItem:active {
+  background: var(--color-surface-2);
+}
+
+.iconWrap {
+  color: var(--color-text-strong);
+}
+
+.menuLabel {
+  color: var(--color-text-strong);
+}
+
+.arrowIcon {
+  color: var(--color-text-strong);
+}
+
+.logoutIcon {
+  color: var(--color-text-strong);
+}
+
+.logoutText {
+  color: var(--color-text-strong);
 }

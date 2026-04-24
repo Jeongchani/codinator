@@ -513,3 +513,426 @@
 .editorApplyButton {
   @apply flex h-[50px] w-full items-center justify-center rounded-full bg-black px-4 text-[15px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50;
 }
+
+
+/* Dark mode */
+.container,
+.scrollArea,
+.contentSection {
+  background: var(--color-page-bg);
+}
+
+.divider,
+.compareDivider {
+  background: var(--color-border);
+}
+
+.sectionTitle,
+.heroPlaceholderText,
+.statusMessage,
+.modalTitle,
+.manualTitle,
+.compareFloatingLabel {
+  color: var(--color-text-strong);
+}
+
+.helperText,
+.lengthText,
+.keywordLimitText,
+.emptyKeywordText,
+.modalInfoText,
+.manualSubText {
+  color: var(--color-text-muted);
+}
+
+.headerCircleButton,
+.editCircleButton,
+.modalCloseButton,
+.manualTopBackButton,
+.toolButton,
+.sizeGroup,
+.undoIconButton,
+.whiteActionButton {
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  border-color: var(--color-border);
+}
+
+.contentTextarea,
+.keywordCard,
+.keywordSearchBar,
+.keywordSuggestionChip,
+.itemCard,
+.itemSelectButton,
+.selectMenu,
+.selectOption,
+.itemInput,
+.modalCard,
+.compareOnlyImage,
+.editorCanvasFrame {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.contentTextarea,
+.keywordSearchInput,
+.itemInput,
+.itemSelectText,
+.selectOptionLabel {
+  color: var(--color-text);
+}
+
+.contentTextarea::placeholder,
+.keywordSearchInput::placeholder,
+.itemInput::placeholder,
+.itemSelectPlaceholder,
+.itemSelectTagIcon,
+.itemSelectChevron,
+.keywordSearchIcon,
+.keywordClearButton,
+.selectOptionTagIcon {
+  color: var(--color-text-muted);
+}
+
+.heroImage {
+  background: var(--color-surface-2);
+}
+
+.selectedKeywordChip,
+.keywordSuggestionChipSelected {
+  background: var(--color-inverse-surface);
+  border-color: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.selectOption:hover,
+.whiteActionButton:hover,
+.keywordSuggestionChip:hover {
+  background: var(--color-surface-2);
+}
+
+.itemSelectButtonOpen {
+  border-color: var(--color-border-strong);
+  box-shadow:
+    var(--focus-ring-shadow);
+}
+
+.modalPrimaryButton,
+.submitButton,
+.blurCheckButton,
+.editorApplyButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.modalSecondaryButton {
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  border-color: var(--color-border);
+}
+
+.comparePlaceholder,
+.editorLoading {
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+
+.toolButtonBlue {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.toolButtonRed {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.container {
+  background: var(--color-surface);
+}
+
+.scrollArea {
+  background: var(--color-surface);
+}
+
+.heroMediaFrame {
+  background: var(--color-surface-3);
+}
+
+.heroImage {
+  background: var(--color-surface-2);
+}
+
+.heroPlaceholder {
+  background: var(--color-surface-3);
+}
+
+.heroPlaceholderText {
+  color: var(--color-text-muted);
+}
+
+.headerCircleButton,
+.editCircleButton {
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+}
+
+.contentSection {
+  background: var(--color-surface);
+}
+
+.divider {
+  background: var(--color-surface-3);
+}
+
+.sectionTitle {
+  color: var(--color-text-strong);
+}
+
+.contentTextarea {
+  background: var(--color-surface-2);
+  color: var(--color-text-strong);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+}
+
+.contentTextarea:focus {
+  border-color: var(--color-border);
+}
+
+.helperText {
+  color: var(--color-text-muted);
+}
+
+.lengthText {
+  color: var(--color-text-muted);
+}
+
+.keywordLimitText {
+  color: var(--color-text-muted);
+}
+
+.keywordCard {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.keywordSearchBar {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.keywordSearchIcon {
+  color: var(--color-text-muted);
+}
+
+.keywordSearchInput {
+  color: var(--color-text-strong);
+  color: var(--color-text-muted);
+}
+
+.keywordClearButton {
+  color: var(--color-text-muted);
+}
+
+.selectedKeywordChip {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.keywordSuggestionChip {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+}
+
+.keywordSuggestionChipSelected {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.emptyKeywordText {
+  color: var(--color-text-muted);
+}
+
+.whiteActionButton {
+  background: var(--color-surface);
+  color: var(--color-text-soft);
+  border-color: var(--color-border);
+}
+
+.whiteActionButton:hover {
+  background: var(--color-surface-2);
+}
+
+.itemCard {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.itemSelectButton {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.itemSelectButtonOpen {
+  border-color: var(--color-border);
+}
+
+.itemSelectTagIcon {
+  color: var(--color-text-muted);
+}
+
+.itemSelectText {
+  color: var(--color-text-muted);
+}
+
+.itemSelectPlaceholder {
+  color: var(--color-text-muted);
+}
+
+.itemSelectChevron {
+  color: var(--color-text-muted);
+}
+
+.selectMenu {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.selectOption {
+  background: var(--color-surface);
+}
+
+.selectOptionTagIcon {
+  color: var(--color-text-muted);
+}
+
+.selectOptionLabel {
+  color: var(--color-text-muted);
+}
+
+.selectOption:hover {
+  background: var(--color-surface-2);
+}
+
+.selectOptionActive {
+  background: var(--color-surface-2);
+}
+
+.itemInput {
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+}
+
+.itemInput:focus {
+  color: var(--color-text-strong);
+  border-color: var(--color-border);
+}
+
+.statusMessage {
+  color: var(--color-text-muted);
+}
+
+.submitButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.blurCheckButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+/* modal */
+.modalOverlay {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.modalCard {
+  background: var(--color-surface-2);
+}
+
+.modalTitle {
+  color: var(--color-text-strong);
+}
+
+.modalCloseButton,
+.manualTopBackButton {
+  background: var(--color-surface);
+  color: var(--color-text-soft);
+}
+
+.modalInfoText {
+  color: var(--color-text-soft);
+}
+
+.modalPrimaryButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.modalSecondaryButton {
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  border-color: var(--color-border);
+}
+
+.compareFloatingLabel {
+  color: var(--color-text-strong);
+}
+
+.compareOnlyImage {
+  background: var(--color-surface-2);
+}
+
+.compareDivider {
+  background: var(--color-surface-3);
+}
+
+.manualTitle {
+  color: var(--color-text-strong);
+}
+
+.manualSubText {
+  color: var(--color-text-muted);
+}
+
+.toolButton {
+  background: var(--color-surface);
+  color: var(--color-text-soft);
+}
+
+.sizeGroup {
+  background: var(--color-surface);
+}
+
+.sizeDotButtonActive {
+  background: var(--color-surface-2);
+}
+
+.undoIconButton {
+  background: var(--color-surface);
+  color: var(--color-text-soft);
+  border-color: var(--color-border);
+}
+
+.editorLoading {
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+
+.editorCanvasFrame {
+  background: var(--color-surface-2);
+}
+
+.editorApplyButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}

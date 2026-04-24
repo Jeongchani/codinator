@@ -10,3 +10,25 @@
   @apply rounded-[20px] bg-white px-4 py-6 text-center text-[14px] leading-6 text-neutral-500;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
 }
+
+
+/* Dark mode */
+.root,
+.emptyCard {
+  background: var(--color-surface);
+}
+
+.emptyCard {
+  color: var(--color-text-muted);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.root {
+  background: var(--color-surface);
+}
+
+.emptyCard {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}

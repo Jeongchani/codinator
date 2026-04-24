@@ -97,3 +97,55 @@
 .statText {
   @apply text-[10px] leading-[10px] text-black font-medium;
 }
+
+
+/* Dark mode */
+.sectionTitle,
+.statText {
+  color: var(--color-text-strong);
+}
+
+.statIcon {
+  color: var(--color-text-muted);
+}
+
+.sectionEmpty {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.cardImageFallback {
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.sectionTitle {
+  color: var(--color-text-strong);
+}
+
+.sectionEmpty {
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+}
+
+.cardImageFallback {
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+
+.bookmarkButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.statIcon {
+  color: var(--color-text-muted);
+}
+
+.statText {
+  color: var(--color-text-strong);
+}

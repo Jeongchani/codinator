@@ -321,3 +321,73 @@
       0 6px 16px rgba(0, 0, 0, 0.18);
   }
 }
+
+
+/* Dark mode */
+.container {
+  background: var(--color-page-bg);
+}
+
+.sectionTitle,
+.statText {
+  color: var(--color-text-strong);
+}
+
+.statIcon,
+.messageBox {
+  color: var(--color-text-muted);
+}
+
+.sectionEmpty {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.cardImageFallback {
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.container {
+  background: var(--color-surface);
+}
+
+.sectionTitle {
+  color: var(--color-text-strong);
+}
+
+.sectionEmpty {
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+}
+
+.bookmarkButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.statIcon {
+  color: var(--color-text-muted);
+}
+
+.statText {
+  color: var(--color-text-strong);
+}
+
+.cardImageFallback {
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+
+.messageBox {
+  color: var(--color-text-muted);
+}
+
+.focusOverlay {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}

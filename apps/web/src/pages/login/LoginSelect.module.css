@@ -92,3 +92,89 @@
 .bottomLink {
   @apply bg-transparent border-0 p-0 text-neutral-900 text-sm font-medium leading-5 cursor-pointer;
 }
+
+
+/* Dark mode */
+.container,
+.topArea {
+  background: var(--color-page-bg);
+}
+
+.colorName,
+.title,
+.bottomLink {
+  color: var(--color-text-strong);
+}
+
+.colorMeta,
+.colorCode,
+.orText,
+.bottomMuted {
+  color: var(--color-text-muted);
+}
+
+.colorSwatch,
+.bottomSheet,
+.socialButton {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.loginButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.orLine {
+  background: var(--color-border);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.colorMeta {
+  color: var(--color-text-muted);
+}
+
+.colorName {
+  color: var(--color-text-strong);
+}
+
+.colorCode {
+  color: var(--color-text-muted);
+}
+
+.bottomSheet {
+  background: var(--color-surface);
+}
+
+.title {
+  color: var(--color-text-strong);
+}
+
+/* Login.module.css 기준 위치값과 동일 */
+.loginButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.orLine {
+  background: var(--color-surface-3);
+}
+
+.orText {
+  color: var(--color-text-muted);
+}
+
+.socialButton {
+  background: var(--color-surface);
+  color: var(--color-text-soft);
+  border-color: var(--color-border);
+}
+
+.bottomMuted {
+  color: var(--color-text-muted);
+}
+
+.bottomLink {
+  color: var(--color-text-strong);
+}

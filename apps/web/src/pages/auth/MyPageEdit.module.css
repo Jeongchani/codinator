@@ -200,3 +200,172 @@
 .modalDangerButton:disabled {
   @apply cursor-not-allowed opacity-50;
 }
+
+
+/* Dark mode */
+.container,
+.header,
+.contentArea {
+  background: var(--color-page-bg);
+}
+
+.title,
+.label,
+.submitButton,
+.modalTitle {
+  color: var(--color-text-strong);
+}
+
+.headerIconButton,
+.cancelButton,
+.helperText,
+.sentText,
+.modalDescription {
+  color: var(--color-text-muted);
+}
+
+.inputBox,
+.inputRowBox,
+.phoneCard,
+.fieldActionButton,
+.nicknameCheckButton,
+.sendCodeButton,
+.verifyCodeButton,
+.resendButton,
+.withdrawButton,
+.modalCard,
+.modalCancelButton {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.input,
+.successText,
+.debugCodeText {
+  color: var(--color-text);
+}
+
+.submitButton,
+.modalConfirmButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.modalDangerButton {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.container {
+  background: var(--color-surface-2);
+}
+
+.header {
+  background: var(--color-surface);
+}
+
+.headerIconButton {
+  color: var(--color-text-muted);
+}
+
+.cancelButton {
+  color: var(--color-text-strong);
+}
+
+.title {
+  color: var(--color-text-strong);
+}
+
+.label {
+  color: var(--color-text-strong);
+}
+
+.inputBox {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.inputRowBox {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.input {
+  color: var(--color-text-strong);
+}
+
+.phoneCard {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.verificationRow {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+/* 버튼별 스타일 */
+.nicknameCheckButton {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.sendCodeButton {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.verifyCodeButton {
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  border-color: var(--color-border);
+}
+
+.resendButton {
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  border-color: var(--color-border);
+}
+
+.sentText {
+  color: var(--color-text-muted);
+}
+
+.debugCodeText {
+  color: var(--color-text-muted);
+}
+
+.withdrawButton {
+  border-color: var(--color-border);
+}
+
+.submitButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.modalOverlay {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.modalCard {
+  background: var(--color-surface);
+}
+
+.modalTitle {
+  color: var(--color-text-strong);
+}
+
+.modalCancelButton {
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  border-color: var(--color-border);
+}
+
+.modalConfirmButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}

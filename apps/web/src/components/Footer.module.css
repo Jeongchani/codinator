@@ -13,9 +13,7 @@
   border: 1px solid var(--footer-border);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  box-shadow:
-    0 2px 5px var(--footer-shadow-outer),
-    inset 0 1px 0 var(--footer-shadow-inner);
+  box-shadow: var(--footer-shadow);
 }
 
 .inner {

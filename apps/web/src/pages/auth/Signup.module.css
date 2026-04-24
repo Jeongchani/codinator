@@ -197,3 +197,166 @@
   font-weight: 700;
   line-height: 1;
 }
+
+
+/* Dark mode */
+.container {
+  background: var(--color-page-bg);
+}
+
+.heroTitle,
+.heroDesc,
+.label,
+.requiredLabel,
+.genderTextActive,
+.bottomLink,
+.modalTitle {
+  color: var(--color-text-strong);
+}
+
+.input,
+.bottomMuted,
+.helperText,
+.orText,
+.phoneDash,
+.modalMessage {
+  color: var(--color-text-muted);
+}
+
+.line,
+.orLine {
+  background: var(--color-border);
+}
+
+.checkButton,
+.genderButton,
+.phoneInput,
+.socialButton,
+.modalCard {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text-strong);
+}
+
+.primaryButton,
+.modalButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.container {
+  background: var(--color-surface);
+}
+
+.heroTitle {
+  color: var(--color-text-strong);
+}
+
+.heroDesc {
+  color: var(--color-text-strong);
+}
+
+.label {
+  color: var(--color-text-strong);
+}
+
+.requiredLabel {
+  color: var(--color-text-strong);
+}
+
+.checkButton {
+  background: var(--color-surface);
+  color: var(--color-text-soft);
+  border-color: var(--color-border);
+}
+
+.input {
+  color: var(--color-text-strong);
+}
+
+.input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.line {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.helperText {
+  color: var(--color-text-muted);
+}
+
+.genderText {
+  color: var(--color-text-muted);
+}
+
+.genderTextActive {
+  color: var(--color-text-strong);
+}
+
+.phoneInput {
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  border-color: var(--color-border);
+}
+
+.phoneDash {
+  color: var(--color-text-muted);
+}
+
+.primaryButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.orLine {
+  background: var(--color-surface-3);
+}
+
+.orText {
+  color: var(--color-text-muted);
+}
+
+.socialButton {
+  background: var(--color-surface);
+  color: var(--color-text-soft);
+  border-color: var(--color-border);
+}
+
+.bottomMuted {
+  color: var(--color-text-muted);
+}
+
+.bottomLink {
+  color: var(--color-text-strong);
+}
+
+.modalBackdrop {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.modalCard {
+  background: var(--color-surface);
+}
+
+.modalTitle {
+  color: var(--color-text-strong);
+}
+
+.modalMessage {
+  color: var(--color-text-muted);
+}
+
+.modalButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.checkButtonDone {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}

@@ -1,14 +1,9 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import type {
-  GetSettingsResponse,
-  ThemeMode,
-  UpdateSettingsRequest,
-} from '@codinator/contracts';
+import { useEffect, useMemo, useState } from 'react';
+import type { ThemeMode, UpdateSettingsRequest } from '@codinator/contracts';
 import {
   Bell,
   ChevronLeft,
   CircleAlert,
-  LoaderCircle,
   Megaphone,
   Menu,
   MoonStar,
@@ -22,8 +17,15 @@ import {
   isAuthError,
   updateMySettings,
 } from '../../lib/api';
-import { saveAndApplyThemeMode } from '../../lib/theme';
+import { applyThemeMode, getStoredThemeMode, saveThemeMode } from '../../lib/theme';
 import styles from './Settings.module.css';
+
+type SettingsState = {
+  theme: ThemeMode;
+  pushEnabled: boolean;
+  servicePushEnabled: boolean;
+  marketingPushEnabled: boolean;
+};
 
 type ToggleSwitchProps = {
   checked: boolean;
@@ -34,7 +36,7 @@ type ToggleSwitchProps = {
 };
 
 type SettingRowProps = {
-  icon: ReactNode;
+  icon: React.ReactNode;
   title: string;
   description?: string;
   checked: boolean;
@@ -44,10 +46,6 @@ type SettingRowProps = {
   showDivider?: boolean;
   onToggle: () => void;
 };
-
-type SettingsState = GetSettingsResponse;
-
-type SavingKey = 'theme' | 'pushEnabled' | 'servicePushEnabled' | 'marketingPushEnabled' | null;
 
 const DEFAULT_SETTINGS: SettingsState = {
   theme: 'LIGHT',
@@ -69,14 +67,9 @@ function ToggleSwitch({
       className={`${styles.toggle} ${checked ? styles.toggleOn : styles.toggleOff}`}
       aria-label={ariaLabel}
       aria-pressed={checked}
-      disabled={disabled}
+      disabled={disabled || loading}
       onClick={onClick}
     >
-      {loading ? (
-        <span className={styles.toggleSpinner}>
-          <LoaderCircle size={14} strokeWidth={2.4} className={styles.spinnerIcon} />
-        </span>
-      ) : null}
       <span className={`${styles.toggleThumb} ${checked ? styles.toggleThumbOn : ''}`} />
     </button>
   );
@@ -124,43 +117,18 @@ function SettingRow({
   );
 }
 
-const requestBrowserNotificationPermission = async (): Promise<boolean> => {
-  if (typeof window === 'undefined' || !("Notification" in window)) {
-    return true;
-  }
-
-  if (Notification.permission === 'granted') {
-    return true;
-  }
-
-  if (Notification.permission === 'denied') {
-    window.alert('브라우저에서 알림 권한이 차단되어 있습니다. 브라우저 설정에서 알림 권한을 허용해 주세요.');
-    return false;
-  }
-
-  const permission = await Notification.requestPermission();
-
-  if (permission !== 'granted') {
-    window.alert('푸시 알림을 사용하려면 브라우저 알림 권한을 허용해 주세요.');
-    return false;
-  }
-
-  return true;
-};
-
 export default function Settings() {
   const navigate = useNavigate();
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [settings, setSettings] = useState<SettingsState>({
+    ...DEFAULT_SETTINGS,
+    theme: getStoredThemeMode() ?? DEFAULT_SETTINGS.theme,
+  });
   const [loading, setLoading] = useState(true);
-  const [savingKey, setSavingKey] = useState<SavingKey>(null);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS);
+  const [savingKeys, setSavingKeys] = useState<string[]>([]);
 
-  const moveToLogin = useCallback(() => {
-    clearAuthTokens();
-    navigate('/login', { replace: true });
-  }, [navigate]);
+  const isDetailDisabled = !settings.pushEnabled;
 
   useEffect(() => {
     let cancelled = false;
@@ -168,26 +136,21 @@ export default function Settings() {
     const loadSettings = async () => {
       try {
         setLoading(true);
-        setErrorMessage('');
-
         const response = await fetchMySettings();
-        if (cancelled) {
-          return;
-        }
 
+        if (cancelled) return;
         setSettings(response);
-        saveAndApplyThemeMode(response.theme);
+        saveThemeMode(response.theme);
+        applyThemeMode(response.theme);
       } catch (error) {
-        const message = error instanceof Error ? error.message : '설정 정보를 불러오지 못했습니다.';
-
+        const message = error instanceof Error ? error.message : '설정을 불러오지 못했습니다.';
         if (isAuthError(message)) {
-          moveToLogin();
+          clearAuthTokens();
+          navigate('/login', { replace: true });
           return;
         }
 
-        if (!cancelled) {
-          setErrorMessage(message);
-        }
+        console.warn(message);
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -200,98 +163,84 @@ export default function Settings() {
     return () => {
       cancelled = true;
     };
-  }, [moveToLogin]);
+  }, [navigate]);
 
-  const patchSettings = useCallback(
-    async (partial: UpdateSettingsRequest, nextSavingKey: Exclude<SavingKey, null>) => {
-      const previousSettings = settings;
-      const optimisticSettings: SettingsState = {
-        ...previousSettings,
-        ...partial,
-      };
+  const savingMap = useMemo(() => new Set(savingKeys), [savingKeys]);
 
-      setSavingKey(nextSavingKey);
-      setErrorMessage('');
-      setSettings(optimisticSettings);
-
-      if (partial.theme) {
-        saveAndApplyThemeMode(partial.theme);
-      }
-
+  const requestNotificationPermission = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission === 'default') {
       try {
-        const updated = await updateMySettings(partial);
-        setSettings(updated);
-        saveAndApplyThemeMode(updated.theme);
+        await Notification.requestPermission();
       } catch (error) {
-        setSettings(previousSettings);
-        saveAndApplyThemeMode(previousSettings.theme);
-
-        const message = error instanceof Error ? error.message : '설정 저장에 실패했습니다.';
-
-        if (isAuthError(message)) {
-          moveToLogin();
-          return;
-        }
-
-        setErrorMessage(message);
-        window.alert(message);
-      } finally {
-        setSavingKey((current) => (current === nextSavingKey ? null : current));
+        console.warn('알림 권한 요청 실패:', error);
       }
-    },
-    [moveToLogin, settings],
-  );
-
-  const handleToggleTheme = async () => {
-    if (loading || savingKey) {
-      return;
     }
-
-    const nextTheme: ThemeMode = settings.theme === 'DARK' ? 'LIGHT' : 'DARK';
-    await patchSettings({ theme: nextTheme }, 'theme');
   };
 
-  const handleTogglePush = async () => {
-    if (loading || savingKey) {
-      return;
+  const patchSettings = async (partial: UpdateSettingsRequest, savingKey: string) => {
+    const previous = settings;
+    const optimistic = { ...settings, ...partial };
+    setSettings(optimistic);
+
+    if (partial.theme) {
+      saveThemeMode(partial.theme);
+      applyThemeMode(partial.theme);
     }
 
-    const nextValue = !settings.pushEnabled;
+    setSavingKeys((prev) => [...prev, savingKey]);
 
-    if (nextValue) {
-      const granted = await requestBrowserNotificationPermission();
-      if (!granted) {
+    try {
+      const updated = await updateMySettings(partial);
+      setSettings(updated);
+      saveThemeMode(updated.theme);
+      applyThemeMode(updated.theme);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '설정 저장에 실패했습니다.';
+      setSettings(previous);
+      saveThemeMode(previous.theme);
+      applyThemeMode(previous.theme);
+
+      if (isAuthError(message)) {
+        clearAuthTokens();
+        navigate('/login', { replace: true });
         return;
       }
-    }
 
-    await patchSettings({ pushEnabled: nextValue }, 'pushEnabled');
+      window.alert(message);
+    } finally {
+      setSavingKeys((prev) => prev.filter((key) => key !== savingKey));
+    }
   };
 
-  const handleToggleServicePush = async () => {
-    if (loading || savingKey || !settings.pushEnabled) {
-      return;
-    }
+  const handleThemeToggle = () => {
+    const nextTheme: ThemeMode = settings.theme === 'DARK' ? 'LIGHT' : 'DARK';
+    void patchSettings({ theme: nextTheme }, 'theme');
+  };
 
-    await patchSettings(
+  const handlePushToggle = async () => {
+    const nextPushEnabled = !settings.pushEnabled;
+    if (nextPushEnabled) {
+      await requestNotificationPermission();
+    }
+    void patchSettings({ pushEnabled: nextPushEnabled }, 'pushEnabled');
+  };
+
+  const handleServiceToggle = () => {
+    if (isDetailDisabled) return;
+    void patchSettings(
       { servicePushEnabled: !settings.servicePushEnabled },
       'servicePushEnabled',
     );
   };
 
-  const handleToggleMarketingPush = async () => {
-    if (loading || savingKey || !settings.pushEnabled) {
-      return;
-    }
-
-    await patchSettings(
+  const handleMarketingToggle = () => {
+    if (isDetailDisabled) return;
+    void patchSettings(
       { marketingPushEnabled: !settings.marketingPushEnabled },
       'marketingPushEnabled',
     );
   };
-
-  const isDetailDisabled = loading || !!savingKey || !settings.pushEnabled;
-  const isAnySaving = Boolean(savingKey);
 
   return (
     <>
@@ -312,8 +261,8 @@ export default function Settings() {
             <button
               type="button"
               className={styles.menuButton}
-              onClick={() => setMenuOpen(true)}
               aria-label="사이드 메뉴 열기"
+              onClick={() => setMenuOpen(true)}
             >
               <Menu size={25} strokeWidth={2.2} />
             </button>
@@ -329,9 +278,8 @@ export default function Settings() {
                 icon={<MoonStar size={19} strokeWidth={2.1} />}
                 title="다크모드"
                 checked={settings.theme === 'DARK'}
-                disabled={loading || isAnySaving}
-                loading={savingKey === 'theme'}
-                onToggle={handleToggleTheme}
+                loading={loading || savingMap.has('theme')}
+                onToggle={handleThemeToggle}
               />
             </div>
           </section>
@@ -345,9 +293,8 @@ export default function Settings() {
                 title="푸시 알림"
                 description="앱의 모든 알림"
                 checked={settings.pushEnabled}
-                disabled={loading || isAnySaving}
-                loading={savingKey === 'pushEnabled'}
-                onToggle={handleTogglePush}
+                loading={loading || savingMap.has('pushEnabled')}
+                onToggle={handlePushToggle}
               />
             </div>
           </section>
@@ -362,9 +309,9 @@ export default function Settings() {
                 description="평가완료, Top 10 달성, 신고 접수 결과"
                 checked={settings.servicePushEnabled}
                 disabled={isDetailDisabled}
-                loading={savingKey === 'servicePushEnabled'}
+                loading={loading || savingMap.has('servicePushEnabled')}
                 iconTone="green"
-                onToggle={handleToggleServicePush}
+                onToggle={handleServiceToggle}
               />
 
               <SettingRow
@@ -373,30 +320,24 @@ export default function Settings() {
                 description="이벤트, 프로모션, 광고성 메시지"
                 checked={settings.marketingPushEnabled}
                 disabled={isDetailDisabled}
-                loading={savingKey === 'marketingPushEnabled'}
+                loading={loading || savingMap.has('marketingPushEnabled')}
                 iconTone="blue"
                 showDivider
-                onToggle={handleToggleMarketingPush}
+                onToggle={handleMarketingToggle}
               />
             </div>
           </section>
 
           <section className={styles.infoSection}>
-            <div className={`${styles.infoCard} ${errorMessage ? styles.infoCardError : ''}`}>
+            <div className={styles.infoCard}>
               <div className={styles.infoIconWrap}>
                 <CircleAlert size={15} strokeWidth={2} />
               </div>
 
               <p className={styles.infoText}>
-                {errorMessage ? (
-                  errorMessage
-                ) : (
-                  <>
-                    푸시 알림을 끄면 모든 알림이 꺼집니다.
-                    <br />
-                    개별 알림 설정은 푸시 알림이 켜져 있을 때 적용됩니다.
-                  </>
-                )}
+                푸시 알림을 끄면 모든 알림이 꺼집니다.
+                <br />
+                개별 알림 설정은 푸시 알림이 켜져 있을 때 적용됩니다.
               </p>
             </div>
           </section>

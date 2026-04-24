@@ -287,3 +287,182 @@
 .focusDetailButtonIcon {
   @apply shrink-0;
 }
+
+
+/* Dark mode */
+.container,
+.topArea,
+.contentArea,
+.filterDropdown,
+.recentItem,
+.userItem {
+  background: var(--color-page-bg);
+}
+
+.searchBar,
+.filterDropdown,
+.recentItem,
+.userItem {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.searchInput,
+.sectionTitle,
+.userNickname,
+.recentItemText {
+  color: var(--color-text-strong);
+}
+
+.searchInput::placeholder,
+.searchIconButton,
+.clearInputButton,
+.filterButtonText,
+.sectionCount,
+.userSubText,
+.feedMetaText,
+.stateText,
+.errorText {
+  color: var(--color-text-muted);
+}
+
+.filterOption:hover,
+.filterOptionActive {
+  background: var(--color-surface-2);
+  color: var(--color-text-strong);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.container {
+  background: var(--color-surface);
+}
+
+.searchBar {
+  border-color: var(--color-border);
+}
+
+.searchIconButton {
+  color: var(--color-text-muted);
+}
+
+.searchInput {
+  color: var(--color-text-strong);
+}
+
+.searchInput::placeholder {
+  color: var(--color-text-muted);
+}
+
+.clearInputButton {
+  color: var(--color-text-muted);
+}
+
+.filterButton {
+  color: var(--color-text-soft);
+  border-color: var(--color-border);
+}
+
+.filterDropdown {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.filterOption {
+  color: var(--color-text-soft);
+}
+
+.filterOptionActive {
+  background: var(--color-surface-2);
+  color: var(--color-text-strong);
+}
+
+.filterOptionCheck {
+  color: var(--color-text-muted);
+}
+
+.dropdownDivider {
+  background: var(--color-surface-3);
+}
+
+.aiFilterOption {
+  color: var(--color-text-strong);
+}
+
+.divider {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.clearAllTextButton {
+  color: var(--color-text-muted);
+}
+
+.recentItemIcon {
+  color: var(--color-text-muted);
+}
+
+.recentItemText {
+  color: var(--color-text-muted);
+}
+
+.recentTypeBadge {
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+
+.recentDeleteButton {
+  color: var(--color-text-muted);
+}
+
+.stateText {
+  color: var(--color-text-muted);
+}
+
+.sectionTitle {
+  color: var(--color-text-strong);
+}
+
+.sectionCount {
+  color: var(--color-text-muted);
+}
+
+.moreButton {
+  color: var(--color-text-muted);
+}
+
+.userItem {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.userAvatar {
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+
+.userNickname {
+  color: var(--color-text-strong);
+}
+
+.userSubText {
+  color: var(--color-text-muted);
+}
+
+.feedThumbWrap {
+  background: var(--color-surface-2);
+}
+
+.feedMetaText {
+  color: var(--color-text-soft);
+}
+
+.focusOverlay {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.focusFrame {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}

@@ -475,3 +475,259 @@
 .emptyText {
   @apply text-[13px] text-neutral-500;
 }
+
+
+/* Dark mode */
+.container,
+.scrollArea,
+.contentPanel,
+.loadingBox {
+  background: var(--color-page-bg);
+}
+
+.loadingBox {
+  color: var(--color-text-muted);
+}
+
+.mainTitle,
+.authorName,
+.contentText,
+.sectionTitle,
+.feedbackPanelTitle,
+.outfitTitle,
+.outfitFieldValue,
+.emptyText {
+  color: var(--color-text-strong);
+}
+
+.sectionMetaText,
+.feedbackPanelCount,
+.feedbackRowLabel,
+.feedbackHintText,
+.feedbackSavedText,
+.feedbackEmptyText,
+.heroPlaceholderText {
+  color: var(--color-text-muted);
+}
+
+.bookmarkActionButton {
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+}
+
+.keywordChip {
+  background: var(--color-chip);
+  color: var(--color-text-soft);
+}
+
+.sectionDivider {
+  background: var(--color-border);
+}
+
+.evaluationTrack,
+.feedbackRowTrack {
+  background: var(--color-track-bg);
+  box-shadow: inset 0 0 0 1px var(--color-track-border-inner);
+}
+
+.feedbackComposerCard,
+.feedbackEmptyBox,
+.outfitCard {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.selectChip {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+  color: var(--color-text-soft);
+}
+
+.feedbackCompleteButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.feedbackCompleteButtonDisabled {
+  background: var(--color-disabled-surface);
+  color: var(--color-disabled-text);
+}
+
+.outfitField {
+  background: var(--color-surface-3);
+  border-color: var(--color-border);
+}
+
+.outfitCategoryField {
+  background: var(--color-outfit-accent-bg);
+  border-color: var(--color-outfit-accent-border);
+}
+
+.outfitCategoryIcon,
+.outfitCategoryField .outfitFieldValue {
+  color: var(--color-outfit-accent);
+}
+
+.outfitCarouselDot {
+  background: var(--color-carousel-dot);
+}
+
+.outfitCarouselDotActive {
+  background: var(--color-carousel-dot-active);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.container {
+  background: var(--color-surface);
+}
+
+.scrollArea {
+  background: var(--color-surface);
+}
+
+.loadingBox {
+  background: var(--color-surface);
+  color: var(--color-text-soft);
+}
+
+.heroMediaFrame {
+  background: var(--color-surface-3);
+}
+
+.heroImage {
+  background: var(--color-surface-2);
+}
+
+.heroPlaceholder {
+  background: var(--color-surface-3);
+}
+
+.heroPlaceholderText {
+  color: var(--color-text-muted);
+}
+
+.contentPanel {
+  background: var(--color-surface);
+}
+
+.mainTitle {
+  color: var(--color-text-strong);
+}
+
+.bookmarkActionButton {
+  background: var(--color-surface);
+}
+
+.authorName {
+  color: var(--color-text-strong);
+}
+
+.contentText {
+  color: var(--color-text-soft);
+}
+
+.keywordChip {
+  color: var(--color-text-soft);
+}
+
+.sectionTitle {
+  color: var(--color-text-strong);
+}
+
+.sectionMetaText {
+  color: var(--color-text-muted);
+}
+
+.feedbackComposerCard {
+  border-color: var(--color-border);
+}
+
+.selectChip {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+}
+
+.selectChipSelected {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.selectChipSelectedLike {
+  border-color: var(--color-border);
+}
+
+.selectChipSelectedDislike {
+  border-color: var(--color-border);
+}
+
+.feedbackHintText {
+  color: var(--color-text-muted);
+}
+
+.feedbackSavedText {
+  color: var(--color-text-soft);
+}
+
+.feedbackEmptyBox {
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+
+.feedbackCompleteButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.feedbackCompleteButtonDisabled {
+  background: var(--color-surface-3);
+}
+
+.feedbackPanelTitle {
+  color: var(--color-text-strong);
+}
+
+.feedbackPanelCount {
+  color: var(--color-text-muted);
+}
+
+.feedbackRowLabel {
+  color: var(--color-text-muted);
+}
+
+.feedbackRowPercent {
+  color: var(--color-text-strong);
+}
+
+.feedbackEmptyText {
+  color: var(--color-text-muted);
+}
+
+.outfitTitle {
+  color: var(--color-text-strong);
+}
+
+.outfitCard {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+}
+
+.outfitField {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.outfitCategoryField {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+}
+
+.outfitFieldValue {
+  color: var(--color-text-soft);
+}
+
+.emptyText {
+  color: var(--color-text-muted);
+}

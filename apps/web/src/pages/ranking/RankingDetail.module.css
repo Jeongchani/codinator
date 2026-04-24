@@ -525,3 +525,187 @@
 .emptyText {
   @apply text-[13px] text-neutral-500;
 }
+
+
+/* Dark mode */
+.loading {
+  background: var(--color-page-bg);
+  color: var(--color-text-muted);
+}
+
+.bottomSheet,
+.sheetContent {
+  background: var(--color-surface);
+}
+
+.handlerBar {
+  background: var(--color-handle);
+}
+
+.authorName,
+.contentText,
+.sectionTitle,
+.outfitTitle,
+.feedbackPanelTitle,
+.outfitFieldValue,
+.emptyText {
+  color: var(--color-text-strong);
+}
+
+.sheetHeader,
+.sectionDivider {
+  border-color: var(--color-border);
+}
+
+.sectionMetaText,
+.feedbackPanelCount,
+.feedbackRowLabel,
+.bookmarkActionButton,
+.bookmarkFilled,
+.bookmarkDefault {
+  color: var(--color-text-muted);
+}
+
+.keywordChip {
+  background: var(--color-chip);
+  color: var(--color-text-soft);
+}
+
+.bookmarkActionButton {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+}
+
+.feedLinkButton {
+  background: var(--color-inverse-gradient);
+}
+
+.feedLinkButtonText,
+.feedLinkButtonIcon {
+  color: var(--color-inverse-text);
+}
+
+.evaluationTrack,
+.feedbackRowTrack {
+  background: var(--color-track-bg);
+  box-shadow: inset 0 0 0 1px var(--color-track-border-inner);
+}
+
+.feedbackPanel {
+  background: transparent;
+}
+
+.outfitCard {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+}
+
+.outfitField {
+  background: var(--color-surface-3);
+  border-color: var(--color-border);
+}
+
+.outfitCategoryField {
+  background: var(--color-outfit-accent-bg);
+  border-color: var(--color-outfit-accent-border);
+}
+
+.outfitCategoryIcon,
+.outfitCategoryField .outfitFieldValue {
+  color: var(--color-outfit-accent);
+}
+
+.outfitCarouselDot {
+  background: var(--color-carousel-dot);
+}
+
+.outfitCarouselDotActive {
+  background: var(--color-carousel-dot-active);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.container {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.loading {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
+
+.bottomSheet {
+  background: var(--color-surface);
+}
+
+.authorName {
+  color: var(--color-text-strong);
+}
+
+.contentText {
+  color: var(--color-text-soft);
+}
+
+.bookmarkActionButton {
+  background: var(--color-surface);
+}
+
+.keywordChip {
+  color: var(--color-text-soft);
+}
+
+.sectionTitle {
+  color: var(--color-text-strong);
+}
+
+.sectionMetaText {
+  color: var(--color-text-muted);
+}
+
+.feedbackPanelTitle {
+  color: var(--color-text-strong);
+}
+
+.feedbackPanelCount {
+  color: var(--color-text-muted);
+}
+
+.feedbackRowLabel {
+  color: var(--color-text-muted);
+}
+
+.feedbackRowPercent {
+  color: var(--color-text-strong);
+}
+
+.feedbackEmptyText {
+  color: var(--color-text-muted);
+}
+
+.outfitTitle {
+  color: var(--color-text-strong);
+}
+
+.outfitCard {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+}
+
+.outfitField {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.outfitCategoryField {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+}
+
+.outfitFieldValue {
+  color: var(--color-text-soft);
+}
+
+.emptyText {
+  color: var(--color-text-muted);
+}

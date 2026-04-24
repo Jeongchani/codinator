@@ -1,11 +1,9 @@
 .container {
-  @apply relative mx-auto flex h-[812px] w-[375px] flex-col overflow-hidden;
-  background: var(--app-surface);
+  @apply relative mx-auto flex h-[812px] w-[375px] flex-col overflow-hidden bg-white;
 }
 
 .header {
-  @apply h-[93px] w-full shrink-0;
-  background: var(--app-surface);
+  @apply h-[93px] w-full shrink-0 bg-white;
 }
 
 .headerInner {
@@ -13,24 +11,21 @@
 }
 
 .headerIconButton {
-  @apply absolute left-5 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0;
+  @apply absolute left-5 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0 text-[#7a7a7a];
   top: 59px;
   transform: translateY(-50%);
-  color: var(--app-text-secondary);
 }
 
 .menuButton {
-  @apply absolute right-5 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0;
+  @apply absolute right-5 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0 text-[#7a7a7a];
   top: 59px;
   transform: translateY(-50%);
-  color: var(--app-text-secondary);
 }
 
 .title {
-  @apply absolute left-1/2 whitespace-nowrap text-[20px] font-semibold leading-7;
+  @apply absolute left-1/2 whitespace-nowrap text-[20px] font-semibold leading-7 text-black;
   top: 59px;
   transform: translate(-50%, -50%);
-  color: var(--app-text);
 }
 
 .contentArea {
@@ -48,14 +43,11 @@
 }
 
 .sectionTitle {
-  @apply mb-4 text-[16px] font-bold leading-[22px];
-  color: var(--app-text);
+  @apply mb-4 text-[16px] font-bold leading-[22px] text-black;
 }
 
 .card {
-  @apply overflow-hidden rounded-[12px];
-  border: 1px solid var(--app-border);
-  background: var(--app-surface);
+  @apply overflow-hidden rounded-[12px] border border-[#c8c8c8] bg-white;
 }
 
 .row {
@@ -67,8 +59,7 @@
 }
 
 .rowDivider {
-  @apply absolute left-3 right-3 top-0 h-px;
-  background: var(--app-border-soft);
+  @apply absolute left-3 right-3 top-0 h-px bg-[#c8c8c8];
 }
 
 .rowLeft {
@@ -80,18 +71,15 @@
 }
 
 .iconToneGray {
-  background: rgba(138, 138, 138, 0.12);
-  color: var(--app-text-secondary);
+  @apply bg-[#e8e8e8] text-[#8a8a8a];
 }
 
 .iconToneGreen {
-  background: rgba(54, 154, 0, 0.12);
-  color: #369a00;
+  @apply bg-[#e5f7e8] text-[#369a00];
 }
 
 .iconToneBlue {
-  background: rgba(56, 90, 205, 0.12);
-  color: #385acd;
+  @apply bg-[#ebeffc] text-[#385acd];
 }
 
 .textWrap {
@@ -99,21 +87,15 @@
 }
 
 .rowTitle {
-  @apply text-[15px] font-normal leading-5;
-  color: var(--app-text);
+  @apply text-[15px] font-normal leading-5 text-[#171717];
 }
 
 .rowDescription {
-  @apply mt-[2px] overflow-hidden text-ellipsis whitespace-nowrap text-[11px] leading-4;
-  color: var(--app-text-muted);
+  @apply mt-[2px] overflow-hidden text-ellipsis whitespace-nowrap text-[11px] leading-4 text-[#9f9f9f];
 }
 
 .toggle {
   @apply relative h-[31px] w-[51px] shrink-0 rounded-full border-0 p-0 transition-colors duration-200;
-}
-
-.toggle:disabled {
-  @apply cursor-not-allowed;
 }
 
 .toggleOn {
@@ -121,16 +103,11 @@
 }
 
 .toggleOff {
-  background: #e9e9ea;
-}
-
-:global(html.dark) .toggleOff {
-  background: #313844;
+  @apply bg-[#e9e9ea];
 }
 
 .toggleThumb {
-  @apply absolute left-[2px] top-[2px] h-[27px] w-[27px] rounded-full;
-  background: #ffffff;
+  @apply absolute left-[2px] top-[2px] h-[27px] w-[27px] rounded-full bg-white;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
   transition: transform 0.2s ease;
 }
@@ -139,60 +116,135 @@
   transform: translateX(20px);
 }
 
-.toggleSpinner {
-  @apply absolute left-[8px] top-1/2 z-[1] -translate-y-1/2;
-  color: rgba(255, 255, 255, 0.84);
-}
-
-.toggleOff .toggleSpinner {
-  color: var(--app-text-secondary);
-}
-
-.spinnerIcon {
-  animation: settingsSpin 0.9s linear infinite;
-}
-
 .infoSection {
   @apply mt-[4px];
 }
 
 .infoCard {
-  @apply flex min-h-[68px] items-center gap-3 rounded-[12px] px-3 py-3;
-  background: var(--app-surface-muted);
-}
-
-.infoCardError {
-  background: rgba(220, 77, 54, 0.1);
+  @apply flex min-h-[68px] items-center gap-3 rounded-[12px] bg-[#f7f7f7] px-3 py-3;
 }
 
 .infoIconWrap {
-  @apply flex h-5 w-5 shrink-0 items-center justify-center;
-  color: var(--app-text-muted);
-}
-
-.infoCardError .infoIconWrap {
-  color: #dc4d36;
+  @apply flex h-5 w-5 shrink-0 items-center justify-center text-[#b0b0b0];
 }
 
 .infoText {
-  @apply text-[12px] leading-4;
-  color: var(--app-text-muted);
-}
-
-.infoCardError .infoText {
-  color: #dc4d36;
+  @apply text-[12px] leading-4 text-[#a4a4a4];
 }
 
 .bottomSpacer {
   @apply h-[90px] w-full shrink-0;
 }
 
-@keyframes settingsSpin {
-  from {
-    transform: rotate(0deg);
-  }
 
-  to {
-    transform: rotate(360deg);
-  }
+.container {
+  background: var(--color-page-bg);
+}
+
+.header {
+  background: var(--color-page-bg);
+}
+
+.title,
+.sectionTitle,
+.rowTitle {
+  color: var(--color-text-strong);
+}
+
+.headerIconButton,
+.menuButton,
+.rowDescription,
+.infoIconWrap,
+.infoText {
+  color: var(--color-text-muted);
+}
+
+.card {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+}
+
+.rowDivider {
+  background: var(--color-border);
+}
+
+.iconToneGray {
+  background: var(--color-surface-2);
+  color: var(--color-text-soft);
+}
+
+.toggleOff {
+  background: var(--color-disabled-surface);
+}
+
+.toggleThumb {
+  background: var(--color-inverse-surface);
+}
+
+.infoCard {
+  background: var(--color-surface-2);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.container {
+  background: var(--color-surface);
+}
+
+.header {
+  background: var(--color-surface);
+}
+
+.headerIconButton {
+  color: var(--color-text-muted);
+}
+
+.menuButton {
+  color: var(--color-text-muted);
+}
+
+.title {
+  color: var(--color-text-strong);
+}
+
+.sectionTitle {
+  color: var(--color-text-strong);
+}
+
+.card {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.iconToneGray {
+  color: var(--color-text-muted);
+}
+
+.rowTitle {
+  color: var(--color-text-strong);
+}
+
+.rowDescription {
+  color: var(--color-text-muted);
+}
+
+.toggleThumb {
+  background: var(--color-surface);
+}
+
+.infoCard {
+  background: var(--color-surface-2);
+}
+
+.infoText {
+  color: var(--color-text-muted);
+}
+
+/* Settings-specific theme tokens. */
+.toggleOff {
+  background: var(--color-toggle-off-bg);
+}
+
+.toggleThumb {
+  background: var(--color-toggle-thumb-bg);
 }

@@ -124,3 +124,132 @@
 .modalButton {
   @apply w-full rounded-[100px] bg-neutral-900 py-3 text-base font-medium text-white;
 }
+
+
+/* Dark mode */
+.container {
+  background: var(--color-page-bg);
+}
+
+.heroTitle,
+.heroDesc,
+.label,
+.optionText,
+.linkButton,
+.bottomLink,
+.modalTitle {
+  color: var(--color-text-strong);
+}
+
+.input,
+.orText,
+.bottomMuted,
+.modalMessage {
+  color: var(--color-text-muted);
+}
+
+.line,
+.orLine {
+  background: var(--color-border);
+}
+
+.socialButton,
+.modalCard {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text-strong);
+}
+
+.primaryButton,
+.modalButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.container {
+  background: var(--color-surface);
+}
+
+.heroTitle {
+  color: var(--color-text-strong);
+}
+
+.heroDesc {
+  color: var(--color-text-strong);
+}
+
+.label {
+  color: var(--color-text-strong);
+}
+
+.input {
+  color: var(--color-text-strong);
+}
+
+.input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.line {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.optionText {
+  color: var(--color-text-strong);
+}
+
+.linkButton {
+  color: var(--color-text-strong);
+}
+
+.primaryButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.orLine {
+  background: var(--color-surface-3);
+}
+
+.orText {
+  color: var(--color-text-muted);
+}
+
+.socialButton {
+  background: var(--color-surface);
+  color: var(--color-text-soft);
+  border-color: var(--color-border);
+}
+
+.bottomMuted {
+  color: var(--color-text-muted);
+}
+
+.bottomLink {
+  color: var(--color-text-strong);
+}
+
+.modalBackdrop {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.modalCard {
+  background: var(--color-surface);
+}
+
+.modalTitle {
+  color: var(--color-text-strong);
+}
+
+.modalMessage {
+  color: var(--color-text-muted);
+}
+
+.modalButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}

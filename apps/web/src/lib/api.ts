@@ -349,22 +349,6 @@ export const fetcher = async <T>(endpoint: string, options?: RequestInit): Promi
   return response.json() as Promise<T>;
 };
 
-export const fetchMySettings = async (): Promise<GetSettingsResponse> => {
-  return fetcher<GetSettingsResponse>("/users/me/settings", {
-    headers: getAuthHeaders(),
-  });
-};
-
-export const updateMySettings = async (
-  body: UpdateSettingsRequest,
-): Promise<UpdateSettingsResponse> => {
-  return fetcher<UpdateSettingsResponse>("/users/me/settings", {
-    method: "PATCH",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(body),
-  });
-};
-
 export const uploadPostImage = async (file: File): Promise<UploadedPostImageResponse> => {
   const formData = new FormData();
   formData.append("file", file);
@@ -576,4 +560,21 @@ export const togglePostBookmark = async (
   isBookmarked: boolean
 ): Promise<boolean> => {
   return setPostBookmark(postId, !isBookmarked);
+};
+
+
+export const fetchMySettings = async (): Promise<GetSettingsResponse> => {
+  return fetcher<GetSettingsResponse>('/users/me/settings', {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const updateMySettings = async (
+  payload: UpdateSettingsRequest,
+): Promise<UpdateSettingsResponse> => {
+  return fetcher<UpdateSettingsResponse>('/users/me/settings', {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
 };
