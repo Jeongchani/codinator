@@ -1,27 +1,36 @@
-import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react';
-import { ArrowRight, Bell, Megaphone, ShieldCheck, X } from 'lucide-react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+} from 'react';
+import { Bell, Megaphone, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import styles from './ForegroundPushCenter.module.css';
 import {
   bindForegroundPushBridge,
   emitForegroundPush,
-  ensurePushServiceWorkerRegistration,
   type ForegroundPushPayload,
   subscribeForegroundPush,
 } from '../../lib/pushNotifications';
 
 type NotificationVisual = {
-  badgeLabel: string;
   Icon: typeof Bell;
   iconClassName: string;
 };
 
-const AUTO_DISMISS_MS = 4500;
+const AUTO_DISMISS_MS = 3500;
+const EXIT_ANIMATION_MS = 280;
+const CLOSE_DRAG_DISTANCE = 18;
+const MAX_DRAG_UP_DISTANCE = 132;
+const DRAG_START_THRESHOLD = 2;
 
 const buildVisual = (payload: ForegroundPushPayload): NotificationVisual => {
   if (payload.category === 'MARKETING') {
     return {
-      badgeLabel: '마케팅 알림',
       Icon: Megaphone,
       iconClassName: styles.iconMarketing,
     };
@@ -29,14 +38,12 @@ const buildVisual = (payload: ForegroundPushPayload): NotificationVisual => {
 
   if (payload.category === 'SYSTEM') {
     return {
-      badgeLabel: '시스템 알림',
       Icon: Bell,
       iconClassName: styles.iconSystem,
     };
   }
 
   return {
-    badgeLabel: '서비스 알림',
     Icon: ShieldCheck,
     iconClassName: styles.iconService,
   };
@@ -75,9 +82,70 @@ export default function ForegroundPushCenter() {
   const navigate = useNavigate();
   const [queue, setQueue] = useState<ForegroundPushPayload[]>([]);
   const [active, setActive] = useState<ForegroundPushPayload | null>(null);
+  const [dragY, setDragY] = useState(0);
+  const [isClosing, setIsClosing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const pointerStartYRef = useRef<number | null>(null);
+  const dragYRef = useRef(0);
+  const didDragRef = useRef(false);
+  const dismissTimerRef = useRef<number | null>(null);
+  const closeTimerRef = useRef<number | null>(null);
+
+  const clearDismissTimer = useCallback(() => {
+    if (dismissTimerRef.current !== null) {
+      window.clearTimeout(dismissTimerRef.current);
+      dismissTimerRef.current = null;
+    }
+  }, []);
+
+  const clearCloseTimer = useCallback(() => {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
+
+  const resetGesture = useCallback(() => {
+    dragYRef.current = 0;
+    setDragY(0);
+    setIsDragging(false);
+    pointerStartYRef.current = null;
+    didDragRef.current = false;
+  }, []);
+
+  const finishCloseNotification = useCallback(() => {
+    clearDismissTimer();
+    clearCloseTimer();
+    setActive(null);
+    setIsClosing(false);
+    resetGesture();
+  }, [clearCloseTimer, clearDismissTimer, resetGesture]);
+
+  const closeNotification = useCallback(() => {
+    if (!active || closeTimerRef.current !== null) {
+      return;
+    }
+
+    clearDismissTimer();
+    setIsDragging(false);
+    pointerStartYRef.current = null;
+
+    // 위로 드래그해서 닫을 때는 현재 끌어올린 위치를 유지한 상태에서
+    // viewport의 닫힘 애니메이션만 이어서 실행한다.
+    // 이 값을 0으로 되돌리면 손을 떼는 순간 알림이 아래를 한 번 찍고 올라가 보인다.
+    setIsClosing(true);
+
+    closeTimerRef.current = window.setTimeout(() => {
+      closeTimerRef.current = null;
+      finishCloseNotification();
+    }, EXIT_ANIMATION_MS);
+  }, [active, clearDismissTimer, finishCloseNotification]);
 
   useEffect(() => {
-    void ensurePushServiceWorkerRegistration();
+    // 현재 V3 코드에는 실제 Web Push/FCM 수신용 Service Worker 파일이 아직 없으므로
+    // /codinator-push-sw.js 등록을 시도하지 않는다.
+    // 앱이 켜져 있는 동안 사용하는 인앱 알림 미리보기/브릿지만 유지한다.
     const detachWorkerBridge = bindForegroundPushBridge();
     const unsubscribe = subscribeForegroundPush((payload) => {
       setQueue((prev) => [...prev, payload]);
@@ -99,8 +167,10 @@ export default function ForegroundPushCenter() {
     return () => {
       detachWorkerBridge();
       unsubscribe();
+      clearDismissTimer();
+      clearCloseTimer();
     };
-  }, []);
+  }, [clearCloseTimer, clearDismissTimer]);
 
   useEffect(() => {
     if (active || queue.length === 0) {
@@ -110,21 +180,24 @@ export default function ForegroundPushCenter() {
     const next = queue[0];
     setActive(next);
     setQueue((prev) => prev.slice(1));
-  }, [active, queue]);
+    setIsClosing(false);
+    resetGesture();
+  }, [active, queue, resetGesture]);
 
   useEffect(() => {
-    if (!active) {
+    if (!active || isClosing) {
       return;
     }
 
-    const timeoutId = window.setTimeout(() => {
-      setActive(null);
+    clearDismissTimer();
+    dismissTimerRef.current = window.setTimeout(() => {
+      closeNotification();
     }, AUTO_DISMISS_MS);
 
     return () => {
-      window.clearTimeout(timeoutId);
+      clearDismissTimer();
     };
-  }, [active]);
+  }, [active, clearDismissTimer, closeNotification, isClosing]);
 
   const visual = useMemo(() => {
     return active ? buildVisual(active) : null;
@@ -134,21 +207,104 @@ export default function ForegroundPushCenter() {
     return null;
   }
 
-  const { Icon, badgeLabel, iconClassName } = visual;
-
-  const handleClose = (event: MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    setActive(null);
-  };
+  const { Icon, iconClassName } = visual;
 
   const handleOpen = () => {
     if (active.targetPath) {
       navigate(active.targetPath);
     }
-    setActive(null);
+
+    closeNotification();
+  };
+
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (isClosing) {
+      return;
+    }
+
+    clearDismissTimer();
+    pointerStartYRef.current = event.clientY;
+    didDragRef.current = false;
+    dragYRef.current = 0;
+    setIsDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (isClosing) {
+      return;
+    }
+
+    const startY = pointerStartYRef.current;
+    if (startY === null) {
+      return;
+    }
+
+    const diffY = event.clientY - startY;
+    if (Math.abs(diffY) > DRAG_START_THRESHOLD) {
+      didDragRef.current = true;
+    }
+
+    // 위로 살짝만 밀어도 손가락을 따라 바로 올라가도록 보정한다.
+    // 아래 방향 이동은 알림을 닫는 동작이 아니므로 0으로 고정한다.
+    const nextDragY = Math.min(0, Math.max(-MAX_DRAG_UP_DISTANCE, diffY * 1.18));
+    dragYRef.current = nextDragY;
+    setDragY(nextDragY);
+  };
+
+  const handlePointerUp = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    pointerStartYRef.current = null;
+    setIsDragging(false);
+
+    if (dragYRef.current <= -CLOSE_DRAG_DISTANCE) {
+      closeNotification();
+      return;
+    }
+
+    dragYRef.current = 0;
+    setDragY(0);
+
+    if (!isClosing) {
+      clearDismissTimer();
+      dismissTimerRef.current = window.setTimeout(() => {
+        closeNotification();
+      }, AUTO_DISMISS_MS);
+    }
+  };
+
+  const handlePointerCancel = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    resetGesture();
+
+    if (!isClosing) {
+      clearDismissTimer();
+      dismissTimerRef.current = window.setTimeout(() => {
+        closeNotification();
+      }, AUTO_DISMISS_MS);
+    }
+  };
+
+  const handleClick = () => {
+    if (didDragRef.current || isClosing) {
+      didDragRef.current = false;
+      return;
+    }
+
+    handleOpen();
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (isClosing) {
+      return;
+    }
+
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       handleOpen();
@@ -156,37 +312,35 @@ export default function ForegroundPushCenter() {
   };
 
   return (
-    <div className={styles.viewport} aria-live="polite" aria-atomic="true">
-      <div className={styles.card} role="button" tabIndex={0} onClick={handleOpen} onKeyDown={handleKeyDown}>
+    <div
+      className={`${styles.viewport} ${isClosing ? styles.closing : ''}`}
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      <div
+        className={`${styles.card} ${isDragging ? styles.dragging : ''}`}
+        role="button"
+        tabIndex={0}
+        style={dragY ? { transform: `translateY(${dragY}px)` } : undefined}
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+      >
         <div className={styles.inner}>
           <div className={styles.iconWrap}>
-            <Icon size={20} className={iconClassName} />
+            <Icon size={17} className={iconClassName} />
           </div>
 
           <div className={styles.content}>
-            <div className={styles.topRow}>
-              <span className={styles.badge}>{badgeLabel}</span>
+            <div className={styles.titleRow}>
+              <p className={styles.title}>{active.title}</p>
               <span className={styles.time}>{formatRelativeTime(active.sentAt)}</span>
             </div>
-
-            <p className={styles.title}>{active.title}</p>
             <p className={styles.body}>{active.body}</p>
-
-            <div className={styles.footerRow}>
-              <span className={styles.action}>
-                {active.actionLabel ?? '확인하기'}
-                <ArrowRight size={13} />
-              </span>
-            </div>
           </div>
-
-          <button type="button" className={styles.closeButton} onClick={handleClose} aria-label="알림 닫기">
-            <X size={15} />
-          </button>
-        </div>
-
-        <div className={styles.progressTrack} aria-hidden="true">
-          <div key={active.id ?? active.sentAt ?? active.title} className={styles.progressBar} />
         </div>
       </div>
     </div>

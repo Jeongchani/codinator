@@ -13,6 +13,7 @@ import type { ThemeMode } from '@codinator/contracts';
 import { useNavigate } from 'react-router-dom';
 import styles from './Settings.module.css';
 import { fetchMySettings, updateMySettings } from '../../lib/api';
+import SideMenu from '../../components/SideMenu';
 import {
   ensurePushServiceWorkerRegistration,
   previewForegroundPush,
@@ -40,7 +41,13 @@ type SettingRowProps = {
   onToggle: () => void;
 };
 
-function ToggleSwitch({ checked, disabled = false, loading = false, ariaLabel, onClick }: ToggleSwitchProps) {
+function ToggleSwitch({
+  checked,
+  disabled = false,
+  loading = false,
+  ariaLabel,
+  onClick,
+}: ToggleSwitchProps) {
   return (
     <button
       type="button"
@@ -118,9 +125,13 @@ export default function Settings() {
   const [isServiceEnabled, setIsServiceEnabled] = useState(true);
   const [isMarketingEnabled, setIsMarketingEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [savingKey, setSavingKey] = useState<'theme' | 'push' | 'service' | 'marketing' | null>(null);
+  const [savingKey, setSavingKey] = useState<'theme' | 'push' | 'service' | 'marketing' | null>(
+    null,
+  );
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusTone, setStatusTone] = useState<'neutral' | 'error'>('neutral');
+
+  const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
 
   const isDarkMode = theme === 'DARK';
   const isDetailDisabled = !isPushEnabled;
@@ -284,6 +295,8 @@ export default function Settings() {
 
   return (
     <div className={styles.container}>
+      <SideMenu isOpen={isSideMenuOpen} onClose={() => setIsSideMenuOpen(false)} />
+
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <button
@@ -297,7 +310,12 @@ export default function Settings() {
 
           <h1 className={styles.title}>설정</h1>
 
-          <button type="button" className={styles.menuButton} aria-label="사이드 메뉴 열기">
+          <button
+            type="button"
+            className={styles.menuButton}
+            onClick={() => setIsSideMenuOpen(true)}
+            aria-label="사이드 메뉴 열기"
+          >
             <Menu size={25} strokeWidth={2.2} />
           </button>
         </div>
@@ -397,7 +415,9 @@ export default function Settings() {
             </p>
           </div>
 
-          {statusMessage ? <p className={`${styles.statusText} ${statusClassName}`}>{statusMessage}</p> : null}
+          {statusMessage ? (
+            <p className={`${styles.statusText} ${statusClassName}`}>{statusMessage}</p>
+          ) : null}
 
           {isDevPreviewEnabled ? (
             <button

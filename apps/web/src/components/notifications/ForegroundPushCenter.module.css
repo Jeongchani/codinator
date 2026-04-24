@@ -1,169 +1,203 @@
- .viewport {
+.viewport {
   position: fixed;
   left: 50%;
-  top: 16px;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
   z-index: 300;
-  width: min(343px, calc(100vw - 24px));
+  width: min(338px, calc(100vw - 28px));
   transform: translateX(-50%);
   pointer-events: none;
+  animation: notificationSlideDown 0.34s cubic-bezier(0.18, 0.86, 0.24, 1) both;
+}
+
+.closing {
+  pointer-events: none;
+  animation: notificationSlideUp 0.28s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
 .card {
   pointer-events: auto;
   position: relative;
+  isolation: isolate;
+  height: 64px;
   overflow: hidden;
-  border-radius: 22px;
-  padding: 14px 14px 14px 16px;
-  background: var(--notification-card-bg);
-  border: 1px solid var(--notification-card-border);
-  box-shadow: var(--notification-card-shadow);
-  color: var(--notification-text);
+  border-radius: 18px;
+  padding: 10px 12px;
+  color: rgba(17, 24, 39, 0.88);
   cursor: pointer;
+  user-select: none;
+  touch-action: none;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow:
+    0 10px 24px rgba(15, 23, 42, 0.1),
+    inset 0 1px 0 #ffffff;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  will-change: transform;
+  transition:
+    transform 0.18s cubic-bezier(0.18, 0.86, 0.24, 1),
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
+.dragging {
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.card:active {
+  background: #f8fafc;
+  box-shadow:
+    0 8px 18px rgba(15, 23, 42, 0.09),
+    inset 0 1px 0 #ffffff;
+}
+
+.card::before,
 .card::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--notification-card-sheen);
-  pointer-events: none;
+  display: none;
 }
 
 .inner {
   position: relative;
   z-index: 1;
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  height: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
 }
 
 .iconWrap {
   display: flex;
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  border-radius: 14px;
-  background: var(--notification-icon-wrap-bg);
+  border-radius: 13px;
+  background: #f3f4f6;
+  box-shadow:
+    inset 0 1px 0 #ffffff,
+    0 1px 4px rgba(15, 23, 42, 0.04);
 }
 
-.iconService {
-  color: var(--notification-icon-service);
-}
-
-.iconMarketing {
-  color: var(--notification-icon-marketing);
-}
-
+.iconService,
+.iconMarketing,
 .iconSystem {
-  color: var(--notification-icon-system);
+  color: rgba(31, 41, 55, 0.66);
 }
 
 .content {
+  display: flex;
   min-width: 0;
   flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
 }
 
-.topRow {
+.titleRow {
   display: flex;
+  min-width: 0;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
 }
 
-.badge {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 4px 8px;
-  font-size: 11px;
-  line-height: 1;
-  font-weight: 700;
-  background: var(--notification-badge-bg);
-  color: var(--notification-badge-text);
+.title {
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+  overflow: hidden;
+  color: rgba(17, 24, 39, 0.9);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .time {
   flex-shrink: 0;
-  font-size: 11px;
+  color: rgba(75, 85, 99, 0.5);
+  font-size: 10px;
+  font-weight: 600;
   line-height: 1;
-  color: var(--notification-time);
-}
-
-.title {
-  margin: 8px 0 0;
-  font-size: 18px;
-  line-height: 1.25;
-  font-weight: 700;
-  color: var(--notification-text);
+  white-space: nowrap;
 }
 
 .body {
-  margin: 6px 0 0;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--notification-text-muted);
-  word-break: keep-all;
-}
-
-.footerRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 12px;
-}
-
-.action {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  line-height: 1;
-  font-weight: 700;
-  color: var(--notification-action);
-}
-
-.closeButton {
-  display: inline-flex;
-  width: 28px;
-  height: 28px;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border: 0;
-  border-radius: 999px;
-  background: var(--notification-close-bg);
-  color: var(--notification-close-text);
-  cursor: pointer;
-}
-
-.progressTrack {
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 8px;
-  height: 3px;
+  margin: 0;
   overflow: hidden;
-  border-radius: 999px;
-  background: var(--notification-progress-track);
+  color: rgba(31, 41, 55, 0.6);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.22;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.progressBar {
-  height: 100%;
-  width: 100%;
-  transform-origin: left center;
-  background: var(--notification-progress-bar);
-  animation: shrink 4.5s linear forwards;
+:global(html.dark) .card {
+  color: rgba(248, 250, 252, 0.9);
+  background: #111827;
+  border-color: #374151;
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
-@keyframes shrink {
-  from {
-    transform: scaleX(1);
+:global(html.dark) .card:active {
+  background: #0f172a;
+  box-shadow:
+    0 9px 22px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+:global(html.dark) .iconWrap {
+  background: #1f2937;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+:global(html.dark) .iconService,
+:global(html.dark) .iconMarketing,
+:global(html.dark) .iconSystem {
+  color: rgba(226, 232, 240, 0.72);
+}
+
+:global(html.dark) .title {
+  color: rgba(248, 250, 252, 0.92);
+}
+
+:global(html.dark) .time {
+  color: rgba(203, 213, 225, 0.5);
+}
+
+:global(html.dark) .body {
+  color: rgba(226, 232, 240, 0.62);
+}
+
+@keyframes notificationSlideDown {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-24px) scale(0.98);
   }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
 
-  to {
-    transform: scaleX(0);
+@keyframes notificationSlideUp {
+  0% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-34px) scale(0.98);
   }
 }
