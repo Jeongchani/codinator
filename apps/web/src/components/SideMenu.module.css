@@ -52,11 +52,11 @@
 }
 
 .otherTitle {
-  @apply absolute left-4 top-[507px] text-[20px] font-bold leading-7 text-black;
+  @apply absolute left-4 top-[460px] text-[20px] font-bold leading-7 text-black;
 }
 
 .otherOptions {
-  @apply absolute left-0 top-[547px] w-full flex flex-col gap-[6px];
+  @apply absolute left-0 top-[502px] w-full flex flex-col gap-[6px];
 }
 
 .menuItem {
@@ -120,7 +120,6 @@
   }
 }
 
-
 /* Dark mode */
 .panel,
 .menuItem {
@@ -148,7 +147,6 @@
 .menuItem:active {
   background: var(--color-surface-3);
 }
-
 
 /* Tokenized color overrides: variables are defined once in styles/global.css. */
 .panel {

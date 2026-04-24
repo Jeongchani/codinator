@@ -1,0 +1,169 @@
+ .viewport {
+  position: fixed;
+  left: 50%;
+  top: 16px;
+  z-index: 300;
+  width: min(343px, calc(100vw - 24px));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.card {
+  pointer-events: auto;
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+  padding: 14px 14px 14px 16px;
+  background: var(--notification-card-bg);
+  border: 1px solid var(--notification-card-border);
+  box-shadow: var(--notification-card-shadow);
+  color: var(--notification-text);
+  cursor: pointer;
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--notification-card-sheen);
+  pointer-events: none;
+}
+
+.inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.iconWrap {
+  display: flex;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 14px;
+  background: var(--notification-icon-wrap-bg);
+}
+
+.iconService {
+  color: var(--notification-icon-service);
+}
+
+.iconMarketing {
+  color: var(--notification-icon-marketing);
+}
+
+.iconSystem {
+  color: var(--notification-icon-system);
+}
+
+.content {
+  min-width: 0;
+  flex: 1;
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 700;
+  background: var(--notification-badge-bg);
+  color: var(--notification-badge-text);
+}
+
+.time {
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--notification-time);
+}
+
+.title {
+  margin: 8px 0 0;
+  font-size: 18px;
+  line-height: 1.25;
+  font-weight: 700;
+  color: var(--notification-text);
+}
+
+.body {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--notification-text-muted);
+  word-break: keep-all;
+}
+
+.footerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--notification-action);
+}
+
+.closeButton {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--notification-close-bg);
+  color: var(--notification-close-text);
+  cursor: pointer;
+}
+
+.progressTrack {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 8px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--notification-progress-track);
+}
+
+.progressBar {
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  background: var(--notification-progress-bar);
+  animation: shrink 4.5s linear forwards;
+}
+
+@keyframes shrink {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
+}

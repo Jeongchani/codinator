@@ -22,6 +22,7 @@ import OngoingEvaluationHistory from './pages/evaluation/OngoingEvaluationHistor
 import Settings from './pages/settings/Settings';
 import { fetchMySettings, getAccessToken } from './lib/api';
 import { applyThemeMode, saveThemeMode } from './lib/theme';
+import PasswordReset from './pages/auth/PasswordReset';
 
 function ThemeSync() {
   useEffect(() => {
@@ -62,6 +63,7 @@ function AppRoutes() {
       <Route path="/loginSelect" element={<LoginSelect />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/passwordReset" element={<PasswordReset />} />
       <Route path="/evaluationZone" element={<EvaluationZone />} />
       <Route path="/evaluationDetailFeedback/:postId" element={<EvaluationDetailFeedback />} />
       <Route path="/postUpload" element={<PostUpload />} />

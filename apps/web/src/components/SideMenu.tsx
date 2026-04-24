@@ -90,24 +90,6 @@ export default function SideMenu({ isOpen = false, onClose }: SideMenuProps) {
 
         <div className={styles.mainOptions}>
           <MenuItem
-            icon={<Images size={25} strokeWidth={2.2} />}
-            label="내 피드"
-            onClick={() => handleMove('/myFeed')}
-          />
-
-          <MenuItem
-            icon={<Bookmark size={25} strokeWidth={2.2} />}
-            label="내 북마크"
-            onClick={() => handleMove('/bookmark')}
-          />
-
-          <MenuItem
-            icon={<ClipboardCheck size={25} strokeWidth={2.2} />}
-            label="진행중인 평가 기록"
-            onClick={() => handleMove('/ongoingEvaluationHistory')}
-          />
-
-          <MenuItem
             icon={<Trophy size={25} strokeWidth={2.2} />}
             label="랭킹존"
             onClick={() => handleMove('/rankingZone')}
@@ -118,6 +100,17 @@ export default function SideMenu({ isOpen = false, onClose }: SideMenuProps) {
             label="평가존"
             onClick={() => handleMove('/evaluationZone')}
           />
+          <MenuItem
+            icon={<Images size={25} strokeWidth={2.2} />}
+            label="내 피드"
+            onClick={() => handleMove('/myFeed')}
+          />
+
+          <MenuItem
+            icon={<Bookmark size={25} strokeWidth={2.2} />}
+            label="내 북마크"
+            onClick={() => handleMove('/bookmark')}
+          />
         </div>
 
         <div className={styles.otherTitle}>Other</div>
@@ -127,6 +120,11 @@ export default function SideMenu({ isOpen = false, onClose }: SideMenuProps) {
             icon={<User size={25} strokeWidth={2.2} />}
             label="마이 페이지"
             onClick={() => handleMove('/myPage')}
+          />
+          <MenuItem
+            icon={<ClipboardCheck size={25} strokeWidth={2.2} />}
+            label="진행중인 평가 기록"
+            onClick={() => handleMove('/ongoingEvaluationHistory')}
           />
 
           <MenuItem

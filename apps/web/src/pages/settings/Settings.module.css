@@ -39,7 +39,7 @@
 }
 
 .sectionBlock {
-  @apply mt-0 mb-[36px];
+  @apply mb-[36px];
 }
 
 .sectionTitle {
@@ -116,6 +116,14 @@
   transform: translateX(20px);
 }
 
+.toggleSpinnerWrap {
+  @apply absolute left-1/2 top-1/2 z-[1] flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center;
+}
+
+.toggleSpinner {
+  animation: settingsSpin 0.9s linear infinite;
+}
+
 .infoSection {
   @apply mt-[4px];
 }
@@ -132,119 +140,36 @@
   @apply text-[12px] leading-4 text-[#a4a4a4];
 }
 
+.statusText {
+  @apply mt-3 text-[12px] leading-4;
+}
+
+.statusNeutral {
+  @apply text-[#6f6f6f];
+}
+
+.statusError {
+  @apply text-[#d04b4b];
+}
+
 .bottomSpacer {
   @apply h-[90px] w-full shrink-0;
 }
 
+@keyframes settingsSpin {
+  from {
+    transform: rotate(0deg);
+  }
 
-.container {
-  background: var(--color-page-bg);
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-.header {
-  background: var(--color-page-bg);
+.previewButton {
+  @apply mt-3 inline-flex h-10 items-center justify-center rounded-[12px] border border-[#d7e3f6] bg-[#f6fbff] px-4 text-[13px] font-semibold text-[#3e67bf] transition-colors;
 }
 
-.title,
-.sectionTitle,
-.rowTitle {
-  color: var(--color-text-strong);
-}
-
-.headerIconButton,
-.menuButton,
-.rowDescription,
-.infoIconWrap,
-.infoText {
-  color: var(--color-text-muted);
-}
-
-.card {
-  border-color: var(--color-border);
-  background: var(--color-surface);
-}
-
-.rowDivider {
-  background: var(--color-border);
-}
-
-.iconToneGray {
-  background: var(--color-surface-2);
-  color: var(--color-text-soft);
-}
-
-.toggleOff {
-  background: var(--color-disabled-surface);
-}
-
-.toggleThumb {
-  background: var(--color-inverse-surface);
-}
-
-.infoCard {
-  background: var(--color-surface-2);
-}
-
-
-/* Tokenized color overrides: variables are defined once in styles/global.css. */
-.container {
-  background: var(--color-surface);
-}
-
-.header {
-  background: var(--color-surface);
-}
-
-.headerIconButton {
-  color: var(--color-text-muted);
-}
-
-.menuButton {
-  color: var(--color-text-muted);
-}
-
-.title {
-  color: var(--color-text-strong);
-}
-
-.sectionTitle {
-  color: var(--color-text-strong);
-}
-
-.card {
-  background: var(--color-surface);
-  border-color: var(--color-border);
-}
-
-.iconToneGray {
-  color: var(--color-text-muted);
-}
-
-.rowTitle {
-  color: var(--color-text-strong);
-}
-
-.rowDescription {
-  color: var(--color-text-muted);
-}
-
-.toggleThumb {
-  background: var(--color-surface);
-}
-
-.infoCard {
-  background: var(--color-surface-2);
-}
-
-.infoText {
-  color: var(--color-text-muted);
-}
-
-/* Settings-specific theme tokens. */
-.toggleOff {
-  background: var(--color-toggle-off-bg);
-}
-
-.toggleThumb {
-  background: var(--color-toggle-thumb-bg);
+.previewButton:hover {
+  @apply bg-[#eef6ff];
 }
