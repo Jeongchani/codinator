@@ -1,0 +1,412 @@
+.container {
+  @apply w-full max-w-[375px] h-[812px] mx-auto bg-white relative overflow-hidden;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
+}
+
+.deleteMode {
+  @apply z-20;
+}
+
+.header {
+  @apply absolute top-0 left-0 w-full bg-white z-20;
+  height: 93px;
+}
+
+.headerInner {
+  @apply relative w-full h-full px-4;
+}
+
+.title {
+  @apply absolute left-1/2 text-[18px] leading-[22px] font-bold text-black;
+  top: 59px;
+  transform: translateX(-50%) translateY(-50%);
+}
+
+.headerIconButton {
+  @apply absolute left-4 w-6 h-6 flex items-center justify-center bg-transparent text-black border-0 p-0;
+  top: 59px;
+  transform: translateY(-50%);
+}
+
+.headerTextButton {
+  @apply absolute right-4 flex items-center justify-center rounded-[999px] border-0 px-[10px] h-[30px] text-[11px] font-medium text-white;
+  top: 59px;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.62);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+  transition:
+    transform 140ms ease,
+    opacity 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.headerTextButton:disabled {
+  opacity: 0.74;
+}
+
+.headerTextButtonPressed {
+  transform: translateY(-50%) scale(0.96);
+  opacity: 0.94;
+  background: rgba(0, 0, 0, 0.75);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+}
+
+.banner {
+  @apply absolute left-0 top-[105px] overflow-hidden;
+  width: 100%;
+  height: 120px;
+  background: #e5e5e5;
+}
+
+.bannerImage {
+  @apply absolute inset-0 w-full h-full;
+  object-fit: cover;
+  object-position: center;
+}
+
+.contentArea {
+  @apply absolute left-0 w-full overflow-y-auto px-4 z-10;
+  top: 237px;
+  bottom: 0;
+  padding-bottom: 20px;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
+}
+
+.contentAreaDeleteMode {
+  touch-action: pan-y;
+  padding-bottom: 141px;
+}
+
+.contentArea::-webkit-scrollbar {
+  display: none;
+}
+
+.groupList {
+  @apply flex flex-col gap-[18px] pb-8;
+}
+
+.groupSection {
+  @apply w-full;
+}
+
+.groupTitle {
+  @apply m-0 mb-[10px] text-[16px] leading-[20px] font-bold text-black;
+}
+
+.cardGrid {
+  @apply grid grid-cols-3 gap-x-[9px] gap-y-[12px];
+}
+
+.card {
+  @apply relative w-full aspect-[109/152] rounded-[10px] overflow-hidden bg-[#dddddd] border-0 p-0 text-left;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior-x: none;
+}
+
+.cardImage {
+  @apply absolute inset-0 w-full h-full object-cover;
+}
+
+.cardImageFallback {
+  @apply absolute inset-0 flex items-center justify-center px-3 text-center text-[12px] leading-[16px] text-neutral-500 bg-[#f3f3f3];
+}
+
+.cardTopRow {
+  @apply absolute left-[8px] right-[8px] top-[8px] z-10 flex items-start justify-start;
+}
+
+.choiceBadge {
+  @apply inline-flex items-center justify-center rounded-full text-white;
+  width: 20px;
+  height: 20px;
+}
+
+.choiceBadgeLike {
+  background: rgba(244, 125, 114, 0.78);
+}
+
+.choiceBadgeDislike {
+  background: rgba(140, 149, 181, 0.78);
+}
+
+.choiceBadgeIcon {
+  width: 10px;
+  height: 10px;
+}
+
+.cardGradient {
+  @apply absolute left-0 right-0 bottom-0 h-[54px];
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.68) 100%);
+}
+
+.cardSelected {
+  @apply bg-[#8d8d8d];
+}
+
+.cardSelected::after {
+  content: '';
+  @apply absolute inset-0 bg-black/15;
+}
+
+.selectionDot {
+  @apply absolute right-[8px] top-[8px] z-10 w-5 h-5 rounded-full bg-[#6f6f6f] flex items-center justify-center text-transparent;
+}
+
+.selectionDotSelected {
+  @apply bg-black text-white;
+}
+
+.stateBox {
+  @apply w-full min-h-[220px] flex flex-col items-center justify-center px-6 text-center;
+}
+
+.stateTitle {
+  @apply m-0 text-[14px] leading-[20px] font-medium text-neutral-700;
+}
+
+.stateDescription {
+  @apply mt-2 m-0 text-[12px] leading-[18px] text-neutral-500;
+}
+
+.retryButton {
+  @apply mt-4 inline-flex items-center justify-center rounded-[999px] border-0 px-4 h-[36px] text-[12px] font-semibold text-white;
+  background: #111111;
+}
+
+.emptyState {
+  @apply w-full min-h-[220px] flex items-center justify-center text-sm text-neutral-500 text-center px-6;
+}
+
+.modalOverlay {
+  @apply absolute inset-0 z-40 flex items-center justify-center bg-black/35 px-6;
+}
+
+.modalCard {
+  @apply w-full rounded-[24px] bg-white px-5 pt-6 pb-5 shadow-xl;
+}
+
+.modalTitle {
+  @apply text-[18px] leading-6 font-semibold text-black text-center;
+}
+
+.modalDesc {
+  @apply mt-2 text-[14px] leading-5 text-neutral-500 text-center;
+}
+
+.modalActions {
+  @apply mt-6 flex items-center gap-3;
+}
+
+.modalCancelButton {
+  @apply flex-1 h-12 rounded-[999px] bg-[#f3f3f3] text-[15px] font-medium text-black border-0;
+}
+
+.modalDeleteButton {
+  @apply flex-1 h-12 rounded-[999px] bg-[#ef4444] text-[15px] font-medium text-white border-0;
+}
+
+.selectionActionBar {
+  @apply absolute inset-x-0 bottom-0 z-[70] pointer-events-none;
+}
+
+.selectionActionBarLayer {
+  @apply pointer-events-auto relative h-[125px];
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.08) 34%,
+    rgba(0, 0, 0, 0.18) 72%,
+    rgba(0, 0, 0, 0.35) 100%
+  );
+}
+
+.selectionActionSurface {
+  @apply absolute bottom-10 left-0 right-0 h-[0px];
+  background: transparent;
+  overflow: visible;
+}
+
+.selectionActionSurface::before {
+  content: '';
+  position: absolute;
+  inset: -25px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.012) 0%,
+    rgba(255, 255, 255, 0.004) 100%
+  );
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  -webkit-mask-image: radial-gradient(
+    165% 165% at 50% 50%,
+    rgba(0, 0, 0, 0.92) 34%,
+    rgba(0, 0, 0, 0.28) 72%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  mask-image: radial-gradient(
+    165% 165% at 50% 50%,
+    rgba(0, 0, 0, 0.92) 34%,
+    rgba(0, 0, 0, 0.28) 72%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  pointer-events: none;
+}
+
+.selectionActionRow {
+  @apply absolute left-8 right-8 z-[1] flex items-center justify-between;
+  top: 50%;
+  height: 38px;
+  transform: translateY(-50%);
+  overflow: visible;
+}
+
+.selectionCountText {
+  @apply relative z-[2] whitespace-nowrap text-[16px] font-extrabold leading-none tracking-[-0.04em] text-white;
+  text-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.42),
+    0 1px 2px rgba(0, 0, 0, 0.24);
+}
+
+.selectionActionButtons {
+  @apply flex items-center gap-[15px];
+}
+
+.selectionGlassButton {
+  @apply relative flex h-[38px] w-[38px] items-center justify-center rounded-full border;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(236, 236, 240, 0.07) 48%,
+    rgba(210, 210, 214, 0.05) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 7px 14px rgba(0, 0, 0, 0.12),
+    0 1px 3px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.04);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+.selectionGlassButtonDisabled {
+  @apply opacity-40;
+}
+
+.selectionGlassButtonInner {
+  @apply pointer-events-none absolute inset-[1.5px] rounded-full border;
+  border-color: rgba(255, 255, 255, 0.36);
+}
+
+.selectionGlassButtonIcon {
+  @apply relative z-10;
+  opacity: 0.85;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.12));
+}
+
+.selectionActionIconSvg {
+  @apply w-[16px] h-[16px] text-white;
+}
+
+.focusOverlay {
+  @apply absolute inset-0 z-[120] overflow-hidden bg-neutral-300;
+}
+
+.focusImageSection {
+  @apply absolute inset-0 bg-cover bg-center bg-no-repeat;
+}
+
+.focusTopGradient {
+  @apply absolute top-0 left-0 w-full h-28;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.36) 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+.focusBottomGradient {
+  @apply absolute bottom-0 left-0 w-full h-48;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+.focusOverlayLayer {
+  @apply absolute inset-0 z-20 pointer-events-none;
+}
+
+.focusTopBar {
+  @apply absolute top-[32px] left-5 right-5 z-30 flex items-center justify-between;
+}
+
+.focusBackButton {
+  @apply h-8 w-8 rounded-full border-0 flex items-center justify-center pointer-events-auto;
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+}
+
+.focusTopBarPlaceholder {
+  @apply h-8 w-[54px];
+}
+
+.focusVoteGraphArea {
+  @apply absolute left-[22px] right-[22px] top-[703px] z-30 pointer-events-none;
+}
+
+.focusProgressTrack {
+  @apply relative h-[30px] px-2.5 py-[5px] rounded-[10px] inline-flex justify-start items-center gap-[5px] overflow-hidden w-full;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
+}
+
+.focusLikeFill {
+  @apply absolute left-0 top-0 h-full;
+  background: rgba(234, 138, 120, 0.82);
+}
+
+.focusDislikeFill {
+  @apply absolute right-0 top-0 h-full;
+  background: rgba(174, 178, 214, 0.78);
+}
+
+.focusLeftPercent,
+.focusRightPercent {
+  @apply absolute top-1/2 -translate-y-1/2 flex items-center text-white text-[11px] font-semibold leading-none;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+
+.focusLeftPercent {
+  @apply left-[12px] gap-[6px];
+}
+
+.focusRightPercent {
+  @apply right-[12px] gap-[6px];
+}
+
+.focusDetailButtonWrap {
+  @apply absolute left-1/2 top-[747px] -translate-x-1/2 z-30;
+}
+
+.focusDetailButton {
+  @apply flex items-center justify-center gap-2 border-0 bg-transparent px-0 py-0 text-[18px] font-semibold pointer-events-auto;
+  color: rgba(232, 232, 232, 0.82);
+  text-shadow:
+    0 0 10px rgba(255, 255, 255, 0.12),
+    0 6px 16px rgba(0, 0, 0, 0.22);
+}
+
+.focusDetailButton:active {
+  opacity: 0.72;
+}
+
+.focusDetailIcon {
+  @apply flex items-center justify-center;
+}

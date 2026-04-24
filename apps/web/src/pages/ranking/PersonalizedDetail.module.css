@@ -1,0 +1,12 @@
+.root {
+  @apply w-full bg-white;
+}
+
+.emptyShell {
+  @apply px-4 pt-3 pb-8;
+}
+
+.emptyCard {
+  @apply rounded-[20px] bg-white px-4 py-6 text-center text-[14px] leading-6 text-neutral-500;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+}

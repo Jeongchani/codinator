@@ -1,35 +1,35 @@
 .container {
-  @apply w-[375px] h-[812px] bg-white mx-auto overflow-hidden relative flex flex-col;
+  @apply relative mx-auto flex h-[812px] w-[375px] flex-col overflow-hidden bg-[#f7f7f7];
 }
 
 .header {
-  @apply w-full h-[93px] shrink-0 bg-white;
+  @apply h-[93px] w-full shrink-0 bg-white;
 }
 
 .headerInner {
-  @apply relative w-full h-full px-5;
+  @apply relative h-full w-full px-4;
 }
 
 .headerIconButton {
-  @apply absolute left-5 w-6 h-6 flex items-center justify-center bg-transparent border-0 p-0 text-black;
+  @apply absolute left-5 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0 text-[#7a7a7a];
   top: 59px;
   transform: translateY(-50%);
 }
 
 .menuButton {
-  @apply absolute right-5 w-6 h-6 flex items-center justify-center text-[#7a7a7a] bg-transparent border-0 p-0;
+  @apply absolute right-5 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0 text-[#7a7a7a];
   top: 59px;
   transform: translateY(-50%);
 }
 
 .title {
-  @apply absolute left-1/2 -translate-x-1/2 text-[18px] leading-[22px] font-bold text-black whitespace-nowrap;
+  @apply absolute left-1/2 whitespace-nowrap text-[20px] font-semibold leading-7 text-black;
   top: 59px;
   transform: translate(-50%, -50%);
 }
 
 .contentArea {
-  @apply w-full flex-1 px-4 pt-[26px] pb-[170px] overflow-y-auto;
+  @apply flex-1 overflow-y-auto px-4 pb-10 pt-[12px];
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -38,164 +38,106 @@
   display: none;
 }
 
-.nicknameSection {
-  @apply flex flex-col items-center mb-[30px];
+.summarySection {
+  @apply mt-0;
 }
 
-.nicknameMeasure {
-  @apply absolute pointer-events-none opacity-0 text-[36px] leading-10 font-medium whitespace-pre;
-  left: -9999px;
-  top: -9999px;
+.sectionBlock {
+  @apply mt-[36px];
 }
 
-.nicknameTopRow {
-  @apply inline-flex items-start justify-center gap-3;
+.sectionTitle {
+  @apply text-[16px] font-bold leading-[22px] text-black;
 }
 
-.nicknameTextWrap {
-  @apply inline-flex flex-col items-start;
+.summaryGrid {
+  @apply mt-6 flex items-stretch justify-between gap-3;
 }
 
-.nicknameInput {
-  @apply bg-transparent border-0 outline-none p-0 text-center text-[36px] leading-10 font-medium text-black;
-  min-width: 48px;
-  max-width: 220px;
+.summaryCard {
+  @apply flex h-[132px] flex-1 flex-col items-center justify-center rounded-[30px] border border-[#d0d0d0] bg-[#fafafa] px-3;
 }
 
-.nicknameInputInactive {
-  cursor: default;
-  caret-color: transparent;
+.summaryLabel {
+  @apply text-center text-[12px] font-semibold leading-5 text-[#171717];
 }
 
-.nicknameInputActive {
-  cursor: text;
+.summaryValue {
+  @apply mt-7 text-center text-[24px] font-bold leading-8 text-[#111111];
 }
 
-.nicknameUnderline {
-  @apply h-px bg-black mt-[2px];
+.sectionHeaderRow {
+  @apply flex items-center justify-between;
 }
 
-.nicknameEditButton {
-  @apply self-center;
+.changeButton {
+  @apply flex items-center gap-[2px] border-0 bg-transparent p-0 text-[15px] font-medium text-black;
 }
 
-.fieldList {
-  @apply flex flex-col gap-[12px];
+.accountCard {
+  @apply mt-5 rounded-[18px] border border-[#cec6c0] bg-white px-6 py-3;
 }
 
-.fieldGroup {
-  @apply flex flex-col;
+.accountRow {
+  @apply flex min-h-[38px] items-center;
 }
 
-.fieldCard {
-  @apply w-full min-h-[54px] rounded-[10px] border border-black bg-white px-[14px] flex items-center justify-between gap-4;
+.accountLabel {
+  @apply w-[78px] shrink-0 text-[15px] font-medium leading-5 text-[#171717];
 }
 
-.fieldText {
-  @apply flex-1 text-[16px] leading-6 font-bold text-black;
+.accountValue {
+  @apply text-[15px] leading-5 text-[#a8a8a8];
 }
 
-.fieldInput {
-  @apply flex-1 bg-transparent border-0 outline-none p-0 text-[16px] leading-6 font-bold text-black;
+.divider {
+  @apply h-px w-full bg-[#d2cbc4];
 }
 
-.readonlyInput {
-  @apply cursor-default;
+.modalOverlay {
+  @apply fixed inset-0 z-[200] flex items-center justify-center bg-black/45 px-6;
 }
 
-.iconButton {
-  @apply w-6 h-6 shrink-0 flex items-center justify-center bg-transparent border-0 p-0 text-[#9a9a9a];
+.modalCard {
+  @apply w-full max-w-[320px] rounded-[20px] bg-white px-5 pb-5 pt-6 shadow-[0_16px_40px_rgba(0,0,0,0.2)];
 }
 
-.actionButton {
-  @apply h-7 px-3 rounded-[8px] bg-black text-white text-[11px] leading-4 font-medium border-0 shrink-0;
+.modalTitle {
+  @apply text-center text-[20px] font-semibold leading-7 text-black;
 }
 
-.actionButton:disabled {
-  @apply opacity-40 cursor-not-allowed;
+.modalDescription {
+  @apply mt-2 whitespace-pre-line text-center text-[14px] leading-5 text-[#666666];
 }
 
-.editorBlock {
-  @apply pt-[10px] pb-[2px];
+.passwordModalInput {
+  @apply mt-5 h-[52px] w-full rounded-[14px] border border-[#d4cdc7] bg-white px-4 text-[15px] text-black outline-none;
 }
 
-.editorField {
-  @apply w-full mb-[12px];
+.passwordModalInput::placeholder {
+  @apply text-[#b3b3b3];
 }
 
-.editorField:last-of-type {
-  margin-bottom: 0;
+.modalHelperText {
+  @apply mt-2 min-h-[20px] text-[12px] leading-4 text-[#7b7b7b];
 }
 
-.fieldHeader {
-  @apply w-full flex items-center justify-between;
+.modalHelperError {
+  @apply text-[#dc4d36];
 }
 
-.editorLabel {
-  @apply block text-[12px] leading-4 font-medium text-neutral-900 mb-[4px];
+.modalButtonRow {
+  @apply mt-5 flex gap-3;
 }
 
-.editorInput {
-  @apply w-full bg-transparent border-0 outline-none p-0 text-neutral-900 text-[17px] font-normal leading-6;
-  border-bottom: 1px solid #111111;
-  padding-bottom: 8px;
-  border-radius: 0;
+.modalCancelButton {
+  @apply h-12 flex-1 rounded-[14px] border border-[#d4cdc7] bg-white text-[15px] font-medium text-black;
 }
 
-.editorInput::placeholder {
-  @apply text-neutral-300 text-[17px];
+.modalConfirmButton {
+  @apply h-12 flex-1 rounded-[14px] bg-black text-[15px] font-medium text-white;
 }
 
-.helperText {
-  @apply min-h-[18px] text-[12px] leading-[18px] text-neutral-500 mt-2;
-}
-
-.helperTextError {
-  @apply text-red-500;
-}
-
-.checkButton {
-  @apply h-7 px-3 rounded-full border border-neutral-300 text-[12px] font-medium text-neutral-700 bg-white;
-}
-
-.checkButton:disabled {
-  @apply opacity-50 cursor-not-allowed;
-}
-
-.checkButtonDone {
-  @apply bg-black text-white border-black;
-}
-
-.phoneRow {
-  @apply w-full flex items-center justify-between mt-1;
-}
-
-.phoneInput {
-  @apply h-9 rounded-[10px] border border-neutral-300 bg-white
-    text-center text-[15px] leading-5 font-medium text-neutral-900 outline-none;
-  width: 92px;
-}
-
-.phoneInput:first-of-type {
-  width: 88px;
-}
-
-.phoneDash {
-  @apply w-3 text-center text-neutral-500 text-base font-medium shrink-0;
-}
-
-.finalSubmitWrap {
-  @apply absolute left-4 right-4 bottom-[88px] z-10 bg-white pt-3;
-}
-
-.finalSubmitButton {
-  @apply w-full h-14 rounded-[100px] bg-black text-white text-base font-normal leading-5 flex items-center justify-center transition;
-}
-
-.buttonDisabled {
-  @apply opacity-40 cursor-not-allowed;
-}
-
-.withdrawButton {
-  @apply mt-8 mx-auto block bg-transparent border-0 text-[13px] leading-5 text-red-500 underline underline-offset-4;
+.modalConfirmButton:disabled {
+  @apply cursor-not-allowed opacity-50;
 }

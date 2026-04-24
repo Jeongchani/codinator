@@ -1,6 +1,8 @@
 import type {
   AddBookmarkResponse,
   BookmarkListItem,
+  EvaluationHistoryItem,
+  GetEvaluationHistoryResponse,
   GetMyBookmarksResponse,
   LogoutResponse,
   RefreshTokenResponse,
@@ -493,6 +495,50 @@ export const fetchAllMyBookmarks = async (): Promise<BookmarkListItem[]> => {
 export const fetchMyBookmarkMap = async (): Promise<BookmarkMap> => {
   const items = await fetchAllMyBookmarks();
   return buildBookmarkMap(items);
+};
+
+export const fetchMyEvaluationHistoryPage = async (
+  cursor?: number,
+  limit?: number
+): Promise<GetEvaluationHistoryResponse> => {
+  const searchParams = new URLSearchParams();
+
+  if (cursor !== undefined) {
+    searchParams.set("cursor", String(cursor));
+  }
+
+  if (limit !== undefined) {
+    searchParams.set("limit", String(limit));
+  }
+
+  const query = searchParams.toString();
+
+  return fetcher<GetEvaluationHistoryResponse>(
+    `/users/me/evaluation-history${query ? `?${query}` : ""}`,
+    {
+      headers: getAuthHeaders(),
+    }
+  );
+};
+
+export const fetchAllMyEvaluationHistory = async (): Promise<EvaluationHistoryItem[]> => {
+  const items: EvaluationHistoryItem[] = [];
+  let cursor: number | undefined;
+  let guard = 0;
+
+  while (guard < 20) {
+    const page = await fetchMyEvaluationHistoryPage(cursor);
+    items.push(...(page.items ?? []));
+
+    if (!page.hasMore || !page.nextCursor) {
+      break;
+    }
+
+    cursor = page.nextCursor;
+    guard += 1;
+  }
+
+  return items;
 };
 
 export const setPostBookmark = async (
