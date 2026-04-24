@@ -37,6 +37,7 @@ export type UploadedPostImageResponse = {
   thumbnailUrl?: string | null;
   blurMethod: "NONE" | "AUTO" | "MANUAL";
   aiBlurStatus: "NONE" | "PENDING" | "PROCESSING" | "DONE" | "FAILED";
+  imageAssetId: number
 };
 
 type PostImageLike = {
@@ -367,6 +368,29 @@ export const uploadPostImage = async (file: File): Promise<UploadedPostImageResp
   }
 
   return response.json() as Promise<UploadedPostImageResponse>;
+};
+
+// 수동블러 전용 헬퍼 함수 추가
+export const applyManualBlurByImageAsset = async (
+  imageAssetId: number,
+  file: File,
+) => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await performApiRequest(
+    `/uploads/image-assets/${imageAssetId}/manual-blur`,
+    {
+      method: 'PATCH',
+      body: formData,
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await extractErrorMessage(response));
+  }
+
+  return response.json();
 };
 
 export const logoutWithServer = async (): Promise<void> => {
