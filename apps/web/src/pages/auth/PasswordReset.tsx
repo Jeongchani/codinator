@@ -1,8 +1,19 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, Lock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import type {
+  PasswordResetRequest,
+  PasswordResetResponse,
+  SendPhoneVerificationRequest,
+  SendPhoneVerificationResponse,
+  VerifyPhoneCodeRequest,
+  VerifyPhoneCodeResponse,
+} from '@codinator/contracts';
+import { fetcher } from '../../lib/api';
 import styles from './PasswordReset.module.css';
 
 const PHONE_CODE_TTL_SECONDS = 5 * 60;
+const PASSWORD_RESET_PURPOSE = 'PASSWORD_RESET' as const;
 
 const BackIcon = () => <ChevronLeft size={23} strokeWidth={2.2} aria-hidden="true" />;
 const LockIcon = () => <Lock size={14} strokeWidth={2.4} aria-hidden="true" />;
@@ -31,13 +42,72 @@ const formatCountdown = (seconds: number) => {
   return `${String(minutes).padStart(2, '0')}:${String(remainSeconds).padStart(2, '0')}`;
 };
 
+const getRemainingSecondsFromExpiresAt = (expiresAt: string) => {
+  const expiresAtTime = Date.parse(expiresAt);
+
+  if (!Number.isFinite(expiresAtTime)) {
+    return PHONE_CODE_TTL_SECONDS;
+  }
+
+  return Math.max(0, Math.ceil((expiresAtTime - Date.now()) / 1000));
+};
+
 const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
 
+const sendPasswordResetPhoneCode = async (
+  phoneNumber: string,
+): Promise<SendPhoneVerificationResponse> => {
+  const payload: SendPhoneVerificationRequest = {
+    phoneNumber,
+    purpose: PASSWORD_RESET_PURPOSE,
+  };
+
+  return fetcher<SendPhoneVerificationResponse>('/auth/phone/send', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+};
+
+const verifyPasswordResetPhoneCode = async (
+  phoneNumber: string,
+  code: string,
+): Promise<VerifyPhoneCodeResponse> => {
+  const payload: VerifyPhoneCodeRequest = {
+    phoneNumber,
+    purpose: PASSWORD_RESET_PURPOSE,
+    code,
+  };
+
+  return fetcher<VerifyPhoneCodeResponse>('/auth/phone/verify', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+};
+
+const resetPassword = async (payload: PasswordResetRequest): Promise<PasswordResetResponse> => {
+  return fetcher<PasswordResetResponse>('/auth/password-reset', {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+};
+
 export default function PasswordReset() {
+  const navigate = useNavigate();
+
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [phoneVerificationSent, setPhoneVerificationSent] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
+  const [phoneVerificationToken, setPhoneVerificationToken] = useState('');
   const [phoneSendMessage, setPhoneSendMessage] = useState('');
   const [phoneDebugCode, setPhoneDebugCode] = useState('');
   const [phoneErrorMessage, setPhoneErrorMessage] = useState('');
@@ -47,22 +117,46 @@ export default function PasswordReset() {
 
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
 
   const currentPhoneDigits = useMemo(() => normalizePhoneDigits(phoneNumber), [phoneNumber]);
+  const trimmedPassword = useMemo(() => password.trim(), [password]);
+  const trimmedPasswordConfirm = useMemo(() => passwordConfirm.trim(), [passwordConfirm]);
+
   const timerExpired = phoneVerificationSent && !phoneVerified && remainingSeconds === 0;
   const canSendCode = currentPhoneDigits.length >= 10 && !sendingCode;
-  const canResendCode = phoneVerificationSent && !phoneVerified && !sendingCode;
+  const canResendCode = phoneVerificationSent && !phoneVerified && !sendingCode && !verifyingCode;
+  const passwordValid = passwordRegex.test(trimmedPassword);
+  const isPasswordMatched =
+    trimmedPassword.length > 0 && trimmedPassword === trimmedPasswordConfirm;
+  const showPasswordConfirmMessage = trimmedPasswordConfirm.length > 0;
+  const canSubmit =
+    phoneVerified &&
+    phoneVerificationToken !== '' &&
+    passwordValid &&
+    isPasswordMatched &&
+    !resettingPassword;
 
   const passwordHelper = useMemo(() => {
-    if (!password) return '한글, 영문, 숫자 포함 8자';
-    return passwordRegex.test(password)
+    if (!trimmedPassword) return '영문, 숫자, 특수문자 포함 8자 이상';
+    return passwordRegex.test(trimmedPassword)
       ? '사용 가능한 비밀번호입니다'
-      : '한글, 영문, 숫자 포함 8자 이상 입력해주세요';
-  }, [password]);
+      : '영문, 숫자, 특수문자 포함 8자 이상 입력해주세요';
+  }, [trimmedPassword]);
 
-  const isPasswordMatched = password.length > 0 && password === passwordConfirm;
-  const showPasswordConfirmMessage = passwordConfirm.length > 0;
-  const canSubmit = phoneVerified && passwordRegex.test(password) && isPasswordMatched;
+  const passwordConfirmMessage = useMemo(() => {
+    if (!showPasswordConfirmMessage) return ' ';
+    return isPasswordMatched ? '비밀번호가 일치합니다' : '비밀번호가 일치하지 않습니다';
+  }, [isPasswordMatched, showPasswordConfirmMessage]);
+
+  const phoneHelperMessage = useMemo(() => {
+    if (phoneErrorMessage) return phoneErrorMessage;
+    if (phoneVerified) return '인증이 완료 되었습니다';
+    if (timerExpired) return '인증시간이 만료되었습니다. 재요청해 주세요.';
+    if (phoneVerificationSent) return '전화번호 인증이 필요합니다.';
+    return ' ';
+  }, [phoneErrorMessage, phoneVerificationSent, phoneVerified, timerExpired]);
 
   useEffect(() => {
     if (!phoneVerificationSent || phoneVerified || remainingSeconds <= 0) {
@@ -86,11 +180,11 @@ export default function PasswordReset() {
   }, [phoneVerificationSent, phoneVerified, remainingSeconds]);
 
   const handleBack = () => {
-    window.history.back();
+    navigate(-1);
   };
 
   const handleCancel = () => {
-    window.history.back();
+    navigate('/login');
   };
 
   const handlePhoneNumberChange = (value: string) => {
@@ -98,6 +192,7 @@ export default function PasswordReset() {
     setVerificationCode('');
     setPhoneVerificationSent(false);
     setPhoneVerified(false);
+    setPhoneVerificationToken('');
     setPhoneSendMessage('');
     setPhoneDebugCode('');
     setPhoneErrorMessage('');
@@ -111,21 +206,25 @@ export default function PasswordReset() {
     }
 
     const isResend = phoneVerificationSent;
+
     setSendingCode(true);
     setPhoneErrorMessage('');
+    setPhoneVerificationToken('');
 
     try {
-      // TODO: 비밀번호 재설정용 전화번호 인증번호 발송 API 연결
-      const mockCode = String(Math.floor(100000 + Math.random() * 900000));
+      const response = await sendPasswordResetPhoneCode(currentPhoneDigits);
 
       setPhoneVerificationSent(true);
       setPhoneVerified(false);
       setVerificationCode('');
-      setRemainingSeconds(PHONE_CODE_TTL_SECONDS);
-      setPhoneSendMessage(isResend ? '인증번호가 재발송되었습니다.' : '인증번호가 발송되었습니다.');
-      setPhoneDebugCode(mockCode);
+      setRemainingSeconds(getRemainingSecondsFromExpiresAt(response.expiresAt));
+      setPhoneSendMessage(
+        response.message ||
+          (isResend ? '인증번호가 재발송되었습니다.' : '인증번호가 발송되었습니다.'),
+      );
+      setPhoneDebugCode(response.debugCode ?? '');
     } catch (error) {
-      console.error('인증번호 발송 실패:', error);
+      console.error('비밀번호 재설정 인증번호 발송 실패:', error);
       setPhoneErrorMessage(
         error instanceof Error ? error.message : '인증번호 발송에 실패했습니다.',
       );
@@ -149,12 +248,19 @@ export default function PasswordReset() {
     setPhoneErrorMessage('');
 
     try {
-      // TODO: 비밀번호 재설정용 전화번호 인증번호 검증 API 연결
+      const response = await verifyPasswordResetPhoneCode(
+        currentPhoneDigits,
+        verificationCode.trim(),
+      );
+
       setPhoneVerified(true);
+      setPhoneVerificationToken(response.phoneVerificationToken);
+      setPhoneSendMessage('인증이 완료되었습니다.');
       setPhoneErrorMessage('');
     } catch (error) {
-      console.error('전화번호 인증 실패:', error);
+      console.error('비밀번호 재설정 전화번호 인증 실패:', error);
       setPhoneVerified(false);
+      setPhoneVerificationToken('');
       setPhoneErrorMessage(
         error instanceof Error ? error.message : '인증번호를 다시 확인해 주세요.',
       );
@@ -163,10 +269,45 @@ export default function PasswordReset() {
     }
   };
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
+  const openConfirmModal = () => {
+    if (!canSubmit) {
+      return;
+    }
 
-    // TODO: 비밀번호 재설정 API 연결
+    setConfirmModalOpen(true);
+  };
+
+  const closeConfirmModal = () => {
+    if (resettingPassword) {
+      return;
+    }
+
+    setConfirmModalOpen(false);
+  };
+
+  const handleSubmit = async () => {
+    if (!canSubmit) {
+      return;
+    }
+
+    setResettingPassword(true);
+
+    try {
+      const response = await resetPassword({
+        phoneNumber: currentPhoneDigits,
+        phoneVerificationToken,
+        newPassword: trimmedPassword,
+      });
+
+      window.alert(response.message || '비밀번호가 재설정되었습니다.');
+      navigate('/login', { replace: true });
+    } catch (error) {
+      console.error('비밀번호 재설정 실패:', error);
+      window.alert(error instanceof Error ? error.message : '비밀번호 재설정에 실패했습니다.');
+    } finally {
+      setResettingPassword(false);
+      setConfirmModalOpen(false);
+    }
   };
 
   return (
@@ -209,7 +350,7 @@ export default function PasswordReset() {
                 value={phoneNumber}
                 onChange={(event) => handlePhoneNumberChange(event.target.value)}
                 inputMode="numeric"
-                placeholder="010-1111-2222"
+                placeholder="010-0000-0000"
                 className={styles.input}
               />
 
@@ -234,7 +375,9 @@ export default function PasswordReset() {
                   className={styles.input}
                 />
 
-                <span className={styles.sentText}>{phoneSendMessage || '인증번호가 발송되었습니다.'}</span>
+                <span className={styles.sentText}>
+                  {phoneSendMessage || '인증번호가 발송되었습니다.'}
+                </span>
               </div>
 
               <div className={styles.verificationMetaRow}>
@@ -257,7 +400,7 @@ export default function PasswordReset() {
                   aria-label="인증번호"
                   value={verificationCode}
                   onChange={(event) =>
-                    setVerificationCode(event.target.value.replace(/[^0-9]/g, '').slice(0, 8))
+                    setVerificationCode(event.target.value.replace(/[^0-9]/g, '').slice(0, 6))
                   }
                   inputMode="numeric"
                   placeholder="인증번호"
@@ -267,7 +410,9 @@ export default function PasswordReset() {
                   type="button"
                   className={`${styles.fieldActionButton} ${styles.verifyCodeButton}`}
                   onClick={handleVerifyCode}
-                  disabled={verifyingCode || !verificationCode.trim() || timerExpired || phoneVerified}
+                  disabled={
+                    verifyingCode || !verificationCode.trim() || timerExpired || phoneVerified
+                  }
                 >
                   {phoneVerified ? '인증완료' : verifyingCode ? '확인중' : '인증하기'}
                 </button>
@@ -277,18 +422,19 @@ export default function PasswordReset() {
 
           <p
             className={`${styles.helperText} ${
-              phoneErrorMessage ? styles.errorText : phoneVerified ? styles.successText : styles.mutedText
+              phoneErrorMessage || timerExpired
+                ? styles.errorText
+                : phoneVerified
+                  ? styles.successText
+                  : styles.mutedText
             }`}
           >
-            {phoneErrorMessage ||
-              (phoneVerified
-                ? '인증이 완료 되었습니다'
-                : phoneVerificationSent
-                  ? '전화번호 인증이 필요합니다.'
-                  : ' ')}
+            {phoneHelperMessage}
           </p>
 
-          {phoneDebugCode ? <p className={styles.debugCodeText}>테스트 코드: {phoneDebugCode}</p> : null}
+          {phoneDebugCode ? (
+            <p className={styles.debugCodeText}>테스트 코드: {phoneDebugCode}</p>
+          ) : null}
         </section>
 
         <section className={styles.sectionBlock}>
@@ -306,7 +452,7 @@ export default function PasswordReset() {
           </div>
           <p
             className={`${styles.helperText} ${
-              password.length > 0 && passwordRegex.test(password) ? styles.successText : styles.mutedText
+              trimmedPassword.length > 0 && passwordValid ? styles.successText : styles.mutedText
             }`}
           >
             {passwordHelper}
@@ -328,10 +474,14 @@ export default function PasswordReset() {
           </div>
           <p
             className={`${styles.helperText} ${
-              showPasswordConfirmMessage && !isPasswordMatched ? styles.errorText : styles.successText
+              showPasswordConfirmMessage && !isPasswordMatched
+                ? styles.errorText
+                : showPasswordConfirmMessage && isPasswordMatched
+                  ? styles.successText
+                  : styles.mutedText
             }`}
           >
-            {showPasswordConfirmMessage && !isPasswordMatched ? '비밀번호가 일치하지 않습니다' : '비밀번호가 일치합니다'}
+            {passwordConfirmMessage}
           </p>
         </section>
 
@@ -339,11 +489,50 @@ export default function PasswordReset() {
           type="button"
           className={`${styles.submitButton} ${!canSubmit ? styles.submitButtonDisabled : ''}`}
           disabled={!canSubmit}
-          onClick={handleSubmit}
+          onClick={openConfirmModal}
         >
-          변경 완료
+          {resettingPassword ? '변경 중...' : '변경 완료'}
         </button>
       </main>
+
+      {confirmModalOpen ? (
+        <div className={styles.modalOverlay} role="presentation" onClick={closeConfirmModal}>
+          <div
+            className={styles.modalCard}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="password-reset-confirm-title"
+            aria-describedby="password-reset-confirm-description"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="password-reset-confirm-title" className={styles.modalTitle}>
+              변경하시겠습니까?
+            </h2>
+            <p id="password-reset-confirm-description" className={styles.modalDescription}>
+              새 비밀번호로 변경 후 로그인 화면으로 이동합니다.
+            </p>
+
+            <div className={styles.modalButtonRow}>
+              <button
+                type="button"
+                className={styles.modalCancelButton}
+                onClick={closeConfirmModal}
+                disabled={resettingPassword}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className={styles.modalConfirmButton}
+                onClick={handleSubmit}
+                disabled={resettingPassword}
+              >
+                {resettingPassword ? '변경 중...' : '변경하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

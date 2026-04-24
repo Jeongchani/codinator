@@ -2,33 +2,42 @@ import type { ThemeMode } from '@codinator/contracts';
 
 export const THEME_STORAGE_KEY = 'codinator:theme-mode';
 
-const DARK_CLASS_NAME = 'dark';
+export const getStoredThemeMode = (): ThemeMode => {
+  if (typeof window === 'undefined') {
+    return 'LIGHT';
+  }
+
+  try {
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return stored === 'DARK' ? 'DARK' : 'LIGHT';
+  } catch {
+    return 'LIGHT';
+  }
+};
 
 export const applyThemeMode = (theme: ThemeMode): void => {
-  if (typeof document === 'undefined') return;
+  if (typeof document === 'undefined') {
+    return;
+  }
 
-  const root = document.documentElement;
   const isDark = theme === 'DARK';
+  const root = document.documentElement;
 
-  root.classList.toggle(DARK_CLASS_NAME, isDark);
+  root.classList.toggle('dark', isDark);
   root.setAttribute('data-theme', isDark ? 'dark' : 'light');
   root.style.colorScheme = isDark ? 'dark' : 'light';
-};
 
-export const saveThemeMode = (theme: ThemeMode): void => {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(THEME_STORAGE_KEY, theme);
-};
-
-export const getStoredThemeMode = (): ThemeMode | null => {
-  if (typeof window === 'undefined') return null;
-
-  const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
-  return stored === 'DARK' || stored === 'LIGHT' ? stored : null;
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // no-op
+    }
+  }
 };
 
 export const initializeThemeMode = (): ThemeMode => {
-  const stored = getStoredThemeMode() ?? 'LIGHT';
-  applyThemeMode(stored);
-  return stored;
+  const theme = getStoredThemeMode();
+  applyThemeMode(theme);
+  return theme;
 };

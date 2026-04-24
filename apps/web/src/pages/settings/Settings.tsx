@@ -40,13 +40,7 @@ type SettingRowProps = {
   onToggle: () => void;
 };
 
-function ToggleSwitch({
-  checked,
-  disabled = false,
-  loading = false,
-  ariaLabel,
-  onClick,
-}: ToggleSwitchProps) {
+function ToggleSwitch({ checked, disabled = false, loading = false, ariaLabel, onClick }: ToggleSwitchProps) {
   return (
     <button
       type="button"
@@ -124,9 +118,7 @@ export default function Settings() {
   const [isServiceEnabled, setIsServiceEnabled] = useState(true);
   const [isMarketingEnabled, setIsMarketingEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [savingKey, setSavingKey] = useState<'theme' | 'push' | 'service' | 'marketing' | null>(
-    null,
-  );
+  const [savingKey, setSavingKey] = useState<'theme' | 'push' | 'service' | 'marketing' | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusTone, setStatusTone] = useState<'neutral' | 'error'>('neutral');
 
@@ -405,9 +397,7 @@ export default function Settings() {
             </p>
           </div>
 
-          {statusMessage ? (
-            <p className={`${styles.statusText} ${statusClassName}`}>{statusMessage}</p>
-          ) : null}
+          {statusMessage ? <p className={`${styles.statusText} ${statusClassName}`}>{statusMessage}</p> : null}
 
           {isDevPreviewEnabled ? (
             <button
