@@ -614,3 +614,304 @@
 .confirmSummaryRow strong {
   @apply font-semibold text-neutral-900;
 }
+
+
+/* Dark mode */
+.container,
+.header,
+.contentArea,
+.optionMenu,
+.modalCard {
+  background: var(--color-page-bg);
+}
+
+.title,
+.tabTextActive,
+.modalTitle,
+.selectionCountText,
+.optionMenuLabel {
+  color: var(--color-text-strong);
+}
+
+.headerIconButton,
+.tabText,
+.emptyState,
+.modalDesc {
+  color: var(--color-text-muted);
+}
+
+.optionMenu,
+.selectionActionSurface,
+.modalCard {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.container {
+  background: var(--color-surface);
+}
+
+.scrollArea {
+  background: var(--color-surface);
+}
+
+.loadingBox {
+  background: var(--color-surface);
+  color: var(--color-text-soft);
+}
+
+.heroMediaFrame {
+  background: var(--color-surface-3);
+}
+
+.heroImage {
+  background: var(--color-surface-2);
+}
+
+.heroPlaceholder {
+  background: var(--color-surface-3);
+}
+
+.heroPlaceholderText {
+  color: var(--color-text-muted);
+}
+
+.backButton {
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+}
+
+.contentPanel {
+  background: var(--color-surface);
+}
+
+.mainTitle {
+  color: var(--color-text-strong);
+}
+
+.dateText {
+  color: var(--color-text-muted);
+}
+
+.contentText {
+  color: var(--color-text-soft);
+}
+
+.keywordChip {
+  color: var(--color-text-soft);
+}
+
+.sectionTitle {
+  color: var(--color-text-strong);
+}
+
+.sectionMetaText {
+  color: var(--color-text-muted);
+}
+
+.feedbackPanelTitle {
+  color: var(--color-text-strong);
+}
+
+.feedbackPanelCount {
+  color: var(--color-text-muted);
+}
+
+.feedbackRowLabel {
+  color: var(--color-text-muted);
+}
+
+.feedbackRowPercent {
+  color: var(--color-text-strong);
+}
+
+.feedbackEmptyText {
+  color: var(--color-text-muted);
+}
+
+.outfitTitle {
+  color: var(--color-text-strong);
+}
+
+.outfitEditButton,
+.outfitCancelButton {
+  background: var(--color-surface);
+}
+
+.outfitEditButton {
+  color: var(--color-text-soft);
+  border-color: var(--color-border);
+}
+
+.outfitCancelButton {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.outfitDeleteButton {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.outfitDeleteButtonActive {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.addItemButton {
+  background: var(--color-surface);
+  color: var(--color-text-soft);
+  border-color: var(--color-border);
+}
+
+.addItemPlusIcon {
+  color: var(--color-text-soft);
+}
+
+.editSummaryText {
+  color: var(--color-text-muted);
+}
+
+.itemCard {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.itemCardSelectedForDelete {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.itemSelectButton {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.itemSelectButtonOpen {
+  color: var(--color-text-strong);
+  border-color: var(--color-border);
+}
+
+.itemSelectTagIcon {
+  color: var(--color-text-muted);
+}
+
+.itemSelectText {
+  color: var(--color-text-strong);
+}
+
+.itemSelectPlaceholder {
+  color: var(--color-text-muted);
+}
+
+.itemSelectChevron {
+  color: var(--color-text-soft);
+}
+
+.selectMenu {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.selectOption {
+  background: var(--color-surface);
+}
+
+.selectOptionTagIcon {
+  color: var(--color-text-muted);
+}
+
+.selectOptionLabel {
+  color: var(--color-text-soft);
+}
+
+.selectOption:hover {
+  background: var(--color-surface-2);
+}
+
+.selectOptionActive {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.itemInput {
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+}
+
+.itemInput:focus {
+  color: var(--color-text-strong);
+  border-color: var(--color-border);
+}
+
+.itemInput:disabled,
+.itemSelectButton:disabled {
+  background: var(--color-surface-2);
+}
+
+.submitButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.outfitCard {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+}
+
+.outfitField {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.outfitCategoryField {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+}
+
+.outfitFieldValue {
+  color: var(--color-text-soft);
+}
+
+.emptyText {
+  color: var(--color-text-muted);
+}
+
+.confirmOverlay {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.confirmCard {
+  background: var(--color-surface);
+}
+
+.confirmTitle {
+  color: var(--color-text-strong);
+}
+
+.confirmText {
+  color: var(--color-text-muted);
+}
+
+.confirmCancelButton {
+  background: var(--color-surface);
+  color: var(--color-text-soft);
+  border-color: var(--color-border);
+}
+
+.confirmSummaryList {
+  background: var(--color-surface-2);
+}
+
+.confirmSummaryRow {
+  color: var(--color-text-soft);
+}
+
+.confirmSummaryRow strong {
+  color: var(--color-text-strong);
+}

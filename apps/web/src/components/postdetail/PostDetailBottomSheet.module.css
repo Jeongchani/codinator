@@ -156,3 +156,81 @@
 .emptyText {
   @apply text-[13px] text-neutral-500;
 }
+
+
+/* Dark mode */
+.sheetRoot {
+  background: var(--color-surface);
+  box-shadow: var(--sheet-shadow);
+}
+
+.handlerBar {
+  background: var(--color-handle);
+}
+
+.outfitTitle,
+.outfitFieldValue,
+.emptyText {
+  color: var(--color-text-strong);
+}
+
+.outfitCard {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+}
+
+.outfitField {
+  background: var(--color-surface-3);
+  border-color: var(--color-border);
+}
+
+.outfitCategoryField {
+  background: var(--color-outfit-accent-bg);
+  border-color: var(--color-outfit-accent-border);
+}
+
+.outfitCategoryIcon,
+.outfitCategoryField .outfitFieldValue {
+  color: var(--color-outfit-accent);
+}
+
+.outfitCarouselDot {
+  background: var(--color-carousel-dot);
+}
+
+.outfitCarouselDotActive {
+  background: var(--color-carousel-dot-active);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.sheetRoot {
+  background: var(--color-surface);
+}
+
+.outfitTitle {
+  color: var(--color-text-strong);
+}
+
+.outfitCard {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+}
+
+.outfitField {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.outfitCategoryField {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+}
+
+.outfitFieldValue {
+  color: var(--color-text-soft);
+}
+
+.emptyText {
+  color: var(--color-text-muted);
+}

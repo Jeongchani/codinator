@@ -264,3 +264,56 @@
 .submitButton:disabled {
   pointer-events: none;
 }
+
+
+/* Dark mode */
+.modalCard,
+.contentCard,
+.selectButton,
+.input,
+.textarea,
+.submitButton,
+.cancelButton {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text-strong);
+}
+
+.title,
+.label {
+  color: var(--color-text-strong);
+}
+
+.helperText,
+.placeholder,
+.counter {
+  color: var(--color-text-muted);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.tabIndicator {
+  background: var(--color-surface);
+}
+
+.reasonButtonActive {
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  border-color: var(--color-border);
+}
+
+.reasonButtonActive:hover {
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  border-color: var(--color-border);
+}
+
+.reasonButtonActive:active {
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  border-color: var(--color-border);
+}
+
+.submitButton {
+  color: var(--color-text-strong);
+}

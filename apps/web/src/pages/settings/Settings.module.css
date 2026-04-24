@@ -1,0 +1,250 @@
+.container {
+  @apply relative mx-auto flex h-[812px] w-[375px] flex-col overflow-hidden bg-white;
+}
+
+.header {
+  @apply h-[93px] w-full shrink-0 bg-white;
+}
+
+.headerInner {
+  @apply relative h-full w-full px-4;
+}
+
+.headerIconButton {
+  @apply absolute left-5 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0 text-[#7a7a7a];
+  top: 59px;
+  transform: translateY(-50%);
+}
+
+.menuButton {
+  @apply absolute right-5 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0 text-[#7a7a7a];
+  top: 59px;
+  transform: translateY(-50%);
+}
+
+.title {
+  @apply absolute left-1/2 whitespace-nowrap text-[20px] font-semibold leading-7 text-black;
+  top: 59px;
+  transform: translate(-50%, -50%);
+}
+
+.contentArea {
+  @apply flex-1 overflow-y-auto px-4 pb-0 pt-[12px];
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.contentArea::-webkit-scrollbar {
+  display: none;
+}
+
+.sectionBlock {
+  @apply mt-0 mb-[36px];
+}
+
+.sectionTitle {
+  @apply mb-4 text-[16px] font-bold leading-[22px] text-black;
+}
+
+.card {
+  @apply overflow-hidden rounded-[12px] border border-[#c8c8c8] bg-white;
+}
+
+.row {
+  @apply relative flex min-h-[60px] items-center justify-between px-3 py-3;
+}
+
+.rowDisabled {
+  @apply opacity-50;
+}
+
+.rowDivider {
+  @apply absolute left-3 right-3 top-0 h-px bg-[#c8c8c8];
+}
+
+.rowLeft {
+  @apply flex min-w-0 flex-1 items-center gap-[10px] pr-2;
+}
+
+.iconBadge {
+  @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-full;
+}
+
+.iconToneGray {
+  @apply bg-[#e8e8e8] text-[#8a8a8a];
+}
+
+.iconToneGreen {
+  @apply bg-[#e5f7e8] text-[#369a00];
+}
+
+.iconToneBlue {
+  @apply bg-[#ebeffc] text-[#385acd];
+}
+
+.textWrap {
+  @apply min-w-0 flex-1;
+}
+
+.rowTitle {
+  @apply text-[15px] font-normal leading-5 text-[#171717];
+}
+
+.rowDescription {
+  @apply mt-[2px] overflow-hidden text-ellipsis whitespace-nowrap text-[11px] leading-4 text-[#9f9f9f];
+}
+
+.toggle {
+  @apply relative h-[31px] w-[51px] shrink-0 rounded-full border-0 p-0 transition-colors duration-200;
+}
+
+.toggleOn {
+  @apply bg-[#3aa344];
+}
+
+.toggleOff {
+  @apply bg-[#e9e9ea];
+}
+
+.toggleThumb {
+  @apply absolute left-[2px] top-[2px] h-[27px] w-[27px] rounded-full bg-white;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+  transition: transform 0.2s ease;
+}
+
+.toggleThumbOn {
+  transform: translateX(20px);
+}
+
+.infoSection {
+  @apply mt-[4px];
+}
+
+.infoCard {
+  @apply flex min-h-[68px] items-center gap-3 rounded-[12px] bg-[#f7f7f7] px-3 py-3;
+}
+
+.infoIconWrap {
+  @apply flex h-5 w-5 shrink-0 items-center justify-center text-[#b0b0b0];
+}
+
+.infoText {
+  @apply text-[12px] leading-4 text-[#a4a4a4];
+}
+
+.bottomSpacer {
+  @apply h-[90px] w-full shrink-0;
+}
+
+
+.container {
+  background: var(--color-page-bg);
+}
+
+.header {
+  background: var(--color-page-bg);
+}
+
+.title,
+.sectionTitle,
+.rowTitle {
+  color: var(--color-text-strong);
+}
+
+.headerIconButton,
+.menuButton,
+.rowDescription,
+.infoIconWrap,
+.infoText {
+  color: var(--color-text-muted);
+}
+
+.card {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+}
+
+.rowDivider {
+  background: var(--color-border);
+}
+
+.iconToneGray {
+  background: var(--color-surface-2);
+  color: var(--color-text-soft);
+}
+
+.toggleOff {
+  background: var(--color-disabled-surface);
+}
+
+.toggleThumb {
+  background: var(--color-inverse-surface);
+}
+
+.infoCard {
+  background: var(--color-surface-2);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.container {
+  background: var(--color-surface);
+}
+
+.header {
+  background: var(--color-surface);
+}
+
+.headerIconButton {
+  color: var(--color-text-muted);
+}
+
+.menuButton {
+  color: var(--color-text-muted);
+}
+
+.title {
+  color: var(--color-text-strong);
+}
+
+.sectionTitle {
+  color: var(--color-text-strong);
+}
+
+.card {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.iconToneGray {
+  color: var(--color-text-muted);
+}
+
+.rowTitle {
+  color: var(--color-text-strong);
+}
+
+.rowDescription {
+  color: var(--color-text-muted);
+}
+
+.toggleThumb {
+  background: var(--color-surface);
+}
+
+.infoCard {
+  background: var(--color-surface-2);
+}
+
+.infoText {
+  color: var(--color-text-muted);
+}
+
+/* Settings-specific theme tokens. */
+.toggleOff {
+  background: var(--color-toggle-off-bg);
+}
+
+.toggleThumb {
+  background: var(--color-toggle-thumb-bg);
+}

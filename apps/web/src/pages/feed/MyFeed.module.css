@@ -394,3 +394,143 @@
 .selectionActionIconSvg {
   @apply w-[16px] h-[16px] text-white;
 }
+
+
+/* Dark mode */
+.container,
+.header,
+.contentArea,
+.modalCard,
+.optionMenu {
+  background: var(--color-page-bg);
+}
+
+.title,
+.tabTextActive,
+.modalTitle,
+.selectionCountText,
+.optionMenuLabel {
+  color: var(--color-text-strong);
+}
+
+.headerIconButton,
+.tabText,
+.emptyState,
+.modalDesc {
+  color: var(--color-text-muted);
+}
+
+.optionMenu,
+.selectionActionSurface,
+.modalCard {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.optionMenuItem:hover,
+.optionMenuItem:active {
+  background: var(--color-surface-2);
+}
+
+.tabIndicator {
+  background: var(--color-inverse-surface);
+}
+
+.selectionGlassButton {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.container {
+  background: var(--color-surface);
+}
+
+.header {
+  background: var(--color-surface);
+}
+
+.title {
+  color: var(--color-text-strong);
+}
+
+.headerIconButton {
+  color: var(--color-text-strong);
+}
+
+.headerIconButtonFilled {
+  color: var(--color-text-strong);
+}
+
+.actionButtonDark {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.optionMenu {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.optionMenuItem:hover {
+  background: var(--color-surface-2);
+}
+
+.optionMenuLabel {
+  color: var(--color-text-strong);
+}
+
+.tabText {
+  color: var(--color-text-muted);
+}
+
+.tabTextActive {
+  color: var(--color-text-strong);
+}
+
+.tabIndicator {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.cardSelected::after {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.selectionDotSelected {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.emptyState {
+  color: var(--color-text-muted);
+}
+
+.modalOverlay {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.modalCard {
+  background: var(--color-surface);
+}
+
+.modalTitle {
+  color: var(--color-text-strong);
+}
+
+.modalDesc {
+  color: var(--color-text-muted);
+}
+
+.modalCancelButton {
+  background: var(--color-surface-2);
+  color: var(--color-text-strong);
+}
+
+.modalActionButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}

@@ -141,3 +141,129 @@
 .modalConfirmButton:disabled {
   @apply cursor-not-allowed opacity-50;
 }
+
+
+/* Dark mode */
+.container,
+.header,
+.contentArea {
+  background: var(--color-page-bg);
+}
+
+.title,
+.sectionTitle,
+.summaryLabel,
+.summaryValue,
+.changeButton,
+.accountLabel,
+.modalTitle {
+  color: var(--color-text-strong);
+}
+
+.headerIconButton,
+.menuButton,
+.accountValue,
+.modalDescription,
+.modalHelperText {
+  color: var(--color-text-muted);
+}
+
+.summaryCard,
+.accountCard,
+.modalCard,
+.passwordModalInput,
+.modalCancelButton {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.divider {
+  background: var(--color-border);
+}
+
+.modalConfirmButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.container {
+  background: var(--color-surface-2);
+}
+
+.header {
+  background: var(--color-surface);
+}
+
+.headerIconButton {
+  color: var(--color-text-muted);
+}
+
+.menuButton {
+  color: var(--color-text-muted);
+}
+
+.title {
+  color: var(--color-text-strong);
+}
+
+.sectionTitle {
+  color: var(--color-text-strong);
+}
+
+.summaryCard {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+}
+
+.summaryLabel {
+  color: var(--color-text-strong);
+}
+
+.summaryValue {
+  color: var(--color-text-strong);
+}
+
+.changeButton {
+  color: var(--color-text-strong);
+}
+
+.accountCard {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.accountLabel {
+  color: var(--color-text-strong);
+}
+
+.modalOverlay {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}
+
+.modalCard {
+  background: var(--color-surface);
+}
+
+.modalTitle {
+  color: var(--color-text-strong);
+}
+
+.passwordModalInput {
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  border-color: var(--color-border);
+}
+
+.modalCancelButton {
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  border-color: var(--color-border);
+}
+
+.modalConfirmButton {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}

@@ -25,3 +25,36 @@
   top: 59px;
   transform: translateY(-50%);
 }
+
+
+/* Dark mode */
+.header {
+  background: var(--color-page-bg);
+}
+
+.title {
+  color: var(--color-text-strong);
+}
+
+.searchButton,
+.menuButton {
+  color: var(--color-text-soft);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.header {
+  background: var(--color-surface);
+}
+
+.title {
+  color: var(--color-text-strong);
+}
+
+.searchButton {
+  color: var(--color-text-muted);
+}
+
+.menuButton {
+  color: var(--color-text-muted);
+}

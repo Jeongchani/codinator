@@ -4,9 +4,12 @@ import type {
   EvaluationHistoryItem,
   GetEvaluationHistoryResponse,
   GetMyBookmarksResponse,
+  GetSettingsResponse,
   LogoutResponse,
   RefreshTokenResponse,
   RemoveBookmarkResponse,
+  UpdateSettingsRequest,
+  UpdateSettingsResponse,
 } from "@codinator/contracts";
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v3";
@@ -581,4 +584,21 @@ export const togglePostBookmark = async (
   isBookmarked: boolean
 ): Promise<boolean> => {
   return setPostBookmark(postId, !isBookmarked);
+};
+
+
+export const fetchMySettings = async (): Promise<GetSettingsResponse> => {
+  return fetcher<GetSettingsResponse>('/users/me/settings', {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const updateMySettings = async (
+  payload: UpdateSettingsRequest,
+): Promise<UpdateSettingsResponse> => {
+  return fetcher<UpdateSettingsResponse>('/users/me/settings', {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
 };

@@ -251,3 +251,34 @@
       0 6px 16px rgba(0, 0, 0, 0.18);
   }
 }
+
+
+/* Dark mode */
+.container,
+.emptyPageSection {
+  background: var(--color-app-bg);
+}
+
+.loadingState,
+.statusText {
+  color: var(--color-text-muted);
+}
+
+.circleButtonInactive {
+  background: var(--color-control-bg);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.container {
+  background: var(--color-surface-3);
+}
+
+.emptyPageSection {
+  background: var(--color-surface-3);
+}
+
+.loadingState {
+  background: var(--color-inverse-surface);
+  color: var(--color-inverse-text);
+}

@@ -119,3 +119,82 @@
     transition: none;
   }
 }
+
+
+/* Dark mode */
+.panel,
+.menuItem {
+  background: var(--color-surface);
+}
+
+.mainTitle,
+.otherTitle,
+.iconWrap,
+.menuLabel,
+.arrowIcon,
+.logoutIcon,
+.logoutText {
+  color: var(--color-text-strong);
+}
+
+.closeButton {
+  color: var(--color-text-soft);
+}
+
+.menuItem:hover {
+  background: var(--color-surface-2);
+}
+
+.menuItem:active {
+  background: var(--color-surface-3);
+}
+
+
+/* Tokenized color overrides: variables are defined once in styles/global.css. */
+.panel {
+  background: var(--color-surface);
+}
+
+.closeButton {
+  color: var(--color-text-muted);
+}
+
+.mainTitle {
+  color: var(--color-text-strong);
+}
+
+.otherTitle {
+  color: var(--color-text-strong);
+}
+
+.menuItem {
+  background: var(--color-surface);
+}
+
+.menuItem:hover {
+  background: var(--color-surface-2);
+}
+
+.menuItem:active {
+  background: var(--color-surface-2);
+}
+
+.iconWrap {
+  color: var(--color-text-strong);
+}
+
+.menuLabel {
+  color: var(--color-text-strong);
+}
+
+.arrowIcon {
+  color: var(--color-text-strong);
+}
+
+.logoutIcon {
+  color: var(--color-text-strong);
+}
+
+.logoutText {
+  color: var(--color-text-strong);
+}

@@ -9,13 +9,11 @@
   pointer-events: auto;
   isolation: isolate;
   padding: 0 10px;
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.32);
+  background: var(--footer-bg);
+  border: 1px solid var(--footer-border);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  box-shadow:
-    0 2px 5px rgba(0, 0, 0, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  box-shadow: var(--footer-shadow);
 }
 
 .inner {
@@ -29,7 +27,7 @@
   top: 4px;
   height: calc(100% - 8px);
   border-radius: 999px;
-  background: #111111;
+  background: var(--footer-pill-bg);
   opacity: 0;
   z-index: 0;
   transition:
@@ -51,8 +49,7 @@
 }
 
 .menuButton {
-  @apply relative h-full flex-1 flex flex-col items-center justify-center
-    bg-transparent border-0 p-0 cursor-pointer overflow-hidden;
+  @apply relative h-full flex-1 flex flex-col items-center justify-center bg-transparent border-0 p-0 cursor-pointer overflow-hidden;
   gap: 2px;
   z-index: 1;
   transition: transform 0.16s ease;
@@ -67,9 +64,10 @@
 }
 
 .icon {
-  @apply text-neutral-700 shrink-0 relative;
+  @apply shrink-0 relative;
   width: 20px;
   height: 20px;
+  color: var(--app-text-secondary);
   transition:
     transform 0.2s ease,
     color 0.2s ease,
@@ -77,13 +75,14 @@
 }
 
 .iconActive {
-  color: #ffffff;
+  color: var(--footer-pill-text);
   transform: translateY(0);
 }
 
 .label {
-  @apply text-[10px] font-medium text-black text-center break-keep relative;
+  @apply text-[10px] font-medium text-center break-keep relative;
   line-height: 1;
+  color: var(--app-text);
   opacity: 0.8;
   transition:
     transform 0.2s ease,
@@ -92,7 +91,7 @@
 }
 
 .labelActive {
-  color: #ffffff;
+  color: var(--footer-pill-text);
   opacity: 1;
   transform: translateY(0);
 }
