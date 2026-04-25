@@ -136,30 +136,9 @@
   @apply h-[90px] w-full shrink-0;
 }
 
-
-.toggleSpinner {
-  @apply absolute left-2 top-1/2 -translate-y-1/2 flex items-center justify-center;
-  z-index: 1;
-}
-
-.spinnerIcon {
-  animation: settingsSpin 0.8s linear infinite;
-}
-
 .errorText {
   @apply mt-3 text-[12px] leading-4 text-[#dc4d36];
 }
-
-@keyframes settingsSpin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 
 :global(html.dark) .container,
 :global(html.dark) .pageBody,
@@ -423,7 +402,6 @@
   background-image: none;
 }
 
-
 :global(html.dark) .modalCancelButton,
 :global(html.dark) .modalSecondaryButton,
 :global(html.dark) .fieldActionButton,
@@ -468,22 +446,7 @@
 }
 
 /* 기능 유지용 추가 스타일: develop 디자인 톤에 맞춘 알림 미리보기/상태 문구 */
-.toggleSpinnerWrap {
-  @apply absolute left-1/2 top-1/2 z-[1] flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center;
-}
-
-.statusText {
-  @apply mt-3 text-[12px] leading-4;
-}
-
-.statusNeutral {
-  @apply text-[#6f6f6f];
-}
-
-.statusError {
-  @apply text-[#d04b4b];
-}
-
+/* 기능 유지용 추가 스타일: develop 디자인 톤에 맞춘 알림 미리보기 */
 .previewButton {
   @apply mt-3 inline-flex h-10 items-center justify-center rounded-[12px] border border-[#d7e3f6] bg-[#f6fbff] px-4 text-[13px] font-semibold text-[#3e67bf] transition-colors;
 }
