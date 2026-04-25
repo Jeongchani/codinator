@@ -1,36 +1,47 @@
-import React, { useState } from 'react';
-import { SquareCheck } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import type { LoginResponse } from '@codinator/contracts';
-import { clearAuthTokens, fetcher, saveAuthTokens, saveCurrentUser } from '../../lib/api';
-import styles from './Login.module.css';
-import { KakaoIcon, NaverIcon, GoogleIcon } from '../../components/icons/social';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import type { LoginResponse } from "@codinator/contracts";
+import {
+  clearAuthTokens,
+  fetcher,
+  saveAuthTokens,
+  saveCurrentUser,
+} from "../../lib/api";
+import styles from "./Login.module.css";
+import { KakaoIcon, NaverIcon, GoogleIcon } from "../../components/icons/social";
 
 function CheckIcon({ checked }: { checked: boolean }) {
   return (
-    <SquareCheck
-      size={25}
-      strokeWidth={2}
+    <svg
+      width="25"
+      height="25"
+      viewBox="0 0 25 25"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
       className={styles.checkboxSvg}
-      color={checked ? '#111111' : '#999999'}
-      aria-hidden="true"
-    />
+    >
+      <path
+        d="M15.6251 10.4167L10.9639 14.5834L9.37508 13.1631M20.8334 7.29173L20.8334 17.7084C20.8334 19.4343 19.4343 20.8334 17.7084 20.8334H7.29175C5.56586 20.8334 4.16675 19.4343 4.16675 17.7084V7.29173C4.16675 5.56585 5.56586 4.16675 7.29175 4.16675H17.7084C19.4343 4.16675 20.8334 5.56585 20.8334 7.29173Z"
+        stroke={checked ? "#111111" : "#999999"}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState('alice@codinator.com');
-  const [password, setPassword] = useState('1234');
-  const [isKeepLoggedIn, setIsKeepLoggedIn] = useState(
-    () => localStorage.getItem('keepLoggedIn') === 'true',
-  );
+  const [email, setEmail] = useState("alice@codinator.com");
+  const [password, setPassword] = useState("1234");
+  const [isKeepLoggedIn, setIsKeepLoggedIn] = useState(() => localStorage.getItem("keepLoggedIn") === "true");
   const [loading, setLoading] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
-  const [modalTitle, setModalTitle] = useState('안내');
-  const [modalMessage, setModalMessage] = useState('');
+  const [modalTitle, setModalTitle] = useState("안내");
+  const [modalMessage, setModalMessage] = useState("");
 
   const openModal = (title: string, message: string) => {
     setModalTitle(title);
@@ -45,16 +56,16 @@ const Login: React.FC = () => {
     const trimmedPassword = password.trim();
 
     if (!trimmedEmail || !trimmedPassword) {
-      openModal('입력 확인', '이메일과 비밀번호를 모두 입력해주세요.');
+      openModal("입력 확인", "이메일과 비밀번호를 모두 입력해주세요.");
       return;
     }
 
     setLoading(true);
 
     try {
-      const data = await fetcher<LoginResponse>('/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const data = await fetcher<LoginResponse>("/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: trimmedEmail,
           password: trimmedPassword,
@@ -62,19 +73,24 @@ const Login: React.FC = () => {
       });
 
       clearAuthTokens();
-      saveAuthTokens(data.accessToken, isKeepLoggedIn ? data.refreshToken : undefined);
+      saveAuthTokens(
+        data.accessToken,
+        isKeepLoggedIn ? data.refreshToken : undefined,
+      );
       saveCurrentUser(data.user);
 
       if (isKeepLoggedIn) {
-        localStorage.setItem('keepLoggedIn', 'true');
+        localStorage.setItem("keepLoggedIn", "true");
       }
 
-      navigate('/rankingZone', { replace: true });
+      navigate("/rankingZone", { replace: true });
     } catch (err) {
-      console.error('로그인 에러:', err);
+      console.error("로그인 에러:", err);
       const message =
-        err instanceof Error ? err.message : '로그인 요청에 실패했습니다. 다시 시도해주세요.';
-      openModal('로그인 실패', message);
+        err instanceof Error
+          ? err.message
+          : "로그인 요청에 실패했습니다. 다시 시도해주세요.";
+      openModal("로그인 실패", message);
     } finally {
       setLoading(false);
     }
@@ -104,7 +120,7 @@ const Login: React.FC = () => {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            if (e.key === "Enter") {
               handleLogin();
             }
           }}
@@ -119,7 +135,7 @@ const Login: React.FC = () => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            if (e.key === "Enter") {
               handleLogin();
             }
           }}
@@ -140,7 +156,7 @@ const Login: React.FC = () => {
         <button
           type="button"
           className={styles.linkButton}
-          onClick={() => navigate('/passwordReset')}
+          onClick={() => navigate("/passwordReset")}
         >
           비밀번호를 잊으셨나요?
         </button>
@@ -148,11 +164,11 @@ const Login: React.FC = () => {
 
       <button
         type="button"
-        className={`${styles.primaryButton} ${loading ? styles.buttonDisabled : ''}`}
+        className={`${styles.primaryButton} ${loading ? styles.buttonDisabled : ""}`}
         onClick={handleLogin}
         disabled={loading}
       >
-        {loading ? '로그인 중...' : '로그인'}
+        {loading ? "로그인 중..." : "로그인"}
       </button>
 
       <div className={styles.orWrap}>
@@ -177,7 +193,11 @@ const Login: React.FC = () => {
 
       <div className={styles.bottomText}>
         <span className={styles.bottomMuted}>계정이 없으신가요?</span>
-        <button type="button" className={styles.bottomLink} onClick={() => navigate('/signup')}>
+        <button
+          type="button"
+          className={styles.bottomLink}
+          onClick={() => navigate("/signup")}
+        >
           회원가입
         </button>
       </div>
