@@ -29,23 +29,28 @@
 }
 
 .headerTextButton {
-  @apply absolute right-5 flex items-center justify-center rounded-[999px] border-0 px-[8px] h-[30px] text-[11px] font-medium text-white;
+  @apply absolute right-5 flex items-center justify-center border-0 bg-transparent p-0 h-[30px] min-w-[42px] text-[13px] font-semibold text-black;
   top: 59px;
   transform: translateY(-50%);
-  background: rgba(0, 0, 0, 0.62);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+  border-radius: 0;
+  box-shadow: none;
+  -webkit-tap-highlight-color: transparent;
   transition:
     transform 140ms ease,
     opacity 140ms ease,
-    background 140ms ease,
-    box-shadow 140ms ease;
+    color 140ms ease;
 }
 
 .headerTextButtonPressed {
   transform: translateY(-50%) scale(0.96);
-  opacity: 0.94;
-  background: rgba(0, 0, 0, 0.75);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+  opacity: 0.62;
+  background: transparent;
+  box-shadow: none;
+}
+
+.headerTextButton:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .headerIconButtonFilled {
@@ -678,7 +683,6 @@
 :global(html.dark) .miniActionButton,
 :global(html.dark) .bookmarkActionButton,
 :global(html.dark) .reportActionButton,
-:global(html.dark) .headerTextButton,
 :global(html.dark) .filterButton,
 :global(html.dark) .modalActionButton {
   background: var(--app-surface-muted);
@@ -700,4 +704,14 @@
 :global(html.dark) .feedbackSuccess,
 :global(html.dark) .sentText {
   color: #86efac;
+}
+
+
+/* 우측 상단 선택/전체선택 버튼은 텍스트만 보이도록 유지 */
+:global(html.dark) .headerTextButton,
+:global(html.dark) .headerTextButtonPressed {
+  background: transparent;
+  color: var(--app-text-strong);
+  border-color: transparent;
+  box-shadow: none;
 }
