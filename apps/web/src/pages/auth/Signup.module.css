@@ -1,159 +1,455 @@
-.container {
-  @apply w-[375px] h-[1180px] mx-auto bg-white relative overflow-hidden px-4;
+.root {
+  @apply relative mx-auto bg-white overflow-y-auto overflow-x-hidden;
+  width: var(--app-width, 375px);
+  height: var(--app-height, 812px);
+  min-height: var(--app-height, 812px);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-.hero {
-  @apply absolute left-4 top-[70px] w-[320px] px-2.5 py-2 flex flex-col items-start gap-[5px];
+.root::-webkit-scrollbar {
+  display: none;
 }
 
-.heroTitle {
-  @apply w-full text-neutral-900 text-4xl font-medium leading-10;
+.content {
+  @apply relative bg-white overflow-hidden;
+  width: var(--app-width, 375px);
+  min-height: 1460px;
 }
 
-.heroDesc {
-  @apply w-full text-neutral-900 text-xl font-medium leading-7;
+.decorationImage {
+  @apply absolute select-none pointer-events-none;
+  right: 20px;
+  top: 76px;
+  width: 82px;
+  height: 55px;
+  object-fit: contain;
 }
 
-.formBlock {
-  @apply absolute left-4 top-[268px] w-[320px] flex flex-col items-start gap-5;
+.header {
+  @apply absolute left-4;
+  top: 72px;
 }
 
-.field {
-  @apply w-full;
+.title {
+  @apply text-neutral-900 text-[28px] font-bold leading-9;
+  margin: 0;
+  letter-spacing: -0.04em;
 }
 
-.fieldHeader {
-  @apply w-full flex items-center justify-between;
+.description {
+  @apply text-neutral-400 text-sm font-normal leading-5;
+  margin-top: 16px;
+  letter-spacing: -0.03em;
+}
+
+.form {
+  @apply absolute inset-0;
+}
+
+.fieldGroup {
+  @apply absolute;
+  left: 16px;
+  width: 343px;
+}
+
+.nicknameGroup {
+  top: 168px;
+}
+
+.emailGroup {
+  top: 294px;
+}
+
+.passwordGroup {
+  top: 420px;
+}
+
+.passwordConfirmGroup {
+  top: 552px;
+}
+
+.birthDateGroup {
+  top: 684px;
+}
+
+.genderGroup {
+  @apply absolute;
+  left: 16px;
+  top: 828px;
+  width: 343px;
+}
+
+.phoneGroup {
+  top: 928px;
 }
 
 .label {
-  @apply text-neutral-900 text-sm font-medium leading-5;
+  @apply block text-neutral-900 text-base font-bold leading-[22.5px];
+  margin: 0 0 12px;
 }
 
-.requiredLabel {
-  @apply inline-flex items-center gap-1 text-neutral-900 text-sm font-medium leading-5;
-}
-
-.requiredMark {
-  display: none;
-}
-
-.checkButton {
-  @apply h-7 px-3 rounded-full border border-neutral-300 text-[12px] font-medium text-neutral-700 bg-white;
-}
-
-.checkButton:disabled {
-  @apply opacity-50 cursor-not-allowed;
+.input,
+.inputButtonBox {
+  @apply w-full h-12 bg-white rounded-[10px];
+  border: 1px solid #d6d3d1;
 }
 
 .input {
-  @apply w-full bg-transparent border-0 outline-none p-0 text-neutral-900 text-[17px] font-normal leading-6;
+  @apply text-neutral-900 text-[15px] font-normal leading-5 outline-none;
+  padding: 12px 16px;
 }
 
-.input::placeholder {
-  @apply text-neutral-300 text-[17px];
+.inputButtonBox {
+  @apply flex items-center justify-between;
+  padding: 8px 14px 8px 16px;
 }
 
-.line {
-  @apply w-full h-px bg-black mt-1;
+.inputWithButton {
+  @apply min-w-0 flex-1 bg-transparent text-neutral-900 text-[15px] font-normal leading-5 outline-none;
+  padding: 0;
 }
 
-.genderField .line {
-  display: none;
+.input::placeholder,
+.inputWithButton::placeholder,
+.phoneInput::placeholder,
+.verificationInput::placeholder {
+  color: #a3a3a3;
+}
+
+.input:focus,
+.inputButtonBox:focus-within,
+.phoneCard:focus-within,
+.verificationRow:focus-within {
+  border-color: #111111;
+}
+
+.input:disabled,
+.inputWithButton:disabled,
+.phoneInput:disabled,
+.verificationInput:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.innerButton,
+.phoneButton,
+.resendButton,
+.verifyCodeButton {
+  @apply shrink-0 flex items-center justify-center rounded-[10px] text-center text-neutral-900 text-xs font-normal leading-4;
+  height: 30px;
+  padding: 0 16px;
+  border: 1px solid #a3a3a3;
+  background: #ffffff;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    opacity 140ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.innerButton:active:not(:disabled),
+.phoneButton:active:not(:disabled),
+.resendButton:active:not(:disabled),
+.verifyCodeButton:active:not(:disabled) {
+  transform: scale(0.96);
+  background-color: #f5f5f5;
+}
+
+.innerButton:disabled,
+.phoneButton:disabled,
+.resendButton:disabled,
+.verifyCodeButton:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.checkButtonDone {
+  background: #e9f8df;
+  border-color: #9fd17d;
+  color: #3f7f2b;
+  opacity: 1;
+}
+
+.checkButtonDone:disabled {
+  background: #e9f8df;
+  border-color: #9fd17d;
+  color: #3f7f2b;
+  opacity: 1;
+}
+
+.successText {
+  @apply text-lime-700 text-xs font-normal leading-4;
+  margin-top: 14px;
+  min-height: 16px;
 }
 
 .helperText {
-  @apply min-h-[18px] text-[12px] leading-[18px] text-neutral-500 mt-2;
+  @apply text-neutral-400 text-xs font-normal leading-4;
+  margin-top: 14px;
+  min-height: 16px;
+}
+
+.errorText {
+  @apply text-red-600 text-xs font-normal leading-4;
+  margin-top: 14px;
+  min-height: 16px;
 }
 
 .genderRow {
-  @apply flex items-center gap-5 mt-1;
+  @apply flex items-center;
+  gap: 28px;
 }
 
 .genderButton {
-  @apply h-8 inline-flex items-center gap-2 bg-transparent border-0 p-0 cursor-pointer;
+  @apply flex items-center;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    opacity 140ms ease;
 }
 
-.genderCheckSvg {
-  @apply shrink-0;
-  width: 20px;
-  height: 20px;
+.genderButton:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
-.genderText {
-  @apply text-neutral-400 text-[17px] font-medium leading-5;
+.genderButton:disabled {
+  cursor: default;
+  opacity: 0.72;
 }
 
-.genderTextActive {
-  @apply text-neutral-900 text-[17px] font-medium leading-5;
+.genderIconChecked {
+  @apply shrink-0 text-neutral-900;
 }
 
-.phoneRow {
-  @apply w-full flex items-center justify-between mt-1;
+.genderIconUnchecked {
+  @apply shrink-0 text-stone-300;
+  opacity: 0.82;
+}
+
+.genderTextChecked {
+  @apply text-neutral-900 text-base font-bold leading-[22.5px];
+}
+
+.genderTextUnchecked {
+  @apply text-stone-300 text-base font-bold leading-[22.5px];
+}
+
+.phoneCard {
+  @apply w-full bg-white rounded-[18px];
+  min-height: 48px;
+  padding: 8px 14px 8px 16px;
+  border: 1px solid #d6d3d1;
+}
+
+.phoneCardExpanded {
+  padding: 12px 10px 14px;
+}
+
+.phoneTopRow {
+  @apply flex items-center;
+  height: 32px;
+  gap: 10px;
 }
 
 .phoneInput {
-  @apply h-9 rounded-[10px] border border-neutral-300 bg-white
-    text-center text-[15px] leading-5 font-medium text-neutral-900 outline-none;
-  width: 92px;
+  @apply min-w-0 flex-1 bg-transparent text-neutral-900 text-[15px] font-normal leading-5 outline-none;
+  padding: 0;
 }
 
-.phoneInput:first-of-type {
-  width: 88px;
+.phoneButton {
+  padding: 0 14px;
 }
 
-.phoneDash {
-  @apply w-3 text-center text-neutral-500 text-base font-medium shrink-0;
+.sentText {
+  @apply shrink-0 text-right text-[12px] leading-4 text-[#8a8a8a];
 }
 
-.primaryButton {
-  @apply absolute left-1/2 -translate-x-1/2 top-[930px]
-    w-[288px] h-14 rounded-[100px] bg-black
-    text-white text-base font-normal leading-5
-    flex items-center justify-center transition;
+.verificationMetaRow {
+  @apply mt-3 flex items-center justify-between;
+}
+
+.timerText {
+  @apply text-[12px] font-medium leading-4 text-[#7b7b7b];
+}
+
+.resendButton {
+  padding: 0 18px;
+}
+
+.verificationRow {
+  @apply mt-3 flex h-[52px] items-center gap-[10px] rounded-[18px] border border-[#d6d3d1] bg-white pl-[14px] pr-[10px];
+}
+
+.verificationInput {
+  @apply min-w-0 flex-1 border-0 bg-transparent p-0 text-[15px] leading-5 text-[#111111] outline-none;
+}
+
+.verifyCodeButton {
+  padding: 0 18px;
+}
+
+.debugCodeText {
+  @apply mt-1 text-[12px] leading-4 text-[#8a8a8a];
+}
+
+.signupSubmitButton {
+  @apply absolute flex items-center justify-center bg-black rounded-[10px] text-white text-xl font-medium leading-7;
+  left: 16px;
+  width: 343px;
+  height: 48px;
+  padding: 8px 16px;
+  border: 0;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease,
+    background-color 160ms ease;
+}
+
+.signupSubmitButton:active:not(:disabled) {
+  transform: scale(0.99);
+  opacity: 0.92;
+}
+
+.signupSubmitButton:disabled {
+  cursor: default;
 }
 
 .buttonDisabled {
-  @apply opacity-40 cursor-not-allowed;
+  opacity: 0.35;
 }
 
-.orWrap {
-  @apply absolute left-4 top-[1011px] w-[343px] flex items-center justify-between;
+.orRow {
+  @apply absolute flex items-center justify-center;
+  left: 16px;
+  width: 343px;
+  gap: 11px;
 }
 
 .orLine {
-  @apply w-[141px] h-px bg-neutral-200;
+  @apply block h-px bg-stone-300;
+  width: 144px;
 }
 
 .orText {
-  @apply text-neutral-400 text-sm font-medium leading-5 tracking-tight;
+  @apply text-center text-neutral-400 text-sm font-medium leading-5 tracking-tight;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
 }
 
-.socialRow {
-  @apply absolute left-1/2 -translate-x-1/2 top-[1055px] flex items-center gap-5;
+.socialButtonRow {
+  @apply absolute flex items-center justify-center;
+  left: 105px;
+  gap: 20px;
 }
 
 .socialButton {
-  @apply w-[42px] h-[42px] rounded-full border border-[#999999] bg-white flex items-center justify-center text-neutral-600;
+  @apply rounded-full bg-white flex items-center justify-center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #999999;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    opacity 160ms ease;
+}
+
+.socialButton:active:not(:disabled) {
+  transform: scale(0.94);
+  background-color: #f5f5f5;
+}
+
+.socialButton:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
 .socialLogo {
+  @apply flex items-center justify-center;
   width: 20px;
   height: 20px;
-  display: block;
   flex-shrink: 0;
 }
 
-.bottomText {
-  @apply absolute left-1/2 -translate-x-1/2 top-[1137px] inline-flex items-center gap-[5px] whitespace-nowrap;
+.socialLogo > svg {
+  width: 20px;
+  height: 20px;
+  display: block;
 }
 
-.bottomMuted {
-  @apply text-neutral-400 text-sm font-medium leading-5;
+.loginGuideRow {
+  @apply absolute flex items-center justify-center;
+  left: 0;
+  width: 100%;
+  gap: 6px;
 }
 
-.bottomLink {
-  @apply bg-transparent border-0 p-0 text-neutral-900 text-sm font-medium leading-5 cursor-pointer;
+.loginGuideText {
+  @apply text-center text-neutral-400 text-sm font-medium leading-[18.2px] whitespace-nowrap;
+  letter-spacing: -0.03em;
+}
+
+.loginButton {
+  @apply text-center text-neutral-900 text-sm font-medium leading-[18.2px] whitespace-nowrap;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  letter-spacing: -0.03em;
+}
+
+.loginButton:active:not(:disabled) {
+  opacity: 0.65;
+}
+
+.loginButton:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.signupSubmitButton.bottomObjectsDefault {
+  top: 1052px;
+}
+
+.orRow.bottomObjectsDefault {
+  top: 1136px;
+}
+
+.socialButtonRow.bottomObjectsDefault {
+  top: 1181px;
+}
+
+.loginGuideRow.bottomObjectsDefault {
+  top: 1263px;
+}
+
+.signupSubmitButton.bottomObjectsExpanded {
+  top: 1198px;
+}
+
+.orRow.bottomObjectsExpanded {
+  top: 1282px;
+}
+
+.socialButtonRow.bottomObjectsExpanded {
+  top: 1327px;
+}
+
+.loginGuideRow.bottomObjectsExpanded {
+  top: 1409px;
 }
 
 .modalBackdrop {
@@ -170,22 +466,6 @@
   height: 52px;
 }
 
-.modalTitle {
-  @apply mb-2 text-center text-lg font-bold text-neutral-900;
-}
-
-.modalMessage {
-  @apply mb-6 text-center text-sm font-medium leading-relaxed text-neutral-500;
-}
-
-.modalButton {
-  @apply w-full rounded-[100px] bg-neutral-900 py-3 text-base font-medium text-white;
-}
-
-.checkButtonDone {
-  @apply bg-black text-white border-black;
-}
-
 .modalIconSuccess {
   background: #b8f28a;
 }
@@ -198,309 +478,41 @@
   line-height: 1;
 }
 
-
-:global(html.dark) .container,
-:global(html.dark) .pageBody,
-:global(html.dark) .contentArea,
-:global(html.dark) .scrollArea,
-:global(html.dark) .sheetScrollArea,
-:global(html.dark) .bottomSheet,
-:global(html.dark) .sheetContent,
-:global(html.dark) .contentPanel,
-:global(html.dark) .card,
-:global(html.dark) .formBlock,
-:global(html.dark) .modalCard,
-:global(html.dark) .panel,
-:global(html.dark) .sheetRoot,
-:global(html.dark) .accountCard,
-:global(html.dark) .summaryCard,
-:global(html.dark) .inputBox,
-:global(html.dark) .inputRowBox,
-:global(html.dark) .phoneCard,
-:global(html.dark) .searchBar,
-:global(html.dark) .filterDropdown,
-:global(html.dark) .keywordCard,
-:global(html.dark) .feedbackComposerCard,
-:global(html.dark) .feedbackPanel,
-:global(html.dark) .targetBox,
-:global(html.dark) .optionMenu,
-:global(html.dark) .selectionActionSurface,
-:global(html.dark) .infoCard,
-:global(html.dark) .userItem,
-:global(html.dark) .stateBox,
-:global(html.dark) .errorBox,
-:global(html.dark) .loadingBox,
-:global(html.dark) .emptyState,
-:global(html.dark) .emptyCard,
-:global(html.dark) .emptyShell,
-:global(html.dark) .field,
-:global(html.dark) .socialButton,
-:global(html.dark) .whiteActionButton,
-:global(html.dark) .fieldActionButton,
-:global(html.dark) .selectionGlassButton,
-:global(html.dark) .tabButton,
-:global(html.dark) .tabSection,
-:global(html.dark) .menuItem,
-:global(html.dark) .footer,
-:global(html.dark) .header,
-:global(html.dark) .topArea,
-:global(html.dark) .bottomSheet,
-:global(html.dark) .compareImageWrap {
-  background: var(--app-surface);
-  color: var(--app-text);
-  border-color: var(--app-border);
-  box-shadow: 0 12px 30px var(--app-shadow-soft);
+.modalTitle {
+  @apply mb-2 text-center text-lg font-bold text-neutral-900;
 }
 
-:global(html.dark) .footer {
-  background: var(--footer-bg);
-  border-color: var(--footer-border);
-  box-shadow:
-    0 2px 5px var(--footer-shadow-outer),
-    inset 0 1px 0 var(--footer-shadow-inner);
+.modalMessage {
+  @apply mb-6 text-center text-sm font-medium leading-relaxed text-neutral-500;
 }
 
-:global(html.dark) .activePill {
-  background: var(--footer-pill-bg);
+.modalButton {
+  @apply w-full rounded-[10px] bg-neutral-900 py-3 text-base font-medium text-white;
+  transition:
+    transform 150ms ease,
+    opacity 150ms ease;
 }
 
-:global(html.dark) .menuButton,
-:global(html.dark) .icon,
-:global(html.dark) .label,
-:global(html.dark) .searchButton,
-:global(html.dark) .headerIconButton,
-:global(html.dark) .closeButton,
-:global(html.dark) .cancelButton,
-:global(html.dark) .iconWrap,
-:global(html.dark) .arrowIcon,
-:global(html.dark) .logoutIcon,
-:global(html.dark) .recentItemIcon,
-:global(html.dark) .clearInputButton,
-:global(html.dark) .filterOptionCheck,
-:global(html.dark) .infoIconWrap,
-:global(html.dark) .optionMenuLabel {
-  color: var(--app-text-secondary);
+.modalButton:active {
+  transform: scale(0.98);
+  opacity: 0.9;
 }
 
-:global(html.dark) .menuButtonActive,
-:global(html.dark) .iconActive,
-:global(html.dark) .labelActive {
-  color: var(--footer-pill-text);
-}
+@media (max-width: 374px) {
+  .root,
+  .content {
+    width: 100vw;
+  }
 
-:global(html.dark) .title,
-:global(html.dark) .mainTitle,
-:global(html.dark) .sectionTitle,
-:global(html.dark) .fieldTitle,
-:global(html.dark) .mainTitle,
-:global(html.dark) .modalTitle,
-:global(html.dark) .mainTitle,
-:global(html.dark) .accountLabel,
-:global(html.dark) .menuLabel,
-:global(html.dark) .logoutText,
-:global(html.dark) .mainTitle,
-:global(html.dark) .otherTitle,
-:global(html.dark) .mainTitle,
-:global(html.dark) .rowTitle,
-:global(html.dark) .modalTitle,
-:global(html.dark) .heroTitle,
-:global(html.dark) .sectionCount,
-:global(html.dark) .summaryValue,
-:global(html.dark) .summaryLabel,
-:global(html.dark) .authorName,
-:global(html.dark) .mainTitle,
-:global(html.dark) .contentText,
-:global(html.dark) .sectionMetaText,
-:global(html.dark) .fieldTitle,
-:global(html.dark) .targetText,
-:global(html.dark) .label,
-:global(html.dark) .requiredLabel,
-:global(html.dark) .colorName,
-:global(html.dark) .colorCode,
-:global(html.dark) .userNickname,
-:global(html.dark) .stateTitle,
-:global(html.dark) .recentItemText,
-:global(html.dark) .feedMetaText,
-:global(html.dark) .rowTitle,
-:global(html.dark) .titleRow,
-:global(html.dark) .mainTitle,
-:global(html.dark) .sheetHeaderCopy,
-:global(html.dark) .sectionHeader,
-:global(html.dark) .sectionHeaderRow,
-:global(html.dark) .accountValue,
-:global(html.dark) .sheetHeader {
-  color: var(--app-text-strong);
-}
+  .fieldGroup,
+  .genderGroup,
+  .signupSubmitButton,
+  .orRow {
+    width: calc(100vw - 32px);
+  }
 
-:global(html.dark) .heroDesc,
-:global(html.dark) .bottomText,
-:global(html.dark) .bottomMuted,
-:global(html.dark) .helperText,
-:global(html.dark) .modalDescription,
-:global(html.dark) .rowDescription,
-:global(html.dark) .infoText,
-:global(html.dark) .accountValue,
-:global(html.dark) .labelText,
-:global(html.dark) .labelSubText,
-:global(html.dark) .sectionMetaText,
-:global(html.dark) .subText,
-:global(html.dark) .stateDescription,
-:global(html.dark) .stateText,
-:global(html.dark) .targetPlaceholder,
-:global(html.dark) .fieldActionButtonDisabled,
-:global(html.dark) .modalHelperText,
-:global(html.dark) .bottomLink,
-:global(html.dark) .optionText,
-:global(html.dark) .sentText,
-:global(html.dark) .debugCodeText,
-:global(html.dark) .timerText,
-:global(html.dark) .dateText,
-:global(html.dark) .keywordLimitText,
-:global(html.dark) .lengthText,
-:global(html.dark) .errorText,
-:global(html.dark) .emptyText,
-:global(html.dark) .emptyKeywordText,
-:global(html.dark) .feedLinkButtonText,
-:global(html.dark) .recentTypeBadge,
-:global(html.dark) .contentPreviewText,
-:global(html.dark) .feedbackHintText,
-:global(html.dark) .feedbackEmptyText {
-  color: var(--app-text-secondary);
-}
-
-:global(html.dark) .input,
-:global(html.dark) .phoneInput,
-:global(html.dark) .searchInput,
-:global(html.dark) .itemInput,
-:global(html.dark) .contentTextarea,
-:global(html.dark) .textInput,
-:global(html.dark) .textarea,
-:global(html.dark) .passwordModalInput,
-:global(html.dark) .keywordSearchInput {
-  background: var(--app-surface-muted);
-  color: var(--app-text);
-  border-color: var(--app-border);
-}
-
-:global(html.dark) .line,
-:global(html.dark) .divider,
-:global(html.dark) .rowDivider,
-:global(html.dark) .sectionDivider,
-:global(html.dark) .dropdownDivider {
-  background: var(--app-border);
-  border-color: var(--app-border);
-}
-
-:global(html.dark) .keywordChip,
-:global(html.dark) .selectedKeywordChip,
-:global(html.dark) .recentTypeBadge,
-:global(html.dark) .choiceBadge,
-:global(html.dark) .keywordSuggestionChip,
-:global(html.dark) .feedbackCompleteInset,
-:global(html.dark) .itemSelectButton,
-:global(html.dark) .selectMenu,
-:global(html.dark) .selectOption,
-:global(html.dark) .selectOptionActive,
-:global(html.dark) .compareFloatingLabel,
-:global(html.dark) .contentPreviewBox,
-:global(html.dark) .feedbackEmptyBox,
-:global(html.dark) .tagButton,
-:global(html.dark) .keywordSuggestionWrap {
-  background: var(--app-surface-muted);
-  color: var(--app-text);
-  border-color: var(--app-border);
-}
-
-:global(html.dark) .cardImageFallback,
-:global(html.dark) .heroPlaceholder,
-:global(html.dark) .heroPlaceholderText,
-:global(html.dark) .focusImageFallback,
-:global(html.dark) .emptyPageSection,
-:global(html.dark) .messageBox,
-:global(html.dark) .heroMediaFrame,
-:global(html.dark) .banner,
-:global(html.dark) .colorPanel,
-:global(html.dark) .bottomSheet,
-:global(html.dark) .thumbnail,
-:global(html.dark) .feedThumbWrap {
-  background-color: var(--app-surface-muted);
-  color: var(--app-text-secondary);
-  border-color: var(--app-border);
-}
-
-:global(html.dark) .tabText,
-:global(html.dark) .statText,
-:global(html.dark) .statIcon,
-:global(html.dark) .sectionCount,
-:global(html.dark) .userSubText,
-:global(html.dark) .helperText,
-:global(html.dark) .contentText,
-:global(html.dark) .emptyState,
-:global(html.dark) .messageBox,
-:global(html.dark) .sectionEmpty {
-  color: var(--app-text-secondary);
-}
-
-:global(html.dark) .header,
-:global(html.dark) .headerInner,
-:global(html.dark) .tabSection,
-:global(html.dark) .contentArea,
-:global(html.dark) .pageBody,
-:global(html.dark) .container,
-:global(html.dark) .bottomSheet,
-:global(html.dark) .sheetRoot,
-:global(html.dark) .scrollArea,
-:global(html.dark) .sheetScrollArea {
-  background-color: var(--app-surface);
-}
-
-:global(html.dark) .contentArea,
-:global(html.dark) .pageBody,
-:global(html.dark) .scrollArea,
-:global(html.dark) .container {
-  background-image: none;
-}
-
-
-:global(html.dark) .modalCancelButton,
-:global(html.dark) .modalSecondaryButton,
-:global(html.dark) .fieldActionButton,
-:global(html.dark) .nicknameCheckButton,
-:global(html.dark) .sendCodeButton,
-:global(html.dark) .verifyCodeButton,
-:global(html.dark) .resendButton,
-:global(html.dark) .checkButton,
-:global(html.dark) .loginButton,
-:global(html.dark) .clearAllTextButton,
-:global(html.dark) .moreButton,
-:global(html.dark) .feedLinkButton,
-:global(html.dark) .changeButton,
-:global(html.dark) .linkButton,
-:global(html.dark) .keepLoginButton,
-:global(html.dark) .retryButton,
-:global(html.dark) .miniActionButton,
-:global(html.dark) .bookmarkActionButton,
-:global(html.dark) .reportActionButton,
-:global(html.dark) .headerTextButton,
-:global(html.dark) .filterButton,
-:global(html.dark) .modalActionButton {
-  background: var(--app-surface-muted);
-  color: var(--app-text);
-  border-color: var(--app-border);
-}
-
-:global(html.dark) .errorText,
-:global(html.dark) .modalHelperError,
-:global(html.dark) .feedbackErrorText,
-:global(html.dark) .feedbackError,
-:global(html.dark) .deleteButtonRed,
-:global(html.dark) .modalDangerButton {
-  color: #f87171;
-}
-
-:global(html.dark) .successText,
-:global(html.dark) .feedbackSavedText,
-:global(html.dark) .feedbackSuccess,
-:global(html.dark) .sentText {
-  color: #86efac;
+  .socialButtonRow {
+    left: 50%;
+    transform: translateX(-50%);
+  }
 }

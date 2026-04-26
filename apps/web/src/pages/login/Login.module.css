@@ -1,104 +1,263 @@
-.container {
-  @apply w-[375px] h-[812px] mx-auto bg-white relative overflow-hidden px-4;
+.root {
+  @apply relative mx-auto bg-white overflow-hidden;
+  width: var(--app-width, 375px);
+  height: var(--app-height, 812px);
+  min-height: var(--app-height, 812px);
 }
 
-.hero {
-  @apply absolute left-4 top-[70px] w-[320px] px-2.5 py-2 flex flex-col items-start gap-[5px];
+.heroImage {
+  @apply absolute left-0 top-0 block select-none pointer-events-none;
+  width: 375px;
+  height: 205px;
+  object-fit: cover;
+  object-position: center top;
 }
 
-.heroTitle {
-  @apply w-full text-neutral-900 text-4xl font-medium leading-10;
+.form {
+  @apply absolute left-0 top-0 w-full h-full;
 }
 
-.heroDesc {
-  @apply w-full text-neutral-900 text-xl font-medium leading-7;
+.emailLabel,
+.passwordLabel {
+  @apply absolute text-neutral-900 text-base font-bold leading-[22.5px];
+  left: 16px;
+  width: 96px;
 }
 
-.formBlock {
-  @apply absolute left-4 top-[268px] w-[320px] flex flex-col items-start gap-3.5;
+.emailLabel {
+  top: 236px;
 }
 
-.label {
-  @apply w-full text-neutral-900 text-sm font-medium leading-5;
+.passwordLabel {
+  top: 325px;
 }
 
 .input {
-  @apply w-full bg-transparent border-0 outline-none p-0 text-neutral-900 text-xl font-normal leading-6;
+  @apply absolute bg-white rounded-[10px] text-[15px] font-normal leading-5 text-neutral-900 outline-none;
+  left: 16px;
+  width: 343px;
+  height: 48px;
+  padding: 12px;
+  border: 1px solid #d6d3d1;
+}
+
+.emailLabel + .input {
+  top: 267px;
+}
+
+.passwordLabel + .input {
+  top: 356px;
 }
 
 .input::placeholder {
-  @apply text-neutral-400;
+  color: #a3a3a3;
 }
 
-.line {
-  @apply w-full h-px bg-black;
+.input:focus {
+  border-color: #111111;
+}
+
+.input:disabled {
+  @apply opacity-70;
 }
 
 .optionRow {
-  @apply absolute left-4 top-[457px] w-[320px] flex items-center justify-between;
+  @apply absolute flex items-center justify-between;
+  left: 16px;
+  top: 426px;
+  width: 343px;
 }
 
 .keepLoginButton {
-  @apply flex items-center gap-2.5 bg-transparent border-0 p-0 cursor-pointer;
+  @apply flex items-center justify-start;
+  width: 135px;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  transform-origin: left center;
+  transition:
+    transform 130ms ease,
+    opacity 130ms ease;
 }
 
-.checkboxSvg {
-  @apply shrink-0;
+.keepLoginButton:active:not(:disabled) {
+  transform: scale(0.95);
 }
 
-.optionText {
-  @apply text-neutral-900 text-sm font-medium leading-5;
+.keepLoginButton:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
-.linkButton {
-  @apply bg-transparent border-0 p-0 text-neutral-900 text-sm font-medium leading-5 cursor-pointer;
+.keepLoginIconChecked {
+  @apply shrink-0 text-neutral-900;
+  transition:
+    color 160ms ease,
+    transform 160ms ease,
+    opacity 160ms ease;
 }
 
-.primaryButton {
-  @apply absolute left-1/2 -translate-x-1/2 top-[527px] w-[288px] h-14 rounded-[100px] bg-black text-white text-base font-normal leading-5 flex items-center justify-center transition;
+.keepLoginIconUnchecked {
+  @apply shrink-0 text-neutral-300;
+  opacity: 0.72;
+  transition:
+    color 160ms ease,
+    transform 160ms ease,
+    opacity 160ms ease;
+}
+
+.keepLoginButton:active:not(:disabled) .keepLoginIconChecked,
+.keepLoginButton:active:not(:disabled) .keepLoginIconUnchecked {
+  transform: scale(0.9);
+}
+
+.keepLoginText {
+  @apply text-center text-neutral-900 text-sm font-medium leading-[18.2px] whitespace-nowrap;
+}
+
+.passwordResetButton {
+  @apply text-center text-neutral-900 text-sm font-medium leading-[18.2px] whitespace-nowrap;
+  width: 144px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.passwordResetButton:active:not(:disabled) {
+  opacity: 0.65;
+}
+
+.passwordResetButton:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.loginButton {
+  @apply absolute flex items-center justify-center bg-black rounded-[10px] text-white text-xl font-medium leading-7;
+  left: 16px;
+  top: 492px;
+  width: 343px;
+  height: 48px;
+  padding: 8px 16px;
+  border: 0;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease;
+}
+
+.loginButton:active:not(:disabled) {
+  transform: scale(0.99);
+  opacity: 0.92;
+}
+
+.loginButton:disabled {
+  cursor: default;
 }
 
 .buttonDisabled {
   @apply opacity-70;
 }
 
-.orWrap {
-  @apply absolute left-4 top-[608px] w-[343px] flex items-center justify-between;
+.orRow {
+  @apply absolute flex items-center justify-center;
+  left: 16px;
+  top: 580px;
+  width: 343px;
+  gap: 11px;
 }
 
 .orLine {
-  @apply w-[141px] h-px bg-neutral-200;
+  @apply block h-px bg-stone-300;
+  width: 144px;
 }
 
 .orText {
-  @apply text-neutral-400 text-sm font-medium leading-5 tracking-tight;
+  @apply text-center text-neutral-400 text-sm font-medium leading-5 tracking-tight;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
 }
 
-.socialRow {
-  @apply absolute left-1/2 -translate-x-1/2 top-[652px] flex items-center gap-5;
+.socialButtonRow {
+  @apply absolute flex items-center justify-center;
+  left: 105px;
+  top: 625px;
+  gap: 20px;
 }
 
 .socialButton {
-  @apply w-[42px] h-[42px] rounded-full border border-[#999999] bg-white flex items-center justify-center text-neutral-600;
+  @apply rounded-full bg-white flex items-center justify-center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #999999;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    opacity 160ms ease;
+}
+
+.socialButton:active:not(:disabled) {
+  transform: scale(0.94);
+  background-color: #f5f5f5;
+}
+
+.socialButton:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
 .socialLogo {
-  width: 20px;
-  height: 20px;
+  @apply flex items-center justify-center;
+  width: 22px;
+  height: 22px;
+}
+
+.socialLogo > svg {
+  width: 22px;
+  height: 22px;
   display: block;
-  flex-shrink: 0;
 }
 
-.bottomText {
-  @apply absolute left-1/2 -translate-x-1/2 top-[734px] inline-flex items-center gap-[5px] whitespace-nowrap;
+.signupRow {
+  @apply absolute flex items-center justify-center;
+  left: 0;
+  top: 724px;
+  width: 100%;
+  gap: 14px;
 }
 
-.bottomMuted {
-  @apply text-neutral-400 text-sm font-medium leading-5;
+.signupGuideText {
+  @apply text-center text-neutral-400 text-sm font-medium leading-[18.2px] whitespace-nowrap;
+  width: auto;
+  letter-spacing: -0.03em;
 }
 
-.bottomLink {
-  @apply bg-transparent border-0 p-0 text-neutral-900 text-sm font-medium leading-5 cursor-pointer;
+.signupButton {
+  @apply text-center text-neutral-900 text-sm font-medium leading-[18.2px] whitespace-nowrap;
+  width: auto;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  letter-spacing: -0.03em;
+}
+
+.signupButton:active:not(:disabled) {
+  opacity: 0.65;
+}
+
+.signupButton:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
 .modalBackdrop {
@@ -122,312 +281,27 @@
 }
 
 .modalButton {
-  @apply w-full rounded-[100px] bg-neutral-900 py-3 text-base font-medium text-white;
+  @apply w-full rounded-[10px] bg-neutral-900 py-3 text-base font-medium text-white;
+  transition:
+    transform 150ms ease,
+    opacity 150ms ease;
 }
 
-
-:global(html.dark) .container,
-:global(html.dark) .pageBody,
-:global(html.dark) .contentArea,
-:global(html.dark) .scrollArea,
-:global(html.dark) .sheetScrollArea,
-:global(html.dark) .bottomSheet,
-:global(html.dark) .sheetContent,
-:global(html.dark) .contentPanel,
-:global(html.dark) .card,
-:global(html.dark) .formBlock,
-:global(html.dark) .modalCard,
-:global(html.dark) .panel,
-:global(html.dark) .sheetRoot,
-:global(html.dark) .accountCard,
-:global(html.dark) .summaryCard,
-:global(html.dark) .inputBox,
-:global(html.dark) .inputRowBox,
-:global(html.dark) .phoneCard,
-:global(html.dark) .searchBar,
-:global(html.dark) .filterDropdown,
-:global(html.dark) .keywordCard,
-:global(html.dark) .feedbackComposerCard,
-:global(html.dark) .feedbackPanel,
-:global(html.dark) .targetBox,
-:global(html.dark) .optionMenu,
-:global(html.dark) .selectionActionSurface,
-:global(html.dark) .infoCard,
-:global(html.dark) .userItem,
-:global(html.dark) .stateBox,
-:global(html.dark) .errorBox,
-:global(html.dark) .loadingBox,
-:global(html.dark) .emptyState,
-:global(html.dark) .emptyCard,
-:global(html.dark) .emptyShell,
-:global(html.dark) .field,
-:global(html.dark) .socialButton,
-:global(html.dark) .whiteActionButton,
-:global(html.dark) .fieldActionButton,
-:global(html.dark) .selectionGlassButton,
-:global(html.dark) .tabButton,
-:global(html.dark) .tabSection,
-:global(html.dark) .menuItem,
-:global(html.dark) .footer,
-:global(html.dark) .header,
-:global(html.dark) .topArea,
-:global(html.dark) .bottomSheet,
-:global(html.dark) .compareImageWrap {
-  background: var(--app-surface);
-  color: var(--app-text);
-  border-color: var(--app-border);
-  box-shadow: 0 12px 30px var(--app-shadow-soft);
+.modalButton:active {
+  transform: scale(0.98);
+  opacity: 0.9;
 }
 
-:global(html.dark) .footer {
-  background: var(--footer-bg);
-  border-color: var(--footer-border);
-  box-shadow:
-    0 2px 5px var(--footer-shadow-outer),
-    inset 0 1px 0 var(--footer-shadow-inner);
-}
+@media (max-width: 374px) {
+  .root,
+  .heroImage {
+    width: 100vw;
+  }
 
-:global(html.dark) .activePill {
-  background: var(--footer-pill-bg);
-}
-
-:global(html.dark) .menuButton,
-:global(html.dark) .icon,
-:global(html.dark) .label,
-:global(html.dark) .searchButton,
-:global(html.dark) .headerIconButton,
-:global(html.dark) .closeButton,
-:global(html.dark) .cancelButton,
-:global(html.dark) .iconWrap,
-:global(html.dark) .arrowIcon,
-:global(html.dark) .logoutIcon,
-:global(html.dark) .recentItemIcon,
-:global(html.dark) .clearInputButton,
-:global(html.dark) .filterOptionCheck,
-:global(html.dark) .infoIconWrap,
-:global(html.dark) .optionMenuLabel {
-  color: var(--app-text-secondary);
-}
-
-:global(html.dark) .menuButtonActive,
-:global(html.dark) .iconActive,
-:global(html.dark) .labelActive {
-  color: var(--footer-pill-text);
-}
-
-:global(html.dark) .title,
-:global(html.dark) .mainTitle,
-:global(html.dark) .sectionTitle,
-:global(html.dark) .fieldTitle,
-:global(html.dark) .mainTitle,
-:global(html.dark) .modalTitle,
-:global(html.dark) .mainTitle,
-:global(html.dark) .accountLabel,
-:global(html.dark) .menuLabel,
-:global(html.dark) .logoutText,
-:global(html.dark) .mainTitle,
-:global(html.dark) .otherTitle,
-:global(html.dark) .mainTitle,
-:global(html.dark) .rowTitle,
-:global(html.dark) .modalTitle,
-:global(html.dark) .heroTitle,
-:global(html.dark) .sectionCount,
-:global(html.dark) .summaryValue,
-:global(html.dark) .summaryLabel,
-:global(html.dark) .authorName,
-:global(html.dark) .mainTitle,
-:global(html.dark) .contentText,
-:global(html.dark) .sectionMetaText,
-:global(html.dark) .fieldTitle,
-:global(html.dark) .targetText,
-:global(html.dark) .label,
-:global(html.dark) .requiredLabel,
-:global(html.dark) .colorName,
-:global(html.dark) .colorCode,
-:global(html.dark) .userNickname,
-:global(html.dark) .stateTitle,
-:global(html.dark) .recentItemText,
-:global(html.dark) .feedMetaText,
-:global(html.dark) .rowTitle,
-:global(html.dark) .titleRow,
-:global(html.dark) .mainTitle,
-:global(html.dark) .sheetHeaderCopy,
-:global(html.dark) .sectionHeader,
-:global(html.dark) .sectionHeaderRow,
-:global(html.dark) .accountValue,
-:global(html.dark) .sheetHeader {
-  color: var(--app-text-strong);
-}
-
-:global(html.dark) .heroDesc,
-:global(html.dark) .bottomText,
-:global(html.dark) .bottomMuted,
-:global(html.dark) .helperText,
-:global(html.dark) .modalDescription,
-:global(html.dark) .rowDescription,
-:global(html.dark) .infoText,
-:global(html.dark) .accountValue,
-:global(html.dark) .labelText,
-:global(html.dark) .labelSubText,
-:global(html.dark) .sectionMetaText,
-:global(html.dark) .subText,
-:global(html.dark) .stateDescription,
-:global(html.dark) .stateText,
-:global(html.dark) .targetPlaceholder,
-:global(html.dark) .fieldActionButtonDisabled,
-:global(html.dark) .modalHelperText,
-:global(html.dark) .bottomLink,
-:global(html.dark) .optionText,
-:global(html.dark) .sentText,
-:global(html.dark) .debugCodeText,
-:global(html.dark) .timerText,
-:global(html.dark) .dateText,
-:global(html.dark) .keywordLimitText,
-:global(html.dark) .lengthText,
-:global(html.dark) .errorText,
-:global(html.dark) .emptyText,
-:global(html.dark) .emptyKeywordText,
-:global(html.dark) .feedLinkButtonText,
-:global(html.dark) .recentTypeBadge,
-:global(html.dark) .contentPreviewText,
-:global(html.dark) .feedbackHintText,
-:global(html.dark) .feedbackEmptyText {
-  color: var(--app-text-secondary);
-}
-
-:global(html.dark) .input,
-:global(html.dark) .phoneInput,
-:global(html.dark) .searchInput,
-:global(html.dark) .itemInput,
-:global(html.dark) .contentTextarea,
-:global(html.dark) .textInput,
-:global(html.dark) .textarea,
-:global(html.dark) .passwordModalInput,
-:global(html.dark) .keywordSearchInput {
-  background: var(--app-surface-muted);
-  color: var(--app-text);
-  border-color: var(--app-border);
-}
-
-:global(html.dark) .line,
-:global(html.dark) .divider,
-:global(html.dark) .rowDivider,
-:global(html.dark) .sectionDivider,
-:global(html.dark) .dropdownDivider {
-  background: var(--app-border);
-  border-color: var(--app-border);
-}
-
-:global(html.dark) .keywordChip,
-:global(html.dark) .selectedKeywordChip,
-:global(html.dark) .recentTypeBadge,
-:global(html.dark) .choiceBadge,
-:global(html.dark) .keywordSuggestionChip,
-:global(html.dark) .feedbackCompleteInset,
-:global(html.dark) .itemSelectButton,
-:global(html.dark) .selectMenu,
-:global(html.dark) .selectOption,
-:global(html.dark) .selectOptionActive,
-:global(html.dark) .compareFloatingLabel,
-:global(html.dark) .contentPreviewBox,
-:global(html.dark) .feedbackEmptyBox,
-:global(html.dark) .tagButton,
-:global(html.dark) .keywordSuggestionWrap {
-  background: var(--app-surface-muted);
-  color: var(--app-text);
-  border-color: var(--app-border);
-}
-
-:global(html.dark) .cardImageFallback,
-:global(html.dark) .heroPlaceholder,
-:global(html.dark) .heroPlaceholderText,
-:global(html.dark) .focusImageFallback,
-:global(html.dark) .emptyPageSection,
-:global(html.dark) .messageBox,
-:global(html.dark) .heroMediaFrame,
-:global(html.dark) .banner,
-:global(html.dark) .colorPanel,
-:global(html.dark) .bottomSheet,
-:global(html.dark) .thumbnail,
-:global(html.dark) .feedThumbWrap {
-  background-color: var(--app-surface-muted);
-  color: var(--app-text-secondary);
-  border-color: var(--app-border);
-}
-
-:global(html.dark) .tabText,
-:global(html.dark) .statText,
-:global(html.dark) .statIcon,
-:global(html.dark) .sectionCount,
-:global(html.dark) .userSubText,
-:global(html.dark) .helperText,
-:global(html.dark) .contentText,
-:global(html.dark) .emptyState,
-:global(html.dark) .messageBox,
-:global(html.dark) .sectionEmpty {
-  color: var(--app-text-secondary);
-}
-
-:global(html.dark) .header,
-:global(html.dark) .headerInner,
-:global(html.dark) .tabSection,
-:global(html.dark) .contentArea,
-:global(html.dark) .pageBody,
-:global(html.dark) .container,
-:global(html.dark) .bottomSheet,
-:global(html.dark) .sheetRoot,
-:global(html.dark) .scrollArea,
-:global(html.dark) .sheetScrollArea {
-  background-color: var(--app-surface);
-}
-
-:global(html.dark) .contentArea,
-:global(html.dark) .pageBody,
-:global(html.dark) .scrollArea,
-:global(html.dark) .container {
-  background-image: none;
-}
-
-
-:global(html.dark) .modalCancelButton,
-:global(html.dark) .modalSecondaryButton,
-:global(html.dark) .fieldActionButton,
-:global(html.dark) .nicknameCheckButton,
-:global(html.dark) .sendCodeButton,
-:global(html.dark) .verifyCodeButton,
-:global(html.dark) .resendButton,
-:global(html.dark) .checkButton,
-:global(html.dark) .loginButton,
-:global(html.dark) .clearAllTextButton,
-:global(html.dark) .moreButton,
-:global(html.dark) .feedLinkButton,
-:global(html.dark) .changeButton,
-:global(html.dark) .linkButton,
-:global(html.dark) .keepLoginButton,
-:global(html.dark) .retryButton,
-:global(html.dark) .miniActionButton,
-:global(html.dark) .bookmarkActionButton,
-:global(html.dark) .reportActionButton,
-:global(html.dark) .headerTextButton,
-:global(html.dark) .filterButton,
-:global(html.dark) .modalActionButton {
-  background: var(--app-surface-muted);
-  color: var(--app-text);
-  border-color: var(--app-border);
-}
-
-:global(html.dark) .errorText,
-:global(html.dark) .modalHelperError,
-:global(html.dark) .feedbackErrorText,
-:global(html.dark) .feedbackError,
-:global(html.dark) .deleteButtonRed,
-:global(html.dark) .modalDangerButton {
-  color: #f87171;
-}
-
-:global(html.dark) .successText,
-:global(html.dark) .feedbackSavedText,
-:global(html.dark) .feedbackSuccess,
-:global(html.dark) .sentText {
-  color: #86efac;
+  .input,
+  .optionRow,
+  .loginButton,
+  .orRow {
+    width: calc(100vw - 32px);
+  }
 }
