@@ -189,9 +189,9 @@ export default function Signup() {
   const emailRegex = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/, []);
 
   // 비밀번호 정책:
-  // 영문, 숫자, 특수문자 각각 1개 이상 필수 포함
+  // 8자 이상, 영문, 숫자, 특수문자 각각 1개 이상 필수 포함
   const passwordRegex = useMemo(
-    () => /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/,
+    () => /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
     [],
   );
 
@@ -511,7 +511,7 @@ export default function Signup() {
     if (!isPasswordValid) {
       openModal(
         '비밀번호 확인',
-        '비밀번호는 영문, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.',
+        '비밀번호는 8자 이상이며 영문, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.',
         'error',
       );
       return false;
@@ -616,11 +616,11 @@ export default function Signup() {
 
   const getPasswordMessage = () => {
     if (!password.trim()) {
-      return '영문, 숫자, 특수문자 각각 1개 이상 필수 포함';
+      return '8자 이상, 영문, 숫자, 특수문자 각각 1개 이상 필수 포함';
     }
 
     if (!isPasswordValid) {
-      return '영문, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.';
+      return '8자 이상이며 영문, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.';
     }
 
     return '사용 가능한 비밀번호 형식입니다.';
