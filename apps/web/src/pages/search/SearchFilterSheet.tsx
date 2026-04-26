@@ -1,30 +1,55 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import { CalendarDays, Search as SearchIcon, X } from 'lucide-react';
+import type { VoteChoice } from '@codinator/contracts';
 import styles from './SearchFilterSheet.module.css';
 
 export type SearchFilterId = 'period' | 'likeRatio' | 'outfit' | 'keyword' | 'feedbackTag';
 
-type PeriodPreset = 'all' | 'today' | 'week' | 'month' | 'year' | 'custom';
+export type PeriodPreset = 'all' | 'today' | 'week' | 'month' | 'year' | 'custom';
 
-type PeriodFilterValue = {
+export type PeriodFilterValue = {
   preset: PeriodPreset;
   startDate?: string;
   endDate?: string;
+};
+
+export type SelectedKeywordFilter = {
+  id: number;
+  label: string;
+};
+
+export type SelectedFeedbackTagFilter = {
+  id: number;
+  label: string;
+  voteChoice: VoteChoice;
 };
 
 export type SearchFiltersValue = {
   period: PeriodFilterValue | null;
   likeRatio: number | null;
   outfits: string[];
-  keywords: string[];
-  feedbackTags: string[];
+  keywords: SelectedKeywordFilter[];
+  feedbackTags: SelectedFeedbackTagFilter[];
+};
+
+export type SearchFilterKeywordOption = {
+  id: number;
+  label: string;
+};
+
+export type SearchFilterFeedbackTagOption = {
+  id: number;
+  label: string;
+  voteChoice: VoteChoice;
 };
 
 type SearchFilterSheetProps = {
   isOpen: boolean;
   activeFilter: SearchFilterId;
   appliedFilters: SearchFiltersValue;
+  keywordOptions: SearchFilterKeywordOption[];
+  feedbackTagOptions: SearchFilterFeedbackTagOption[];
   onClose: () => void;
   onApply: (filters: SearchFiltersValue) => void;
 };
@@ -58,23 +83,6 @@ const PERIOD_OPTIONS: Array<{ value: PeriodPreset; label: string }> = [
 
 const LIKE_RATIO_OPTIONS = [25, 50, 75, 100] as const;
 const OUTFIT_OPTIONS = ['전체', '아우터', '상의', '하의', '신발', '가방', '악세사리'];
-const KEYWORD_OPTIONS = ['일상룩', '데일리룩', '스포티룩', '데이트룩', '남친룩', '여친룩'];
-
-const FEEDBACK_LIKE_TAGS = [
-  '옷 정보가 궁금해요',
-  '핏이 좋아요',
-  '색 조합이 좋아요',
-  '느낌이 좋아요',
-  '아이템 매치가 좋아요',
-];
-
-const FEEDBACK_DISLIKE_TAGS = [
-  '옷 정보가 궁금해요',
-  '핏이 별로예요',
-  '색 조합이 별로예요',
-  '느낌이 별로예요',
-  '아이템 매치가 별로예요',
-];
 
 const CLOSE_ANIMATION_MS = 240;
 
@@ -124,7 +132,7 @@ function formatDateLabel(dateValue?: string) {
     return '';
   }
 
-  return dateValue.replaceAll('-', '.');
+  return dateValue.replace(/-/g, '.');
 }
 
 function getPeriodLabel(period: PeriodFilterValue | null) {
@@ -141,13 +149,17 @@ function getPeriodLabel(period: PeriodFilterValue | null) {
   return PERIOD_OPTIONS.find((option) => option.value === period.preset)?.label ?? '';
 }
 
+function normalizeKeywordLabel(label: string) {
+  return label.replace(/\s*룩/g, '룩').trim();
+}
+
 function cloneFilters(filters: SearchFiltersValue): SearchFiltersValue {
   return {
     period: filters.period ? { ...filters.period } : null,
     likeRatio: filters.likeRatio,
     outfits: [...filters.outfits],
-    keywords: [...filters.keywords],
-    feedbackTags: [...filters.feedbackTags],
+    keywords: filters.keywords.map((keyword) => ({ ...keyword })),
+    feedbackTags: filters.feedbackTags.map((tag) => ({ ...tag })),
   };
 }
 
@@ -167,14 +179,14 @@ function getInitialText(text: string) {
 }
 
 function isKeywordMatched(keyword: string, query: string) {
-  const normalizedQuery = query.trim().replaceAll(' ', '').toLowerCase();
+  const normalizedQuery = query.trim().replace(/\s/g, '').toLowerCase();
 
   if (!normalizedQuery) {
     return true;
   }
 
-  const normalizedKeyword = keyword.replaceAll(' ', '').toLowerCase();
-  const initialText = getInitialText(keyword).replaceAll(' ', '').toLowerCase();
+  const normalizedKeyword = keyword.replace(/\s/g, '').toLowerCase();
+  const initialText = getInitialText(keyword).replace(/\s/g, '').toLowerCase();
 
   return normalizedKeyword.includes(normalizedQuery) || initialText.includes(normalizedQuery);
 }
@@ -183,12 +195,34 @@ function isSelected(list: string[], value: string) {
   return list.includes(value);
 }
 
-function toggleValue(list: string[], value: string) {
+function toggleStringValue(list: string[], value: string) {
   if (list.includes(value)) {
     return list.filter((item) => item !== value);
   }
 
   return [...list, value];
+}
+
+function toggleKeywordValue(
+  list: SelectedKeywordFilter[],
+  keyword: SelectedKeywordFilter,
+): SelectedKeywordFilter[] {
+  if (list.some((item) => item.id === keyword.id)) {
+    return list.filter((item) => item.id !== keyword.id);
+  }
+
+  return [...list, keyword];
+}
+
+function toggleFeedbackTagValue(
+  list: SelectedFeedbackTagFilter[],
+  tag: SelectedFeedbackTagFilter,
+): SelectedFeedbackTagFilter[] {
+  if (list.some((item) => item.id === tag.id)) {
+    return list.filter((item) => item.id !== tag.id);
+  }
+
+  return [...list, tag];
 }
 
 export function createEmptySearchFilters(): SearchFiltersValue {
@@ -209,11 +243,11 @@ export function getSearchFilterSummary(filters: SearchFiltersValue, filterId: Se
   }
 
   if (filterId === 'keyword') {
-    return filters.keywords.length > 0 ? filters.keywords[0] : '';
+    return filters.keywords.length > 0 ? filters.keywords[0].label : '';
   }
 
   if (filterId === 'feedbackTag') {
-    return filters.feedbackTags.length > 0 ? filters.feedbackTags[0] : '';
+    return filters.feedbackTags.length > 0 ? filters.feedbackTags[0].label : '';
   }
 
   return '';
@@ -247,6 +281,8 @@ export default function SearchFilterSheet({
   isOpen,
   activeFilter,
   appliedFilters,
+  keywordOptions,
+  feedbackTagOptions,
   onClose,
   onApply,
 }: SearchFilterSheetProps) {
@@ -272,6 +308,25 @@ export default function SearchFilterSheet({
   const openAnimationFrameRef = useRef<number | null>(null);
 
   const today = useMemo(() => getTodayInputValue(), []);
+
+  const normalizedKeywordOptions = useMemo(
+    () =>
+      keywordOptions.map((keyword) => ({
+        ...keyword,
+        label: normalizeKeywordLabel(keyword.label),
+      })),
+    [keywordOptions],
+  );
+
+  const likeFeedbackTags = useMemo(
+    () => feedbackTagOptions.filter((tag) => tag.voteChoice === 'LIKE'),
+    [feedbackTagOptions],
+  );
+
+  const dislikeFeedbackTags = useMemo(
+    () => feedbackTagOptions.filter((tag) => tag.voteChoice === 'DISLIKE'),
+    [feedbackTagOptions],
+  );
 
   useEffect(() => {
     return () => {
@@ -329,8 +384,8 @@ export default function SearchFilterSheet({
   }, [currentFilter, isOpen]);
 
   const filteredKeywords = useMemo(
-    () => KEYWORD_OPTIONS.filter((keyword) => isKeywordMatched(keyword, keywordQuery)),
-    [keywordQuery],
+    () => normalizedKeywordOptions.filter((keyword) => isKeywordMatched(keyword.label, keywordQuery)),
+    [keywordQuery, normalizedKeywordOptions],
   );
 
   const appliedFilterChips = useMemo<AppliedFilterChip[]>(() => {
@@ -367,24 +422,24 @@ export default function SearchFilterSheet({
 
     draftFilters.keywords.forEach((keyword) => {
       chips.push({
-        id: `keyword-${keyword}`,
-        label: keyword,
+        id: `keyword-${keyword.id}`,
+        label: keyword.label,
         onRemove: () =>
           setDraftFilters((previous) => ({
             ...previous,
-            keywords: previous.keywords.filter((item) => item !== keyword),
+            keywords: previous.keywords.filter((item) => item.id !== keyword.id),
           })),
       });
     });
 
     draftFilters.feedbackTags.forEach((tag) => {
       chips.push({
-        id: `feedback-${tag}`,
-        label: tag,
+        id: `feedback-${tag.id}`,
+        label: tag.label,
         onRemove: () =>
           setDraftFilters((previous) => ({
             ...previous,
-            feedbackTags: previous.feedbackTags.filter((item) => item !== tag),
+            feedbackTags: previous.feedbackTags.filter((item) => item.id !== tag.id),
           })),
       });
     });
@@ -418,7 +473,6 @@ export default function SearchFilterSheet({
       latestDragYRef.current = 0;
     }, CLOSE_ANIMATION_MS);
   };
-
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     if (isClosing) {
@@ -459,7 +513,6 @@ export default function SearchFilterSheet({
     document.addEventListener('pointerup', stopDragging);
     document.addEventListener('pointercancel', stopDragging);
   };
-
 
   const handleSelectPeriodPreset = (preset: PeriodPreset) => {
     setDraftFilters((previous) => ({
@@ -520,21 +573,21 @@ export default function SearchFilterSheet({
         return { ...previous, outfits: [] };
       }
 
-      return { ...previous, outfits: toggleValue(previous.outfits, outfit) };
+      return { ...previous, outfits: toggleStringValue(previous.outfits, outfit) };
     });
   };
 
-  const handleSelectKeyword = (keyword: string) => {
+  const handleSelectKeyword = (keyword: SearchFilterKeywordOption) => {
     setDraftFilters((previous) => ({
       ...previous,
-      keywords: toggleValue(previous.keywords, keyword),
+      keywords: toggleKeywordValue(previous.keywords, keyword),
     }));
   };
 
-  const handleSelectFeedbackTag = (tag: string) => {
+  const handleSelectFeedbackTag = (tag: SearchFilterFeedbackTagOption) => {
     setDraftFilters((previous) => ({
       ...previous,
-      feedbackTags: toggleValue(previous.feedbackTags, tag),
+      feedbackTags: toggleFeedbackTagValue(previous.feedbackTags, tag),
     }));
   };
 
@@ -720,12 +773,12 @@ export default function SearchFilterSheet({
               <div className={styles.optionRowMultiline}>
                 {filteredKeywords.map((keyword) => (
                   <button
-                    key={keyword}
+                    key={keyword.id}
                     type="button"
-                    className={`${styles.optionChip} ${isSelected(draftFilters.keywords, keyword) ? styles.optionChipActive : ''}`}
+                    className={`${styles.optionChip} ${draftFilters.keywords.some((item) => item.id === keyword.id) ? styles.optionChipActive : ''}`}
                     onClick={() => handleSelectKeyword(keyword)}
                   >
-                    {keyword}
+                    {keyword.label}
                   </button>
                 ))}
               </div>
@@ -740,34 +793,36 @@ export default function SearchFilterSheet({
                 <p className={styles.feedbackTitle}>좋아요</p>
                 <div className={styles.feedbackDivider} />
                 <div className={styles.feedbackTagGrid}>
-                  {FEEDBACK_LIKE_TAGS.map((tag) => (
+                  {likeFeedbackTags.map((tag) => (
                     <button
-                      key={`like-${tag}`}
+                      key={`like-${tag.id}`}
                       type="button"
-                      className={`${styles.optionChip} ${isSelected(draftFilters.feedbackTags, tag) ? styles.optionChipActive : ''}`}
+                      className={`${styles.optionChip} ${draftFilters.feedbackTags.some((item) => item.id === tag.id) ? styles.optionChipActive : ''}`}
                       onClick={() => handleSelectFeedbackTag(tag)}
                     >
-                      {tag}
+                      {tag.label}
                     </button>
                   ))}
                 </div>
+                {likeFeedbackTags.length === 0 ? <p className={styles.emptyText}>좋아요 태그가 없어요</p> : null}
               </div>
 
               <div className={styles.feedbackSection}>
                 <p className={styles.feedbackTitle}>싫어요</p>
                 <div className={styles.feedbackDivider} />
                 <div className={styles.feedbackTagGrid}>
-                  {FEEDBACK_DISLIKE_TAGS.map((tag) => (
+                  {dislikeFeedbackTags.map((tag) => (
                     <button
-                      key={`dislike-${tag}`}
+                      key={`dislike-${tag.id}`}
                       type="button"
-                      className={`${styles.optionChip} ${isSelected(draftFilters.feedbackTags, tag) ? styles.optionChipActive : ''}`}
+                      className={`${styles.optionChip} ${draftFilters.feedbackTags.some((item) => item.id === tag.id) ? styles.optionChipActive : ''}`}
                       onClick={() => handleSelectFeedbackTag(tag)}
                     >
-                      {tag}
+                      {tag.label}
                     </button>
                   ))}
                 </div>
+                {dislikeFeedbackTags.length === 0 ? <p className={styles.emptyText}>싫어요 태그가 없어요</p> : null}
               </div>
             </div>
           ) : null}

@@ -339,3 +339,58 @@
 :global(html.dark) .filterButtonActive svg {
   color: var(--app-surface);
 }
+
+.searchInputButton {
+  @apply flex h-5 w-5 shrink-0 items-center justify-center border-0 bg-transparent p-0 text-[#999999];
+}
+
+.scopeWrap {
+  @apply relative shrink-0;
+}
+
+.scopeMenu {
+  @apply absolute right-0 top-11 z-20 w-[132px] rounded-[14px] border border-stone-300 bg-white p-1.5 shadow-lg;
+}
+
+.scopeOption {
+  @apply flex h-9 w-full items-center justify-between rounded-[10px] border-0 bg-transparent px-3 text-left text-xs font-normal leading-4 text-neutral-700;
+}
+
+.scopeOptionActive {
+  @apply bg-zinc-100 text-black;
+}
+
+.resultImage {
+  @apply h-full w-full object-cover;
+}
+
+.resultErrorText {
+  @apply mt-3 text-xs font-normal leading-4 text-red-500;
+}
+
+.resultEmptyText {
+  @apply mt-8 text-center text-xs font-normal leading-4 text-neutral-400;
+}
+
+.resultLoadingText {
+  @apply mt-3 text-xs font-normal leading-4 text-neutral-400;
+}
+
+:global(html.dark) .scopeMenu {
+  background: var(--app-surface);
+  border-color: var(--app-border);
+  box-shadow: 0 12px 30px var(--app-shadow-soft);
+}
+
+:global(html.dark) .scopeOption {
+  color: var(--app-text-secondary);
+}
+
+:global(html.dark) .scopeOptionActive {
+  background: var(--app-surface-muted);
+  color: var(--app-text-strong);
+}
+
+:global(html.dark) .searchInputButton {
+  color: var(--app-text-secondary);
+}
