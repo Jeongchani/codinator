@@ -341,28 +341,18 @@ export default function SearchFilterSheet({
   }, []);
 
   useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    setCurrentFilter(activeFilter);
-    setDraftFilters(cloneFilters(appliedFilters));
-    setKeywordQuery('');
-    setDragY(0);
-    setIsDragging(false);
-    setIsClosing(false);
-    setIsSheetEntered(false);
-    latestDragYRef.current = 0;
-
-    if (openAnimationFrameRef.current !== null) {
-      window.cancelAnimationFrame(openAnimationFrameRef.current);
-    }
-
     openAnimationFrameRef.current = window.requestAnimationFrame(() => {
       openAnimationFrameRef.current = null;
       setIsSheetEntered(true);
     });
-  }, [activeFilter, appliedFilters, isOpen]);
+
+    return () => {
+      if (openAnimationFrameRef.current !== null) {
+        window.cancelAnimationFrame(openAnimationFrameRef.current);
+        openAnimationFrameRef.current = null;
+      }
+    };
+  }, []);
 
   useLayoutEffect(() => {
     if (!isOpen) {

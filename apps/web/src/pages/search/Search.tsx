@@ -865,15 +865,17 @@ export default function Search() {
 
       <SideMenu isOpen={menuOpen} onClose={handleCloseMenu} />
 
-      <SearchFilterSheet
-        isOpen={filterSheetOpen}
-        activeFilter={activeFilter}
-        appliedFilters={appliedFilters}
-        keywordOptions={keywordOptions}
-        feedbackTagOptions={feedbackTagOptions}
-        onClose={handleCloseFilterSheet}
-        onApply={handleApplyFilters}
-      />
+      {filterSheetOpen ? (
+        <SearchFilterSheet
+          isOpen={filterSheetOpen}
+          activeFilter={activeFilter}
+          appliedFilters={appliedFilters}
+          keywordOptions={keywordOptions}
+          feedbackTagOptions={feedbackTagOptions}
+          onClose={handleCloseFilterSheet}
+          onApply={handleApplyFilters}
+        />
+      ) : null}
 
       {focusPost ? (
         <div className={styles.focusOverlay} role="dialog" aria-modal="true" aria-label="게시글 포커스 화면">
@@ -911,6 +913,7 @@ export default function Search() {
             <PostDetailBottomSheet
               isOpen={detailSheetOpen}
               postId={focusPost.postId}
+              authorUserId={focusPost.userId}
               onCloseRequest={() => setDetailSheetOpen(false)}
             />
           </div>
