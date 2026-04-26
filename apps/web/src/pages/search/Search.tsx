@@ -3,6 +3,7 @@ import type { ChangeEvent, KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Check,
+  ChevronsUp,
   ChevronDown,
   ChevronLeft,
   ImagePlus,
@@ -21,6 +22,7 @@ import type {
   VoteChoice,
 } from '@codinator/contracts';
 import SideMenu from '../../components/SideMenu';
+import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
 import { resolveAssetUrl } from '../../lib/api';
 import SearchFilterSheet, {
   createEmptySearchFilters,
@@ -60,6 +62,13 @@ type RecentKeyword = {
 type ResultCardItem = {
   key: string;
   postId?: number;
+  userId: number;
+  title: string;
+  imageUrl: string;
+};
+
+type FocusPostState = {
+  postId: number;
   userId: number;
   title: string;
   imageUrl: string;
@@ -263,6 +272,8 @@ export default function Search() {
   const [resultLoading, setResultLoading] = useState(false);
   const [resultError, setResultError] = useState('');
   const [textSearchSubmitted, setTextSearchSubmitted] = useState(false);
+  const [focusPost, setFocusPost] = useState<FocusPostState | null>(null);
+  const [detailSheetOpen, setDetailSheetOpen] = useState(false);
 
   const isTextMode = mode === 'text';
   const isImageMode = mode === 'image';
@@ -405,6 +416,19 @@ export default function Search() {
       }
     };
   }, [imagePreviewUrl]);
+
+  useEffect(() => {
+    if (!focusPost) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [focusPost]);
 
   const handleGoBack = () => {
     navigate(-1);
@@ -557,11 +581,22 @@ export default function Search() {
 
   const handleClickResult = (item: ResultCardItem) => {
     if (item.postId) {
-      navigate(`/rankingDetail/${item.postId}`);
+      setFocusPost({
+        postId: item.postId,
+        userId: item.userId,
+        title: item.title,
+        imageUrl: item.imageUrl,
+      });
+      setDetailSheetOpen(true);
       return;
     }
 
     navigate(`/user/${item.userId}/feed`);
+  };
+
+  const handleCloseFocus = () => {
+    setDetailSheetOpen(false);
+    setFocusPost(null);
   };
 
   const renderResultGrid = () => {
@@ -839,6 +874,48 @@ export default function Search() {
         onClose={handleCloseFilterSheet}
         onApply={handleApplyFilters}
       />
+
+      {focusPost ? (
+        <div className={styles.focusOverlay} role="dialog" aria-modal="true" aria-label="게시글 포커스 화면">
+          <div className={styles.focusFrame}>
+            <div
+              className={styles.focusImage}
+              style={{ backgroundImage: `url(${focusPost.imageUrl})` }}
+              aria-hidden="true"
+            />
+            <div className={styles.focusTopGradient} />
+            <div className={styles.focusBottomGradient} />
+
+            <button
+              type="button"
+              className={styles.focusCloseButton}
+              onClick={handleCloseFocus}
+              aria-label="포커스 화면 닫기"
+            >
+              <X size={18} strokeWidth={2.5} />
+            </button>
+
+            {!detailSheetOpen ? (
+              <div className={styles.focusFloatingArea}>
+                <button
+                  type="button"
+                  className={styles.focusDetailButton}
+                  onClick={() => setDetailSheetOpen(true)}
+                >
+                  <span className={styles.focusDetailButtonText}>상세보기</span>
+                  <ChevronsUp size={16} strokeWidth={2.4} className={styles.focusDetailButtonIcon} />
+                </button>
+              </div>
+            ) : null}
+
+            <PostDetailBottomSheet
+              isOpen={detailSheetOpen}
+              postId={focusPost.postId}
+              onCloseRequest={() => setDetailSheetOpen(false)}
+            />
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }
