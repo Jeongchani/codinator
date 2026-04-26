@@ -1,9 +1,21 @@
-import React, { useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import type { Gender, SignupRequest, SignupResponse } from "@codinator/contracts";
-import { fetcher } from "../../lib/api";
-import styles from "./Signup.module.css";
-import { KakaoIcon, NaverIcon, GoogleIcon } from "../../components/icons/social";
+import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { SquareCheck } from 'lucide-react';
+import type {
+  Gender,
+  SendPhoneVerificationRequest,
+  SendPhoneVerificationResponse,
+  SignupRequest,
+  SignupResponse,
+  VerifyPhoneCodeRequest,
+} from '@codinator/contracts';
+
+import { fetcher } from '../../lib/api';
+import { KakaoIcon, NaverIcon, GoogleIcon } from '../../components/icons/social';
+
+import signupDecorationImage from '../../assets/auth/signup-decoration.png';
+
+import styles from './Signup.module.css';
 
 type CheckResponse = {
   available: boolean;
@@ -11,59 +23,25 @@ type CheckResponse = {
 };
 
 type SignupCheckRequest = {
-  type: "EMAIL" | "NICKNAME" | "PASSWORD";
+  type: 'EMAIL' | 'NICKNAME' | 'PASSWORD';
   value: string;
 };
 
-type SignupGender = Gender | "";
-type ModalType = "success" | "error" | "info";
+type VerifyPhoneCodeResponse = {
+  phoneVerificationToken: string;
+  expiresAt: string;
+};
 
-function CheckIcon({ checked }: { checked: boolean }) {
-  return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={styles.genderCheckSvg}
-    >
-      <rect
-        x="1"
-        y="1"
-        width="22"
-        height="22"
-        rx="6"
-        stroke={checked ? "#111111" : "#B3B3B3"}
-        strokeWidth="2"
-      />
-      {checked && (
-        <path
-          d="M7 12.5L10.2 15.5L17 8.8"
-          stroke="#111111"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      )}
-    </svg>
-  );
-}
+type SignupGender = Gender | '';
+type ModalType = 'success' | 'error' | 'info';
 
-function RequiredLabel({ text }: { text: string }) {
-  return (
-    <span className={styles.requiredLabel}>
-      {text}
-      <span className={styles.requiredMark}>*</span>
-    </span>
-  );
-}
+const PHONE_CODE_TTL_SECONDS = 5 * 60;
 
 function ModalStatusIcon({ type }: { type: ModalType }) {
-  if (type === "success") {
+  if (type === 'success') {
     return (
       <div className={`${styles.modalIcon} ${styles.modalIconSuccess}`}>
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path
             d="M6.5 12.5L10 16L17.5 8.5"
             stroke="white"
@@ -79,22 +57,119 @@ function ModalStatusIcon({ type }: { type: ModalType }) {
   return <div className={`${styles.modalIcon} ${styles.modalIconError}`}>!</div>;
 }
 
+function normalizePhoneDigits(value: string) {
+  return value.replace(/[^0-9]/g, '').slice(0, 11);
+}
+
+function formatPhoneNumber(value: string) {
+  const digits = normalizePhoneDigits(value);
+
+  if (!digits) return '';
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+
+  const middleLength = digits.length === 10 ? 3 : 4;
+
+  return `${digits.slice(0, 3)}-${digits.slice(3, 3 + middleLength)}-${digits.slice(
+    3 + middleLength,
+    3 + middleLength + 4,
+  )}`;
+}
+
+function formatCountdown(seconds: number) {
+  const safeSeconds = Math.max(seconds, 0);
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainSeconds = safeSeconds % 60;
+
+  return `${String(minutes).padStart(2, '0')}:${String(remainSeconds).padStart(2, '0')}`;
+}
+
+function getFullBirthYear(twoDigitYear: number) {
+  const currentYear = new Date().getFullYear();
+  const currentTwoDigitYear = currentYear % 100;
+
+  return twoDigitYear <= currentTwoDigitYear
+    ? 2000 + twoDigitYear
+    : 1900 + twoDigitYear;
+}
+
+function parseBirthDate(value: string) {
+  if (!/^\d{6}$/.test(value)) return null;
+
+  const twoDigitYear = Number(value.slice(0, 2));
+  const month = Number(value.slice(2, 4));
+  const day = Number(value.slice(4, 6));
+  const year = getFullBirthYear(twoDigitYear);
+
+  if (month < 1 || month > 12) return null;
+
+  const date = new Date(year, month - 1, day);
+
+  const isValid =
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day;
+
+  if (!isValid) return null;
+
+  return {
+    year,
+    month,
+    day,
+    isoDate: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+  };
+}
+
+function isValidBirthDate(value: string) {
+  return parseBirthDate(value) !== null;
+}
+
+const sendPhoneVerificationCode = async (
+  payload: SendPhoneVerificationRequest,
+): Promise<SendPhoneVerificationResponse> => {
+  return fetcher<SendPhoneVerificationResponse>('/auth/phone/send', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+};
+
+const verifyPhoneVerificationCode = async (
+  payload: VerifyPhoneCodeRequest,
+): Promise<VerifyPhoneCodeResponse> => {
+  return fetcher<VerifyPhoneCodeResponse>('/auth/phone/verify', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+};
+
 export default function Signup() {
   const navigate = useNavigate();
 
-  const [nickname, setNickname] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [birth, setBirth] = useState("");
-  const [gender, setGender] = useState<SignupGender>("");
+  const [nickname, setNickname] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [gender, setGender] = useState<SignupGender>('');
+  const [phoneNumber, setPhoneNumber] = useState('');
 
-  const [phone1, setPhone1] = useState("");
-  const [phone2, setPhone2] = useState("");
-  const [phone3, setPhone3] = useState("");
-
-  const phone1Ref = useRef<HTMLInputElement | null>(null);
-  const phone2Ref = useRef<HTMLInputElement | null>(null);
-  const phone3Ref = useRef<HTMLInputElement | null>(null);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [phoneVerificationSent, setPhoneVerificationSent] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [phoneVerificationToken, setPhoneVerificationToken] = useState('');
+  const [verifiedPhoneDigits, setVerifiedPhoneDigits] = useState('');
+  const [phoneSendMessage, setPhoneSendMessage] = useState('');
+  const [phoneDebugCode, setPhoneDebugCode] = useState('');
+  const [phoneErrorMessage, setPhoneErrorMessage] = useState('');
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
 
   const [nicknameChecked, setNicknameChecked] = useState(false);
   const [emailChecked, setEmailChecked] = useState(false);
@@ -106,16 +181,88 @@ export default function Signup() {
   const [signupLoading, setSignupLoading] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
-  const [modalTitle, setModalTitle] = useState("안내");
-  const [modalMessage, setModalMessage] = useState("");
-  const [modalType, setModalType] = useState<ModalType>("info");
+  const [modalTitle, setModalTitle] = useState('안내');
+  const [modalMessage, setModalMessage] = useState('');
+  const [modalType, setModalType] = useState<ModalType>('info');
   const [modalAction, setModalAction] = useState<(() => void) | null>(null);
+
+  const emailRegex = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/, []);
+
+  // 비밀번호 정책:
+  // 영문, 숫자, 특수문자 각각 1개 이상 필수 포함
+  const passwordRegex = useMemo(
+    () => /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/,
+    [],
+  );
+
+  const phoneRegex = useMemo(() => /^01(?:0|1|6|7|8|9)-\d{3,4}-\d{4}$/, []);
+
+  const trimmedNickname = nickname.trim();
+  const trimmedEmail = email.trim();
+  const trimmedPassword = password.trim();
+  const trimmedBirthDate = birthDate.trim();
+  const phoneDigits = normalizePhoneDigits(phoneNumber);
+
+  const isNicknameValid = trimmedNickname.length > 0;
+  const isEmailValid = emailRegex.test(trimmedEmail);
+  const isPasswordValid = passwordRegex.test(trimmedPassword);
+  const isPasswordConfirmValid =
+    passwordConfirm.trim().length > 0 && password === passwordConfirm;
+  const isBirthValid = isValidBirthDate(trimmedBirthDate);
+  const isGenderValid = gender === 'MALE' || gender === 'FEMALE';
+  const isPhoneValid = phoneRegex.test(phoneNumber);
+
+  const isNicknameCheckDone = nicknameChecked && nicknameAvailable === true;
+  const isEmailCheckDone = emailChecked && emailAvailable === true;
+
+  const timerExpired = phoneVerificationSent && !phoneVerified && remainingSeconds === 0;
+
+  const phoneReady =
+    isPhoneValid &&
+    phoneVerified &&
+    phoneVerificationToken !== '' &&
+    verifiedPhoneDigits === phoneDigits;
+
+  const canResendCode = phoneVerificationSent && !phoneVerified && !sendingCode;
+
+  const canSubmit =
+    isNicknameValid &&
+    isEmailValid &&
+    isPasswordValid &&
+    isPasswordConfirmValid &&
+    isBirthValid &&
+    isGenderValid &&
+    phoneReady &&
+    isNicknameCheckDone &&
+    isEmailCheckDone &&
+    !signupLoading;
+
+  useEffect(() => {
+    if (!phoneVerificationSent || phoneVerified || remainingSeconds <= 0) {
+      return;
+    }
+
+    const timerId = window.setInterval(() => {
+      setRemainingSeconds((prev) => {
+        if (prev <= 1) {
+          window.clearInterval(timerId);
+          return 0;
+        }
+
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [phoneVerificationSent, phoneVerified, remainingSeconds]);
 
   const openModal = (
     title: string,
     message: string,
-    type: ModalType = "info",
-    action?: () => void
+    type: ModalType = 'info',
+    action?: () => void,
   ) => {
     setModalTitle(title);
     setModalMessage(message);
@@ -137,43 +284,15 @@ export default function Signup() {
     setModalAction(null);
   };
 
-  const emailRegex = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/, []);
-  const birthRegex = useMemo(() => /^\d{8}$/, []);
-  const phoneRegex = useMemo(() => /^01[0-9]-\d{3,4}-\d{4}$/, []);
-
-  const phone = `${phone1}-${phone2}-${phone3}`;
-
-  const isNicknameValid = nickname.trim().length > 0;
-  const isEmailValid = emailRegex.test(email.trim());
-  const isPasswordValid = password.trim().length >= 4;
-  const isBirthValid = birthRegex.test(birth.trim());
-  const isGenderValid = gender === "MALE" || gender === "FEMALE";
-  const isPhoneValid = phoneRegex.test(phone);
-
-  const isNicknameCheckDone = nicknameChecked && nicknameAvailable === true;
-  const isEmailCheckDone = emailChecked && emailAvailable === true;
-
-  const isFormFilled =
-    nickname.trim() !== "" &&
-    email.trim() !== "" &&
-    password.trim() !== "" &&
-    birth.trim() !== "" &&
-    gender !== "" &&
-    phone1.trim() !== "" &&
-    phone2.trim() !== "" &&
-    phone3.trim() !== "";
-
-  const canSubmit =
-    isFormFilled &&
-    isNicknameValid &&
-    isEmailValid &&
-    isPasswordValid &&
-    isBirthValid &&
-    isGenderValid &&
-    isPhoneValid &&
-    isNicknameCheckDone &&
-    isEmailCheckDone &&
-    !signupLoading;
+  const requestSignupCheck = async (
+    body: SignupCheckRequest,
+  ): Promise<CheckResponse> => {
+    return fetcher<CheckResponse>('/auth/signup/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  };
 
   const resetNicknameCheck = (value: string) => {
     setNickname(value);
@@ -187,19 +306,24 @@ export default function Signup() {
     setEmailAvailable(null);
   };
 
-  const requestSignupCheck = async (body: SignupCheckRequest): Promise<CheckResponse> => {
-    return fetcher<CheckResponse>("/auth/signup/check", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+  const handlePhoneNumberChange = (value: string) => {
+    const formatted = formatPhoneNumber(value);
+
+    setPhoneNumber(formatted);
+    setVerificationCode('');
+    setPhoneVerificationSent(false);
+    setPhoneVerified(false);
+    setPhoneVerificationToken('');
+    setVerifiedPhoneDigits('');
+    setPhoneSendMessage('');
+    setPhoneDebugCode('');
+    setPhoneErrorMessage('');
+    setRemainingSeconds(0);
   };
 
   const handleCheckNickname = async () => {
-    const trimmed = nickname.trim();
-
-    if (!trimmed) {
-      openModal("닉네임 확인", "닉네임을 먼저 입력해주세요.", "error");
+    if (!trimmedNickname) {
+      openModal('닉네임 확인', '닉네임을 먼저 입력해주세요.', 'error');
       return;
     }
 
@@ -207,29 +331,32 @@ export default function Signup() {
 
     try {
       const data = await requestSignupCheck({
-        type: "NICKNAME",
-        value: trimmed,
+        type: 'NICKNAME',
+        value: trimmedNickname,
       });
 
       setNicknameChecked(true);
       setNicknameAvailable(data.available);
 
       openModal(
-        "닉네임 중복확인",
+        '닉네임 중복확인',
         data.available
-          ? data.message || "사용 가능한 닉네임입니다."
-          : data.message || "이미 사용 중인 닉네임입니다.",
-        data.available ? "success" : "error"
+          ? data.message || '사용 가능한 닉네임입니다.'
+          : data.message || '이미 사용 중인 닉네임입니다.',
+        data.available ? 'success' : 'error',
       );
     } catch (error) {
-      console.error("닉네임 중복체크 오류:", error);
+      console.error('닉네임 중복체크 오류:', error);
+
       setNicknameChecked(false);
       setNicknameAvailable(null);
 
       openModal(
-        "오류",
-        error instanceof Error ? error.message : "닉네임 중복확인 요청에 실패했습니다.",
-        "error"
+        '오류',
+        error instanceof Error
+          ? error.message
+          : '닉네임 중복확인 요청에 실패했습니다.',
+        'error',
       );
     } finally {
       setNicknameCheckLoading(false);
@@ -237,15 +364,13 @@ export default function Signup() {
   };
 
   const handleCheckEmail = async () => {
-    const trimmed = email.trim();
-
-    if (!trimmed) {
-      openModal("아이디 확인", "아이디(이메일)를 먼저 입력해주세요.", "error");
+    if (!trimmedEmail) {
+      openModal('이메일 확인', '이메일을 먼저 입력해주세요.', 'error');
       return;
     }
 
     if (!isEmailValid) {
-      openModal("아이디 확인", "올바른 이메일 형식을 입력해주세요.", "error");
+      openModal('이메일 확인', '올바른 이메일 형식을 입력해주세요.', 'error');
       return;
     }
 
@@ -253,110 +378,175 @@ export default function Signup() {
 
     try {
       const data = await requestSignupCheck({
-        type: "EMAIL",
-        value: trimmed,
+        type: 'EMAIL',
+        value: trimmedEmail,
       });
 
       setEmailChecked(true);
       setEmailAvailable(data.available);
 
       openModal(
-        "아이디 중복확인",
+        '이메일 중복확인',
         data.available
-          ? data.message || "사용 가능한 아이디입니다."
-          : data.message || "이미 사용 중인 아이디입니다.",
-        data.available ? "success" : "error"
+          ? data.message || '사용 가능한 이메일입니다.'
+          : data.message || '이미 사용 중인 이메일입니다.',
+        data.available ? 'success' : 'error',
       );
     } catch (error) {
-      console.error("이메일 중복체크 오류:", error);
+      console.error('이메일 중복체크 오류:', error);
+
       setEmailChecked(false);
       setEmailAvailable(null);
 
       openModal(
-        "오류",
-        error instanceof Error ? error.message : "아이디 중복확인 요청에 실패했습니다.",
-        "error"
+        '오류',
+        error instanceof Error
+          ? error.message
+          : '이메일 중복확인 요청에 실패했습니다.',
+        'error',
       );
     } finally {
       setEmailCheckLoading(false);
     }
   };
 
-  const handlePhone1Change = (value: string) => {
-    const next = value.replace(/[^0-9]/g, "").slice(0, 3);
-    setPhone1(next);
+  const handleSendPhoneCode = async () => {
+    if (!isPhoneValid) {
+      setPhoneErrorMessage('전화번호를 정확히 입력해주세요. 예: 010-0000-0000');
+      return;
+    }
 
-    if (next.length === 3) {
-      phone2Ref.current?.focus();
+    const isResend = phoneVerificationSent;
+
+    setSendingCode(true);
+    setPhoneErrorMessage('');
+
+    try {
+      const response = await sendPhoneVerificationCode({
+        phoneNumber: phoneDigits,
+        purpose: 'SIGN_UP',
+      });
+
+      setPhoneVerificationSent(true);
+      setPhoneVerified(false);
+      setPhoneVerificationToken('');
+      setVerifiedPhoneDigits('');
+      setVerificationCode('');
+      setRemainingSeconds(PHONE_CODE_TTL_SECONDS);
+      setPhoneSendMessage(
+        isResend ? '인증번호를 재요청했습니다.' : '인증번호가 발송되었습니다.',
+      );
+      setPhoneDebugCode(response.debugCode ?? '');
+    } catch (error) {
+      console.error('인증번호 발송 실패:', error);
+
+      setPhoneErrorMessage(
+        error instanceof Error ? error.message : '인증번호 발송에 실패했습니다.',
+      );
+    } finally {
+      setSendingCode(false);
     }
   };
 
-  const handlePhone2Change = (value: string) => {
-    const next = value.replace(/[^0-9]/g, "").slice(0, 4);
-    setPhone2(next);
-
-    if (next.length === 4) {
-      phone3Ref.current?.focus();
+  const handleVerifyPhoneCode = async () => {
+    if (timerExpired) {
+      setPhoneErrorMessage('인증시간이 만료되었습니다. 재요청해 주세요.');
+      return;
     }
-  };
 
-  const handlePhone3Change = (value: string) => {
-    const next = value.replace(/[^0-9]/g, "").slice(0, 4);
-    setPhone3(next);
-  };
+    if (!verificationCode.trim()) {
+      setPhoneErrorMessage('인증번호를 입력해 주세요.');
+      return;
+    }
 
-  const handlePhoneKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>,
-    currentValue: string,
-    prevRef?: React.RefObject<HTMLInputElement | null>
-  ) => {
-    if (e.key === "Backspace" && currentValue.length === 0) {
-      prevRef?.current?.focus();
+    setVerifyingCode(true);
+    setPhoneErrorMessage('');
+
+    try {
+      const response = await verifyPhoneVerificationCode({
+        phoneNumber: phoneDigits,
+        purpose: 'SIGN_UP',
+        code: verificationCode.trim(),
+      });
+
+      setPhoneVerified(true);
+      setPhoneVerificationToken(response.phoneVerificationToken);
+      setVerifiedPhoneDigits(phoneDigits);
+      setPhoneErrorMessage('');
+    } catch (error) {
+      console.error('전화번호 인증 실패:', error);
+
+      setPhoneVerified(false);
+      setPhoneVerificationToken('');
+      setVerifiedPhoneDigits('');
+      setPhoneErrorMessage(
+        error instanceof Error ? error.message : '인증번호를 다시 확인해 주세요.',
+      );
+    } finally {
+      setVerifyingCode(false);
     }
   };
 
   const validateBeforeSubmit = () => {
-    if (!isFormFilled) {
-      openModal("입력 확인", "모든 항목은 필수 입력입니다.", "error");
+    if (!isNicknameValid) {
+      openModal('입력 확인', '닉네임을 입력해주세요.', 'error');
       return false;
     }
 
-    if (!nicknameChecked || nicknameAvailable !== true) {
-      openModal("닉네임 확인", "닉네임 중복확인을 완료해주세요.", "error");
-      return false;
-    }
-
-    if (!emailChecked || emailAvailable !== true) {
-      openModal("아이디 확인", "아이디 중복확인을 완료해주세요.", "error");
+    if (!isNicknameCheckDone) {
+      openModal('닉네임 확인', '닉네임 중복확인을 완료해주세요.', 'error');
       return false;
     }
 
     if (!isEmailValid) {
-      openModal("아이디 확인", "올바른 이메일 형식을 입력해주세요.", "error");
+      openModal('이메일 확인', '올바른 이메일 형식을 입력해주세요.', 'error');
+      return false;
+    }
+
+    if (!isEmailCheckDone) {
+      openModal('이메일 확인', '이메일 중복확인을 완료해주세요.', 'error');
       return false;
     }
 
     if (!isPasswordValid) {
-      openModal("비밀번호 확인", "비밀번호는 4자 이상 입력해주세요.", "error");
+      openModal(
+        '비밀번호 확인',
+        '비밀번호는 영문, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.',
+        'error',
+      );
+      return false;
+    }
+
+    if (!isPasswordConfirmValid) {
+      openModal('비밀번호 확인', '비밀번호가 일치하지 않습니다.', 'error');
       return false;
     }
 
     if (!isBirthValid) {
       openModal(
-        "생년월일 확인",
-        "생년월일은 8자리 숫자로 입력해주세요. 예: 19900101",
-        "error"
+        '생년월일 확인',
+        '생년월일을 정확히 입력해주세요. 예: 960208',
+        'error',
       );
       return false;
     }
 
     if (!isGenderValid) {
-      openModal("성별 확인", "성별을 선택해주세요.", "error");
+      openModal('성별 확인', '성별을 선택해주세요.', 'error');
       return false;
     }
 
     if (!isPhoneValid) {
-      openModal("전화번호 확인", "전화번호를 정확히 입력해주세요.", "error");
+      openModal(
+        '전화번호 확인',
+        '전화번호를 정확히 입력해주세요. 예: 010-0000-0000',
+        'error',
+      );
+      return false;
+    }
+
+    if (!phoneReady) {
+      openModal('전화번호 인증', '전화번호 인증을 완료해주세요.', 'error');
       return false;
     }
 
@@ -365,287 +555,548 @@ export default function Signup() {
 
   const handleSignup = async () => {
     if (!validateBeforeSubmit()) return;
-    if (gender !== "MALE" && gender !== "FEMALE") return;
+    if (gender !== 'MALE' && gender !== 'FEMALE') return;
+
+    const parsedBirthDate = parseBirthDate(birthDate);
+
+    if (!parsedBirthDate) {
+      openModal('생년월일 확인', '생년월일을 정확히 입력해주세요. 예: 960208', 'error');
+      return;
+    }
 
     setSignupLoading(true);
 
     try {
       const requestBody: SignupRequest = {
-        email: email.trim(),
-        nickname: nickname.trim(),
-        password: password.trim(),
-        birthDate: `${birth.slice(0, 4)}-${birth.slice(4, 6)}-${birth.slice(6, 8)}`,
+        email: trimmedEmail,
+        nickname: trimmedNickname,
+        password: trimmedPassword,
+        birthDate: parsedBirthDate.isoDate,
         gender,
-        phoneNumber: `${phone1}${phone2}${phone3}`,
+        phoneNumber: phoneDigits,
+        phoneVerificationToken,
       };
 
-      await fetcher<SignupResponse>("/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      await fetcher<SignupResponse>('/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
       });
 
-      openModal("회원가입 완료", "회원가입이 완료되었습니다.", "success", () =>
-        navigate("/login")
-      );
+      openModal('회원가입 완료', '회원가입이 완료되었습니다.', 'success', () => {
+        navigate('/login');
+      });
     } catch (error) {
-      console.error("회원가입 오류:", error);
+      console.error('회원가입 오류:', error);
+
       openModal(
-        "회원가입 실패",
-        error instanceof Error ? error.message : "회원가입 요청에 실패했습니다.",
-        "error"
+        '회원가입 실패',
+        error instanceof Error
+          ? error.message
+          : '회원가입 요청에 실패했습니다.',
+        'error',
       );
     } finally {
       setSignupLoading(false);
     }
   };
 
+  const getNicknameMessage = () => {
+    if (nicknameAvailable === true) return '사용 가능한 닉네임입니다';
+    if (nicknameAvailable === false) return '이미 사용 중인 닉네임입니다';
+    return '닉네임 중복확인을 해주세요.';
+  };
+
+  const getEmailMessage = () => {
+    if (emailAvailable === true) return '사용 가능한 이메일입니다';
+    if (emailAvailable === false) return '이미 사용 중인 이메일입니다';
+    if (email.trim() && !isEmailValid) return '올바른 이메일 형식으로 입력해주세요.';
+    return '이메일 중복확인을 해주세요.';
+  };
+
+  const getPasswordMessage = () => {
+    if (!password.trim()) {
+      return '영문, 숫자, 특수문자 각각 1개 이상 필수 포함';
+    }
+
+    if (!isPasswordValid) {
+      return '영문, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.';
+    }
+
+    return '사용 가능한 비밀번호 형식입니다.';
+  };
+
+  const getPasswordConfirmMessage = () => {
+    if (!passwordConfirm.trim()) return '';
+    if (!isPasswordConfirmValid) return '비밀번호가 일치하지 않습니다.';
+    return '비밀번호가 일치합니다';
+  };
+
+  const getBirthDateMessage = () => {
+    if (!birthDate.trim()) return '생년월일 6자리를 입력해주세요. 예: 960208';
+    if (!isBirthValid) return '생년월일을 정확히 입력해주세요. 예: 960208';
+    return '올바른 생년월일 형식입니다.';
+  };
+
+  const getPhoneMessage = () => {
+    if (phoneErrorMessage) return phoneErrorMessage;
+    if (phoneReady) return '인증이 완료 되었습니다';
+    if (timerExpired) return '인증시간이 만료되었습니다. 재요청해 주세요.';
+    if (phoneVerificationSent) return '전화번호 인증을 완료해주세요.';
+    if (phoneNumber.trim()) return '전화번호 인증이 필요합니다.';
+    return '전화번호를 입력해주세요. 예: 010-0000-0000';
+  };
+
+  const nicknameMessageClass =
+    nicknameAvailable === true
+      ? styles.successText
+      : nicknameAvailable === false
+        ? styles.errorText
+        : styles.helperText;
+
+  const emailMessageClass =
+    emailAvailable === true
+      ? styles.successText
+      : emailAvailable === false || (email.trim() && !isEmailValid)
+        ? styles.errorText
+        : styles.helperText;
+
+  const passwordMessageClass =
+    password.trim() && !isPasswordValid
+      ? styles.errorText
+      : password.trim() && isPasswordValid
+        ? styles.successText
+        : styles.helperText;
+
+  const passwordConfirmMessageClass =
+    passwordConfirm.trim() && !isPasswordConfirmValid
+      ? styles.errorText
+      : isPasswordConfirmValid
+        ? styles.successText
+        : styles.helperText;
+
+  const birthDateMessageClass =
+    birthDate.trim() && !isBirthValid
+      ? styles.errorText
+      : birthDate.trim() && isBirthValid
+        ? styles.successText
+        : styles.helperText;
+
+  const phoneMessageClass =
+    phoneErrorMessage || timerExpired
+      ? styles.errorText
+      : phoneReady
+        ? styles.successText
+        : styles.helperText;
+
+  const bottomOffsetClass = phoneVerificationSent
+    ? styles.bottomObjectsExpanded
+    : styles.bottomObjectsDefault;
+
   return (
-    <div className={styles.container}>
-      <div className={styles.hero}>
-        <h1 className={styles.heroTitle}>
-          회원가입
-          <br />
-          환영!
-        </h1>
-        <p className={styles.heroDesc}>빌더스도 해도 괜찮을 듯</p>
-      </div>
+    <main className={styles.root}>
+      <div className={styles.content}>
+        <img
+          src={signupDecorationImage}
+          alt=""
+          className={styles.decorationImage}
+          draggable={false}
+        />
 
-      <div className={styles.formBlock}>
-        <div className={styles.field}>
-          <div className={styles.fieldHeader}>
-            <label className={styles.label}>
-              <RequiredLabel text="닉네임" />
+        <header className={styles.header}>
+          <h1 className={styles.title}>회원가입</h1>
+          <p className={styles.description}>내 코디를 공유하고 평가를 받아보세요</p>
+        </header>
+
+        <form
+          className={styles.form}
+          onSubmit={(event: FormEvent<HTMLFormElement>) => {
+            event.preventDefault();
+            void handleSignup();
+          }}
+          noValidate
+        >
+          <div className={`${styles.fieldGroup} ${styles.nicknameGroup}`}>
+            <label className={styles.label} htmlFor="nickname">
+              닉네임
             </label>
-            <button
-              type="button"
-              className={`${styles.checkButton} ${
-                isNicknameCheckDone ? styles.checkButtonDone : ""
-              }`}
-              onClick={handleCheckNickname}
-              disabled={nicknameCheckLoading || nickname.trim() === ""}
-            >
-              {nicknameCheckLoading ? "확인중..." : "중복확인"}
-            </button>
-          </div>
-          <input
-            type="text"
-            className={styles.input}
-            value={nickname}
-            onChange={(e) => resetNicknameCheck(e.target.value)}
-            placeholder="닉네임을 입력하세요"
-          />
-          <div className={styles.line} />
-          <p className={styles.helperText}>
-            {!nickname.trim() && "필수 입력 항목입니다."}
-            {nickname.trim() && !nicknameChecked && "닉네임 중복확인을 해주세요."}
-            {nicknameAvailable === true && "사용 가능한 닉네임입니다."}
-            {nicknameAvailable === false && "이미 사용 중인 닉네임입니다."}
-          </p>
-        </div>
 
-        <div className={styles.field}>
-          <div className={styles.fieldHeader}>
-            <label className={styles.label}>
-              <RequiredLabel text="아이디(이메일)" />
+            <div className={styles.inputButtonBox}>
+              <input
+                id="nickname"
+                type="text"
+                className={styles.inputWithButton}
+                value={nickname}
+                placeholder="닉네임을 입력하세요"
+                autoComplete="nickname"
+                disabled={signupLoading}
+                onChange={(event) => resetNicknameCheck(event.target.value)}
+              />
+
+              <button
+                type="button"
+                className={`${styles.innerButton} ${
+                  isNicknameCheckDone ? styles.checkButtonDone : ''
+                }`}
+                onClick={handleCheckNickname}
+                disabled={nicknameCheckLoading || signupLoading || !nickname.trim()}
+              >
+                {nicknameCheckLoading
+                  ? '확인중...'
+                  : isNicknameCheckDone
+                    ? '확인 완료'
+                    : '중복 확인'}
+              </button>
+            </div>
+
+            <p className={nicknameMessageClass}>{getNicknameMessage()}</p>
+          </div>
+
+          <div className={`${styles.fieldGroup} ${styles.emailGroup}`}>
+            <label className={styles.label} htmlFor="email">
+              이메일
             </label>
-            <button
-              type="button"
-              className={`${styles.checkButton} ${
-                isEmailCheckDone ? styles.checkButtonDone : ""
-              }`}
-              onClick={handleCheckEmail}
-              disabled={emailCheckLoading || email.trim() === ""}
-            >
-              {emailCheckLoading ? "확인중..." : "중복확인"}
-            </button>
+
+            <div className={styles.inputButtonBox}>
+              <input
+                id="email"
+                type="email"
+                className={styles.inputWithButton}
+                value={email}
+                placeholder="이메일을 입력하세요"
+                autoComplete="email"
+                disabled={signupLoading}
+                onChange={(event) => resetEmailCheck(event.target.value)}
+              />
+
+              <button
+                type="button"
+                className={`${styles.innerButton} ${
+                  isEmailCheckDone ? styles.checkButtonDone : ''
+                }`}
+                onClick={handleCheckEmail}
+                disabled={emailCheckLoading || signupLoading || !email.trim()}
+              >
+                {emailCheckLoading
+                  ? '확인중...'
+                  : isEmailCheckDone
+                    ? '확인 완료'
+                    : '중복 확인'}
+              </button>
+            </div>
+
+            <p className={emailMessageClass}>{getEmailMessage()}</p>
           </div>
-          <input
-            type="email"
-            className={styles.input}
-            value={email}
-            onChange={(e) => resetEmailCheck(e.target.value)}
-            placeholder="이메일을 입력하세요"
-          />
-          <div className={styles.line} />
-          <p className={styles.helperText}>
-            {!email.trim() && "필수 입력 항목입니다."}
-            {email.trim() && !isEmailValid && "올바른 이메일 형식으로 입력해주세요."}
-            {email.trim() && isEmailValid && !emailChecked && "아이디 중복확인을 해주세요."}
-            {emailAvailable === true && "사용 가능한 아이디입니다."}
-            {emailAvailable === false && "이미 사용 중인 아이디입니다."}
-          </p>
-        </div>
 
-        <div className={styles.field}>
-          <label className={styles.label}>
-            <RequiredLabel text="비밀번호" />
-          </label>
-          <input
-            type="password"
-            className={styles.input}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="비밀번호를 입력하세요"
-          />
-          <div className={styles.line} />
-          <p className={styles.helperText}>
-            {!password.trim() && "필수 입력 항목입니다."}
-            {password.trim() && !isPasswordValid && "비밀번호는 4자 이상 입력해주세요."}
-            {isPasswordValid && "사용 가능한 비밀번호 형식입니다."}
-          </p>
-        </div>
+          <div className={`${styles.fieldGroup} ${styles.passwordGroup}`}>
+            <label className={styles.label} htmlFor="password">
+              비밀번호
+            </label>
 
-        <div className={styles.field}>
-          <label className={styles.label}>
-            <RequiredLabel text="생년월일" />
-          </label>
-          <input
-            type="text"
-            className={styles.input}
-            value={birth}
-            onChange={(e) => setBirth(e.target.value.replace(/[^0-9]/g, "").slice(0, 8))}
-            placeholder="19900101"
-          />
-          <div className={styles.line} />
-          <p className={styles.helperText}>
-            {!birth.trim() && "필수 입력 항목입니다."}
-            {birth.trim() && !isBirthValid && "생년월일은 8자리 숫자로 입력해주세요."}
-            {isBirthValid && "올바른 생년월일 형식입니다."}
-          </p>
-        </div>
+            <input
+              id="password"
+              type="password"
+              className={styles.input}
+              value={password}
+              placeholder="비밀번호를 입력해 주세요"
+              autoComplete="new-password"
+              disabled={signupLoading}
+              onChange={(event) => setPassword(event.target.value)}
+            />
 
-        <div className={`${styles.field} ${styles.genderField}`}>
-          <label className={styles.label}>
-            <RequiredLabel text="성별" />
-          </label>
-          <div className={styles.genderRow}>
+            <p className={passwordMessageClass}>{getPasswordMessage()}</p>
+          </div>
+
+          <div className={`${styles.fieldGroup} ${styles.passwordConfirmGroup}`}>
+            <label className={styles.label} htmlFor="passwordConfirm">
+              비밀번호 재확인
+            </label>
+
+            <input
+              id="passwordConfirm"
+              type="password"
+              className={styles.input}
+              value={passwordConfirm}
+              placeholder="한번 더 입력해주세요"
+              autoComplete="new-password"
+              disabled={signupLoading}
+              onChange={(event) => setPasswordConfirm(event.target.value)}
+            />
+
+            <p className={passwordConfirmMessageClass}>
+              {getPasswordConfirmMessage()}
+            </p>
+          </div>
+
+          <div className={`${styles.fieldGroup} ${styles.birthDateGroup}`}>
+            <label className={styles.label} htmlFor="birthDate">
+              생년월일
+            </label>
+
+            <input
+              id="birthDate"
+              type="text"
+              inputMode="numeric"
+              className={styles.input}
+              value={birthDate}
+              placeholder="생년월일을 입력해주세요"
+              maxLength={6}
+              disabled={signupLoading}
+              onChange={(event) => {
+                setBirthDate(event.target.value.replace(/[^0-9]/g, '').slice(0, 6));
+              }}
+            />
+
+            <p className={birthDateMessageClass}>{getBirthDateMessage()}</p>
+          </div>
+
+          <div className={styles.genderGroup}>
+            <h2 className={styles.label}>성별 확인</h2>
+
+            <div className={styles.genderRow}>
+              <button
+                type="button"
+                className={styles.genderButton}
+                aria-pressed={gender === 'MALE'}
+                disabled={signupLoading}
+                onClick={() => setGender('MALE')}
+              >
+                <SquareCheck
+                  size={28}
+                  strokeWidth={gender === 'MALE' ? 2.6 : 1.9}
+                  className={
+                    gender === 'MALE'
+                      ? styles.genderIconChecked
+                      : styles.genderIconUnchecked
+                  }
+                  aria-hidden="true"
+                />
+                <span
+                  className={
+                    gender === 'MALE'
+                      ? styles.genderTextChecked
+                      : styles.genderTextUnchecked
+                  }
+                >
+                  남성
+                </span>
+              </button>
+
+              <button
+                type="button"
+                className={styles.genderButton}
+                aria-pressed={gender === 'FEMALE'}
+                disabled={signupLoading}
+                onClick={() => setGender('FEMALE')}
+              >
+                <SquareCheck
+                  size={28}
+                  strokeWidth={gender === 'FEMALE' ? 2.6 : 1.9}
+                  className={
+                    gender === 'FEMALE'
+                      ? styles.genderIconChecked
+                      : styles.genderIconUnchecked
+                  }
+                  aria-hidden="true"
+                />
+                <span
+                  className={
+                    gender === 'FEMALE'
+                      ? styles.genderTextChecked
+                      : styles.genderTextUnchecked
+                  }
+                >
+                  여성
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div className={`${styles.fieldGroup} ${styles.phoneGroup}`}>
+            <label className={styles.label} htmlFor="phoneNumber">
+              전화번호
+            </label>
+
+            <div
+              className={`${styles.phoneCard} ${
+                phoneVerificationSent ? styles.phoneCardExpanded : ''
+              }`}
+            >
+              <div className={styles.phoneTopRow}>
+                <input
+                  id="phoneNumber"
+                  type="tel"
+                  className={styles.phoneInput}
+                  value={phoneNumber}
+                  placeholder="전화번호를 입력해주세요"
+                  autoComplete="tel"
+                  disabled={signupLoading}
+                  onChange={(event) => handlePhoneNumberChange(event.target.value)}
+                />
+
+                {!phoneVerificationSent ? (
+                  <button
+                    type="button"
+                    className={styles.phoneButton}
+                    onClick={handleSendPhoneCode}
+                    disabled={signupLoading || sendingCode || !isPhoneValid}
+                  >
+                    {sendingCode ? '발송중' : '인증번호 발송'}
+                  </button>
+                ) : (
+                  <span className={styles.sentText}>
+                    {phoneSendMessage || '인증번호가 발송되었습니다.'}
+                  </span>
+                )}
+              </div>
+
+              {phoneVerificationSent ? (
+                <>
+                  <div className={styles.verificationMetaRow}>
+                    <span className={styles.timerText}>
+                      {phoneVerified
+                        ? '인증 완료'
+                        : `남은 시간 ${formatCountdown(remainingSeconds)}`}
+                    </span>
+
+                    <button
+                      type="button"
+                      className={styles.resendButton}
+                      onClick={handleSendPhoneCode}
+                      disabled={!canResendCode || signupLoading}
+                    >
+                      {sendingCode ? '재요청중' : '재요청'}
+                    </button>
+                  </div>
+
+                  <div className={styles.verificationRow}>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={verificationCode}
+                      onChange={(event) =>
+                        setVerificationCode(
+                          event.target.value.replace(/[^0-9]/g, '').slice(0, 6),
+                        )
+                      }
+                      placeholder="인증번호"
+                      className={styles.verificationInput}
+                      disabled={signupLoading || phoneVerified}
+                    />
+
+                    <button
+                      type="button"
+                      className={`${styles.verifyCodeButton} ${
+                        phoneVerified ? styles.checkButtonDone : ''
+                      }`}
+                      onClick={handleVerifyPhoneCode}
+                      disabled={
+                        signupLoading ||
+                        verifyingCode ||
+                        !verificationCode.trim() ||
+                        timerExpired ||
+                        phoneVerified
+                      }
+                    >
+                      {phoneVerified ? '인증완료' : verifyingCode ? '확인중' : '인증하기'}
+                    </button>
+                  </div>
+                </>
+              ) : null}
+            </div>
+
+            <p className={phoneMessageClass}>{getPhoneMessage()}</p>
+
+            {phoneDebugCode ? (
+              <p className={styles.debugCodeText}>테스트 코드: {phoneDebugCode}</p>
+            ) : null}
+          </div>
+
+          <button
+            type="submit"
+            className={`${styles.signupSubmitButton} ${bottomOffsetClass} ${
+              !canSubmit ? styles.buttonDisabled : ''
+            }`}
+            disabled={!canSubmit}
+          >
+            {signupLoading ? '회원가입 중...' : '회원가입'}
+          </button>
+
+          <div className={`${styles.orRow} ${bottomOffsetClass}`} aria-hidden="true">
+            <span className={styles.orLine} />
+            <span className={styles.orText}>OR</span>
+            <span className={styles.orLine} />
+          </div>
+
+          <div className={`${styles.socialButtonRow} ${bottomOffsetClass}`}>
             <button
               type="button"
-              className={styles.genderButton}
-              onClick={() => setGender("MALE")}
+              className={styles.socialButton}
+              aria-label="카카오 회원가입"
+              disabled={signupLoading}
             >
-              <CheckIcon checked={gender === "MALE"} />
-              <span className={gender === "MALE" ? styles.genderTextActive : styles.genderText}>
-                남성
+              <span className={styles.socialLogo}>
+                <KakaoIcon />
               </span>
             </button>
 
             <button
               type="button"
-              className={styles.genderButton}
-              onClick={() => setGender("FEMALE")}
+              className={styles.socialButton}
+              aria-label="네이버 회원가입"
+              disabled={signupLoading}
             >
-              <CheckIcon checked={gender === "FEMALE"} />
-              <span className={gender === "FEMALE" ? styles.genderTextActive : styles.genderText}>
-                여성
+              <span className={styles.socialLogo}>
+                <NaverIcon />
+              </span>
+            </button>
+
+            <button
+              type="button"
+              className={styles.socialButton}
+              aria-label="구글 회원가입"
+              disabled={signupLoading}
+            >
+              <span className={styles.socialLogo}>
+                <GoogleIcon />
               </span>
             </button>
           </div>
-          <div className={styles.line} />
-          <p className={styles.helperText}>
-            {!gender && "필수 선택 항목입니다."}
-            {gender && "선택되었습니다."}
-          </p>
-        </div>
 
-        <div className={styles.field}>
-          <label className={styles.label}>
-            <RequiredLabel text="전화번호" />
-          </label>
-          <div className={styles.phoneRow}>
-            <input
-              ref={phone1Ref}
-              type="text"
-              inputMode="numeric"
-              className={styles.phoneInput}
-              value={phone1}
-              onChange={(e) => handlePhone1Change(e.target.value)}
-              onKeyDown={(e) => handlePhoneKeyDown(e, phone1)}
-              placeholder="010"
-              maxLength={3}
-            />
-            <span className={styles.phoneDash}>-</span>
-            <input
-              ref={phone2Ref}
-              type="text"
-              inputMode="numeric"
-              className={styles.phoneInput}
-              value={phone2}
-              onChange={(e) => handlePhone2Change(e.target.value)}
-              onKeyDown={(e) => handlePhoneKeyDown(e, phone2, phone1Ref)}
-              placeholder="1234"
-              maxLength={4}
-            />
-            <span className={styles.phoneDash}>-</span>
-            <input
-              ref={phone3Ref}
-              type="text"
-              inputMode="numeric"
-              className={styles.phoneInput}
-              value={phone3}
-              onChange={(e) => handlePhone3Change(e.target.value)}
-              onKeyDown={(e) => handlePhoneKeyDown(e, phone3, phone2Ref)}
-              placeholder="5678"
-              maxLength={4}
-            />
-          </div>
-          <p className={styles.helperText}>
-            {!phone1 && !phone2 && !phone3 && "필수 입력 항목입니다."}
-            {(phone1 || phone2 || phone3) && !isPhoneValid && "올바른 전화번호 형식이 아닙니다."}
-            {isPhoneValid && "올바른 전화번호 형식입니다."}
-          </p>
-        </div>
-      </div>
+          <div className={`${styles.loginGuideRow} ${bottomOffsetClass}`}>
+            <span className={styles.loginGuideText}>계정이 이미 있으신가요?</span>
 
-      <button
-        type="button"
-        className={`${styles.primaryButton} ${!canSubmit ? styles.buttonDisabled : ""}`}
-        onClick={handleSignup}
-        disabled={!canSubmit}
-      >
-        {signupLoading ? "회원가입 중..." : "회원가입"}
-      </button>
-
-      <div className={styles.orWrap}>
-        <div className={styles.orLine} />
-        <span className={styles.orText}>OR</span>
-        <div className={styles.orLine} />
-      </div>
-
-      <div className={styles.socialRow}>
-        <button type="button" className={styles.socialButton} aria-label="카카오 회원가입 준비중">
-          <KakaoIcon className={styles.socialLogo} />
-        </button>
-
-        <button type="button" className={styles.socialButton} aria-label="네이버 회원가입 준비중">
-          <NaverIcon className={styles.socialLogo} />
-        </button>
-
-        <button type="button" className={styles.socialButton} aria-label="구글 회원가입 준비중">
-          <GoogleIcon className={styles.socialLogo} />
-        </button>
-      </div>
-
-      <div className={styles.bottomText}>
-        <span className={styles.bottomMuted}>계정이 이미 있으신가요?</span>
-        <button type="button" className={styles.bottomLink} onClick={() => navigate("/login")}>
-          로그인
-        </button>
-      </div>
-
-      {showModal && (
-        <div className={styles.modalBackdrop}>
-          <div className={styles.modalCard}>
-            <ModalStatusIcon type={modalType} />
-            <h3 className={styles.modalTitle}>{modalTitle}</h3>
-            <p className={styles.modalMessage}>{modalMessage}</p>
-            <button type="button" className={styles.modalButton} onClick={closeModal}>
-              확인
+            <button
+              type="button"
+              className={styles.loginButton}
+              disabled={signupLoading}
+              onClick={() => navigate('/login')}
+            >
+              로그인
             </button>
           </div>
-        </div>
-      )}
-    </div>
+        </form>
+
+        {showModal ? (
+          <div className={styles.modalBackdrop}>
+            <div className={styles.modalCard}>
+              <ModalStatusIcon type={modalType} />
+
+              <h3 className={styles.modalTitle}>{modalTitle}</h3>
+
+              <p className={styles.modalMessage}>{modalMessage}</p>
+
+              <button
+                type="button"
+                className={styles.modalButton}
+                onClick={closeModal}
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </main>
   );
 }

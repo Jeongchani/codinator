@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+
 import Login from './pages/login/Login';
 import Signup from './pages/auth/Signup';
 import PostUpload from './pages/post/PostUpload';
@@ -22,6 +23,7 @@ import OngoingEvaluationHistory from './pages/evaluation/OngoingEvaluationHistor
 import Settings from './pages/settings/Settings';
 import PasswordReset from './pages/auth/PasswordReset';
 import ForegroundPushCenter from './components/notifications/ForegroundPushCenter';
+
 import { fetchMySettings, getAccessToken } from './lib/api';
 import { applyThemeMode, getStoredThemeMode, saveAndApplyThemeMode } from './lib/theme';
 
@@ -31,6 +33,7 @@ function ThemeSettingsHydrator() {
 
   useEffect(() => {
     const storedTheme = getStoredThemeMode();
+
     if (storedTheme) {
       applyThemeMode(storedTheme);
     }
@@ -55,11 +58,15 @@ function ThemeSettingsHydrator() {
     const hydrateThemeFromServer = async () => {
       try {
         const settings = await fetchMySettings();
+
         if (cancelled) return;
+
         saveAndApplyThemeMode(settings.theme);
       } catch {
         if (cancelled) return;
+
         const storedTheme = getStoredThemeMode();
+
         if (storedTheme) {
           applyThemeMode(storedTheme);
         }
@@ -86,16 +93,19 @@ function AppRoutes() {
 
       <Routes>
         <Route path="/" element={<Splash onFinish={() => navigate('/loginSelect')} />} />
+
         <Route path="/loginSelect" element={<LoginSelect />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/passwordReset" element={<PasswordReset />} />
+
         <Route path="/evaluationZone" element={<EvaluationZone />} />
         <Route path="/evaluationDetailFeedback/:postId" element={<EvaluationDetailFeedback />} />
+        <Route path="/ongoingEvaluationHistory" element={<OngoingEvaluationHistory />} />
+
         <Route path="/postUpload" element={<PostUpload />} />
         <Route path="/rankingDetail/:postId" element={<RankingDetail />} />
         <Route path="/myPage/edit" element={<MyPageEdit />} />
-        <Route path="/ongoingEvaluationHistory" element={<OngoingEvaluationHistory />} />
 
         <Route path="/test" element={<TestPage />} />
 
