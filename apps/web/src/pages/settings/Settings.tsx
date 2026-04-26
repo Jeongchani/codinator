@@ -6,15 +6,13 @@ import type {
 } from '@codinator/contracts';
 import {
   Bell,
-  ChevronLeft,
   CircleAlert,
   Megaphone,
-  Menu,
   MoonStar,
   ShieldCheck,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import SideMenu from '../../components/SideMenu';
+import Header from '../../components/Header';
 import {
   clearAuthTokens,
   fetchMySettings,
@@ -125,7 +123,6 @@ function SettingRow({
 export default function Settings() {
   const navigate = useNavigate();
 
-  const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<SavingKey>(null);
   const [errorMessage, setErrorMessage] = useState('');
@@ -298,29 +295,12 @@ export default function Settings() {
   return (
     <>
       <div className={styles.container}>
-        <header className={styles.header}>
-          <div className={styles.headerInner}>
-            <button
-              type="button"
-              className={styles.headerIconButton}
-              onClick={() => navigate(-1)}
-              aria-label="뒤로가기"
-            >
-              <ChevronLeft size={23} strokeWidth={2.2} />
-            </button>
-
-            <h1 className={styles.title}>설정</h1>
-
-            <button
-              type="button"
-              className={styles.menuButton}
-              aria-label="사이드 메뉴 열기"
-              onClick={() => setMenuOpen(true)}
-            >
-              <Menu size={25} strokeWidth={2.2} />
-            </button>
-          </div>
-        </header>
+        <Header
+          title="설정"
+          leftAction="back"
+          onBack={() => navigate(-1)}
+          rightAction="menu"
+        />
 
         <main className={styles.contentArea}>
           <section className={styles.sectionBlock}>
@@ -421,7 +401,6 @@ export default function Settings() {
         </main>
       </div>
 
-      <SideMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
     </>
   );
 }

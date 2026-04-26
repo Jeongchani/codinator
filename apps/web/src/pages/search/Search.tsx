@@ -5,9 +5,7 @@ import {
   Check,
   ChevronsUp,
   ChevronDown,
-  ChevronLeft,
   ImagePlus,
-  Menu,
   Search as SearchIcon,
   X,
 } from 'lucide-react';
@@ -21,7 +19,7 @@ import type {
   UserSearchItem,
   VoteChoice,
 } from '@codinator/contracts';
-import SideMenu from '../../components/SideMenu';
+import Header from '../../components/Header';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
 import { resolveAssetUrl } from '../../lib/api';
 import SearchFilterSheet, {
@@ -253,7 +251,6 @@ export default function Search() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [menuOpen, setMenuOpen] = useState(false);
   const [mode, setMode] = useState<SearchMode>('text');
   const [searchType, setSearchType] = useState<SearchType>('ALL');
   const [typeMenuOpen, setTypeMenuOpen] = useState(false);
@@ -432,14 +429,6 @@ export default function Search() {
 
   const handleGoBack = () => {
     navigate(-1);
-  };
-
-  const handleOpenMenu = () => {
-    setMenuOpen(true);
-  };
-
-  const handleCloseMenu = () => {
-    setMenuOpen(false);
   };
 
   const handleChangeMode = (nextMode: SearchMode) => {
@@ -641,29 +630,12 @@ export default function Search() {
   return (
     <>
       <div className={styles.page}>
-        <header className={styles.header}>
-          <div className={styles.headerInner}>
-            <button
-              type="button"
-              className={styles.backButton}
-              onClick={handleGoBack}
-              aria-label="뒤로가기"
-            >
-              <ChevronLeft size={25} strokeWidth={2.2} />
-            </button>
-
-            <h1 className={styles.headerTitle}>검색</h1>
-
-            <button
-              type="button"
-              className={styles.menuButton}
-              onClick={handleOpenMenu}
-              aria-label="메뉴 열기"
-            >
-              <Menu size={25} strokeWidth={2.2} />
-            </button>
-          </div>
-        </header>
+        <Header
+          title="검색"
+          leftAction="back"
+          onBack={handleGoBack}
+          rightAction="menu"
+        />
 
         <main className={styles.scrollArea}>
           <section className={styles.contentArea}>
@@ -863,7 +835,6 @@ export default function Search() {
         </main>
       </div>
 
-      <SideMenu isOpen={menuOpen} onClose={handleCloseMenu} />
 
       {filterSheetOpen ? (
         <SearchFilterSheet

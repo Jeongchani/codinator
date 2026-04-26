@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Menu } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { GetMeResponse, GetMyActivitySummaryResponse } from '@codinator/contracts';
 import { fetcher, getAuthHeaders } from '../../lib/api';
-import SideMenu from '../../components/SideMenu';
+import Header from '../../components/Header';
 import styles from './MyPage.module.css';
 
 type ProfileState = {
@@ -132,7 +132,6 @@ const formatPhoneNumber = (value: string) => {
 export default function MyPage() {
   const navigate = useNavigate();
 
-  const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileState>({
     email: '',
@@ -218,29 +217,12 @@ export default function MyPage() {
   return (
     <>
       <div className={styles.container}>
-        <header className={styles.header}>
-          <div className={styles.headerInner}>
-            <button
-              type="button"
-              className={styles.headerIconButton}
-              onClick={() => navigate(-1)}
-              aria-label="뒤로가기"
-            >
-              <ChevronLeft size={23} strokeWidth={2.2} />
-            </button>
-
-            <h1 className={styles.title}>마이 페이지</h1>
-
-            <button
-              type="button"
-              className={styles.menuButton}
-              onClick={() => setMenuOpen(true)}
-              aria-label="사이드 메뉴 열기"
-            >
-              <Menu size={25} strokeWidth={2.2} />
-            </button>
-          </div>
-        </header>
+        <Header
+          title="마이 페이지"
+          leftAction="back"
+          onBack={() => navigate(-1)}
+          rightAction="menu"
+        />
 
         <main className={styles.contentArea}>
           <section className={styles.summarySection}>
@@ -322,7 +304,6 @@ export default function MyPage() {
         </main>
       </div>
 
-      <SideMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <PasswordModal
         open={passwordModalOpen}

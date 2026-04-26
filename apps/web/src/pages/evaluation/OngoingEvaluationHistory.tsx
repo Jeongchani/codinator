@@ -10,6 +10,7 @@ import {
   isAuthError,
   resolveAssetUrl,
 } from '../../lib/api';
+import Header from '../../components/Header';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
 import EvaluationDetailFeedback from './EvaluationDetailFeedback';
 import styles from './OngoingEvaluationHistory.module.css';
@@ -613,38 +614,19 @@ export default function OngoingEvaluationHistory() {
       ref={containerRef}
       className={`${styles.container} ${deleteMode ? styles.deleteMode : ''}`}
     >
-      <header className={styles.header}>
-        <div className={styles.headerInner}>
-          <button
-            type="button"
-            className={styles.headerIconButton}
-            onClick={deleteMode ? handleCancelDeleteMode : () => navigate(-1)}
-            aria-label="뒤로가기"
-          >
-            <ChevronLeft size={24} strokeWidth={2.2} />
-          </button>
-
-          <h1 className={styles.title}>평가 기록</h1>
-
-          <button
-            type="button"
-            className={`${styles.headerTextButton} ${
-              isHeaderButtonPressed ? styles.headerTextButtonPressed : ''
-            }`}
-            onClick={deleteMode ? handleToggleSelectAll : handleEnterDeleteMode}
-            onTouchStart={() => setIsHeaderButtonPressed(true)}
-            onTouchEnd={() => setIsHeaderButtonPressed(false)}
-            onTouchCancel={() => setIsHeaderButtonPressed(false)}
-            onMouseDown={() => setIsHeaderButtonPressed(true)}
-            onMouseUp={() => setIsHeaderButtonPressed(false)}
-            onMouseLeave={() => setIsHeaderButtonPressed(false)}
-            disabled={loading}
-            aria-label={deleteMode ? '전체선택' : '선택'}
-          >
-            {deleteMode ? '전체선택' : '선택'}
-          </button>
-        </div>
-      </header>
+      <Header
+        title="평가 기록"
+        leftAction="back"
+        onBack={deleteMode ? handleCancelDeleteMode : () => navigate(-1)}
+        rightAction="text"
+        rightText={deleteMode ? '전체선택' : '선택'}
+        onRightTextClick={deleteMode ? handleToggleSelectAll : handleEnterDeleteMode}
+        rightPressed={isHeaderButtonPressed}
+        onRightPressStart={() => setIsHeaderButtonPressed(true)}
+        onRightPressEnd={() => setIsHeaderButtonPressed(false)}
+        rightDisabled={loading}
+        rightAriaLabel={deleteMode ? '전체선택' : '선택'}
+      />
 
       <section className={styles.banner} aria-label="평가기록 배너">
         <img

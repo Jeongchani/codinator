@@ -5,34 +5,6 @@
   color: #111111;
 }
 
-.header {
-  @apply bg-white shrink-0;
-  width: var(--app-width);
-  height: var(--app-header-height);
-}
-
-.headerInner {
-  @apply relative w-full h-full px-5;
-}
-
-.headerTitle {
-  @apply absolute left-1/2 -translate-x-1/2 text-[18px] leading-[22px] font-bold text-black m-0;
-  top: 59px;
-  transform: translateX(-50%) translateY(-50%);
-}
-
-.backButton {
-  @apply absolute left-5 w-6 h-6 flex items-center justify-center text-[#7a7a7a] bg-transparent p-0 border-0;
-  top: 59px;
-  transform: translateY(-50%);
-}
-
-.menuButton {
-  @apply absolute right-5 w-6 h-6 flex items-center justify-center text-[#7a7a7a] bg-transparent p-0 border-0;
-  top: 59px;
-  transform: translateY(-50%);
-}
-
 .scrollArea {
   @apply flex-1 min-h-0 overflow-y-auto overflow-x-hidden;
   -webkit-overflow-scrolling: touch;
@@ -305,23 +277,12 @@
 
 .focusDetailButtonIcon {
   @apply shrink-0;
-}
-
-:global(html.dark) .page,
-:global(html.dark) .header,
+}:global(html.dark) .page,
 :global(html.dark) .contentArea,
 :global(html.dark) .scrollArea {
   background: var(--app-surface);
   color: var(--app-text);
-}
-
-:global(html.dark) .headerTitle {
-  color: var(--app-text-strong);
-}
-
-:global(html.dark) .backButton,
-:global(html.dark) .menuButton,
-:global(html.dark) .searchInputIcon,
+}:global(html.dark) .searchInputIcon,
 :global(html.dark) .clearInputButton,
 :global(html.dark) .recentChipRemove,
 :global(html.dark) .filterButton svg,

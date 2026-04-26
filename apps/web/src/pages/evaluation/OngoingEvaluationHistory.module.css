@@ -9,51 +9,6 @@
   @apply z-20;
 }
 
-.header {
-  @apply absolute top-0 left-0 w-full bg-white z-20;
-  height: 93px;
-}
-
-.headerInner {
-  @apply relative w-full h-full px-4;
-}
-
-.title {
-  @apply absolute left-1/2 text-[18px] leading-[22px] font-bold text-black;
-  top: 59px;
-  transform: translateX(-50%) translateY(-50%);
-}
-
-.headerIconButton {
-  @apply absolute left-4 w-6 h-6 flex items-center justify-center bg-transparent text-black border-0 p-0;
-  top: 59px;
-  transform: translateY(-50%);
-}
-
-.headerTextButton {
-  @apply absolute right-4 flex items-center justify-center rounded-[999px] border-0 px-[10px] h-[30px] text-[11px] font-medium text-white;
-  top: 59px;
-  transform: translateY(-50%);
-  background: rgba(0, 0, 0, 0.62);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
-  transition:
-    transform 140ms ease,
-    opacity 140ms ease,
-    background 140ms ease,
-    box-shadow 140ms ease;
-}
-
-.headerTextButton:disabled {
-  opacity: 0.74;
-}
-
-.headerTextButtonPressed {
-  transform: translateY(-50%) scale(0.96);
-  opacity: 0.94;
-  background: rgba(0, 0, 0, 0.75);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
-}
-
 .banner {
   @apply absolute left-0 top-[105px] overflow-hidden;
   width: 100%;
@@ -409,10 +364,7 @@
 
 .focusDetailIcon {
   @apply flex items-center justify-center;
-}
-
-
-:global(html.dark) .container,
+}:global(html.dark) .container,
 :global(html.dark) .pageBody,
 :global(html.dark) .contentArea,
 :global(html.dark) .scrollArea,
@@ -455,7 +407,6 @@
 :global(html.dark) .tabSection,
 :global(html.dark) .menuItem,
 :global(html.dark) .footer,
-:global(html.dark) .header,
 :global(html.dark) .topArea,
 :global(html.dark) .bottomSheet,
 :global(html.dark) .compareImageWrap {
@@ -475,13 +426,9 @@
 
 :global(html.dark) .activePill {
   background: var(--footer-pill-bg);
-}
-
-:global(html.dark) .menuButton,
-:global(html.dark) .icon,
+}:global(html.dark) .icon,
 :global(html.dark) .label,
 :global(html.dark) .searchButton,
-:global(html.dark) .headerIconButton,
 :global(html.dark) .closeButton,
 :global(html.dark) .cancelButton,
 :global(html.dark) .iconWrap,
@@ -499,10 +446,7 @@
 :global(html.dark) .iconActive,
 :global(html.dark) .labelActive {
   color: var(--footer-pill-text);
-}
-
-:global(html.dark) .title,
-:global(html.dark) .mainTitle,
+}:global(html.dark) .mainTitle,
 :global(html.dark) .sectionTitle,
 :global(html.dark) .fieldTitle,
 :global(html.dark) .mainTitle,
@@ -652,11 +596,7 @@
 :global(html.dark) .messageBox,
 :global(html.dark) .sectionEmpty {
   color: var(--app-text-secondary);
-}
-
-:global(html.dark) .header,
-:global(html.dark) .headerInner,
-:global(html.dark) .tabSection,
+}:global(html.dark) .tabSection,
 :global(html.dark) .contentArea,
 :global(html.dark) .pageBody,
 :global(html.dark) .container,
@@ -672,10 +612,7 @@
 :global(html.dark) .scrollArea,
 :global(html.dark) .container {
   background-image: none;
-}
-
-
-:global(html.dark) .modalCancelButton,
+}:global(html.dark) .modalCancelButton,
 :global(html.dark) .modalSecondaryButton,
 :global(html.dark) .fieldActionButton,
 :global(html.dark) .nicknameCheckButton,
@@ -694,7 +631,6 @@
 :global(html.dark) .miniActionButton,
 :global(html.dark) .bookmarkActionButton,
 :global(html.dark) .reportActionButton,
-:global(html.dark) .headerTextButton,
 :global(html.dark) .filterButton,
 :global(html.dark) .modalActionButton {
   background: var(--app-surface-muted);

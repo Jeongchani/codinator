@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type {
   PasswordResetRequest,
@@ -10,12 +10,12 @@ import type {
   VerifyPhoneCodeResponse,
 } from '@codinator/contracts';
 import { fetcher } from '../../lib/api';
+import Header from '../../components/Header';
 import styles from './PasswordReset.module.css';
 
 const PHONE_CODE_TTL_SECONDS = 5 * 60;
 const PASSWORD_RESET_PURPOSE = 'PASSWORD_RESET' as const;
 
-const BackIcon = () => <ChevronLeft size={23} strokeWidth={2.2} aria-hidden="true" />;
 const LockIcon = () => <Lock size={14} strokeWidth={2.4} aria-hidden="true" />;
 
 const normalizePhoneDigits = (value: string) => value.replace(/[^0-9]/g, '').slice(0, 11);
@@ -312,24 +312,15 @@ export default function PasswordReset() {
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <div className={styles.headerInner}>
-          <button
-            type="button"
-            aria-label="뒤로가기"
-            className={styles.headerIconButton}
-            onClick={handleBack}
-          >
-            <BackIcon />
-          </button>
-
-          <h1 className={styles.title}>비밀번호 재설정</h1>
-
-          <button type="button" className={styles.cancelButton} onClick={handleCancel}>
-            취소
-          </button>
-        </div>
-      </header>
+      <Header
+        title="비밀번호 재설정"
+        leftAction="back"
+        onBack={handleBack}
+        rightAction="text"
+        rightText="취소"
+        onRightTextClick={handleCancel}
+        rightAriaLabel="취소"
+      />
 
       <main className={styles.contentArea}>
         <section className={styles.noticeBox}>

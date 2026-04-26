@@ -2,32 +2,6 @@
   @apply relative mx-auto flex h-[812px] w-[375px] flex-col overflow-hidden bg-[#f7f7f7];
 }
 
-.header {
-  @apply h-[93px] w-full shrink-0 bg-white;
-}
-
-.headerInner {
-  @apply relative h-full w-full px-4;
-}
-
-.headerIconButton {
-  @apply absolute left-5 flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0 text-[#7a7a7a];
-  top: 59px;
-  transform: translateY(-50%);
-}
-
-.cancelButton {
-  @apply absolute right-5 border-0 bg-transparent p-0 text-[15px] font-medium leading-5 text-black;
-  top: 59px;
-  transform: translateY(-50%);
-}
-
-.title {
-  @apply absolute left-1/2 whitespace-nowrap text-[20px] font-semibold leading-7 text-black;
-  top: 59px;
-  transform: translate(-50%, -50%);
-}
-
 .contentArea {
   @apply flex-1 overflow-y-auto px-4 pb-6 pt-[18px];
   -ms-overflow-style: none;
@@ -199,10 +173,7 @@
 .modalConfirmButton:disabled,
 .modalDangerButton:disabled {
   @apply cursor-not-allowed opacity-50;
-}
-
-
-:global(html.dark) .container,
+}:global(html.dark) .container,
 :global(html.dark) .pageBody,
 :global(html.dark) .contentArea,
 :global(html.dark) .scrollArea,
@@ -245,7 +216,6 @@
 :global(html.dark) .tabSection,
 :global(html.dark) .menuItem,
 :global(html.dark) .footer,
-:global(html.dark) .header,
 :global(html.dark) .topArea,
 :global(html.dark) .bottomSheet,
 :global(html.dark) .compareImageWrap {
@@ -265,15 +235,10 @@
 
 :global(html.dark) .activePill {
   background: var(--footer-pill-bg);
-}
-
-:global(html.dark) .menuButton,
-:global(html.dark) .icon,
+}:global(html.dark) .icon,
 :global(html.dark) .label,
 :global(html.dark) .searchButton,
-:global(html.dark) .headerIconButton,
 :global(html.dark) .closeButton,
-:global(html.dark) .cancelButton,
 :global(html.dark) .iconWrap,
 :global(html.dark) .arrowIcon,
 :global(html.dark) .logoutIcon,
@@ -289,10 +254,7 @@
 :global(html.dark) .iconActive,
 :global(html.dark) .labelActive {
   color: var(--footer-pill-text);
-}
-
-:global(html.dark) .title,
-:global(html.dark) .mainTitle,
+}:global(html.dark) .mainTitle,
 :global(html.dark) .sectionTitle,
 :global(html.dark) .fieldTitle,
 :global(html.dark) .mainTitle,
@@ -442,11 +404,7 @@
 :global(html.dark) .messageBox,
 :global(html.dark) .sectionEmpty {
   color: var(--app-text-secondary);
-}
-
-:global(html.dark) .header,
-:global(html.dark) .headerInner,
-:global(html.dark) .tabSection,
+}:global(html.dark) .tabSection,
 :global(html.dark) .contentArea,
 :global(html.dark) .pageBody,
 :global(html.dark) .container,
@@ -462,10 +420,7 @@
 :global(html.dark) .scrollArea,
 :global(html.dark) .container {
   background-image: none;
-}
-
-
-:global(html.dark) .modalCancelButton,
+}:global(html.dark) .modalCancelButton,
 :global(html.dark) .modalSecondaryButton,
 :global(html.dark) .fieldActionButton,
 :global(html.dark) .nicknameCheckButton,
@@ -484,7 +439,6 @@
 :global(html.dark) .miniActionButton,
 :global(html.dark) .bookmarkActionButton,
 :global(html.dark) .reportActionButton,
-:global(html.dark) .headerTextButton,
 :global(html.dark) .filterButton,
 :global(html.dark) .modalActionButton {
   background: var(--app-surface-muted);
