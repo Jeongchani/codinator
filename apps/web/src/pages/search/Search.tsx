@@ -1,4 +1,5 @@
-import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronDown,
@@ -9,19 +10,19 @@ import {
   X,
 } from 'lucide-react';
 import SideMenu from '../../components/SideMenu';
+import SearchFilterSheet, {
+  createEmptySearchFilters,
+  getSearchFilterSummary,
+  hasSearchFilterValue,
+} from './SearchFilterSheet';
+import type { SearchFilterId, SearchFiltersValue } from './SearchFilterSheet';
 import styles from './Search.module.css';
 
 type SearchMode = 'text' | 'image';
 
-export type SearchFilterId = 'period' | 'likeRatio' | 'outfit' | 'keyword' | 'feedbackTag' | 'scope';
-
 type SearchFilter = {
   id: SearchFilterId;
   label: string;
-};
-
-type SearchProps = {
-  onOpenFilter?: (filterId: SearchFilterId) => void;
 };
 
 const FILTERS: SearchFilter[] = [
@@ -33,9 +34,9 @@ const FILTERS: SearchFilter[] = [
 ];
 
 const RECENT_KEYWORDS = ['검색어', '검색어', '검색어', '검색어'];
-const PLACEHOLDER_RESULTS = Array.from({ length: 15 }, (_, index) => index + 1);
+const PLACEHOLDER_RESULTS = Array.from({ length: 21 }, (_, index) => index + 1);
 
-export default function Search({ onOpenFilter }: SearchProps) {
+export default function Search() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -44,6 +45,9 @@ export default function Search({ onOpenFilter }: SearchProps) {
   const [query, setQuery] = useState('');
   const [recentKeywords, setRecentKeywords] = useState(RECENT_KEYWORDS);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<SearchFilterId>('period');
+  const [appliedFilters, setAppliedFilters] = useState<SearchFiltersValue>(() => createEmptySearchFilters());
 
   const isTextMode = mode === 'text';
   const isImageMode = mode === 'image';
@@ -113,7 +117,16 @@ export default function Search({ onOpenFilter }: SearchProps) {
   };
 
   const handleOpenFilter = (filterId: SearchFilterId) => {
-    onOpenFilter?.(filterId);
+    setActiveFilter(filterId);
+    setFilterSheetOpen(true);
+  };
+
+  const handleCloseFilterSheet = () => {
+    setFilterSheetOpen(false);
+  };
+
+  const handleApplyFilters = (nextFilters: SearchFiltersValue) => {
+    setAppliedFilters(nextFilters);
   };
 
   return (
@@ -195,17 +208,13 @@ export default function Search({ onOpenFilter }: SearchProps) {
                     </button>
                   </label>
 
-                  <button
-                    type="button"
-                    className={`${styles.filterButton} ${styles.scopeButton}`}
-                    onClick={() => handleOpenFilter('scope')}
-                  >
+                  <button type="button" className={`${styles.filterButton} ${styles.scopeButton}`}>
                     <span>전체</span>
                     <ChevronDown size={20} strokeWidth={2.1} />
                   </button>
                 </div>
 
-                <FilterScroller filters={FILTERS} onOpenFilter={handleOpenFilter} />
+                <FilterScroller filters={FILTERS} appliedFilters={appliedFilters} onOpenFilter={handleOpenFilter} />
 
                 <div className={styles.divider} />
 
@@ -223,11 +232,7 @@ export default function Search({ onOpenFilter }: SearchProps) {
                 {recentKeywords.length > 0 ? (
                   <div className={styles.recentChipRow}>
                     {recentKeywords.map((keyword, index) => (
-                      <div
-                        // 같은 더미 텍스트가 반복되므로 index를 같이 사용합니다.
-                        key={`${keyword}-${index}`}
-                        className={styles.recentChip}
-                      >
+                      <div key={`${keyword}-${index}`} className={styles.recentChip}>
                         <button
                           type="button"
                           className={styles.recentChipTextButton}
@@ -296,7 +301,7 @@ export default function Search({ onOpenFilter }: SearchProps) {
                   </button>
                 )}
 
-                <FilterScroller filters={FILTERS} onOpenFilter={handleOpenFilter} />
+                <FilterScroller filters={FILTERS} appliedFilters={appliedFilters} onOpenFilter={handleOpenFilter} />
               </section>
             )}
 
@@ -318,30 +323,45 @@ export default function Search({ onOpenFilter }: SearchProps) {
       </div>
 
       <SideMenu isOpen={menuOpen} onClose={handleCloseMenu} />
+
+      <SearchFilterSheet
+        isOpen={filterSheetOpen}
+        activeFilter={activeFilter}
+        appliedFilters={appliedFilters}
+        onClose={handleCloseFilterSheet}
+        onApply={handleApplyFilters}
+      />
     </>
   );
 }
 
 type FilterScrollerProps = {
   filters: SearchFilter[];
+  appliedFilters: SearchFiltersValue;
   onOpenFilter: (filterId: SearchFilterId) => void;
 };
 
-function FilterScroller({ filters, onOpenFilter }: FilterScrollerProps) {
+function FilterScroller({ filters, appliedFilters, onOpenFilter }: FilterScrollerProps) {
   return (
     <div className={styles.filterScrollArea} aria-label="검색 필터">
       <div className={styles.filterRow}>
-        {filters.map((filter) => (
-          <button
-            key={filter.id}
-            type="button"
-            className={styles.filterButton}
-            onClick={() => onOpenFilter(filter.id)}
-          >
-            <span>{filter.label}</span>
-            <ChevronDown size={20} strokeWidth={2.1} />
-          </button>
-        ))}
+        {filters.map((filter) => {
+          const summary = getSearchFilterSummary(appliedFilters, filter.id);
+          const hasValue = hasSearchFilterValue(appliedFilters, filter.id);
+          const label = summary || filter.label;
+
+          return (
+            <button
+              key={filter.id}
+              type="button"
+              className={`${styles.filterButton} ${hasValue ? styles.filterButtonActive : ''}`}
+              onClick={() => onOpenFilter(filter.id)}
+            >
+              <span>{label}</span>
+              <ChevronDown size={20} strokeWidth={2.1} />
+            </button>
+          );
+        })}
       </div>
     </div>
   );

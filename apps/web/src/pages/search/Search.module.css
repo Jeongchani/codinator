@@ -182,31 +182,45 @@
 }
 
 .imageResultBox {
-  @apply relative flex h-[104px] w-full items-center rounded-[10px] border border-stone-300 bg-white px-3;
+  @apply flex h-[104px] w-full items-center gap-2 rounded-[10px] border border-stone-300 bg-white px-4;
 }
 
 .uploadedImageWrap {
-  @apply h-20 w-[60px] shrink-0 overflow-hidden rounded-[10px] bg-stone-300;
+  @apply flex h-[88px] shrink-0 items-center justify-center overflow-visible bg-transparent;
+  width: auto;
 }
 
 .uploadedImage {
-  @apply h-full w-full object-cover;
+  @apply block object-contain;
+  height: 88px;
+  width: auto;
+  max-width: 62px;
 }
 
 .imageResultCopy {
-  @apply ml-3 min-w-0 pr-[98px];
+  @apply min-w-0 flex-1;
 }
 
 .imageResultTitle {
-  @apply m-0 whitespace-nowrap text-[15px] font-medium leading-5 text-neutral-900;
+  @apply m-0 text-[12px] font-semibold leading-[18px] text-neutral-900;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+  word-break: keep-all;
+  letter-spacing: -0.02em;
 }
 
 .imageResultDescription {
-  @apply m-0 mt-1 whitespace-nowrap text-xs font-normal leading-4 text-neutral-400;
+  @apply m-0 mt-1 text-[11px] font-normal leading-[15px] text-neutral-400;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+  word-break: keep-all;
+  letter-spacing: -0.01em;
 }
 
 .changeImageButton {
-  @apply absolute right-3 top-1/2 flex h-[30px] -translate-y-1/2 items-center justify-center rounded-[10px] border border-stone-300 bg-white px-3 text-xs font-normal leading-4 text-neutral-900;
+  @apply flex h-[32px] w-[70px] shrink-0 items-center justify-center rounded-[10px] border border-stone-300 bg-white px-1.5 text-[11px] font-normal leading-4 text-neutral-900;
 }
 
 .resultSection {
@@ -306,4 +320,22 @@
 :global(html.dark) .resultCard,
 :global(html.dark) .uploadedImageWrap {
   background: var(--app-surface-muted);
+}
+
+.filterButtonActive {
+  @apply border-black bg-black text-white;
+}
+
+.filterButtonActive svg {
+  @apply text-white;
+}
+
+:global(html.dark) .filterButtonActive {
+  background: var(--app-text-strong);
+  color: var(--app-surface);
+  border-color: var(--app-text-strong);
+}
+
+:global(html.dark) .filterButtonActive svg {
+  color: var(--app-surface);
 }

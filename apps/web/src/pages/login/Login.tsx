@@ -45,6 +45,15 @@ type GooglePromptMomentNotification = {
   isDismissedMoment?: () => boolean;
 };
 
+type PersistAuthData = {
+  accessToken: LoginResponse['accessToken'] | SocialCompleteProfileResponse['accessToken'];
+  refreshToken?:
+    | LoginResponse['refreshToken']
+    | SocialCompleteProfileResponse['refreshToken']
+    | null;
+  user: LoginResponse['user'] | SocialCompleteProfileResponse['user'];
+};
+
 declare global {
   interface Window {
     google?: {
@@ -86,13 +95,17 @@ const loadGoogleIdentityScript = () => {
       return;
     }
 
-    const existingScript = document.getElementById(GOOGLE_IDENTITY_SCRIPT_ID) as HTMLScriptElement | null;
+    const existingScript = document.getElementById(
+      GOOGLE_IDENTITY_SCRIPT_ID,
+    ) as HTMLScriptElement | null;
 
     if (existingScript) {
       existingScript.addEventListener('load', () => resolve(), { once: true });
-      existingScript.addEventListener('error', () => reject(new Error('Google 로그인 스크립트 로드에 실패했습니다.')), {
-        once: true,
-      });
+      existingScript.addEventListener(
+        'error',
+        () => reject(new Error('Google 로그인 스크립트 로드에 실패했습니다.')),
+        { once: true },
+      );
       return;
     }
 
@@ -144,13 +157,17 @@ export default function Login() {
     setModalAction(null);
   };
 
-  const persistAuthSession = (
-    authData: Pick<LoginResponse, 'accessToken' | 'refreshToken' | 'user'>,
-    rememberMe: boolean,
-  ) => {
+  const persistAuthSession = (authData: PersistAuthData, rememberMe: boolean) => {
     clearAuthTokens();
-    saveAuthTokens(authData.accessToken, rememberMe ? authData.refreshToken : undefined);
-    saveCurrentUser(authData.user);
+
+    const refreshToken = rememberMe ? authData.refreshToken ?? undefined : undefined;
+
+    saveAuthTokens(authData.accessToken, refreshToken);
+
+    saveCurrentUser({
+      ...authData.user,
+      email: authData.user.email ?? '',
+    } as LoginResponse['user']);
 
     if (rememberMe && authData.refreshToken) {
       localStorage.setItem('keepLoggedIn', 'true');
@@ -180,11 +197,14 @@ export default function Login() {
       rememberMe,
     };
 
-    const data = await fetcher<SocialCompleteProfileResponse>('/auth/social/complete-profile', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
-    });
+    const data = await fetcher<SocialCompleteProfileResponse>(
+      '/auth/social/complete-profile',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      },
+    );
 
     persistAuthSession(
       {
@@ -642,11 +662,7 @@ export default function Login() {
 
             <p className={styles.modalMessage}>{modalMessage}</p>
 
-            <button
-              type="button"
-              className={styles.modalButton}
-              onClick={closeModal}
-            >
+            <button type="button" className={styles.modalButton} onClick={closeModal}>
               확인
             </button>
           </div>
