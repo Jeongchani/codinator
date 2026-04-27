@@ -1,9 +1,9 @@
 /**
- * C:dinator V2 API 통합 테스트 페이지
+ * C:dinator V3 관리자 API 테스트 페이지
  * 사용법: App.tsx에 <Route path="/test" element={<TestPage />} /> 추가 후 /test 접속
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 
 // ─── API 헬퍼 ─────────────────────────────────────────────────────────────────
 
@@ -16,11 +16,17 @@ async function api<T>(method: string, path: string, body?: unknown): Promise<T> 
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok()}` },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
+
   const text = await res.text();
-  let d: unknown;
-  try { d = JSON.parse(text); } catch { d = text; }
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = text;
+  }
+
   if (!res.ok) {
-    const raw = d as Record<string, unknown> | null;
+    const raw = data as Record<string, unknown> | null;
     const msg =
       raw && typeof raw === 'object' && 'message' in raw
         ? Array.isArray(raw.message)
@@ -29,25 +35,8 @@ async function api<T>(method: string, path: string, body?: unknown): Promise<T> 
         : text;
     throw new Error(`[${res.status}] ${msg}`);
   }
-  return d as T;
-}
 
-async function apiForm<T>(method: string, path: string, fd: FormData): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers: { Authorization: `Bearer ${tok()}` },
-    body: fd,
-  });
-  const text = await res.text();
-  let d: unknown;
-  try { d = JSON.parse(text); } catch { d = text; }
-  if (!res.ok) {
-    const raw = d as Record<string, unknown> | null;
-    const msg =
-      raw && typeof raw === 'object' && 'message' in raw ? String(raw.message) : text;
-    throw new Error(`[${res.status}] ${msg}`);
-  }
-  return d as T;
+  return data as T;
 }
 
 const fmt = (v: unknown) => JSON.stringify(v, null, 2);
@@ -58,74 +47,176 @@ function run<T>(fn: () => Promise<T>, set: (s: string) => void) {
     .catch((e: Error) => set(`[Error] ${e.message}`));
 }
 
+function qs(params: Record<string, string | undefined>) {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') q.set(key, value);
+  });
+  const s = q.toString();
+  return s ? `?${s}` : '';
+}
+
 // ─── 공통 UI ─────────────────────────────────────────────────────────────────
 
 const C = {
   card: {
-    border: '1px solid #e2e8f0', borderRadius: 8, padding: 16,
-    marginBottom: 14, background: '#fff',
+    border: '1px solid #e2e8f0',
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 14,
+    background: '#fff',
   } as React.CSSProperties,
   label: {
-    fontSize: 11, color: '#718096', display: 'block', marginBottom: 4,
-    fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.04em',
+    fontSize: 11,
+    color: '#718096',
+    display: 'block',
+    marginBottom: 4,
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.04em',
   } as React.CSSProperties,
   input: {
-    width: '100%', padding: '7px 10px', border: '1px solid #cbd5e0',
-    borderRadius: 6, fontSize: 13, boxSizing: 'border-box' as const, outline: 'none',
+    width: '100%',
+    padding: '8px 10px',
+    border: '1px solid #cbd5e0',
+    borderRadius: 6,
+    fontSize: 13,
+    boxSizing: 'border-box' as const,
+    outline: 'none',
+    background: '#fff',
   } as React.CSSProperties,
   btn: (color = '#4299e1'): React.CSSProperties => ({
-    padding: '7px 14px', background: color, color: '#fff', border: 'none',
-    borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-    marginRight: 6, marginTop: 4,
+    padding: '7px 14px',
+    background: color,
+    color: '#fff',
+    border: 'none',
+    borderRadius: 6,
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: 'pointer',
+    marginRight: 6,
+    marginTop: 4,
   }),
-  tab: (active: boolean, color = '#4299e1'): React.CSSProperties => ({
-    padding: '7px 14px', background: active ? color : '#edf2f7',
-    color: active ? '#fff' : '#4a5568', border: 'none', borderRadius: 6,
-    fontSize: 12, fontWeight: active ? 700 : 500, cursor: 'pointer', marginRight: 6,
-  }),
-  h3: { fontSize: 15, fontWeight: 700, marginBottom: 12, color: '#1a202c' } as React.CSSProperties,
+  h2: {
+    fontSize: 18,
+    fontWeight: 800,
+    marginBottom: 12,
+    color: '#1a202c',
+  } as React.CSSProperties,
+  h3: {
+    fontSize: 15,
+    fontWeight: 700,
+    marginBottom: 12,
+    color: '#1a202c',
+  } as React.CSSProperties,
   info: (color: 'blue' | 'yellow' | 'green' | 'red' = 'blue'): React.CSSProperties => {
     const map = {
-      blue:   { bg: '#ebf8ff', border: '#bee3f8', text: '#2b6cb0' },
+      blue: { bg: '#ebf8ff', border: '#bee3f8', text: '#2b6cb0' },
       yellow: { bg: '#fffbeb', border: '#f6e05e', text: '#7c4a03' },
-      green:  { bg: '#f0fff4', border: '#9ae6b4', text: '#276749' },
-      red:    { bg: '#fff5f5', border: '#feb2b2', text: '#c53030' },
+      green: { bg: '#f0fff4', border: '#9ae6b4', text: '#276749' },
+      red: { bg: '#fff5f5', border: '#feb2b2', text: '#c53030' },
     }[color];
     return {
-      padding: '8px 10px', background: map.bg,
-      border: `1px solid ${map.border}`, color: map.text,
-      borderRadius: 6, fontSize: 11, marginBottom: 10,
+      padding: '8px 10px',
+      background: map.bg,
+      border: `1px solid ${map.border}`,
+      color: map.text,
+      borderRadius: 6,
+      fontSize: 11,
+      marginBottom: 10,
+      lineHeight: 1.5,
     };
   },
 };
 
 function Field({
-  label, value, onChange, placeholder, type = 'text',
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = 'text',
+  disabled = false,
 }: {
-  label: string; value: string; onChange: (v: string) => void;
-  placeholder?: string; type?: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  disabled?: boolean;
 }) {
   return (
     <div style={{ marginBottom: 8 }}>
       <span style={C.label}>{label}</span>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder} style={C.input} />
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+        style={{
+          ...C.input,
+          background: disabled ? '#f7fafc' : '#fff',
+          color: disabled ? '#718096' : '#1a202c',
+          cursor: disabled ? 'not-allowed' : 'text',
+        }}
+      />
+    </div>
+  );
+}
+
+function TextAreaField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  rows = 3,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  rows?: number;
+}) {
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <span style={C.label}>{label}</span>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={rows}
+        style={{ ...C.input, resize: 'vertical', fontFamily: 'inherit' }}
+      />
     </div>
   );
 }
 
 function SelectField({
-  label, value, onChange, options,
+  label,
+  value,
+  onChange,
+  options,
+  width = 240,
 }: {
-  label: string; value: string; onChange: (v: string) => void;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
   options: { value: string; label: string }[];
+  width?: number;
 }) {
   return (
     <div style={{ marginBottom: 8 }}>
       <span style={C.label}>{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)}
-        style={{ ...C.input, width: 220 }}>
-        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{ ...C.input, width }}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
       </select>
     </div>
   );
@@ -135,17 +226,48 @@ function Result({ data }: { data: string }) {
   if (!data) return null;
   const err = data.startsWith('[Error]');
   return (
-    <pre style={{
-      marginTop: 8, padding: 10, borderRadius: 6, fontSize: 11,
-      overflow: 'auto', maxHeight: 260,
-      background: err ? '#fff5f5' : '#f0fff4',
-      border: `1px solid ${err ? '#fc8181' : '#68d391'}`,
-      color: err ? '#c53030' : '#276749',
-    }}>{data}</pre>
+    <pre
+      style={{
+        marginTop: 8,
+        padding: 10,
+        borderRadius: 6,
+        fontSize: 11,
+        overflow: 'auto',
+        maxHeight: 280,
+        background: err ? '#fff5f5' : '#f0fff4',
+        border: `1px solid ${err ? '#fc8181' : '#68d391'}`,
+        color: err ? '#c53030' : '#276749',
+      }}
+    >
+      {data}
+    </pre>
   );
 }
 
-// ─── SECTION 1: 로그인 ────────────────────────────────────────────────────────
+function PageShell({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <>
+      <div style={C.card}>
+        <h2 style={C.h2}>{title}</h2>
+        {description && <div style={C.info('blue')}>{description}</div>}
+        <div style={C.info('yellow')}>
+          관리자 테스트 페이지입니다. 버튼에는 URL을 노출하지 않고 기능명만 표시합니다.
+        </div>
+      </div>
+      {children}
+    </>
+  );
+}
+
+// ─── 로그인 ──────────────────────────────────────────────────────────────────
 
 function S_Login() {
   const [email, setEmail] = useState('admin@codinator.com');
@@ -154,34 +276,48 @@ function S_Login() {
 
   return (
     <div style={C.card}>
-      <h3 style={C.h3}>🔐 로그인</h3>
+      <h2 style={C.h2}>🔐 관리자 로그인</h2>
       <div style={C.info('blue')}>
-        기본값: <strong>admin@codinator.com / 1234</strong> (관리자) — 일반 유저로 테스트하려면 이메일/비밀번호 변경
+        기본값: <strong>admin@codinator.com / 1234</strong>
       </div>
-      <Field label="이메일" value={email} onChange={setEmail} placeholder="user@codinator.com" />
+      <div style={C.info('yellow')}>
+        관리자 권한은 <strong>OPERATOR_ADMIN</strong> 또는 <strong>SUPER_ADMIN</strong> 기준으로 동작한다.
+      </div>
+      <Field label="이메일" value={email} onChange={setEmail} placeholder="admin@codinator.com" />
       <Field label="비밀번호" value={pw} onChange={setPw} type="password" />
-      <button style={C.btn('#2b6cb0')} onClick={() => run(async () => {
-        const d = await api<{
-          accessToken: string; refreshToken?: string;
-          user: { id: number; nickname: string };
-        }>('POST', '/auth/login', { email, password: pw });
-        localStorage.setItem('accessToken', d.accessToken);
-        if (d.refreshToken) localStorage.setItem('refreshToken', d.refreshToken);
-        localStorage.setItem('userId', String(d.user.id));
-        localStorage.setItem('nickname', d.user.nickname);
-        return { '✅ 로그인 성공': true, userId: d.user.id, nickname: d.user.nickname };
-      }, setRes)}>
-        POST /auth/login
+      <button
+        style={C.btn('#2b6cb0')}
+        onClick={() =>
+          run(async () => {
+            const d = await api<{
+              accessToken: string;
+              refreshToken?: string;
+              user: { id: number; nickname: string };
+            }>('POST', '/auth/login', { email, password: pw });
+            localStorage.setItem('accessToken', d.accessToken);
+            if (d.refreshToken) localStorage.setItem('refreshToken', d.refreshToken);
+            localStorage.setItem('userId', String(d.user.id));
+            localStorage.setItem('nickname', d.user.nickname);
+            return { success: true, userId: d.user.id, nickname: d.user.nickname };
+          }, setRes)
+        }
+      >
+        로그인
       </button>
-      <button style={C.btn('#718096')} onClick={() => {
-        localStorage.clear(); setRes(fmt({ message: '로그아웃 완료 (로컬 토큰 삭제)' }));
-      }}>
-        로그아웃 (토큰 삭제)
+      <button
+        style={C.btn('#718096')}
+        onClick={() => {
+          localStorage.clear();
+          setRes(fmt({ message: '로그아웃 완료 (로컬 토큰 삭제)' }));
+        }}
+      >
+        로그아웃
       </button>
+
       {tok() && (
         <div style={{ ...C.info('green'), marginTop: 8 }}>
-          ✅ 현재 토큰 보유 — userId: <strong>{localStorage.getItem('userId')}</strong> /
-          닉네임: <strong>{localStorage.getItem('nickname')}</strong>
+          ✅ 현재 토큰 보유 — userId: <strong>{localStorage.getItem('userId')}</strong> / 닉네임:{' '}
+          <strong>{localStorage.getItem('nickname')}</strong>
         </div>
       )}
       <Result data={res} />
@@ -189,1463 +325,1217 @@ function S_Login() {
   );
 }
 
-// ─── SECTION 2: 마이페이지 ────────────────────────────────────────────────────
+// ─── 관리자 홈 ───────────────────────────────────────────────────────────────
 
-function S_MyPage() {
-  const [nickname, setNickname] = useState('');
-  const [phone, setPhone] = useState('');
-  const [curPw, setCurPw] = useState('');
-  const [newPw, setNewPw] = useState('');
-  const [res, setRes] = useState('');
+type AdminPageKey =
+  | 'login'
+  | 'admin-home'
+  | 'admin-reports'
+  | 'admin-operations'
+  | 'admin-masters'
+  | 'admin-sanctions'
+  | 'admin-logs';
 
+function S_AdminHome({ onMove }: { onMove: (page: AdminPageKey) => void }) {
   return (
-    <>
-      <div style={C.card}>
-        <h3 style={C.h3}>👤 내 프로필 조회</h3>
-        <button style={C.btn('#38a169')} onClick={() => run(() => api('GET', '/users/me'), setRes)}>
-          GET /users/me
-        </button>
-        <Result data={res} />
+    <PageShell
+      title="🛠️ 관리자 테스트 홈"
+      description="각 관리자 기능을 별도 페이지 성격의 화면으로 분리했다. 왼쪽 메뉴 또는 아래 바로가기 카드로 이동할 수 있다."
+    >
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
+        {[
+          { key: 'admin-reports' as const, title: '🚨 신고 관리', desc: '신고 목록 / 처리 / 재오픈' },
+          { key: 'admin-operations' as const, title: '⚙️ 게시글·회원 운영', desc: '게시글 상태 / 회원 상태 / 목록 조회' },
+          { key: 'admin-masters' as const, title: '📚 마스터 관리', desc: '키워드 / 피드백 태그 관리' },
+          { key: 'admin-sanctions' as const, title: '🚫 제재 관리', desc: '제재 생성 / 종료 / 제한 제재 생성' },
+          { key: 'admin-logs' as const, title: '📜 로그·이력', desc: '액션 로그 / 신고 이력 조회' },
+        ].map((item) => (
+          <div key={item.key} style={{ ...C.card, marginBottom: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#2d3748', marginBottom: 6 }}>
+              {item.title}
+            </div>
+            <div style={{ fontSize: 12, color: '#718096', marginBottom: 12 }}>{item.desc}</div>
+            <button style={C.btn('#553c9a')} onClick={() => onMove(item.key)}>
+              페이지 열기
+            </button>
+          </div>
+        ))}
       </div>
-      <div style={C.card}>
-        <h3 style={C.h3}>✏️ 프로필 수정</h3>
-        <div style={C.info('blue')}>빈 칸으로 두면 해당 필드는 변경하지 않습니다.</div>
-        <Field label="새 닉네임 (선택)" value={nickname} onChange={setNickname} placeholder="변경할 닉네임" />
-        <Field label="전화번호 (선택)" value={phone} onChange={setPhone} placeholder="010-1234-5678" />
-        <button style={C.btn('#ed8936')} onClick={() => {
-          const body: Record<string, string> = {};
-          if (nickname.trim()) body.nickname = nickname.trim();
-          if (phone.trim()) body.phoneNumber = phone.trim();
-          if (!Object.keys(body).length) { setRes('[Error] 닉네임 또는 전화번호를 입력하세요'); return; }
-          run(() => api('PATCH', '/users/me', body), setRes);
-        }}>
-          PATCH /users/me
-        </button>
-        <Result data={res} />
-      </div>
-      <div style={C.card}>
-        <h3 style={C.h3}>🔒 비밀번호 변경</h3>
-        <Field label="현재 비밀번호" value={curPw} onChange={setCurPw} type="password" />
-        <Field label="새 비밀번호" value={newPw} onChange={setNewPw} type="password" />
-        <button style={C.btn('#e53e3e')} onClick={() =>
-          run(() => api('PATCH', '/users/me/password', { currentPassword: curPw, newPassword: newPw }), setRes)
-        }>
-          PATCH /users/me/password
-        </button>
-        <Result data={res} />
-      </div>
-    </>
+    </PageShell>
   );
 }
 
-// ─── SECTION 3: 관리자 ────────────────────────────────────────────────────────
+// ─── 신고 관리 ───────────────────────────────────────────────────────────────
 
-function S_Admin() {
-  const [tab, setTab] = useState<'postList' | 'userList' | 'handlePost' | 'handleUser'>('postList');
-  const [status, setStatus] = useState('PENDING');
-  const [reportId, setReportId] = useState('');
-  const [action, setAction] = useState('RESOLVED');
+function S_AdminReports() {
+  const [res, setRes] = useState('');
+
+  const [listType, setListType] = useState<'post' | 'user'>('post');
+  const [listStatus, setListStatus] = useState('PENDING');
+
+  const [reviewType, setReviewType] = useState<'post' | 'user'>('post');
+  const [reviewReportId, setReviewReportId] = useState('');
+  const [reviewAction, setReviewAction] = useState('RESOLVED');
+  const [reviewReason, setReviewReason] = useState('');
+
+  const [reopenType, setReopenType] = useState<'post' | 'user'>('post');
+  const [reopenReportId, setReopenReportId] = useState('');
+  const [reopenReason, setReopenReason] = useState('');
+
+  return (
+    <PageShell
+      title="🚨 신고 관리"
+      description="게시글 신고 / 사용자 신고 목록 조회, 처리, 재오픈을 각각 관리한다."
+    >
+      <div style={C.info('yellow')}>
+        신고 처리 요청 body는 <strong>status</strong>가 아니라 <strong>action</strong> 기준이다.
+      </div>
+
+      <div style={C.card}>
+        <h3 style={C.h3}>📋 신고 목록 조회</h3>
+        <SelectField
+          label="신고 유형"
+          value={listType}
+          onChange={(v) => setListType(v as 'post' | 'user')}
+          options={[
+            { value: 'post', label: '게시글 신고' },
+            { value: 'user', label: '사용자 신고' },
+          ]}
+        />
+        <SelectField
+          label="상태 필터"
+          value={listStatus}
+          onChange={setListStatus}
+          options={[
+            { value: '', label: '전체' },
+            { value: 'PENDING', label: 'PENDING — 미처리' },
+            { value: 'RESOLVED', label: 'RESOLVED — 처리 완료' },
+            { value: 'REJECTED', label: 'REJECTED — 반려' },
+          ]}
+        />
+        <button
+          style={C.btn('#553c9a')}
+          onClick={() => {
+            const path = listType === 'post' ? '/admin/post-reports' : '/admin/user-reports';
+            run(() => api('GET', `${path}${qs({ status: listStatus })}`), setRes);
+          }}
+        >
+          신고 목록 조회
+        </button>
+      </div>
+
+      <div style={C.card}>
+        <h3 style={C.h3}>✅ 신고 처리</h3>
+        <SelectField
+          label="신고 유형"
+          value={reviewType}
+          onChange={(v) => setReviewType(v as 'post' | 'user')}
+          options={[
+            { value: 'post', label: '게시글 신고' },
+            { value: 'user', label: '사용자 신고' },
+          ]}
+        />
+        <Field
+          label="신고 ID (reportId)"
+          value={reviewReportId}
+          onChange={setReviewReportId}
+          placeholder="ex) 3"
+        />
+        <SelectField
+          label="처리 결과"
+          value={reviewAction}
+          onChange={setReviewAction}
+          options={[
+            { value: 'RESOLVED', label: 'RESOLVED — 신고 처리 완료' },
+            { value: 'REJECTED', label: 'REJECTED — 신고 반려' },
+          ]}
+        />
+        <TextAreaField
+          label="처리 사유 (선택)"
+          value={reviewReason}
+          onChange={setReviewReason}
+          placeholder="review_reason에 저장할 처리 사유"
+        />
+        <button
+          style={C.btn('#e53e3e')}
+          onClick={() => {
+            const path =
+              reviewType === 'post'
+                ? `/admin/post-reports/${reviewReportId}`
+                : `/admin/user-reports/${reviewReportId}`;
+            const body: Record<string, unknown> = { action: reviewAction };
+            if (reviewReason.trim()) body.reason = reviewReason.trim();
+            run(() => api('PATCH', path, body), setRes);
+          }}
+        >
+          신고 처리 적용
+        </button>
+      </div>
+
+      <div style={C.card}>
+        <h3 style={C.h3}>🔄 신고 재오픈</h3>
+        <SelectField
+          label="신고 유형"
+          value={reopenType}
+          onChange={(v) => setReopenType(v as 'post' | 'user')}
+          options={[
+            { value: 'post', label: '게시글 신고' },
+            { value: 'user', label: '사용자 신고' },
+          ]}
+        />
+        <Field
+          label="신고 ID (reportId)"
+          value={reopenReportId}
+          onChange={setReopenReportId}
+          placeholder="ex) 3"
+        />
+        <TextAreaField
+          label="재오픈 사유 (선택)"
+          value={reopenReason}
+          onChange={setReopenReason}
+          placeholder="추가 검토 필요"
+        />
+        <button
+          style={C.btn('#ed8936')}
+          onClick={() => {
+            const path =
+              reopenType === 'post'
+                ? `/admin/post-reports/${reopenReportId}/reopen`
+                : `/admin/user-reports/${reopenReportId}/reopen`;
+            const body: Record<string, unknown> = {};
+            if (reopenReason.trim()) body.reason = reopenReason.trim();
+            run(() => api('PATCH', path, body), setRes);
+          }}
+        >
+          신고 재오픈
+        </button>
+      </div>
+
+      <Result data={res} />
+    </PageShell>
+  );
+}
+
+// ─── 게시글·회원 운영 ───────────────────────────────────────────────────────
+
+function S_AdminOperations() {
+  const [res, setRes] = useState('');
+
+  const [postStatusFilter, setPostStatusFilter] = useState('');
+  const [postCursor, setPostCursor] = useState('');
+  const [postLimit, setPostLimit] = useState('20');
   const [postId, setPostId] = useState('');
   const [postStatus, setPostStatus] = useState('HIDDEN');
   const [hiddenReason, setHiddenReason] = useState('');
-  const [res, setRes] = useState('');
 
-  const tabs = [
-    { key: 'postList'  as const, label: '📋 게시글 신고 목록' },
-    { key: 'userList'  as const, label: '👥 사용자 신고 목록' },
-    { key: 'handlePost' as const, label: '✅ 게시글 신고 처리' },
-    { key: 'handleUser' as const, label: '✅ 사용자 신고 처리' },
-  ];
-
-  return (
-    <>
-      <div style={C.info('yellow')}>
-        ⚠️ 관리자(ADMIN) 계정으로 로그인 후 사용하세요. 일반 계정은 403 Forbidden이 반환됩니다.
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
-        {tabs.map((t) => (
-          <button key={t.key} onClick={() => { setTab(t.key); setRes(''); }}
-            style={C.tab(tab === t.key, '#553c9a')}>{t.label}</button>
-        ))}
-      </div>
-
-      {(tab === 'postList' || tab === 'userList') && (
-        <div style={C.card}>
-          <h3 style={C.h3}>{tab === 'postList' ? '📋 게시글 신고 목록' : '👥 사용자 신고 목록'}</h3>
-          <SelectField label="상태 필터" value={status} onChange={setStatus} options={[
-            { value: '', label: '전체' },
-            { value: 'PENDING',  label: 'PENDING (미처리)' },
-            { value: 'RESOLVED', label: 'RESOLVED (처리 완료)' },
-            { value: 'REJECTED', label: 'REJECTED (반려)' },
-          ]} />
-          <button style={C.btn('#553c9a')} onClick={() => {
-            const qs   = status ? `?status=${status}` : '';
-            const path = tab === 'postList' ? `/admin/post-reports${qs}` : `/admin/user-reports${qs}`;
-            run(() => api('GET', path), setRes);
-          }}>조회</button>
-          <Result data={res} />
-        </div>
-      )}
-
-      {tab === 'handlePost' && (
-        <div style={C.card}>
-          <h3 style={C.h3}>✅ 게시글 신고 처리</h3>
-          <div style={C.info('blue')}>신고 목록에서 reportId를 확인한 후 입력하세요.</div>
-          <Field label="신고 ID (reportId)" value={reportId} onChange={setReportId} placeholder="ex) 3" />
-          <SelectField label="처리 결과" value={action} onChange={setAction} options={[
-            { value: 'RESOLVED', label: 'RESOLVED — 신고 처리 완료' },
-            { value: 'REJECTED', label: 'REJECTED — 신고 반려' },
-          ]} />
-          <button style={C.btn('#e53e3e')} onClick={() =>
-            run(() => api('PATCH', `/admin/post-reports/${reportId}`, { action }), setRes)
-          }>PATCH /admin/post-reports/:reportId</button>
-          <Result data={res} />
-        </div>
-      )}
-
-      {tab === 'handleUser' && (
-        <div style={C.card}>
-          <h3 style={C.h3}>✅ 사용자 신고 처리</h3>
-          <Field label="신고 ID (reportId)" value={reportId} onChange={setReportId} placeholder="ex) 5" />
-          <SelectField label="처리 결과" value={action} onChange={setAction} options={[
-            { value: 'RESOLVED', label: 'RESOLVED — 신고 처리 완료' },
-            { value: 'REJECTED', label: 'REJECTED — 신고 반려' },
-          ]} />
-          <button style={C.btn('#e53e3e')} onClick={() =>
-            run(() => api('PATCH', `/admin/user-reports/${reportId}`, { action }), setRes)
-          }>PATCH /admin/user-reports/:reportId</button>
-
-          <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #e2e8f0' }}>
-            <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: '#4a5568' }}>
-              🚫 게시글 상태 강제 변경 (ADMIN)
-            </h4>
-            <Field label="게시글 ID (postId)" value={postId} onChange={setPostId} placeholder="ex) 12" />
-            <SelectField label="변경할 상태" value={postStatus} onChange={setPostStatus} options={[
-              { value: 'ACTIVE',  label: 'ACTIVE — 숨김 해제' },
-              { value: 'HIDDEN',  label: 'HIDDEN — 숨김' },
-              { value: 'DELETED', label: 'DELETED — 삭제' },
-            ]} />
-            {postStatus === 'HIDDEN' && (
-              <Field label="숨김 사유 (선택, 최대 255자)" value={hiddenReason}
-                onChange={setHiddenReason} placeholder="커뮤니티 가이드라인 위반" />
-            )}
-            <button style={C.btn('#553c9a')} onClick={() => {
-              const body: Record<string, unknown> = { status: postStatus };
-              if (postStatus === 'HIDDEN' && hiddenReason.trim()) body.hiddenReason = hiddenReason.trim();
-              run(() => api('PATCH', `/admin/posts/${postId}/status`, body), setRes);
-            }}>PATCH /admin/posts/:postId/status</button>
-          </div>
-          <Result data={res} />
-        </div>
-      )}
-    </>
-  );
-}
-
-// ─── SECTION 4: 북마크 ────────────────────────────────────────────────────────
-
-function S_Bookmarks() {
-  const [postId, setPostId] = useState('');
-  const [res, setRes] = useState('');
-
-  return (
-    <>
-      <div style={C.card}>
-        <h3 style={C.h3}>🔖 내 북마크 목록</h3>
-        <button style={C.btn('#38a169')} onClick={() => run(() => api('GET', '/users/me/bookmarks'), setRes)}>
-          GET /users/me/bookmarks
-        </button>
-        <Result data={res} />
-      </div>
-      <div style={C.card}>
-        <h3 style={C.h3}>➕ 북마크 추가</h3>
-        <div style={C.info('blue')}>OPEN / ENDED / CLOSED 상태 게시글 모두 북마크 가능합니다.</div>
-        <Field label="게시글 ID (postId)" value={postId} onChange={setPostId} placeholder="ex) 12" />
-        <button style={C.btn('#ed8936')} onClick={() => run(() => api('POST', `/posts/${postId}/bookmarks`), setRes)}>
-          POST /posts/:postId/bookmarks
-        </button>
-        <Result data={res} />
-      </div>
-      <div style={C.card}>
-        <h3 style={C.h3}>🗑️ 북마크 삭제</h3>
-        <Field label="게시글 ID (postId)" value={postId} onChange={setPostId} placeholder="ex) 12" />
-        <button style={C.btn('#e53e3e')} onClick={() => run(() => api('DELETE', `/posts/${postId}/bookmarks`), setRes)}>
-          DELETE /posts/:postId/bookmarks
-        </button>
-        <Result data={res} />
-      </div>
-    </>
-  );
-}
-
-// ─── SECTION 5: 내 피드 ───────────────────────────────────────────────────────
-
-function S_MyFeed() {
-  const [tab, setTab] = useState<'list' | 'detail' | 'edit'>('list');
-  const [allItems, setAllItems] = useState<Record<string, unknown>[]>([]);
-  const [filter, setFilter] = useState<'ALL' | 'OPEN' | 'ENDED' | 'HIDDEN'>('ALL');
-  const [postId, setPostId] = useState('');
-  const [content, setContent] = useState('');
-  const [outfitRaw, setOutfitRaw] = useState('');
-  const [res, setRes] = useState('');
-
-  type FeedItem = { postId: number; postStatus: string; content?: string; evaluation?: { status: string } };
-
-  const filtered = (allItems as unknown as FeedItem[]).filter((item) => {
-    if (filter === 'ALL')    return true;
-    if (filter === 'OPEN')   return item.evaluation?.status === 'OPEN';
-    if (filter === 'ENDED')  return item.evaluation?.status === 'ENDED';
-    if (filter === 'HIDDEN') return item.postStatus === 'HIDDEN';
-    return true;
-  });
-
-  const tabs = [
-    { key: 'list'   as const, label: '📋 피드 목록' },
-    { key: 'detail' as const, label: '🔍 게시글 상세' },
-    { key: 'edit'   as const, label: '✏️ 게시글 수정' },
-  ];
-
-  return (
-    <>
-      <div style={C.info('green')}>
-        💡 <strong>게시글 수정 위치 제안:</strong> 실제 서비스에서는 <code>MyFeedDetail</code> 페이지 내부에
-        수정 버튼을 배치하는 것이 자연스럽습니다.
-      </div>
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-        {tabs.map((t) => (
-          <button key={t.key} onClick={() => { setTab(t.key); setRes(''); }}
-            style={C.tab(tab === t.key, '#2b6cb0')}>{t.label}</button>
-        ))}
-      </div>
-
-      {tab === 'list' && (
-        <div style={C.card}>
-          <h3 style={C.h3}>📋 내 피드 목록 (상태 필터)</h3>
-          <div style={C.info('blue')}>
-            서버에서 전체 목록을 가져온 뒤 클라이언트에서 필터합니다.
-            OPEN=평가중, ENDED=평가완료, HIDDEN=숨김 처리됨.
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-            {(['ALL', 'OPEN', 'ENDED', 'HIDDEN'] as const).map((f) => {
-              const colorMap = { ALL: '#4a5568', OPEN: '#38a169', ENDED: '#2b6cb0', HIDDEN: '#e53e3e' };
-              const active = filter === f;
-              return (
-                <button key={f} onClick={() => setFilter(f)} style={{
-                  padding: '6px 14px', borderRadius: 20, border: `2px solid ${colorMap[f]}`,
-                  background: active ? colorMap[f] : '#fff', color: active ? '#fff' : colorMap[f],
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                }}>{f}</button>
-              );
-            })}
-          </div>
-          <button style={C.btn('#38a169')} onClick={() => {
-            api<{ items: Record<string, unknown>[] }>('GET', '/users/me/feed')
-              .then((d) => { setAllItems(d.items); setRes(fmt(d)); })
-              .catch((e: Error) => setRes(`[Error] ${e.message}`));
-          }}>GET /users/me/feed</button>
-          {allItems.length > 0 && (
-            <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>
-                전체 {allItems.length}건 → <strong>{filter}</strong> 필터 결과: {filtered.length}건
-              </div>
-              {filtered.map((item) => (
-                <div key={item.postId} style={{
-                  padding: '8px 12px', background: '#f7fafc', borderRadius: 6, marginBottom: 4,
-                  fontSize: 12, border: '1px solid #e2e8f0', display: 'flex', gap: 10, alignItems: 'center',
-                }}>
-                  <span><strong>#{item.postId}</strong></span>
-                  <span style={{ color: item.postStatus === 'HIDDEN' ? '#e53e3e' : '#2d3748' }}>{item.postStatus}</span>
-                  <span style={{ color: '#38a169' }}>{item.evaluation?.status ?? '—'}</span>
-                  <span style={{ color: '#718096', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {String(item.content ?? '').slice(0, 40)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-          <Result data={res} />
-        </div>
-      )}
-
-      {tab === 'detail' && (
-        <div style={C.card}>
-          <h3 style={C.h3}>🔍 내 피드 게시글 상세 (소유자 전용)</h3>
-          <div style={C.info('green')}>소유자는 OPEN / ENDED / CLOSED / HIDDEN 상태 게시글 모두 조회 가능.</div>
-          <Field label="postId" value={postId} onChange={setPostId} placeholder="조회할 게시글 ID" />
-          <button style={C.btn('#2b6cb0')} onClick={() => run(() => api('GET', `/users/me/feed/${postId}`), setRes)}>
-            GET /users/me/feed/:postId
-          </button>
-          <Result data={res} />
-        </div>
-      )}
-
-      {tab === 'edit' && (
-        <div style={C.card}>
-          <h3 style={C.h3}>✏️ 게시글 수정</h3>
-          <div style={C.info('yellow')}>
-            ⚠️ <strong>content</strong>: ENDED / CLOSED 상태에서만 수정 가능 &nbsp;|&nbsp;
-            <strong>outfitItems</strong>: 모든 상태(OPEN 포함)에서 수정 가능 &nbsp;|&nbsp;
-            <strong>게시글 숨김(hide)</strong>: ACTIVE 상태에서만 가능
-          </div>
-          <Field label="postId (수정할 게시글 ID)" value={postId} onChange={setPostId} placeholder="ex) 12" />
-          <Field label="content (선택 — ENDED/CLOSED만 수정됨)" value={content} onChange={setContent}
-            placeholder="수정할 본문 내용" />
-          <div style={{ marginBottom: 8 }}>
-            <span style={C.label}>outfitItems JSON 배열 (선택 — 전체 교체)</span>
-            <textarea value={outfitRaw} onChange={(e) => setOutfitRaw(e.target.value)}
-              placeholder={'[{"category":"TOP","itemName":"화이트셔츠","brand":"SPAO"}]'}
-              style={{ ...C.input, height: 68, resize: 'vertical', fontFamily: 'monospace' }} />
-          </div>
-          <button style={C.btn('#ed8936')} onClick={() => {
-            const body: Record<string, unknown> = {};
-            if (content.trim()) body.content = content.trim();
-            if (outfitRaw.trim()) {
-              try { body.outfitItems = JSON.parse(outfitRaw); }
-              catch { setRes('[Error] outfitItems JSON 파싱 실패'); return; }
-            }
-            if (!Object.keys(body).length) { setRes('[Error] content 또는 outfitItems 중 하나를 입력하세요'); return; }
-            run(() => api('PATCH', `/posts/${postId}`, body), setRes);
-          }}>PATCH /posts/:postId (수정)</button>
-          <button style={C.btn('#e53e3e')} onClick={() => run(() => api('PATCH', `/posts/${postId}/hide`, {}), setRes)}>
-            PATCH /posts/:postId/hide (숨김)
-          </button>
-          <button style={C.btn('#718096')} onClick={() => run(() => api('DELETE', `/posts/${postId}`), setRes)}>
-            DELETE /posts/:postId (삭제)
-          </button>
-          <Result data={res} />
-        </div>
-      )}
-    </>
-  );
-}
-
-// ─── SECTION 6: 타 사용자 피드 ───────────────────────────────────────────────
-
-function S_UserFeed() {
+  const [userStatusFilter, setUserStatusFilter] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState('');
+  const [userCursor, setUserCursor] = useState('');
+  const [userLimit, setUserLimit] = useState('20');
   const [userId, setUserId] = useState('');
-  const [postId, setPostId] = useState('');
-  const [res, setRes] = useState('');
+  const [userStatus, setUserStatus] = useState('SUSPENDED');
+  const [userReason, setUserReason] = useState('');
 
   return (
-    <>
+    <PageShell
+      title="⚙️ 게시글·회원 운영"
+      description="게시글 목록/상태 변경과 회원 목록/상태 변경을 분리해서 테스트한다."
+    >
+      <div style={C.info('yellow')}>
+        회원 상태는 <strong>ACTIVE / SUSPENDED / DELETED</strong>만 사용한다.
+      </div>
+
       <div style={C.card}>
-        <h3 style={C.h3}>👥 타 사용자 피드 목록 (랭킹 등재 게시글만)</h3>
-        <div style={C.info('blue')}>
-          ENDED + 랭킹 등재 게시글만 반환됩니다. OPEN(평가중) 게시글은 작성자 비공개 정책으로 제외.
-        </div>
-        <Field label="대상 userId" value={userId} onChange={setUserId} placeholder="조회할 유저 ID" />
-        <button style={C.btn('#38a169')} onClick={() => run(() => api('GET', `/users/${userId}/feed`), setRes)}>
-          GET /users/:userId/feed
-        </button>
-        <Result data={res} />
-      </div>
-      <div style={C.card}>
-        <h3 style={C.h3}>🔍 타 사용자 피드 게시글 상세</h3>
-        <Field label="대상 userId" value={userId} onChange={setUserId} placeholder="userId" />
-        <Field label="postId" value={postId} onChange={setPostId} placeholder="postId" />
-        <button style={C.btn('#2b6cb0')} onClick={() => run(() => api('GET', `/users/${userId}/feed/${postId}`), setRes)}>
-          GET /users/:userId/feed/:postId
-        </button>
-        <Result data={res} />
-      </div>
-    </>
-  );
-}
-
-// ─── SECTION 7: 검색 ──────────────────────────────────────────────────────────
-
-function S_Search() {
-  const [q, setQ] = useState('');
-  const [type, setType] = useState('ALL');
-  const [res, setRes] = useState('');
-
-  return (
-    <div style={C.card}>
-      <h3 style={C.h3}>🔍 통합 검색</h3>
-      <div style={C.info('blue')}>
-        OPEN(평가중) 게시글은 작성자 익명성 보호를 위해 검색 결과에서 제외됩니다.
-        ENDED + 랭킹 등재 게시글만 POST 검색에 포함됩니다.
-      </div>
-      <Field label="검색어 (q — 1자 이상)" value={q} onChange={setQ}
-        placeholder="닉네임 / 키워드 / 게시글 본문 내용" />
-      <SelectField label="검색 타입" value={type} onChange={setType} options={[
-        { value: 'ALL',      label: 'ALL — 통합 검색 (닉네임 + 키워드 + 게시글)' },
-        { value: 'NICKNAME', label: 'NICKNAME — 닉네임 검색' },
-        { value: 'KEYWORD',  label: 'KEYWORD — 태그 키워드 검색' },
-        { value: 'POST',     label: 'POST — 게시글 본문(content) 검색' },
-      ]} />
-      <button style={C.btn('#2b6cb0')} onClick={() => {
-        if (!q.trim()) { setRes('[Error] 검색어를 입력하세요'); return; }
-        run(() => api('GET', `/search?q=${encodeURIComponent(q.trim())}&type=${type}`), setRes);
-      }}>GET /search</button>
-      <Result data={res} />
-    </div>
-  );
-}
-
-// ─── SECTION 8: 게시글 작성 ───────────────────────────────────────────────────
-
-/** 업로드 API 응답 */
-type UploadedImg = {
-  originalImageUrl: string;
-  processedImageUrl: string | null;
-  thumbnailUrl: string | null;
-  storageKey: string | null;
-  blurMethod: 'NONE' | 'AUTO' | 'MANUAL';
-  aiBlurStatus: 'NONE' | 'PENDING' | 'PROCESSING' | 'DONE' | 'FAILED';
-};
-
-type PostFlowStep = 'idle' | 'blur_decision' | 'manual_editor' | 'creating' | 'done';
-type BlurChoice   = 'auto' | 'manual';
-
-const ASSET    = 'http://localhost:3000';
-const assetUrl = (url: string | null) =>
-  url ? (url.startsWith('/') ? `${ASSET}${url}` : url) : null;
-
-// ── 공통 모달 래퍼 ─────────────────────────────────────────────────────────
-function Modal({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)',
-      zIndex: 2000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-      padding: '20px 12px', overflowY: 'auto',
-    }}>
-      <div style={{
-        background: '#fff', borderRadius: 14, padding: 22,
-        maxWidth: wide ? 760 : 540, width: '100%',
-        boxShadow: '0 24px 64px rgba(0,0,0,0.4)',
-        marginTop: 12, marginBottom: 12,
-      }}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-// ── 이미지 비교 패널 ─────────────────────────────────────────────────────────
-function ImgCompare({ img, manualPreview }: { img: UploadedImg; manualPreview?: string | null }) {
-  const origUrl    = assetUrl(img.originalImageUrl);
-  const aiUrl      = assetUrl(img.processedImageUrl);
-  const showManual = !!manualPreview;
-
-  const imgStyle: React.CSSProperties = {
-    width: '100%', maxHeight: 260, objectFit: 'contain',
-    borderRadius: 8, background: '#f7fafc', display: 'block',
-  };
-
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: showManual ? '1fr 1fr 1fr' : '1fr 1fr', gap: 10, marginBottom: 16 }}>
-      <div>
-        <div style={{ fontSize: 10, fontWeight: 700, color: '#718096', textTransform: 'uppercase', textAlign: 'center', marginBottom: 6 }}>원본</div>
-        {origUrl
-          ? <img src={origUrl} alt="원본" style={{ ...imgStyle, border: '1px solid #e2e8f0' }} />
-          : <div style={{ height: 120, background: '#f7fafc', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#a0aec0' }}>없음</div>}
-      </div>
-      <div>
-        <div style={{ fontSize: 10, fontWeight: 700, textAlign: 'center', marginBottom: 6,
-          color: img.aiBlurStatus === 'FAILED' ? '#c53030' : '#276749', textTransform: 'uppercase' }}>
-          AI 블러 {img.aiBlurStatus === 'FAILED' ? '❌ 실패' : `✅ ${img.aiBlurStatus}`}
-        </div>
-        {aiUrl && img.aiBlurStatus !== 'FAILED'
-          ? <img src={aiUrl} alt="AI블러" style={{ ...imgStyle, border: '2px solid #68d391' }} />
-          : <div style={{ height: 120, background: '#fff5f5', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#c53030', border: '2px solid #fc8181' }}>블러 미처리</div>}
-      </div>
-      {showManual && (
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#d69e2e', textTransform: 'uppercase', textAlign: 'center', marginBottom: 6 }}>수동 블러 🔵</div>
-          <img src={manualPreview!} alt="수동블러" style={{ ...imgStyle, border: '2px solid #d69e2e' }} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── 수동 블러 편집기 ────────────────────────────────────────────────────────
-//
-//  [근본 원인 수정] canvas taint 문제
-//  originalImageUrl 이 "http://localhost:3000/uploads/..." 같은 절대 URL이면
-//  브라우저가 크로스-오리진으로 처리 → canvas tainted → getImageData 전부 실패
-//  → 모자이크/지우개/뒤로가기 모두 동작 안 함.
-//
-//  vite.config.ts 에 /uploads 프록시가 이미 등록되어 있으므로,
-//  "http://localhost:PORT" prefix 를 제거 → Vite 프록시 경유 → 동일 오리진.
-//
-//  구조:
-//   displayCanvas — 화면에 표시 (원본 + 모자이크 합성)
-//   origCanvas    — 숨김, 절대 수정 안 함. 원본 픽셀 보존.
-//                   · 펜슬:  origCanvas → pixelate → displayCanvas
-//                   · 지우개: origCanvas → 그대로 복원 → displayCanvas
-//   historyRef    — mousedown마다 displayCanvas ImageData 스냅샷 → undo
-// ────────────────────────────────────────────────────────────────────────────
-function ManualBlurEditor({
-  originalImageUrl,
-  onApprove,
-  onCancel,
-}: {
-  originalImageUrl: string;
-  onApprove: (file: File, previewDataUrl: string) => void;
-  onCancel: () => void;
-}) {
-  const [tool, setTool]           = useState<'pencil' | 'eraser'>('pencil');
-  const [brushSize, setBrushSize] = useState(56);
-  const [imgLoaded, setImgLoaded] = useState(false);
-  const [approving, setApproving] = useState(false);
-  const [canUndo, setCanUndo]     = useState(false);
-  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
-
-  // Refs: event handler 내부에서 stale closure 없이 최신 값 참조
-  const toolRef          = useRef<'pencil' | 'eraser'>('pencil');
-  const brushRef         = useRef(40);
-  const displayCanvasRef = useRef<HTMLCanvasElement>(null);
-  const origCanvasRef    = useRef<HTMLCanvasElement>(null);
-  const containerRef     = useRef<HTMLDivElement>(null);
-  const isDrawing        = useRef(false);
-  const lastCvsPos       = useRef<{ x: number; y: number } | null>(null);
-  const historyRef       = useRef<ImageData[]>([]);
-
-  const changeTool  = (t: 'pencil' | 'eraser') => { toolRef.current = t;  setTool(t); };
-  const changeBrush = (v: number)               => { brushRef.current = v; setBrushSize(v); };
-
-  // ── 이미지 로드 ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    let cancelled = false;
-
-    // "http://localhost:PORT/uploads/..." → "/uploads/..." (Vite 프록시 경유)
-    // 크로스-오리진 완전 회피 → canvas taint 없음 → getImageData 정상 동작
-    const sameOriginUrl = originalImageUrl.replace(/^https?:\/\/localhost:\d+/, '');
-
-    const img = new Image();
-    img.onload = () => {
-      if (cancelled) return;
-      const dc = displayCanvasRef.current;
-      const oc = origCanvasRef.current;
-      if (!dc || !oc) return;
-
-      const W = img.naturalWidth;
-      const H = img.naturalHeight;
-
-      // 내부 해상도 = 이미지 원본 픽셀 크기
-      dc.width = oc.width   = W;
-      dc.height = oc.height = H;
-      dc.getContext('2d')!.drawImage(img, 0, 0);
-      oc.getContext('2d')!.drawImage(img, 0, 0); // 원본 보존용 — 이후 절대 수정 안 함
-
-      // CSS: 항상 컨테이너 너비를 100% 꽉 채움, 높이는 비율 자동
-      // canvas 의 width/height 어트리뷰트(내부 해상도)가 비율을 정의하므로
-      // width: 100% + height: auto → 왜곡 없이 비율 유지하며 꽉 참
-      dc.style.width     = '100%';
-      dc.style.height    = 'auto';
-      dc.style.maxWidth  = '';
-      dc.style.maxHeight = '';
-
-      historyRef.current = [];
-      setCanUndo(false);
-      setImgLoaded(true);
-    };
-    img.src = sameOriginUrl;
-
-    return () => { cancelled = true; };
-  }, [originalImageUrl]);
-
-  // ── 스냅샷 저장 (뒤로가기용) ──────────────────────────────────────────────
-  const saveSnapshot = () => {
-    const dc = displayCanvasRef.current;
-    if (!dc) return;
-    // same-origin 이므로 getImageData 정상 동작. try/catch 는 방어용.
-    try {
-      const snap = dc.getContext('2d')!.getImageData(0, 0, dc.width, dc.height);
-      historyRef.current.push(snap);
-      if (historyRef.current.length > 30) historyRef.current.shift();
-      setCanUndo(true);
-    } catch { /* 예외 발생 시 스냅샷 생략, 페인팅은 계속 */ }
-  };
-
-  // ── 뒤로가기 (마지막 스트로크 취소) ──────────────────────────────────────
-  const handleUndo = () => {
-    const dc = displayCanvasRef.current;
-    if (!dc || !historyRef.current.length) return;
-    const prev = historyRef.current.pop()!;
-    dc.getContext('2d')!.putImageData(prev, 0, 0);
-    setCanUndo(historyRef.current.length > 0);
-  };
-
-  // ── 그리드 정렬 모자이크 / 지우개 ────────────────────────────────────────
-  //
-  //  [핵심 원리] 픽셀이 겹치지 않으려면 고정 격자(grid)에 스냅해야 함.
-  //  브러시가 지나가는 영역의 각 격자 칸을 개별적으로 처리하며,
-  //  같은 칸을 여러 번 칠해도 항상 origCanvas 에서 읽으므로 결과가 동일(idempotent).
-  //  → 드래그해도 블록이 겹치거나 어긋나지 않는 깔끔한 타일 패턴.
-  //
-  //  BLOCK 크기 = 이미지 짧은 쪽 / 22 (이미지 해상도에 따라 자동 스케일)
-  //              최소 20px 보장 → 강한 모자이크 강도 유지
-  // ────────────────────────────────────────────────────────────────────────
-  const applyAt = (cx: number, cy: number, cvsR: number) => {
-    const dc = displayCanvasRef.current;
-    const oc = origCanvasRef.current;
-    if (!dc || !oc) return;
-    const dctx = dc.getContext('2d')!;
-    const octx = oc.getContext('2d')!;
-
-    // 블록 크기 = 브러시 반경의 절반 (브러시가 클수록 큰 모자이크 타일)
-    // 최소 6px 보장 → 작은 브러시에서도 격자 패턴 유지
-    const BLOCK = Math.max(8, Math.round(cvsR / 2 * 0.4));
-
-    // 브러시 원이 덮는 격자 칸 범위
-    const bx1 = Math.max(0, Math.floor((cx - cvsR) / BLOCK));
-    const by1 = Math.max(0, Math.floor((cy - cvsR) / BLOCK));
-    const bx2 = Math.min(Math.ceil(dc.width  / BLOCK) - 1, Math.floor((cx + cvsR) / BLOCK));
-    const by2 = Math.min(Math.ceil(dc.height / BLOCK) - 1, Math.floor((cy + cvsR) / BLOCK));
-
-    for (let bx = bx1; bx <= bx2; bx++) {
-      for (let by = by1; by <= by2; by++) {
-        // 격자에 정렬된 블록 좌표
-        const gx = bx * BLOCK;
-        const gy = by * BLOCK;
-        const gw = Math.min(BLOCK, dc.width  - gx);
-        const gh = Math.min(BLOCK, dc.height - gy);
-        if (gw <= 0 || gh <= 0) continue;
-
-        if (toolRef.current === 'eraser') {
-          // 지우개: 이 블록을 origCanvas 원본 픽셀로 복원
-          dctx.putImageData(octx.getImageData(gx, gy, gw, gh), gx, gy);
-        } else {
-          // 펜슬: 이 블록을 단일 평균색으로 채움 (강한 모자이크)
-          // origCanvas → gw×gh 임시 캔버스 → 1×1로 축소 (평균색) → gw×gh로 확대
-          const srcCvs = document.createElement('canvas');
-          srcCvs.width = gw; srcCvs.height = gh;
-          srcCvs.getContext('2d')!.putImageData(octx.getImageData(gx, gy, gw, gh), 0, 0);
-
-          const onePx = document.createElement('canvas');
-          onePx.width = 1; onePx.height = 1;
-          onePx.getContext('2d')!.drawImage(srcCvs, 0, 0, 1, 1);
-
-          dctx.imageSmoothingEnabled = false;
-          dctx.drawImage(onePx, 0, 0, 1, 1, gx, gy, gw, gh);
-          dctx.imageSmoothingEnabled = true;
-        }
-      }
-    }
-  };
-
-  // ── 두 점 사이 선형 보간 (부드러운 스트로크) ──────────────────────────────
-  // 보간 스텝을 BLOCK 절반 단위로 → 중복 처리 최소화 (어차피 idempotent)
-  const interpolate = (
-    from: { x: number; y: number },
-    to:   { x: number; y: number },
-    cvsR: number,
-  ) => {
-    const dx   = to.x - from.x;
-    const dy   = to.y - from.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    // 스텝 크기: 브러시 반경의 절반 (격자 블록이 빠짐없이 커버됨)
-    const step  = Math.max(1, cvsR / 2);
-    const steps = Math.ceil(dist / step);
-    for (let i = 1; i <= steps; i++) {
-      applyAt(from.x + dx * i / steps, from.y + dy * i / steps, cvsR);
-    }
-  };
-
-  // ── CSS px → canvas 픽셀 좌표 변환 ───────────────────────────────────────
-  const toCvs = (clientX: number, clientY: number, dc: HTMLCanvasElement) => {
-    const r = dc.getBoundingClientRect();
-    return {
-      x: (clientX - r.left) * (dc.width  / r.width),
-      y: (clientY - r.top)  * (dc.height / r.height),
-    };
-  };
-
-  // CSS 반경 → canvas 픽셀 반경
-  const toR = (cssR: number, dc: HTMLCanvasElement) =>
-    cssR * (dc.width / dc.getBoundingClientRect().width);
-
-  // ── 마우스 이벤트 ────────────────────────────────────────────────────────
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!imgLoaded) return;
-    e.preventDefault();
-    isDrawing.current = true;
-    saveSnapshot(); // 스트로크 시작 전 스냅샷 (뒤로가기 기준점)
-    const dc   = e.currentTarget;
-    const pos  = toCvs(e.clientX, e.clientY, dc);
-    const cvsR = toR(brushRef.current / 2, dc);
-    lastCvsPos.current = pos;
-    applyAt(pos.x, pos.y, cvsR);
-  };
-
-  // handleMouseMove: canvas에 직접 부착 → canvas 기준 좌표로 커서 계산
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const dc = e.currentTarget;
-    const r  = dc.getBoundingClientRect();
-    // 커서 인디케이터 위치 (canvas 좌상단 기준 CSS px)
-    setCursorPos({ x: e.clientX - r.left, y: e.clientY - r.top });
-
-    if (!isDrawing.current || !lastCvsPos.current) return;
-    const pos  = toCvs(e.clientX, e.clientY, dc);
-    const cvsR = toR(brushRef.current / 2, dc);
-    interpolate(lastCvsPos.current, pos, cvsR);
-    lastCvsPos.current = pos;
-  };
-
-  const stopDrawing = () => {
-    isDrawing.current  = false;
-    lastCvsPos.current = null;
-  };
-
-  const handleMouseLeave = () => {
-    setCursorPos(null);
-    stopDrawing();
-  };
-
-  // ── 승인: displayCanvas → File ────────────────────────────────────────────
-  const handleApprove = () => {
-    const dc = displayCanvasRef.current;
-    if (!dc || !imgLoaded) return;
-    setApproving(true);
-    const previewDataUrl = dc.toDataURL('image/jpeg', 0.92);
-    dc.toBlob(
-      (blob) => {
-        if (!blob) { setApproving(false); return; }
-        onApprove(new File([blob], 'manual-blur.jpg', { type: 'image/jpeg' }), previewDataUrl);
-      },
-      'image/jpeg', 0.92,
-    );
-  };
-
-  const toolColor = tool === 'pencil' ? '#3182ce' : '#e53e3e';
-
-  return (
-    <Modal wide>
-      {/* 헤더 */}
-      <div style={{ marginBottom: 12 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 800, color: '#2d3748', margin: '0 0 4px' }}>
-          🖌️ 수동 블러 편집기
-        </h3>
-        <p style={{ fontSize: 12, color: '#718096', margin: 0, lineHeight: 1.5 }}>
-          <strong>펜슬</strong>로 모자이크할 영역을 드래그하고,&nbsp;
-          <strong>지우개</strong>로 원본을 복원하세요.
-        </p>
-      </div>
-
-      {/* 툴바 — 이미지 외부, 캔버스 위에 분리 배치 */}
-      {imgLoaded && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
-          padding: '8px 12px', marginBottom: 8,
-          background: '#f7fafc', border: '1px solid #e2e8f0', borderRadius: 8,
-        }}>
-          {/* 펜슬 */}
-          <button
-            onClick={() => changeTool('pencil')}
-            style={{
-              padding: '5px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700,
-              border: `2px solid ${tool === 'pencil' ? '#3182ce' : '#cbd5e0'}`,
-              background: tool === 'pencil' ? '#3182ce' : '#fff',
-              color:      tool === 'pencil' ? '#fff'    : '#4a5568',
-              cursor: 'pointer', transition: 'all 0.12s',
-            }}
-          >펜슬</button>
-
-          {/* 지우개 */}
-          <button
-            onClick={() => changeTool('eraser')}
-            style={{
-              padding: '5px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700,
-              border: `2px solid ${tool === 'eraser' ? '#e53e3e' : '#cbd5e0'}`,
-              background: tool === 'eraser' ? '#e53e3e' : '#fff',
-              color:      tool === 'eraser' ? '#fff'    : '#4a5568',
-              cursor: 'pointer', transition: 'all 0.12s',
-            }}
-          >지우개</button>
-
-          <div style={{ width: 1, height: 22, background: '#e2e8f0', margin: '0 2px' }} />
-
-          {/* 브러시 크기 — 원형 아이콘 */}
-          <span style={{ fontSize: 11, color: '#718096', fontWeight: 600 }}>크기</span>
-          {([8, 16, 26] as number[]).map((dotSize, i) => {
-            const brushVal = [24, 56, 100][i];
-            const active = brushSize === brushVal;
-            return (
-              <button
-                key={brushVal}
-                onClick={() => changeBrush(brushVal)}
-                title={['S', 'M', 'L'][i]}
-                style={{
-                  width: 36, height: 32, borderRadius: 6,
-                  border: `2px solid ${active ? toolColor : '#cbd5e0'}`,
-                  background: active ? '#f0ebff' : '#fff',
-                  cursor: 'pointer', transition: 'all 0.12s',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                <div style={{
-                  width: dotSize, height: dotSize, borderRadius: '50%',
-                  background: active ? toolColor : '#a0aec0',
-                  transition: 'all 0.12s',
-                }} />
-              </button>
-            );
-          })}
-
-
-          <div style={{ width: 1, height: 22, background: '#e2e8f0', margin: '0 2px' }} />
-
-          {/* 뒤로가기 */}
-          <button
-            onClick={handleUndo}
-            disabled={!canUndo}
-            title="마지막 스트로크 취소"
-            style={{
-              padding: '5px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700,
-              border: '2px solid #e2e8f0',
-              background: canUndo ? '#fff'    : '#f7fafc',
-              color:      canUndo ? '#4a5568' : '#a0aec0',
-              cursor: canUndo ? 'pointer' : 'not-allowed',
-              transition: 'all 0.12s',
-            }}
-          >↩ 뒤로가기</button>
-        </div>
-      )}
-
-      {/* 로딩 */}
-      {!imgLoaded && (
-        <div style={{ height: 180, display: 'flex', alignItems: 'center',
-          justifyContent: 'center', color: '#a0aec0', fontSize: 13 }}>
-          ⏳ 이미지 로딩 중...
-        </div>
-      )}
-
-      {/* 캔버스 컨테이너
-          - canvas width: 100% → 이미지가 컨테이너 너비를 꽉 채움 (검은 여백 없음)
-          - 마우스 이벤트: canvas에 직접 부착 → 커서 좌표를 canvas 기준으로 정확히 계산 */}
-      <div
-        ref={containerRef}
-        style={{
-          display: imgLoaded ? 'block' : 'none',
-          border: `2px solid ${toolColor}`,
-          borderRadius: 8,
-          overflow: 'hidden',
-          userSelect: 'none',
-          cursor: 'none',
-          transition: 'border-color 0.15s',
-        }}
-      >
-        {/* canvas를 감싸는 div — 커서 인디케이터 기준점 (position:relative) */}
-        <div style={{ position: 'relative', lineHeight: 0 }}>
-          {/* 편집 캔버스: CSS width/height 는 img.onload에서 min(100%, maxPx) 으로 설정 */}
-          <canvas
-            ref={displayCanvasRef}
-            style={{ display: 'block' }}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={stopDrawing}
-            onMouseLeave={handleMouseLeave}
-          />
-
-          {/* 커서 인디케이터 (원형) — canvas 좌상단 기준 CSS px */}
-          {cursorPos && (
-            <div style={{
-              position: 'absolute',
-              left: cursorPos.x - brushSize / 2,
-              top:  cursorPos.y - brushSize / 2,
-              width: brushSize, height: brushSize,
-              borderRadius: '50%',
-              border: `2.5px solid ${toolColor}`,
-              background: tool === 'pencil' ? 'rgba(49,130,206,0.15)' : 'rgba(229,62,62,0.15)',
-              pointerEvents: 'none',
-            }} />
-          )}
-        </div>
-      </div>
-
-      {/* 안내 */}
-      {imgLoaded && (
-        <div style={{ ...C.info('blue'), marginTop: 10, fontSize: 11, marginBottom: 0 }}>
-          <strong>펜슬</strong>로 드래그 → 즉시 모자이크&nbsp;·&nbsp;
-          <strong>지우개</strong>로 드래그 → 원본 복원&nbsp;·&nbsp;
-          <strong>↩ 뒤로가기</strong> → 스트로크 단위 취소
-        </div>
-      )}
-
-      {/* 하단 버튼 */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 14 }}>
+        <h3 style={C.h3}>📋 게시글 목록 조회</h3>
+        <SelectField
+          label="게시글 상태 필터"
+          value={postStatusFilter}
+          onChange={setPostStatusFilter}
+          options={[
+            { value: '', label: '전체' },
+            { value: 'ACTIVE', label: 'ACTIVE — 공개 중' },
+            { value: 'HIDDEN', label: 'HIDDEN — 숨김' },
+            { value: 'DELETED', label: 'DELETED — 삭제됨' },
+          ]}
+        />
+        <Field label="cursor (선택)" value={postCursor} onChange={setPostCursor} placeholder="ex) 100" />
+        <Field label="limit (선택, 기본 20)" value={postLimit} onChange={setPostLimit} placeholder="20" />
         <button
-          onClick={handleApprove}
-          disabled={!imgLoaded || approving}
-          style={{
-            ...C.btn('#38a169'), width: '100%', padding: '12px 0', fontSize: 14,
-            opacity: (!imgLoaded || approving) ? 0.4 : 1,
-            cursor:  (!imgLoaded || approving) ? 'not-allowed' : 'pointer',
+          style={C.btn('#553c9a')}
+          onClick={() =>
+            run(
+              () =>
+                api(
+                  'GET',
+                  `/admin/posts${qs({
+                    status: postStatusFilter,
+                    cursor: postCursor,
+                    limit: postLimit,
+                  })}`,
+                ),
+              setRes,
+            )
+          }
+        >
+          게시글 목록 조회
+        </button>
+      </div>
+
+      <div style={C.card}>
+        <h3 style={C.h3}>🔧 게시글 상태 변경</h3>
+        <Field label="게시글 ID (postId)" value={postId} onChange={setPostId} placeholder="ex) 12" />
+        <SelectField
+          label="변경할 상태"
+          value={postStatus}
+          onChange={setPostStatus}
+          options={[
+            { value: 'ACTIVE', label: 'ACTIVE — 공개 복원' },
+            { value: 'HIDDEN', label: 'HIDDEN — 관리자 숨김' },
+            { value: 'DELETED', label: 'DELETED — 강제 삭제' },
+          ]}
+        />
+        {postStatus === 'HIDDEN' && (
+          <Field
+            label="숨김 사유 (선택)"
+            value={hiddenReason}
+            onChange={setHiddenReason}
+            placeholder="커뮤니티 가이드라인 위반"
+          />
+        )}
+        <button
+          style={C.btn(postStatus === 'DELETED' ? '#c53030' : '#553c9a')}
+          onClick={() => {
+            const body: Record<string, unknown> = { status: postStatus };
+            if (postStatus === 'HIDDEN' && hiddenReason.trim()) body.hiddenReason = hiddenReason.trim();
+            run(() => api('PATCH', `/admin/posts/${postId}/status`, body), setRes);
           }}
         >
-          {approving ? '⏳ 처리 중...' : '✅ 이 결과로 승인 → 게시글 작성 단계로'}
+          게시글 상태 변경
+        </button>
+      </div>
+
+      <div style={{ borderTop: '2px dashed #e2e8f0', margin: '8px 0 16px' }} />
+
+      <div style={C.card}>
+        <h3 style={C.h3}>👥 회원 목록 조회</h3>
+        <SelectField
+          label="회원 상태 필터"
+          value={userStatusFilter}
+          onChange={setUserStatusFilter}
+          options={[
+            { value: '', label: '전체' },
+            { value: 'ACTIVE', label: 'ACTIVE — 정상' },
+            { value: 'SUSPENDED', label: 'SUSPENDED — 정지' },
+            { value: 'DELETED', label: 'DELETED — 삭제' },
+          ]}
+        />
+        <SelectField
+          label="역할 필터"
+          value={userRoleFilter}
+          onChange={setUserRoleFilter}
+          options={[
+            { value: '', label: '전체' },
+            { value: 'USER', label: 'USER' },
+            { value: 'SUPER_ADMIN', label: 'SUPER_ADMIN' },
+            { value: 'OPERATOR_ADMIN', label: 'OPERATOR_ADMIN' },
+          ]}
+        />
+        <Field label="cursor (선택)" value={userCursor} onChange={setUserCursor} placeholder="ex) 100" />
+        <Field label="limit (선택, 기본 20)" value={userLimit} onChange={setUserLimit} placeholder="20" />
+        <button
+          style={C.btn('#553c9a')}
+          onClick={() =>
+            run(
+              () =>
+                api(
+                  'GET',
+                  `/admin/users${qs({
+                    status: userStatusFilter,
+                    role: userRoleFilter,
+                    cursor: userCursor,
+                    limit: userLimit,
+                  })}`,
+                ),
+              setRes,
+            )
+          }
+        >
+          회원 목록 조회
+        </button>
+      </div>
+
+      <div style={C.card}>
+        <h3 style={C.h3}>🔧 회원 상태 변경</h3>
+        <div style={C.info('red')}>
+          <strong>DELETED</strong>는 SUPER_ADMIN 전용으로 해석한다.
+        </div>
+        <Field label="대상 사용자 ID (userId)" value={userId} onChange={setUserId} placeholder="ex) 7" />
+        <SelectField
+          label="변경할 상태"
+          value={userStatus}
+          onChange={setUserStatus}
+          options={[
+            { value: 'ACTIVE', label: 'ACTIVE — 정지 해제' },
+            { value: 'SUSPENDED', label: 'SUSPENDED — 계정 정지' },
+            { value: 'DELETED', label: 'DELETED — 강제 삭제' },
+          ]}
+        />
+        <TextAreaField
+          label="변경 사유 (선택)"
+          value={userReason}
+          onChange={setUserReason}
+          placeholder="커뮤니티 가이드라인 위반"
+        />
+        <button
+          style={C.btn(userStatus === 'DELETED' ? '#c53030' : '#553c9a')}
+          onClick={() => {
+            const body: Record<string, unknown> = { status: userStatus };
+            if (userReason.trim()) body.reason = userReason.trim();
+            run(() => api('PATCH', `/admin/users/${userId}/status`, body), setRes);
+          }}
+        >
+          회원 상태 변경
+        </button>
+      </div>
+
+      <Result data={res} />
+    </PageShell>
+  );
+}
+
+// ─── 마스터 관리 ─────────────────────────────────────────────────────────────
+
+type CrudMode = 'CREATE' | 'UPDATE' | 'DELETE';
+type BoolSelect = '' | 'true' | 'false';
+
+function S_AdminMasters() {
+  const [res, setRes] = useState('');
+
+  const [keywordIsActiveFilter, setKeywordIsActiveFilter] = useState<BoolSelect>('');
+  const [keywordMode, setKeywordMode] = useState<CrudMode>('CREATE');
+  const [keywordId, setKeywordId] = useState('');
+  const [keywordCode, setKeywordCode] = useState('');
+  const [keywordLabel, setKeywordLabel] = useState('');
+  const [keywordSortOrder, setKeywordSortOrder] = useState('0');
+  const [keywordIsActive, setKeywordIsActive] = useState('true');
+
+  const [tagVoteChoiceFilter, setTagVoteChoiceFilter] = useState('');
+  const [tagGroupCodeFilter, setTagGroupCodeFilter] = useState('');
+  const [tagIsActiveFilter, setTagIsActiveFilter] = useState<BoolSelect>('');
+  const [tagMode, setTagMode] = useState<CrudMode>('CREATE');
+  const [tagId, setTagId] = useState('');
+  const [tagCode, setTagCode] = useState('');
+  const [tagLabel, setTagLabel] = useState('');
+  const [tagVoteChoice, setTagVoteChoice] = useState('LIKE');
+  const [tagGroupCode, setTagGroupCode] = useState('');
+  const [tagSortOrder, setTagSortOrder] = useState('0');
+  const [tagIsActive, setTagIsActive] = useState('true');
+
+  return (
+    <PageShell
+      title="📚 마스터 관리"
+      description="키워드와 피드백 태그를 각각 하나의 관리 블록으로 묶고, select로 등록/수정/삭제 모드를 전환한다."
+    >
+      <div style={C.info('yellow')}>
+        키워드는 <strong>code 변경 불가</strong>, 피드백 태그는 <strong>code·voteChoice 변경 불가</strong>다.
+      </div>
+
+      <div style={C.card}>
+        <h3 style={C.h3}>🏷️ 키워드 관리</h3>
+        <div style={C.info('blue')}>
+          키워드 삭제는 <strong>미사용 키워드만 가능</strong>하다. 수정 시 code는 변경할 수 없다.
+        </div>
+
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+          <SelectField
+            label="목록 필터 isActive"
+            value={keywordIsActiveFilter}
+            onChange={(v) => setKeywordIsActiveFilter(v as BoolSelect)}
+            width={220}
+            options={[
+              { value: '', label: '전체' },
+              { value: 'true', label: '활성만' },
+              { value: 'false', label: '비활성만' },
+            ]}
+          />
+          <SelectField
+            label="관리 모드"
+            value={keywordMode}
+            onChange={(v) => setKeywordMode(v as CrudMode)}
+            width={240}
+            options={[
+              { value: 'CREATE', label: '등록' },
+              { value: 'UPDATE', label: '수정' },
+              { value: 'DELETE', label: '삭제' },
+            ]}
+          />
+        </div>
+
+        <button
+          style={C.btn('#553c9a')}
+          onClick={() =>
+            run(
+              () =>
+                api('GET', `/admin/keywords${qs({ isActive: keywordIsActiveFilter })}`),
+              setRes,
+            )
+          }
+        >
+          키워드 목록 조회
+        </button>
+
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid #e2e8f0' }}>
+          {keywordMode === 'CREATE' && (
+            <>
+              <Field label="code" value={keywordCode} onChange={setKeywordCode} placeholder="ex) STREET_LOOK" />
+              <Field label="label" value={keywordLabel} onChange={setKeywordLabel} placeholder="ex) 스트릿 룩" />
+              <Field
+                label="sortOrder (선택)"
+                value={keywordSortOrder}
+                onChange={setKeywordSortOrder}
+                placeholder="0"
+              />
+              <SelectField
+                label="isActive (선택)"
+                value={keywordIsActive}
+                onChange={setKeywordIsActive}
+                options={[
+                  { value: 'true', label: 'true' },
+                  { value: 'false', label: 'false' },
+                ]}
+              />
+              <button
+                style={C.btn('#38a169')}
+                onClick={() =>
+                  run(
+                    () =>
+                      api('POST', '/admin/keywords', {
+                        code: keywordCode.trim(),
+                        label: keywordLabel.trim(),
+                        sortOrder: Number(keywordSortOrder || '0'),
+                        isActive: keywordIsActive === 'true',
+                      }),
+                    setRes,
+                  )
+                }
+              >
+                키워드 등록
+              </button>
+            </>
+          )}
+
+          {keywordMode === 'UPDATE' && (
+            <>
+              <Field label="keywordId" value={keywordId} onChange={setKeywordId} placeholder="ex) 1" />
+              <Field
+                label="code (변경 불가)"
+                value="생성 후 변경 불가"
+                onChange={() => {}}
+                disabled
+              />
+              <Field label="label" value={keywordLabel} onChange={setKeywordLabel} placeholder="ex) 캐주얼 룩" />
+              <Field
+                label="sortOrder (선택)"
+                value={keywordSortOrder}
+                onChange={setKeywordSortOrder}
+                placeholder="5"
+              />
+              <SelectField
+                label="isActive (선택)"
+                value={keywordIsActive}
+                onChange={setKeywordIsActive}
+                options={[
+                  { value: 'true', label: 'true' },
+                  { value: 'false', label: 'false' },
+                ]}
+              />
+              <button
+                style={C.btn('#ed8936')}
+                onClick={() => {
+                  const body: Record<string, unknown> = {};
+                  if (keywordLabel.trim()) body.label = keywordLabel.trim();
+                  if (keywordSortOrder.trim()) body.sortOrder = Number(keywordSortOrder);
+                  body.isActive = keywordIsActive === 'true';
+                  run(() => api('PATCH', `/admin/keywords/${keywordId}`, body), setRes);
+                }}
+              >
+                키워드 수정
+              </button>
+            </>
+          )}
+
+          {keywordMode === 'DELETE' && (
+            <>
+              <div style={C.info('red')}>
+                삭제는 <strong>미사용 키워드만</strong> 가능하다. 사용 중이면 conflict가 날 수 있다.
+              </div>
+              <Field label="keywordId" value={keywordId} onChange={setKeywordId} placeholder="ex) 1" />
+              <button
+                style={C.btn('#c53030')}
+                onClick={() => run(() => api('DELETE', `/admin/keywords/${keywordId}`), setRes)}
+              >
+                키워드 삭제
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div style={C.card}>
+        <h3 style={C.h3}>💬 피드백 태그 관리</h3>
+        <div style={C.info('blue')}>
+          피드백 태그 삭제는 <strong>미사용 태그만 가능</strong>하다. 수정 시 code와 voteChoice는 변경할 수 없다.
+        </div>
+
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+          <SelectField
+            label="목록 필터 voteChoice"
+            value={tagVoteChoiceFilter}
+            onChange={setTagVoteChoiceFilter}
+            width={220}
+            options={[
+              { value: '', label: '전체' },
+              { value: 'LIKE', label: 'LIKE — 좋아요 피드백' },
+              { value: 'DISLIKE', label: 'DISLIKE — 싫어요 피드백' },
+            ]}
+          />
+          <Field
+            label="목록 필터 groupCode"
+            value={tagGroupCodeFilter}
+            onChange={setTagGroupCodeFilter}
+            placeholder="예: STYLE"
+          />
+          <SelectField
+            label="목록 필터 isActive"
+            value={tagIsActiveFilter}
+            onChange={(v) => setTagIsActiveFilter(v as BoolSelect)}
+            width={220}
+            options={[
+              { value: '', label: '전체' },
+              { value: 'true', label: '활성만' },
+              { value: 'false', label: '비활성만' },
+            ]}
+          />
+          <SelectField
+            label="관리 모드"
+            value={tagMode}
+            onChange={(v) => setTagMode(v as CrudMode)}
+            width={240}
+            options={[
+              { value: 'CREATE', label: '등록' },
+              { value: 'UPDATE', label: '수정' },
+              { value: 'DELETE', label: '삭제' },
+            ]}
+          />
+        </div>
+
+        <button
+          style={C.btn('#553c9a')}
+          onClick={() =>
+            run(
+              () =>
+                api(
+                  'GET',
+                  `/admin/feedback-tags${qs({
+                    voteChoice: tagVoteChoiceFilter,
+                    groupCode: tagGroupCodeFilter,
+                    isActive: tagIsActiveFilter,
+                  })}`,
+                ),
+              setRes,
+            )
+          }
+        >
+          피드백 태그 목록 조회
+        </button>
+
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid #e2e8f0' }}>
+          {tagMode === 'CREATE' && (
+            <>
+              <Field label="code" value={tagCode} onChange={setTagCode} placeholder="ex) TRENDY_STYLE" />
+              <Field label="label" value={tagLabel} onChange={setTagLabel} placeholder="ex) 트렌디한 스타일" />
+              <SelectField
+                label="voteChoice"
+                value={tagVoteChoice}
+                onChange={setTagVoteChoice}
+                options={[
+                  { value: 'LIKE', label: 'LIKE — 좋아요 피드백' },
+                  { value: 'DISLIKE', label: 'DISLIKE — 싫어요 피드백' },
+                ]}
+              />
+              <Field
+                label="groupCode (선택)"
+                value={tagGroupCode}
+                onChange={setTagGroupCode}
+                placeholder="예: STYLE"
+              />
+              <Field
+                label="sortOrder (선택)"
+                value={tagSortOrder}
+                onChange={setTagSortOrder}
+                placeholder="0"
+              />
+              <SelectField
+                label="isActive (선택)"
+                value={tagIsActive}
+                onChange={setTagIsActive}
+                options={[
+                  { value: 'true', label: 'true' },
+                  { value: 'false', label: 'false' },
+                ]}
+              />
+              <button
+                style={C.btn('#38a169')}
+                onClick={() =>
+                  run(
+                    () =>
+                      api('POST', '/admin/feedback-tags', {
+                        code: tagCode.trim(),
+                        label: tagLabel.trim(),
+                        voteChoice: tagVoteChoice,
+                        groupCode: tagGroupCode.trim() ? tagGroupCode.trim() : undefined,
+                        sortOrder: Number(tagSortOrder || '0'),
+                        isActive: tagIsActive === 'true',
+                      }),
+                    setRes,
+                  )
+                }
+              >
+                피드백 태그 등록
+              </button>
+            </>
+          )}
+
+          {tagMode === 'UPDATE' && (
+            <>
+              <Field label="tagId" value={tagId} onChange={setTagId} placeholder="ex) 2" />
+              <Field
+                label="code (변경 불가)"
+                value="생성 후 변경 불가"
+                onChange={() => {}}
+                disabled
+              />
+              <Field
+                label="voteChoice (변경 불가)"
+                value="생성 후 변경 불가"
+                onChange={() => {}}
+                disabled
+              />
+              <Field label="label" value={tagLabel} onChange={setTagLabel} placeholder="ex) 세련된 스타일" />
+              <Field
+                label="groupCode (선택, 빈 값이면 제거)"
+                value={tagGroupCode}
+                onChange={setTagGroupCode}
+                placeholder="예: COLOR"
+              />
+              <Field
+                label="sortOrder (선택)"
+                value={tagSortOrder}
+                onChange={setTagSortOrder}
+                placeholder="5"
+              />
+              <SelectField
+                label="isActive (선택)"
+                value={tagIsActive}
+                onChange={setTagIsActive}
+                options={[
+                  { value: 'true', label: 'true' },
+                  { value: 'false', label: 'false' },
+                ]}
+              />
+              <button
+                style={C.btn('#ed8936')}
+                onClick={() => {
+                  const body: Record<string, unknown> = {};
+                  if (tagLabel.trim()) body.label = tagLabel.trim();
+                  body.groupCode = tagGroupCode.trim() ? tagGroupCode.trim() : null;
+                  if (tagSortOrder.trim()) body.sortOrder = Number(tagSortOrder);
+                  body.isActive = tagIsActive === 'true';
+                  run(() => api('PATCH', `/admin/feedback-tags/${tagId}`, body), setRes);
+                }}
+              >
+                피드백 태그 수정
+              </button>
+            </>
+          )}
+
+          {tagMode === 'DELETE' && (
+            <>
+              <div style={C.info('red')}>
+                삭제는 <strong>미사용 태그만</strong> 가능하다. 사용 중이면 conflict가 날 수 있다.
+              </div>
+              <Field label="tagId" value={tagId} onChange={setTagId} placeholder="ex) 2" />
+              <button
+                style={C.btn('#c53030')}
+                onClick={() => run(() => api('DELETE', `/admin/feedback-tags/${tagId}`), setRes)}
+              >
+                피드백 태그 삭제
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <Result data={res} />
+    </PageShell>
+  );
+}
+
+// ─── 제재 관리 ───────────────────────────────────────────────────────────────
+
+function S_AdminSanctions() {
+  const [res, setRes] = useState('');
+
+  const [listUserId, setListUserId] = useState('');
+  const [listType, setListType] = useState('');
+  const [listCursor, setListCursor] = useState('');
+  const [listLimit, setListLimit] = useState('20');
+
+  const [genericUserId, setGenericUserId] = useState('');
+  const [genericType, setGenericType] = useState('POST_RESTRICTION');
+  const [genericReason, setGenericReason] = useState('');
+  const [genericStartsAt, setGenericStartsAt] = useState('');
+  const [genericEndsAt, setGenericEndsAt] = useState('');
+
+  const [endSanctionId, setEndSanctionId] = useState('');
+  const [endSanctionReason, setEndSanctionReason] = useState('');
+
+  const [restrictionUserId, setRestrictionUserId] = useState('');
+  const [restrictionReason, setRestrictionReason] = useState('');
+  const [restrictionStartsAt, setRestrictionStartsAt] = useState('');
+  const [restrictionEndsAt, setRestrictionEndsAt] = useState('');
+
+  return (
+    <PageShell
+      title="🚫 제재 관리"
+      description="범용 제재 경로와 유형 고정 경로를 함께 테스트한다."
+    >
+      <div style={C.card}>
+        <h3 style={C.h3}>📋 제재 목록 조회</h3>
+        <Field label="userId (선택)" value={listUserId} onChange={setListUserId} placeholder="ex) 7" />
+        <SelectField
+          label="type 필터"
+          value={listType}
+          onChange={setListType}
+          options={[
+            { value: '', label: '전체' },
+            { value: 'TEMP_SUSPENSION', label: 'TEMP_SUSPENSION — 로그인 제한' },
+            { value: 'PERMANENT_BAN', label: 'PERMANENT_BAN — 영구 정지' },
+            { value: 'POST_RESTRICTION', label: 'POST_RESTRICTION — 게시글 작성 제한' },
+          ]}
+        />
+        <Field label="cursor (선택)" value={listCursor} onChange={setListCursor} placeholder="ex) 10" />
+        <Field label="limit (선택, 기본 20)" value={listLimit} onChange={setListLimit} placeholder="20" />
+        <button
+          style={C.btn('#553c9a')}
+          onClick={() =>
+            run(
+              () =>
+                api(
+                  'GET',
+                  `/admin/sanctions${qs({
+                    userId: listUserId,
+                    type: listType,
+                    cursor: listCursor,
+                    limit: listLimit,
+                  })}`,
+                ),
+              setRes,
+            )
+          }
+        >
+          제재 목록 조회
         </button>
         <button
-          onClick={onCancel}
-          style={{ ...C.btn('#a0aec0'), width: '100%', padding: '10px 0', fontSize: 13 }}
-        >
-          ← 뒤로 (블러 확인 화면으로)
-        </button>
-      </div>
-
-      {/* 원본 픽셀 보존용 숨김 캔버스 (지우개 복원 소스, 절대 수정 안 함) */}
-      <canvas ref={origCanvasRef} style={{ display: 'none' }} />
-    </Modal>
-  );
-}
-
-// ── 게시글 작성 섹션 ──────────────────────────────────────────────────────────
-function S_PostUpload() {
-  const [step, setStep]               = useState<PostFlowStep>('idle');
-  const [uploadedImg, setUploadedImg] = useState<UploadedImg | null>(null);
-  const [blurChoice, setBlurChoice]   = useState<BlurChoice | null>(null);
-  const [manualFile, setManualFile]         = useState<File | null>(null);
-  const [manualPreview, setManualPreview]   = useState<string | null>(null);
-  const [manualResult, setManualResult]     = useState<UploadedImg | null>(null);
-  const [createdPostId, setCreatedPostId]   = useState<number | null>(null);
-  const [content, setContent]   = useState('');
-  const [keywordIds, setKeywordIds] = useState('');
-  const [loading, setLoading]   = useState(false);
-  const [res, setRes]           = useState('');
-  const imgRef = useRef<HTMLInputElement>(null);
-
-  const reset = () => {
-    setStep('idle'); setUploadedImg(null); setBlurChoice(null);
-    setManualFile(null); setManualPreview(null); setManualResult(null);
-    setCreatedPostId(null); setContent(''); setKeywordIds(''); setRes('');
-    if (imgRef.current) imgRef.current.value = '';
-  };
-
-  // ── Step 1: 이미지 업로드 ────────────────────────────────────────────────
-  const handleUpload = async () => {
-    const f = imgRef.current?.files?.[0];
-    if (!f) { setRes('[Error] 파일을 선택하세요'); return; }
-    setLoading(true); setRes('');
-    try {
-      const fd = new FormData(); fd.append('file', f);
-      const d  = await apiForm<UploadedImg>('POST', '/uploads/post-image', fd);
-      setUploadedImg(d);
-      setRes(fmt(d));
-      setStep('blur_decision');
-    } catch (e: unknown) { setRes(`[Error] ${(e as Error).message}`); }
-    finally { setLoading(false); }
-  };
-
-  // ── Step 2-a: 자동 블러 승인 ─────────────────────────────────────────────
-  const approveAuto = () => { setBlurChoice('auto'); setStep('creating'); };
-
-  // ── Step 2-b: 수동 편집기 열기 ───────────────────────────────────────────
-  const goManualEditor = () => setStep('manual_editor');
-
-  // ── ManualBlurEditor 승인 콜백 ───────────────────────────────────────────
-  const onManualApprove = (file: File, previewDataUrl: string) => {
-    setManualFile(file);
-    setManualPreview(previewDataUrl);
-    setBlurChoice('manual');
-    setStep('creating');
-  };
-
-  // ── Step 3: 게시글 작성 ──────────────────────────────────────────────────
-  const handleCreatePost = async () => {
-    if (!uploadedImg) { setRes('[Error] 이미지 정보가 없습니다'); return; }
-    if (!content.trim()) { setRes('[Error] content를 입력하세요'); return; }
-    if (blurChoice === 'manual' && !manualFile) {
-      setRes('[Error] 수동 블러 파일이 없습니다');
-      return;
-    }
-    setLoading(true); setRes('');
-    try {
-      const body: Record<string, unknown> = { content: content.trim(), image: uploadedImg };
-      if (keywordIds.trim())
-        body.keywordIds = keywordIds.split(',').map((s) => Number(s.trim())).filter(Boolean);
-
-      const post = await api<{ postId: number }>('POST', '/posts', body);
-      setCreatedPostId(post.postId);
-
-      // 수동 블러이면 게시글 작성 직후 즉시 API 적용
-      if (blurChoice === 'manual' && manualFile) {
-        const fd = new FormData(); fd.append('file', manualFile);
-        const blurRes = await apiForm<UploadedImg>(
-          'PATCH', `/uploads/posts/${post.postId}/manual-blur`, fd,
-        );
-        setManualResult(blurRes);
-        setRes(fmt({ post, manualBlur: blurRes }));
-      } else {
-        setRes(fmt(post));
-      }
-      setStep('done');
-    } catch (e: unknown) { setRes(`[Error] ${(e as Error).message}`); }
-    finally { setLoading(false); }
-  };
-
-  // ── 스텝 인디케이터 ──────────────────────────────────────────────────────
-  const STEP_LABELS = ['이미지 업로드', '블러 확인/편집', '게시글 작성', '완료'];
-  const stepIdx = (
-    { idle: 0, blur_decision: 1, manual_editor: 1, creating: 2, done: 3 } as Record<PostFlowStep, number>
-  )[step];
-
-  return (
-    <>
-      {/* 스텝 인디케이터 */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 20 }}>
-        {STEP_LABELS.map((label, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', flex: i < STEP_LABELS.length - 1 ? 1 : 'none' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-              <div style={{
-                width: 28, height: 28, borderRadius: '50%', fontSize: 12, fontWeight: 700,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: i === stepIdx ? '#6b46c1' : i < stepIdx ? '#38a169' : '#e2e8f0',
-                color: i <= stepIdx ? '#fff' : '#a0aec0',
-              }}>{i < stepIdx ? '✓' : i + 1}</div>
-              <span style={{
-                fontSize: 10, whiteSpace: 'nowrap',
-                color: i === stepIdx ? '#6b46c1' : i < stepIdx ? '#38a169' : '#a0aec0',
-                fontWeight: i === stepIdx ? 700 : 400,
-              }}>{label}</span>
-            </div>
-            {i < STEP_LABELS.length - 1 && (
-              <div style={{ flex: 1, height: 2, background: i < stepIdx ? '#38a169' : '#e2e8f0', margin: '0 6px', marginBottom: 14 }} />
-            )}
-          </div>
-        ))}
-        <button onClick={reset} style={{ ...C.btn('#718096'), marginLeft: 12, fontSize: 11, padding: '4px 10px', marginTop: 0, marginBottom: 14 }}>
-          처음부터
-        </button>
-      </div>
-
-      {/* ── STEP 1: 이미지 업로드 ── */}
-      {step === 'idle' && (
-        <div style={C.card}>
-          <h3 style={C.h3}>📸 Step 1 — 이미지 업로드</h3>
-          <div style={C.info('blue')}>
-            업로드하면 서버에서 AI 자동 블러를 시도합니다.{' '}
-            <strong>성공/실패에 관계없이 항상 블러 결과 확인 모달</strong>이 표시됩니다.
-          </div>
-          <div style={{ marginBottom: 10 }}>
-            <span style={C.label}>이미지 파일 선택</span>
-            <input ref={imgRef} type="file" accept="image/*" style={{ fontSize: 13 }} />
-          </div>
-          <button style={C.btn('#6b46c1')} onClick={handleUpload} disabled={loading}>
-            {loading ? '⏳ 업로드 중 (AI 블러 처리)...' : 'POST /uploads/post-image'}
-          </button>
-          <Result data={res} />
-        </div>
-      )}
-
-      {/* ── MODAL: 블러 확인 (blur_decision) ── */}
-      {step === 'blur_decision' && uploadedImg && (
-        <Modal>
-          <div style={{ textAlign: 'center', marginBottom: 16 }}>
-            <div style={{ fontSize: 36 }}>{uploadedImg.aiBlurStatus === 'FAILED' ? '⚠️' : '🔍'}</div>
-            <h3 style={{
-              fontSize: 17, fontWeight: 800, margin: '8px 0 4px',
-              color: uploadedImg.aiBlurStatus === 'FAILED' ? '#c53030' : '#2d3748',
-            }}>블러 처리 결과 확인</h3>
-            <div style={{
-              display: 'inline-block', padding: '3px 10px', borderRadius: 20,
-              fontSize: 12, fontWeight: 700, marginTop: 4,
-              background: uploadedImg.aiBlurStatus === 'FAILED' ? '#fff5f5' : '#f0fff4',
-              color:      uploadedImg.aiBlurStatus === 'FAILED' ? '#c53030' : '#276749',
-              border: `1px solid ${uploadedImg.aiBlurStatus === 'FAILED' ? '#fc8181' : '#68d391'}`,
-            }}>
-              AI: {uploadedImg.aiBlurStatus} &nbsp;·&nbsp; blurMethod: {uploadedImg.blurMethod}
-            </div>
-          </div>
-
-          <ImgCompare img={uploadedImg} />
-
-          {uploadedImg.aiBlurStatus === 'FAILED' && (
-            <div style={C.info('red')}>
-              AI 블러가 실패했습니다. <strong>수동 블러 편집기</strong>에서 직접 모자이크 영역을 지정해 주세요.
-            </div>
-          )}
-          {uploadedImg.aiBlurStatus !== 'FAILED' && (
-            <div style={C.info('blue')}>
-              AI 블러 결과를 확인하세요. 충분히 가려졌다면 <strong>자동 블러 승인</strong>을,
-              직접 조정하려면 <strong>수동 블러</strong>를 선택하세요.
-            </div>
-          )}
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-            <button onClick={approveAuto} disabled={uploadedImg.aiBlurStatus === 'FAILED'}
-              style={{
-                ...C.btn('#38a169'), width: '100%', padding: '12px 0', fontSize: 13,
-                opacity: uploadedImg.aiBlurStatus === 'FAILED' ? 0.35 : 1,
-                cursor:  uploadedImg.aiBlurStatus === 'FAILED' ? 'not-allowed' : 'pointer',
-              }}>
-              ✅ 자동 블러 처리 승인 → 게시글 작성
-            </button>
-            <button onClick={goManualEditor}
-              style={{ ...C.btn('#d69e2e'), width: '100%', padding: '12px 0', fontSize: 13 }}>
-              ✏️ 수동 블러 처리 → 직접 모자이크 영역 지정
-            </button>
-            <button onClick={reset}
-              style={{ ...C.btn('#a0aec0'), width: '100%', padding: '10px 0', fontSize: 12 }}>
-              취소 (다시 업로드)
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {/* ── MODAL: 수동 블러 캔버스 편집기 ── */}
-      {step === 'manual_editor' && uploadedImg && (
-        <ManualBlurEditor
-          originalImageUrl={
-            uploadedImg.originalImageUrl.startsWith('/')
-              ? `${ASSET}${uploadedImg.originalImageUrl}`
-              : uploadedImg.originalImageUrl
+          style={C.btn('#718096')}
+          onClick={() =>
+            run(
+              () =>
+                api(
+                  'GET',
+                  `/admin/user-sanctions${qs({
+                    userId: listUserId,
+                    type: listType,
+                    cursor: listCursor,
+                    limit: listLimit,
+                  })}`,
+                ),
+              setRes,
+            )
           }
-          onApprove={onManualApprove}
-          onCancel={() => setStep('blur_decision')}
-        />
-      )}
-
-      {/* ── STEP 3: 게시글 작성 ── */}
-      {step === 'creating' && uploadedImg && (
-        <div style={C.card}>
-          <h3 style={C.h3}>📝 Step 3 — 게시글 작성</h3>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 8,
-            marginBottom: 14, border: '1px solid',
-            background: blurChoice === 'auto' ? '#f0fff4' : '#fffbeb',
-            borderColor: blurChoice === 'auto' ? '#9ae6b4' : '#f6e05e',
-          }}>
-            <span style={{ fontSize: 20 }}>{blurChoice === 'auto' ? '✅' : '✏️'}</span>
-            <div style={{ flex: 1, fontSize: 12 }}>
-              <div style={{ fontWeight: 700 }}>
-                {blurChoice === 'auto' ? 'AI 자동 블러 승인됨' : '수동 블러 편집 완료 · 승인됨'}
-              </div>
-              <div style={{ color: '#718096', marginTop: 2 }}>
-                {blurChoice === 'auto'
-                  ? `aiBlurStatus: ${uploadedImg.aiBlurStatus} · blurMethod: ${uploadedImg.blurMethod}`
-                  : `canvas 편집 결과 File 준비됨 — 게시글 작성 후 즉시 PATCH /uploads/posts/:id/manual-blur 적용`}
-              </div>
-            </div>
-            {blurChoice === 'manual' && manualPreview && (
-              <img src={manualPreview} alt="수동블러 미리보기"
-                style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 6, border: '2px solid #d69e2e', flexShrink: 0 }} />
-            )}
-          </div>
-
-          <Field label="본문 content (필수, 최대 500자)" value={content} onChange={setContent}
-            placeholder="봄 코디 평가 부탁드립니다!" />
-          <Field label="키워드 ID 목록 (쉼표 구분, 선택 — 예: 1,3)" value={keywordIds}
-            onChange={setKeywordIds} placeholder="1,3" />
-          <div style={{ marginBottom: 12, padding: '8px 10px', background: '#f7fafc', borderRadius: 6, fontSize: 11, color: '#718096', fontFamily: 'monospace' }}>
-            outfitItems 예시: [{'"category":"TOP","itemName":"화이트셔츠","brand":"SPAO"'}]
-          </div>
-
-          <button style={C.btn('#6b46c1')} onClick={handleCreatePost} disabled={loading}>
-            {loading
-              ? blurChoice === 'manual' ? '⏳ 게시글 작성 + 수동 블러 적용 중...' : '⏳ 게시글 작성 중...'
-              : 'POST /posts' + (blurChoice === 'manual' ? ' + PATCH manual-blur' : '')}
-          </button>
-          <Result data={res} />
-        </div>
-      )}
-
-      {/* ── STEP 4: 완료 ── */}
-      {step === 'done' && (
-        <>
-          <div style={{ ...C.info('green'), display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-            <span style={{ fontSize: 28 }}>🎉</span>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>게시글 작성 완료!</div>
-              <div style={{ fontSize: 12, color: '#276749', marginTop: 2 }}>
-                postId: <strong>{createdPostId}</strong> &nbsp;·&nbsp;
-                블러: <strong>{blurChoice === 'auto' ? 'AI 자동 (AUTO)' : '수동 (MANUAL)'}</strong>
-              </div>
-            </div>
-          </div>
-          {uploadedImg && (
-            <div style={C.card}>
-              <h3 style={{ ...C.h3, marginBottom: 10 }}>📷 최종 이미지 결과</h3>
-              <ImgCompare
-                img={uploadedImg}
-                manualPreview={
-                  blurChoice === 'manual'
-                    ? manualResult ? assetUrl(manualResult.processedImageUrl) : manualPreview
-                    : null
-                }
-              />
-              {blurChoice === 'manual' && manualResult && (
-                <div style={C.info('green')}>
-                  ✅ 수동 블러 서버 반영 완료 — blurMethod: <strong>MANUAL</strong>
-                </div>
-              )}
-            </div>
-          )}
-          <button style={C.btn('#718096')} onClick={reset}>처음부터 (새 게시글 작성)</button>
-          <Result data={res} />
-        </>
-      )}
-    </>
-  );
-}
-
-// ─── SECTION 8-B: 신고 ────────────────────────────────────────────────────────
-
-function S_Reports() {
-  const [tab, setTab]           = useState<'post' | 'user'>('post');
-  const [targetId, setTargetId] = useState('');
-  const [title, setTitle]       = useState('');
-  const [reason, setReason]     = useState('SPAM');
-  const [desc, setDesc]         = useState('');
-  const [res, setRes]           = useState('');
-
-  const reasonOpts = [
-    { value: 'SPAM',          label: 'SPAM — 스팸/도배' },
-    { value: 'ABUSE',         label: 'ABUSE — 욕설/비하' },
-    { value: 'INAPPROPRIATE', label: 'INAPPROPRIATE — 부적절한 내용' },
-    { value: 'ETC',           label: 'ETC — 기타' },
-  ];
-
-  const submit = () => {
-    if (!targetId.trim()) { setRes(`[Error] ${tab === 'post' ? '게시글' : '사용자'} ID를 입력하세요`); return; }
-    if (!title.trim()) { setRes('[Error] 신고 제목을 입력하세요'); return; }
-    const path = tab === 'post' ? `/posts/${targetId}/reports` : `/users/${targetId}/reports`;
-    const body: Record<string, unknown> = { title: title.trim(), reason };
-    if (desc.trim()) body.description = desc.trim();
-    run(() => api('POST', path, body), setRes);
-  };
-
-  return (
-    <>
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-        <button onClick={() => { setTab('post'); setRes(''); }} style={C.tab(tab === 'post', '#e53e3e')}>🗒️ 게시글 신고</button>
-        <button onClick={() => { setTab('user'); setRes(''); }} style={C.tab(tab === 'user', '#e53e3e')}>👤 사용자 신고</button>
-      </div>
-      <div style={C.card}>
-        <h3 style={C.h3}>{tab === 'post' ? '🗒️ 게시글 신고' : '👤 사용자 신고'}</h3>
-        {tab === 'post' ? (
-          <div style={C.info('blue')}>동일 사용자가 동일 게시글에 대해 신고는 <strong>1회만</strong> 가능합니다.</div>
-        ) : (
-          <div style={C.info('blue')}>동일 대상 사용자에 대해 <strong>PENDING 상태 신고가 이미 존재하면</strong> 중복 신고가 거부됩니다.</div>
-        )}
-        <Field label={tab === 'post' ? '신고할 게시글 ID (postId)' : '신고할 사용자 ID (userId)'}
-          value={targetId} onChange={setTargetId} placeholder={tab === 'post' ? 'ex) 12' : 'ex) 7'} />
-        <Field label="신고 제목 (최대 100자)" value={title} onChange={setTitle} placeholder="스팸 게시글입니다" />
-        <SelectField label="신고 사유" value={reason} onChange={setReason} options={reasonOpts} />
-        <div style={{ marginBottom: 8 }}>
-          <span style={C.label}>상세 설명 (선택, 최대 500자)</span>
-          <textarea value={desc} onChange={(e) => setDesc(e.target.value)}
-            placeholder="신고 사유를 상세히 작성해 주세요"
-            style={{ ...C.input, height: 64, resize: 'vertical', fontFamily: 'inherit' }} />
-        </div>
-        <button style={C.btn('#e53e3e')} onClick={submit}>
-          {tab === 'post' ? 'POST /posts/:postId/reports' : 'POST /users/:userId/reports'}
+        >
+          유저 제재 목록 조회
         </button>
-        <Result data={res} />
       </div>
-      <div style={{ ...C.info('yellow'), fontSize: 11 }}>
-        💡 신고 목록 조회 및 처리는 <strong>🛡️ 관리자</strong> 섹션에서 확인하세요.
-        (GET /admin/post-reports, GET /admin/user-reports)
+
+      <div style={C.card}>
+        <h3 style={C.h3}>➕ 사용자 제재 생성</h3>
+        <div style={C.info('yellow')}>
+          <strong>PERMANENT_BAN</strong>은 SUPER_ADMIN 전용이다.
+        </div>
+        <Field
+          label="sanctionedUserId"
+          value={genericUserId}
+          onChange={setGenericUserId}
+          placeholder="ex) 7"
+        />
+        <SelectField
+          label="type"
+          value={genericType}
+          onChange={setGenericType}
+          options={[
+            { value: 'POST_RESTRICTION', label: 'POST_RESTRICTION — 게시글 작성 제한' },
+            { value: 'TEMP_SUSPENSION', label: 'TEMP_SUSPENSION — 로그인 제한' },
+            { value: 'PERMANENT_BAN', label: 'PERMANENT_BAN — 영구 정지' },
+          ]}
+        />
+        <TextAreaField
+          label="reason"
+          value={genericReason}
+          onChange={setGenericReason}
+          placeholder="반복 규정 위반"
+        />
+        <Field
+          label="startsAt (선택, ISO 8601)"
+          value={genericStartsAt}
+          onChange={setGenericStartsAt}
+          placeholder="2026-04-23T00:00:00.000Z"
+        />
+        <Field
+          label="endsAt (선택, ISO 8601)"
+          value={genericEndsAt}
+          onChange={setGenericEndsAt}
+          placeholder="2026-05-23T00:00:00.000Z"
+        />
+        <button
+          style={C.btn(genericType === 'PERMANENT_BAN' ? '#c53030' : '#553c9a')}
+          onClick={() => {
+            const body: Record<string, unknown> = {
+              sanctionedUserId: Number(genericUserId),
+              type: genericType,
+              reason: genericReason.trim(),
+            };
+            if (genericStartsAt.trim()) body.startsAt = genericStartsAt.trim();
+            if (genericEndsAt.trim()) body.endsAt = genericEndsAt.trim();
+            run(() => api('POST', '/admin/sanctions', body), setRes);
+          }}
+        >
+          사용자 제재 생성
+        </button>
       </div>
-    </>
+
+      <div style={C.card}>
+        <h3 style={C.h3}>⏹️ 제재 조기 종료</h3>
+        <Field label="sanctionId" value={endSanctionId} onChange={setEndSanctionId} placeholder="ex) 4" />
+        <TextAreaField
+          label="종료 사유 (선택)"
+          value={endSanctionReason}
+          onChange={setEndSanctionReason}
+          placeholder="당사자 요청으로 조기 종료"
+        />
+        <button
+          style={C.btn('#ed8936')}
+          onClick={() => {
+            const body: Record<string, unknown> = {};
+            if (endSanctionReason.trim()) body.reason = endSanctionReason.trim();
+            run(() => api('PATCH', `/admin/sanctions/${endSanctionId}/end`, body), setRes);
+          }}
+        >
+          제재 종료
+        </button>
+      </div>
+
+      <div style={C.card}>
+        <h3 style={C.h3}>➕ 게시글 제한 / 로그인 제한 생성</h3>
+        <Field label="userId" value={restrictionUserId} onChange={setRestrictionUserId} placeholder="ex) 7" />
+        <TextAreaField
+          label="reason"
+          value={restrictionReason}
+          onChange={setRestrictionReason}
+          placeholder="반복 위반 행위"
+        />
+        <Field
+          label="startsAt (선택, ISO 8601)"
+          value={restrictionStartsAt}
+          onChange={setRestrictionStartsAt}
+          placeholder="2026-04-23T00:00:00.000Z"
+        />
+        <Field
+          label="endsAt (선택, ISO 8601)"
+          value={restrictionEndsAt}
+          onChange={setRestrictionEndsAt}
+          placeholder="2026-05-23T00:00:00.000Z"
+        />
+        <button
+          style={C.btn('#553c9a')}
+          onClick={() => {
+            const body: Record<string, unknown> = { reason: restrictionReason.trim() };
+            if (restrictionStartsAt.trim()) body.startsAt = restrictionStartsAt.trim();
+            if (restrictionEndsAt.trim()) body.endsAt = restrictionEndsAt.trim();
+            run(
+              () =>
+                api(
+                  'POST',
+                  `/admin/users/${restrictionUserId}/sanctions/post-restriction`,
+                  body,
+                ),
+              setRes,
+            );
+          }}
+        >
+          게시글 제한 제재 생성
+        </button>
+        <button
+          style={C.btn('#553c9a')}
+          onClick={() => {
+            const body: Record<string, unknown> = { reason: restrictionReason.trim() };
+            if (restrictionStartsAt.trim()) body.startsAt = restrictionStartsAt.trim();
+            if (restrictionEndsAt.trim()) body.endsAt = restrictionEndsAt.trim();
+            run(
+              () =>
+                api(
+                  'POST',
+                  `/admin/users/${restrictionUserId}/sanctions/login-restriction`,
+                  body,
+                ),
+              setRes,
+            );
+          }}
+        >
+          로그인 제한 제재 생성
+        </button>
+      </div>
+
+      <Result data={res} />
+    </PageShell>
   );
 }
 
-// ─── SECTION 9: 평가존 ────────────────────────────────────────────────────────
+// ─── 로그·이력 ───────────────────────────────────────────────────────────────
 
-function S_Evaluation() {
-  const [tab, setTab]                   = useState<'list' | 'detail' | 'vote'>('list');
-  const [postId, setPostId]             = useState('');
-  const [choice, setChoice]             = useState<'LIKE' | 'DISLIKE'>('LIKE');
-  const [voteId, setVoteId]             = useState('');
-  const [tags, setTags]                 = useState<{ id: number; label: string; code: string }[]>([]);
-  const [selectedTags, setSelectedTags] = useState<Set<number>>(new Set());
-  const [res, setRes]                   = useState('');
+function S_AdminLogs() {
+  const [res, setRes] = useState('');
 
-  const toggleTag = (id: number) => {
-    const next = new Set(selectedTags);
-    if (next.has(id)) { next.delete(id); }
-    else if (next.size >= 3) { setRes('[Error] 피드백 태그는 최대 3개까지만 선택할 수 있습니다 (V2 정책)'); return; }
-    else { next.add(id); }
-    setSelectedTags(next); setRes('');
-  };
+  const [adminId, setAdminId] = useState('');
+  const [targetType, setTargetType] = useState('');
+  const [actionType, setActionType] = useState('');
+  const [actionCursor, setActionCursor] = useState('');
+  const [actionLimit, setActionLimit] = useState('20');
 
-  const tabs = [
-    { key: 'list'   as const, label: '📋 평가 목록' },
-    { key: 'detail' as const, label: '🔍 평가 상세' },
-    { key: 'vote'   as const, label: '🗳️ 투표 + 피드백' },
-  ];
+  const [historyTargetType, setHistoryTargetType] = useState('');
+  const [historyTargetId, setHistoryTargetId] = useState('');
+  const [historyCursor, setHistoryCursor] = useState('');
+  const [historyLimit, setHistoryLimit] = useState('20');
 
   return (
-    <>
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-        {tabs.map((t) => (
-          <button key={t.key} onClick={() => { setTab(t.key); setRes(''); }}
-            style={C.tab(tab === t.key, '#b7791f')}>{t.label}</button>
-        ))}
+    <PageShell
+      title="📜 로그·이력"
+      description="관리자 액션 로그와 신고 이력을 query DTO 기준으로 조회한다."
+    >
+      <div style={C.card}>
+        <h3 style={C.h3}>📜 관리자 액션 로그 조회</h3>
+        <Field label="adminId (선택)" value={adminId} onChange={setAdminId} placeholder="ex) 1" />
+        <SelectField
+          label="targetType (선택)"
+          value={targetType}
+          onChange={setTargetType}
+          options={[
+            { value: '', label: '전체' },
+            { value: 'POST', label: 'POST' },
+            { value: 'POST_REPORT', label: 'POST_REPORT' },
+            { value: 'USER_REPORT', label: 'USER_REPORT' },
+            { value: 'USER', label: 'USER' },
+            { value: 'USER_SANCTION', label: 'USER_SANCTION' },
+          ]}
+        />
+        <SelectField
+          label="actionType (선택)"
+          value={actionType}
+          onChange={setActionType}
+          options={[
+            { value: '', label: '전체' },
+            { value: 'CREATED', label: 'CREATED' },
+            { value: 'RESOLVED', label: 'RESOLVED' },
+            { value: 'REJECTED', label: 'REJECTED' },
+            { value: 'REOPENED', label: 'REOPENED' },
+            { value: 'HIDDEN', label: 'HIDDEN' },
+            { value: 'UNHIDDEN', label: 'UNHIDDEN' },
+            { value: 'DELETED', label: 'DELETED' },
+            { value: 'RESTORED', label: 'RESTORED' },
+            { value: 'SANCTION_UPDATED', label: 'SANCTION_UPDATED' },
+            { value: 'SANCTION_ENDED', label: 'SANCTION_ENDED' },
+            { value: 'USER_STATUS_UPDATED', label: 'USER_STATUS_UPDATED' },
+          ]}
+        />
+        <Field label="cursor (선택)" value={actionCursor} onChange={setActionCursor} placeholder="ex) 100" />
+        <Field label="limit (선택, 기본 20)" value={actionLimit} onChange={setActionLimit} placeholder="20" />
+        <button
+          style={C.btn('#553c9a')}
+          onClick={() =>
+            run(
+              () =>
+                api(
+                  'GET',
+                  `/admin/action-logs${qs({
+                    adminId,
+                    targetType,
+                    actionType,
+                    cursor: actionCursor,
+                    limit: actionLimit,
+                  })}`,
+                ),
+              setRes,
+            )
+          }
+        >
+          액션 로그 조회
+        </button>
       </div>
 
-      {tab === 'list' && (
-        <div style={C.card}>
-          <h3 style={C.h3}>📋 평가존 목록</h3>
-          <div style={C.info('blue')}>본인 게시글 제외 + 이미 투표한 게시글 제외. OPEN 상태 게시글만 반환됩니다.</div>
-          <button style={C.btn('#b7791f')} onClick={() => run(() => api('GET', '/evaluations'), setRes)}>
-            GET /evaluations
-          </button>
-          <Result data={res} />
-        </div>
-      )}
+      <div style={C.card}>
+        <h3 style={C.h3}>📋 신고 이력 조회</h3>
+        <SelectField
+          label="targetType (선택)"
+          value={historyTargetType}
+          onChange={setHistoryTargetType}
+          options={[
+            { value: '', label: '전체' },
+            { value: 'POST_REPORT', label: 'POST_REPORT — 게시글 신고' },
+            { value: 'USER_REPORT', label: 'USER_REPORT — 사용자 신고' },
+          ]}
+        />
+        <Field
+          label="targetId (선택)"
+          value={historyTargetId}
+          onChange={setHistoryTargetId}
+          placeholder="ex) 3"
+        />
+        <Field
+          label="cursor (선택)"
+          value={historyCursor}
+          onChange={setHistoryCursor}
+          placeholder="ex) 50"
+        />
+        <Field
+          label="limit (선택, 기본 20)"
+          value={historyLimit}
+          onChange={setHistoryLimit}
+          placeholder="20"
+        />
+        <button
+          style={C.btn('#553c9a')}
+          onClick={() =>
+            run(
+              () =>
+                api(
+                  'GET',
+                  `/admin/report-histories${qs({
+                    targetType: historyTargetType,
+                    targetId: historyTargetId,
+                    cursor: historyCursor,
+                    limit: historyLimit,
+                  })}`,
+                ),
+              setRes,
+            )
+          }
+        >
+          신고 이력 조회
+        </button>
+      </div>
 
-      {tab === 'detail' && (
-        <div style={C.card}>
-          <h3 style={C.h3}>🔍 평가 게시글 상세</h3>
-          <div style={C.info('blue')}>
-            작성자 정보(닉네임, 프로필)는 OPEN 상태에서 비공개 처리됩니다.
-            투표 여부(hasVoted), 내 투표 선택(myVoteChoice), 피드백 태그 요약도 포함됩니다.
-          </div>
-          <Field label="postId" value={postId} onChange={setPostId} placeholder="평가할 게시글 ID" />
-          <button style={C.btn('#b7791f')} onClick={() => run(() => api('GET', `/evaluations/posts/${postId}`), setRes)}>
-            GET /evaluations/posts/:postId
-          </button>
-          <Result data={res} />
-        </div>
-      )}
-
-      {tab === 'vote' && (
-        <>
-          <div style={C.card}>
-            <h3 style={C.h3}>🗳️ 투표 (LIKE / DISLIKE)</h3>
-            <div style={C.info('blue')}>투표 성공 시 voteId가 반환됩니다. 아래 피드백 태그 선택에 voteId가 자동 입력됩니다.</div>
-            <Field label="게시글 ID (postId)" value={postId} onChange={setPostId} placeholder="투표할 게시글 ID" />
-            <div style={{ marginBottom: 10 }}>
-              <span style={C.label}>투표 선택</span>
-              <div style={{ display: 'flex', gap: 10 }}>
-                {(['LIKE', 'DISLIKE'] as const).map((c) => (
-                  <button key={c} onClick={() => setChoice(c)} style={{
-                    padding: '8px 24px', borderRadius: 8, border: '2px solid',
-                    cursor: 'pointer', fontSize: 14, fontWeight: 700,
-                    background: choice === c ? (c === 'LIKE' ? '#38a169' : '#e53e3e') : '#fff',
-                    color: choice === c ? '#fff' : (c === 'LIKE' ? '#38a169' : '#e53e3e'),
-                    borderColor: c === 'LIKE' ? '#38a169' : '#e53e3e',
-                  }}>{c === 'LIKE' ? '👍 좋아요' : '👎 싫어요'}</button>
-                ))}
-              </div>
-            </div>
-            <button style={C.btn(choice === 'LIKE' ? '#38a169' : '#e53e3e')} onClick={() => run(async () => {
-              const d = await api<{ voteId: number }>('POST', `/evaluations/posts/${postId}/votes`, { choice });
-              setVoteId(String(d.voteId)); setSelectedTags(new Set()); setTags([]);
-              return d;
-            }, setRes)}>POST /evaluations/posts/:postId/votes</button>
-            <Result data={res} />
-          </div>
-
-          <div style={C.card}>
-            <h3 style={C.h3}>🏷️ 피드백 태그 선택 (최대 3개 — V2 정책)</h3>
-            <div style={C.info('yellow')}>
-              ⚠️ 피드백 태그는 <strong>투표 직후 1회만</strong> 제출 가능합니다. 이후 수정/삭제 불가.
-              최대 <strong>3개</strong>까지 선택할 수 있습니다.
-            </div>
-            <Field label="voteId (투표 후 자동 입력됨)" value={voteId} onChange={setVoteId} placeholder="투표 후 자동 입력" />
-            <button style={C.btn('#718096')} onClick={() => {
-              run(async () => {
-                const d = await api<{ items: { id: number; label: string; code: string }[] }>(
-                  'GET', `/evaluations/tags?voteChoice=${choice}`,
-                );
-                setTags(d.items); return d;
-              }, setRes);
-            }}>태그 목록 불러오기 (voteChoice: {choice})</button>
-
-            {tags.length > 0 && (
-              <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 12, marginBottom: 8 }}>
-                  선택됨: <strong style={{ color: selectedTags.size === 3 ? '#e53e3e' : '#2b6cb0' }}>
-                    {selectedTags.size} / 3
-                  </strong>
-                  {selectedTags.size === 3 && <span style={{ color: '#e53e3e', marginLeft: 6 }}>최대 선택!</span>}
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {tags.map((tag) => {
-                    const sel = selectedTags.has(tag.id);
-                    const disabled = !sel && selectedTags.size >= 3;
-                    return (
-                      <button key={tag.id} onClick={() => toggleTag(tag.id)} style={{
-                        padding: '6px 14px', borderRadius: 20, border: '2px solid',
-                        cursor: disabled ? 'not-allowed' : 'pointer',
-                        fontSize: 12, fontWeight: sel ? 700 : 400,
-                        background: sel ? '#b7791f' : '#fff',
-                        color: sel ? '#fff' : disabled ? '#a0aec0' : '#4a5568',
-                        borderColor: sel ? '#b7791f' : disabled ? '#e2e8f0' : '#cbd5e0',
-                        opacity: disabled ? 0.5 : 1,
-                      }}>{tag.label}</button>
-                    );
-                  })}
-                </div>
-                <button style={{ ...C.btn('#b7791f'), marginTop: 12 }} onClick={() => {
-                  if (!voteId) { setRes('[Error] voteId가 없습니다. 먼저 투표하세요'); return; }
-                  if (selectedTags.size === 0) { setRes('[Error] 태그를 1개 이상 선택하세요'); return; }
-                  run(() => api('POST', `/evaluations/votes/${voteId}/feedback`, {
-                    tagIds: Array.from(selectedTags),
-                  }), setRes);
-                }}>POST /evaluations/votes/:voteId/feedback ({selectedTags.size}개 선택)</button>
-              </div>
-            )}
-            <Result data={res} />
-          </div>
-        </>
-      )}
-    </>
+      <Result data={res} />
+    </PageShell>
   );
 }
 
-// ─── MAIN ─────────────────────────────────────────────────────────────────────
+// ─── 섹션 정의 ───────────────────────────────────────────────────────────────
 
-const SECTIONS = [
-  { key: 'login',      label: '🔐 로그인',           component: S_Login },
-  { key: 'mypage',     label: '👤 마이페이지',        component: S_MyPage },
-  { key: 'admin',      label: '🛡️ 관리자',           component: S_Admin },
-  { key: 'bookmark',   label: '🔖 북마크',            component: S_Bookmarks },
-  { key: 'myfeed',     label: '📋 내 피드',           component: S_MyFeed },
-  { key: 'userfeed',   label: '👥 타 사용자 피드',    component: S_UserFeed },
-  { key: 'search',     label: '🔍 검색',              component: S_Search },
-  { key: 'upload',     label: '📝 게시글 작성',       component: S_PostUpload },
-  { key: 'evaluation', label: '🎯 평가존',            component: S_Evaluation },
-  { key: 'reports',    label: '🚨 신고',              component: S_Reports },
+const SECTIONS: {
+  key: AdminPageKey;
+  label: string;
+  component: () => JSX.Element;
+}[] = [
+  { key: 'login', label: '🔐 로그인', component: S_Login },
+  { key: 'admin-home', label: '🏠 관리자 홈', component: () => <div /> },
+  { key: 'admin-reports', label: '🚨 신고 관리', component: S_AdminReports },
+  { key: 'admin-operations', label: '⚙️ 게시글·회원 운영', component: S_AdminOperations },
+  { key: 'admin-masters', label: '📚 마스터 관리', component: S_AdminMasters },
+  { key: 'admin-sanctions', label: '🚫 제재 관리', component: S_AdminSanctions },
+  { key: 'admin-logs', label: '📜 로그·이력', component: S_AdminLogs },
 ];
 
+// ─── 루트 ────────────────────────────────────────────────────────────────────
+
 export default function TestPage() {
-  const [active, setActive] = useState('login');
+  const [active, setActive] = useState<AdminPageKey>('login');
   const ActiveSection = SECTIONS.find((sec) => sec.key === active)?.component ?? S_Login;
 
   return (
-    <div style={{
-      display: 'flex', height: '100vh',
-      fontFamily: "'Pretendard', 'Inter', -apple-system, sans-serif",
-      background: '#f7fafc',
-    }}>
-      {/* 사이드바 */}
-      <aside style={{ width: 210, background: '#1a202c', display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'auto' }}>
+    <div
+      style={{
+        display: 'flex',
+        height: '100vh',
+        fontFamily: "'Pretendard', 'Inter', -apple-system, sans-serif",
+        background: '#f7fafc',
+      }}
+    >
+      <aside
+        style={{
+          width: 220,
+          background: '#1a202c',
+          display: 'flex',
+          flexDirection: 'column',
+          flexShrink: 0,
+          overflowY: 'auto',
+        }}
+      >
         <div style={{ padding: '18px 16px 12px', borderBottom: '1px solid #2d3748' }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>C:dinator V2</div>
-          <div style={{ fontSize: 11, color: '#4a5568', marginTop: 3 }}>API Test Panel</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
+            C:dinator V3
+          </div>
+          <div style={{ fontSize: 11, color: '#718096', marginTop: 3 }}>Admin Test Panel</div>
         </div>
+
         <nav style={{ padding: '8px 0', flex: 1 }}>
           {SECTIONS.map((sec) => (
-            <button key={sec.key} onClick={() => setActive(sec.key)} style={{
-              display: 'block', width: '100%', textAlign: 'left',
-              padding: '10px 16px',
-              background: active === sec.key ? '#2d3748' : 'transparent',
-              border: 'none',
-              borderLeft: `3px solid ${active === sec.key ? '#63b3ed' : 'transparent'}`,
-              color: active === sec.key ? '#fff' : '#718096',
-              fontSize: 13, cursor: 'pointer',
-              fontWeight: active === sec.key ? 700 : 400,
-              transition: 'all 0.1s',
-            }}>{sec.label}</button>
+            <button
+              key={sec.key}
+              onClick={() => setActive(sec.key)}
+              style={{
+                display: 'block',
+                width: '100%',
+                textAlign: 'left',
+                padding: '10px 16px',
+                background: active === sec.key ? '#2d3748' : 'transparent',
+                border: 'none',
+                borderLeft: `3px solid ${active === sec.key ? '#63b3ed' : 'transparent'}`,
+                color: active === sec.key ? '#fff' : '#a0aec0',
+                fontSize: 13,
+                cursor: 'pointer',
+                fontWeight: active === sec.key ? 700 : 500,
+                transition: 'all 0.1s',
+              }}
+            >
+              {sec.label}
+            </button>
           ))}
         </nav>
+
         <div style={{ padding: '10px 16px', borderTop: '1px solid #2d3748', fontSize: 11 }}>
-          {tok()
-            ? <span style={{ color: '#68d391' }}>✅ uid: {localStorage.getItem('userId')} / {localStorage.getItem('nickname')}</span>
-            : <span style={{ color: '#fc8181' }}>⚠️ 로그인 필요</span>}
+          {tok() ? (
+            <span style={{ color: '#68d391' }}>
+              ✅ uid: {localStorage.getItem('userId')} / {localStorage.getItem('nickname')}
+            </span>
+          ) : (
+            <span style={{ color: '#fc8181' }}>⚠️ 로그인 필요</span>
+          )}
         </div>
       </aside>
 
-      {/* 콘텐츠 */}
       <main style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
-        <div style={{ maxWidth: 740 }}>
-          <ActiveSection />
+        <div style={{ maxWidth: 860 }}>
+          {active === 'admin-home' ? <S_AdminHome onMove={setActive} /> : <ActiveSection />}
         </div>
       </main>
     </div>
