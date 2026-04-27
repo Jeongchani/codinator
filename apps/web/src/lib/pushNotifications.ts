@@ -113,15 +113,28 @@ export const requestBrowserNotificationPermission = async (): Promise<Notificati
   return Notification.requestPermission();
 };
 
+const PUSH_SERVICE_WORKER_PATH = '/codinator-push-sw.js';
+const PUSH_SERVICE_WORKER_SCOPE = '/';
+
 export const ensurePushServiceWorkerRegistration = async (): Promise<ServiceWorkerRegistration | null> => {
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
     return null;
   }
 
   try {
-    return await navigator.serviceWorker.register('/codinator-push-sw.js');
+    const existingRegistration = await navigator.serviceWorker.getRegistration(
+      PUSH_SERVICE_WORKER_SCOPE,
+    );
+
+    if (existingRegistration) {
+      return existingRegistration;
+    }
+
+    return await navigator.serviceWorker.register(PUSH_SERVICE_WORKER_PATH, {
+      scope: PUSH_SERVICE_WORKER_SCOPE,
+    });
   } catch (error) {
-    console.error('[push] service worker registration failed', error);
+    console.warn('[push] service worker registration skipped', error);
     return null;
   }
 };
