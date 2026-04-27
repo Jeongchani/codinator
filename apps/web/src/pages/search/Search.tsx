@@ -85,7 +85,6 @@ type ApiFilterPayload = {
   keywordIds?: number[];
   feedbackLikeTagIds?: number[];
   feedbackDislikeTagIds?: number[];
-  garmentCategory?: AiGarmentCategory;
 };
 
 const FILTERS: SearchFilter[] = [
@@ -214,7 +213,6 @@ const buildApiFilters = (filters: SearchFiltersValue): ApiFilterPayload => {
     keywordIds,
     feedbackLikeTagIds,
     feedbackDislikeTagIds,
-    garmentCategory: outfitCategories[0],
   };
 };
 
@@ -369,11 +367,10 @@ export default function Search() {
           periodFrom: apiFilters.periodFrom,
           periodTo: apiFilters.periodTo,
           likeRatioMin: apiFilters.likeRatioMin,
+          outfitCategories: apiFilters.outfitCategories,
           keywordIds: apiFilters.keywordIds,
           feedbackLikeTagIds: apiFilters.feedbackLikeTagIds,
           feedbackDislikeTagIds: apiFilters.feedbackDislikeTagIds,
-          mode: apiFilters.garmentCategory ? 'SINGLE_ITEM' : undefined,
-          garmentCategory: apiFilters.garmentCategory,
         });
 
         const items = response.items.map(mapPostResult);
