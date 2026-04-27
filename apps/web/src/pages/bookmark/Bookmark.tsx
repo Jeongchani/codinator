@@ -12,7 +12,6 @@ import {
 import Header from '../../components/Header';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
 import FocusScreen from '../../components/focus/FocusScreen';
-import RankingDetail from '../ranking/RankingDetail';
 import EvaluationDetailFeedback from '../evaluation/EvaluationDetailFeedback';
 import styles from './Bookmark.module.css';
 
@@ -814,23 +813,17 @@ export default function Bookmark() {
     toggleSelectedId(item.id);
   };
 
-  const renderFocusedSheetContent = () => {
-    if (!focusedItem) return null;
-
-    if (focusedItem.status === 'ongoing') {
-      return (
-        <EvaluationDetailFeedback
-          embedded
-          postIdOverride={focusedItem.postId}
-          voteIdOverride={focusedItem.voteId}
-          voteChoiceOverride={focusedItem.voteChoice}
-          allowReadonlyDetail
-        />
-      );
-    }
+  const renderOngoingFocusedSheetContent = () => {
+    if (!focusedItem || focusedItem.status !== 'ongoing') return null;
 
     return (
-      <RankingDetail postId={focusedItem.postId} period={focusedPeriod ?? undefined} hideFeedLink />
+      <EvaluationDetailFeedback
+        embedded
+        postIdOverride={focusedItem.postId}
+        voteIdOverride={focusedItem.voteId}
+        voteChoiceOverride={focusedItem.voteChoice}
+        allowReadonlyDetail
+      />
     );
   };
 
@@ -972,9 +965,18 @@ export default function Bookmark() {
           detailLabel="상세보기"
           onOpenDetail={handleOpenDetailSheet}
         >
-          <PostDetailBottomSheet isOpen={sheetOpen} onCloseRequest={() => setSheetOpen(false)}>
-            {renderFocusedSheetContent()}
-          </PostDetailBottomSheet>
+          {focusedItem.status === 'ongoing' ? (
+            <PostDetailBottomSheet isOpen={sheetOpen} onCloseRequest={() => setSheetOpen(false)}>
+              {renderOngoingFocusedSheetContent()}
+            </PostDetailBottomSheet>
+          ) : (
+            <PostDetailBottomSheet
+              isOpen={sheetOpen}
+              onCloseRequest={() => setSheetOpen(false)}
+              postId={focusedItem.postId}
+              period={focusedPeriod ?? undefined}
+            />
+          )}
         </FocusScreen>
       ) : null}
 

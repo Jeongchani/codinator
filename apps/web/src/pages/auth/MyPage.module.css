@@ -114,7 +114,22 @@
 
 .modalConfirmButton:disabled {
   @apply cursor-not-allowed opacity-50;
-}:global(html.dark) .container,
+}
+
+.summaryCardButton {
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.summaryCardButton:active {
+  transform: scale(0.98);
+}
+
+:global(html.dark) .container,
 :global(html.dark) .pageBody,
 :global(html.dark) .contentArea,
 :global(html.dark) .scrollArea,
@@ -176,7 +191,8 @@
 
 :global(html.dark) .activePill {
   background: var(--footer-pill-bg);
-}:global(html.dark) .icon,
+}
+:global(html.dark) .icon,
 :global(html.dark) .label,
 :global(html.dark) .searchButton,
 :global(html.dark) .closeButton,
@@ -195,7 +211,8 @@
 :global(html.dark) .iconActive,
 :global(html.dark) .labelActive {
   color: var(--footer-pill-text);
-}:global(html.dark) .mainTitle,
+}
+:global(html.dark) .mainTitle,
 :global(html.dark) .sectionTitle,
 :global(html.dark) .fieldTitle,
 :global(html.dark) .mainTitle,
@@ -345,7 +362,8 @@
 :global(html.dark) .messageBox,
 :global(html.dark) .sectionEmpty {
   color: var(--app-text-secondary);
-}:global(html.dark) .tabSection,
+}
+:global(html.dark) .tabSection,
 :global(html.dark) .contentArea,
 :global(html.dark) .pageBody,
 :global(html.dark) .container,
@@ -361,7 +379,8 @@
 :global(html.dark) .scrollArea,
 :global(html.dark) .container {
   background-image: none;
-}:global(html.dark) .modalCancelButton,
+}
+:global(html.dark) .modalCancelButton,
 :global(html.dark) .modalSecondaryButton,
 :global(html.dark) .fieldActionButton,
 :global(html.dark) .nicknameCheckButton,

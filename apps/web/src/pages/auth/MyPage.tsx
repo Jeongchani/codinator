@@ -28,6 +28,12 @@ type PasswordModalProps = {
   onConfirm: () => void;
 };
 
+const ROUTES = {
+  rankingZone: '/rankingZone',
+  myFeed: '/myFeed',
+  evaluationDetailFeedback: '/ongoingEvaluationHistory',
+} as const;
+
 const getMyProfile = async (): Promise<GetMeResponse> => {
   return fetcher<GetMeResponse>('/users/me', {
     headers: getAuthHeaders(),
@@ -229,7 +235,12 @@ export default function MyPage() {
             <h2 className={styles.sectionTitle}>내 활동 요약</h2>
 
             <div className={styles.summaryGrid}>
-              <article className={styles.summaryCard}>
+              <button
+                type="button"
+                className={`${styles.summaryCard} ${styles.summaryCardButton}`}
+                onClick={() => navigate(ROUTES.rankingZone)}
+                aria-label="TOP 10 진입 게시글 보러가기"
+              >
                 <p className={styles.summaryLabel}>
                   TOP 10
                   <br />
@@ -238,9 +249,14 @@ export default function MyPage() {
                 <strong className={styles.summaryValue}>
                   {loading ? '-' : `${summary.top10Count}회`}
                 </strong>
-              </article>
+              </button>
 
-              <article className={styles.summaryCard}>
+              <button
+                type="button"
+                className={`${styles.summaryCard} ${styles.summaryCardButton}`}
+                onClick={() => navigate(ROUTES.myFeed)}
+                aria-label="올린 게시글 보러가기"
+              >
                 <p className={styles.summaryLabel}>
                   올린
                   <br />
@@ -249,9 +265,14 @@ export default function MyPage() {
                 <strong className={styles.summaryValue}>
                   {loading ? '-' : `${summary.myPostCount}개`}
                 </strong>
-              </article>
+              </button>
 
-              <article className={styles.summaryCard}>
+              <button
+                type="button"
+                className={`${styles.summaryCard} ${styles.summaryCardButton}`}
+                onClick={() => navigate(ROUTES.evaluationDetailFeedback)}
+                aria-label="평가한 게시글 보러가기"
+              >
                 <p className={styles.summaryLabel}>
                   평가한
                   <br />
@@ -260,7 +281,7 @@ export default function MyPage() {
                 <strong className={styles.summaryValue}>
                   {loading ? '-' : `${summary.votedPostCount}개`}
                 </strong>
-              </article>
+              </button>
             </div>
           </section>
 
@@ -303,7 +324,6 @@ export default function MyPage() {
           </section>
         </main>
       </div>
-
 
       <PasswordModal
         open={passwordModalOpen}
