@@ -94,7 +94,6 @@ const TYPE_OPTIONS: Array<{ value: SearchType; label: string; shortLabel: string
   { value: 'OUTFIT_BRAND', label: '브랜드', shortLabel: '브랜드' },
 ];
 
-const PLACEHOLDER_RESULTS = Array.from({ length: 9 }, (_, index) => index + 1);
 const SEARCH_LIMIT = 50;
 
 const OUTFIT_CATEGORY_MAP: Record<string, AiGarmentCategory> = {
@@ -271,6 +270,7 @@ export default function Search() {
   const isTextMode = mode === 'text';
   const isImageMode = mode === 'image';
   const hasImageResult = Boolean(imagePreviewUrl);
+  const isImageSearchLoading = isImageMode && hasImageResult && (imageUploading || resultLoading);
 
   const currentTypeLabel = useMemo(() => {
     return TYPE_OPTIONS.find((option) => option.value === searchType)?.shortLabel ?? '전체';
@@ -473,6 +473,8 @@ export default function Search() {
     setImageUploading(true);
     setResultLoading(true);
     setResultError('');
+    setResultItems([]);
+    setResultCount(0);
     event.target.value = '';
 
     try {
@@ -586,15 +588,7 @@ export default function Search() {
 
   const renderResultGrid = () => {
     if (resultLoading || imageUploading) {
-      return (
-        <div className={styles.resultGrid}>
-          {PLACEHOLDER_RESULTS.map((item) => (
-            <div key={item} className={styles.resultCard} aria-hidden="true">
-              <span className={styles.resultGradient} />
-            </div>
-          ))}
-        </div>
-      );
+      return null;
     }
 
     if (resultError) {
@@ -792,9 +786,13 @@ export default function Search() {
                     </div>
 
                     <div className={styles.imageResultCopy}>
-                      <p className={styles.imageResultTitle}>비슷한 스타일을 찾았어요</p>
+                      <p className={styles.imageResultTitle}>
+                        {isImageSearchLoading ? '스타일을 찾고 있어요' : '비슷한 스타일을 찾았어요'}
+                      </p>
                       <p className={styles.imageResultDescription}>
-                        찾으시는 스타일을 확인해보세요
+                        {isImageSearchLoading
+                          ? '잠시만 기다려 주세요...'
+                          : '찾으시는 스타일을 확인해보세요'}
                       </p>
                     </div>
 

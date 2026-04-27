@@ -237,8 +237,6 @@
   color: var(--app-text);
 }
 
-:global(html.dark) 
-
 :global(html.dark) .backButton,
 :global(html.dark) .menuButton,
 :global(html.dark) .searchInputIcon,
