@@ -23,6 +23,7 @@ import OngoingEvaluationHistory from './pages/evaluation/OngoingEvaluationHistor
 import Settings from './pages/settings/Settings';
 import PasswordReset from './pages/auth/PasswordReset';
 import ForegroundPushCenter from './components/notifications/ForegroundPushCenter';
+import SocialSignup from './pages/auth/SocialSignup';
 
 import { fetchMySettings, getAccessToken } from './lib/api';
 import { applyThemeMode, getStoredThemeMode, saveAndApplyThemeMode } from './lib/theme';
@@ -94,6 +95,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<Splash onFinish={() => navigate('/loginSelect')} />} />
 
+        <Route path="/socialSignup" element={<SocialSignup />} />
         <Route path="/loginSelect" element={<LoginSelect />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />

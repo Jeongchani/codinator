@@ -268,6 +268,21 @@
 
 .modalIcon {
   @apply mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600 text-xl font-bold;
+  overflow: hidden;
+}
+
+.modalIconSocial {
+  background: #ffffff;
+  border: 1px solid #d6d3d1;
+  color: inherit;
+}
+
+.modalLogoImage {
+  @apply block select-none pointer-events-none;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  object-position: center;
 }
 
 .modalTitle {

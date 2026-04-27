@@ -153,7 +153,6 @@
   opacity: 0.7;
 }
 
-
 .modalBackdrop {
   @apply absolute inset-0 z-50 flex items-center justify-center bg-black/40 px-4;
 }
@@ -164,6 +163,21 @@
 
 .modalIcon {
   @apply mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600 text-xl font-bold;
+  overflow: hidden;
+}
+
+.modalIconSocial {
+  background: #ffffff;
+  border: 1px solid #d6d3d1;
+  color: inherit;
+}
+
+.modalLogoImage {
+  @apply block select-none pointer-events-none;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  object-position: center;
 }
 
 .modalTitle {

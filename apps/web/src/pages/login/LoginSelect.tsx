@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type {
   LoginResponse,
+  SocialCodeExchangeResponse,
   SocialCompleteProfileRequest,
   SocialCompleteProfileResponse,
   SocialLoginRequest,
@@ -88,6 +89,10 @@ const SOCIAL_LOGIN_BUTTONS: SocialLoginButton[] = [
   },
 ];
 
+const getSocialLogoImage = (provider: SocialProvider) => {
+  return SOCIAL_LOGIN_BUTTONS.find((socialButton) => socialButton.provider === provider)?.logoImage;
+};
+
 const getStringEnv = (key: string): string => {
   const value = import.meta.env[key];
   return typeof value === 'string' ? value.trim() : '';
@@ -101,7 +106,7 @@ const createRandomState = () => {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 };
 
-const getLoginRedirectUri = () => `${window.location.origin}/login`;
+const getLoginRedirectUri = () => `${window.location.origin}${window.location.pathname}`;
 
 const loadGoogleIdentityScript = () => {
   return new Promise<void>((resolve, reject) => {
@@ -143,6 +148,7 @@ export default function LoginSelect() {
   const [modalTitle, setModalTitle] = useState('안내');
   const [modalMessage, setModalMessage] = useState('');
   const [modalAction, setModalAction] = useState<ModalAction>(null);
+  const [modalLogoImage, setModalLogoImage] = useState<string | null>(null);
 
   const handleLoginClick = () => {
     if (loading) return;
@@ -154,10 +160,16 @@ export default function LoginSelect() {
     navigate('/signup');
   };
 
-  const openModal = (title: string, message: string, action?: () => void) => {
+  const openModal = (
+    title: string,
+    message: string,
+    action?: () => void,
+    logoImage?: string,
+  ) => {
     setModalTitle(title);
     setModalMessage(message);
     setModalAction(() => action ?? null);
+    setModalLogoImage(logoImage ?? null);
     setShowModal(true);
   };
 
@@ -167,11 +179,13 @@ export default function LoginSelect() {
     if (modalAction) {
       const action = modalAction;
       setModalAction(null);
+      setModalLogoImage(null);
       action();
       return;
     }
 
     setModalAction(null);
+    setModalLogoImage(null);
   };
 
   const persistAuthSession = (authData: PersistAuthData) => {
@@ -189,11 +203,19 @@ export default function LoginSelect() {
     navigate('/rankingZone', { replace: true });
   };
 
-  const moveToSignupForNewSocialAccount = () => {
+  const moveToSignupForNewSocialAccount = (provider: SocialProvider, providerToken: string) => {
     openModal(
       '추가 정보가 필요해요',
-      '처음 사용하는 소셜 계정입니다. 회원가입 화면에서 추가 정보를 입력해주세요.',
-      () => navigate('/signup'),
+      '처음 사용하는 소셜 계정입니다. 추가 정보를 입력하면 가입이 완료됩니다.',
+      () =>
+        navigate('/socialSignup', {
+          state: {
+            provider,
+            providerToken,
+            rememberMe: false,
+          },
+        }),
+      getSocialLogoImage(provider),
     );
   };
 
@@ -230,12 +252,101 @@ export default function LoginSelect() {
     });
 
     if (loginCheck.isNewUser) {
-      moveToSignupForNewSocialAccount();
+      moveToSignupForNewSocialAccount(provider, providerToken);
       return;
     }
 
     await completeSocialLogin(provider, providerToken);
   };
+
+  const handleSocialRedirectCallback = async () => {
+    const storedStateRaw = sessionStorage.getItem(SOCIAL_OAUTH_STATE_KEY);
+    if (!storedStateRaw) return;
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const code = searchParams.get('code');
+    const returnedState = searchParams.get('state') ?? undefined;
+    const error = searchParams.get('error');
+
+    if (!code && !error) return;
+
+    sessionStorage.removeItem(SOCIAL_OAUTH_STATE_KEY);
+    window.history.replaceState(null, '', window.location.pathname);
+
+    if (error) {
+      openModal('소셜 로그인 실패', '소셜 로그인 인증이 취소되었거나 실패했습니다.');
+      return;
+    }
+
+    if (!code) {
+      openModal('소셜 로그인 실패', '소셜 로그인 인가코드를 확인할 수 없습니다.');
+      return;
+    }
+
+    let storedState: SocialOAuthState;
+
+    try {
+      storedState = JSON.parse(storedStateRaw) as SocialOAuthState;
+    } catch {
+      openModal('소셜 로그인 실패', '소셜 로그인 상태값을 확인할 수 없습니다. 다시 시도해주세요.');
+      return;
+    }
+
+    if (storedState.provider === 'NAVER' && storedState.state !== returnedState) {
+      openModal('소셜 로그인 실패', '네이버 로그인 상태값이 일치하지 않습니다. 다시 시도해주세요.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const exchangeEndpoint =
+        storedState.provider === 'KAKAO'
+          ? '/auth/social/kakao/exchange-code'
+          : '/auth/social/naver/exchange-code';
+
+      const exchangeBody =
+        storedState.provider === 'KAKAO'
+          ? {
+              code,
+              redirectUri: storedState.redirectUri,
+              rememberMe: storedState.rememberMe,
+            }
+          : {
+              code,
+              state: returnedState ?? '',
+              redirectUri: storedState.redirectUri,
+              rememberMe: storedState.rememberMe,
+            };
+
+      const exchangeResult = await fetcher<SocialCodeExchangeResponse>(exchangeEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(exchangeBody),
+      });
+
+      if (exchangeResult.isNewUser) {
+        moveToSignupForNewSocialAccount(storedState.provider, exchangeResult.providerToken);
+        return;
+      }
+
+      await completeSocialLogin(storedState.provider, exchangeResult.providerToken);
+    } catch (err) {
+      console.error('소셜 로그인 콜백 처리 오류:', err);
+      openModal(
+        '소셜 로그인 실패',
+        err instanceof Error ? err.message : '소셜 로그인 처리에 실패했습니다.',
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void handleSocialRedirectCallback();
+    // 최초 진입 시 URL callback만 처리한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const startKakaoLogin = () => {
     const clientId = getStringEnv('VITE_KAKAO_REST_API_KEY');
@@ -443,7 +554,25 @@ export default function LoginSelect() {
       {showModal ? (
         <div className={styles.modalBackdrop}>
           <div className={styles.modalCard}>
-            <div className={styles.modalIcon}>!</div>
+            <div
+              className={
+                modalLogoImage
+                  ? `${styles.modalIcon} ${styles.modalIconSocial}`
+                  : styles.modalIcon
+              }
+            >
+              {modalLogoImage ? (
+                <img
+                  src={modalLogoImage}
+                  alt=""
+                  className={styles.modalLogoImage}
+                  draggable={false}
+                  aria-hidden="true"
+                />
+              ) : (
+                '!'
+              )}
+            </div>
 
             <h3 className={styles.modalTitle}>{modalTitle}</h3>
 

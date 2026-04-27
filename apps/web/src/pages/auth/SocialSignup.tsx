@@ -1,29 +1,30 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { SquareCheck } from 'lucide-react';
 import type {
   Gender,
-  LoginResponse,
   SendPhoneVerificationRequest,
   SendPhoneVerificationResponse,
-  SignupRequest,
-  SignupResponse,
-  SocialCodeExchangeResponse,
   SocialCompleteProfileRequest,
   SocialCompleteProfileResponse,
-  SocialLoginRequest,
-  SocialLoginResponse,
   SocialProvider,
   VerifyPhoneCodeRequest,
+  VerifyPhoneCodeResponse,
 } from '@codinator/contracts';
 
-import { clearAuthTokens, fetcher, saveAuthTokens, saveCurrentUser } from '../../lib/api';
+import {
+  clearAuthTokens,
+  fetcher,
+  saveAuthTokens,
+  saveCurrentUser,
+} from '../../lib/api';
+
 import signupDecorationImage from '../../assets/auth/signup-decoration.png';
 import kakaoLogoImage from '../../assets/login/social-kakao.png';
 import naverLogoImage from '../../assets/login/social-naver.png';
 import googleLogoImage from '../../assets/login/social-google.png';
 
-import styles from './Signup.module.css';
+import styles from './SocialSignup.module.css';
 
 type CheckResponse = {
   available: boolean;
@@ -35,160 +36,82 @@ type SignupCheckRequest = {
   value: string;
 };
 
-type VerifyPhoneCodeResponse = {
-  phoneVerificationToken: string;
-  expiresAt: string;
-};
-
 type SignupGender = Gender | '';
-type ModalType = 'success' | 'error' | 'info' | 'social';
-type ModalAction = (() => void) | null;
-type OAuthProvider = Extract<SocialProvider, 'KAKAO' | 'NAVER'>;
-type SocialButtonProvider = Extract<SocialProvider, 'GOOGLE' | 'NAVER' | 'KAKAO'>;
+type ModalType = 'success' | 'error' | 'info';
 
-type SocialOAuthState = {
-  provider: OAuthProvider;
-  redirectUri: string;
+type SocialSignupLocationState = {
+  provider?: SocialProvider;
+  providerToken?: string;
+  rememberMe?: boolean;
+};
+
+type SocialSignupContext = {
+  provider: SocialProvider;
+  providerToken: string;
   rememberMe: boolean;
-  state?: string;
 };
 
-type GoogleCredentialResponse = {
-  credential?: string;
+const PHONE_CODE_TTL_SECONDS = 5 * 60;
+const SOCIAL_SIGNUP_CONTEXT_KEY = 'codinator.socialSignup.context';
+
+const providerMetaMap: Record<SocialProvider, { label: string; logoImage: string }> = {
+  GOOGLE: { label: '구글', logoImage: googleLogoImage },
+  KAKAO: { label: '카카오', logoImage: kakaoLogoImage },
+  NAVER: { label: '네이버', logoImage: naverLogoImage },
 };
 
-type GooglePromptMomentNotification = {
-  isNotDisplayed?: () => boolean;
-  isSkippedMoment?: () => boolean;
-  isDismissedMoment?: () => boolean;
-};
+function isSocialProvider(value: unknown): value is SocialProvider {
+  return value === 'GOOGLE' || value === 'KAKAO' || value === 'NAVER';
+}
 
-type PersistAuthData = {
-  accessToken: SocialCompleteProfileResponse['accessToken'];
-  refreshToken?: SocialCompleteProfileResponse['refreshToken'] | null;
-  user: SocialCompleteProfileResponse['user'];
-};
+function parseRememberMe(value: unknown) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') return value === 'true';
+  return false;
+}
 
-type SocialLoginButton = {
-  provider: SocialButtonProvider;
-  label: string;
-  logoImage: string;
-};
+function readStoredSocialSignupContext(): SocialSignupContext | null {
+  try {
+    const raw = sessionStorage.getItem(SOCIAL_SIGNUP_CONTEXT_KEY);
+    if (!raw) return null;
 
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        id: {
-          initialize: (config: {
-            client_id: string;
-            callback: (response: GoogleCredentialResponse) => void;
-          }) => void;
-          prompt: (callback?: (notification: GooglePromptMomentNotification) => void) => void;
-        };
-      };
+    const parsed = JSON.parse(raw) as Partial<SocialSignupContext>;
+
+    if (!isSocialProvider(parsed.provider) || !parsed.providerToken) {
+      return null;
+    }
+
+    return {
+      provider: parsed.provider,
+      providerToken: parsed.providerToken,
+      rememberMe: Boolean(parsed.rememberMe),
     };
+  } catch {
+    return null;
   }
 }
 
-const PHONE_CODE_TTL_SECONDS = 5 * 60;
-const SOCIAL_OAUTH_STATE_KEY = 'codinator:socialOAuthState';
-const GOOGLE_IDENTITY_SCRIPT_ID = 'google-identity-services';
+function ProviderLogo({ provider }: { provider?: SocialProvider }) {
+  if (!provider) return null;
 
-const SOCIAL_LOGIN_BUTTONS: SocialLoginButton[] = [
-  {
-    provider: 'KAKAO',
-    label: '카카오 간편 회원가입',
-    logoImage: kakaoLogoImage,
-  },
-  {
-    provider: 'NAVER',
-    label: '네이버 간편 회원가입',
-    logoImage: naverLogoImage,
-  },
-  {
-    provider: 'GOOGLE',
-    label: '구글 간편 회원가입',
-    logoImage: googleLogoImage,
-  },
-];
+  const providerMeta = providerMetaMap[provider];
 
-const getSocialLogoImage = (provider: SocialProvider) => {
-  return SOCIAL_LOGIN_BUTTONS.find((socialButton) => socialButton.provider === provider)?.logoImage;
-};
+  return (
+    <span
+      className={styles.providerLogoWrap}
+      aria-label={`${providerMeta.label} 로고`}
+    >
+      <img
+        src={providerMeta.logoImage}
+        alt=""
+        className={styles.providerLogoImage}
+        draggable={false}
+      />
+    </span>
+  );
+}
 
-const getStringEnv = (key: string): string => {
-  const value = import.meta.env[key];
-  return typeof value === 'string' ? value.trim() : '';
-};
-
-const createRandomState = () => {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-};
-
-const getSignupRedirectUri = () => `${window.location.origin}${window.location.pathname}`;
-
-const loadGoogleIdentityScript = () => {
-  return new Promise<void>((resolve, reject) => {
-    if (window.google?.accounts?.id) {
-      resolve();
-      return;
-    }
-
-    const existingScript = document.getElementById(
-      GOOGLE_IDENTITY_SCRIPT_ID,
-    ) as HTMLScriptElement | null;
-
-    if (existingScript) {
-      existingScript.addEventListener('load', () => resolve(), { once: true });
-      existingScript.addEventListener(
-        'error',
-        () => reject(new Error('Google 로그인 스크립트 로드에 실패했습니다.')),
-        { once: true },
-      );
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.id = GOOGLE_IDENTITY_SCRIPT_ID;
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Google 로그인 스크립트 로드에 실패했습니다.'));
-    document.head.appendChild(script);
-  });
-};
-
-function ModalStatusIcon({
-  type,
-  socialProvider,
-}: {
-  type: ModalType;
-  socialProvider?: SocialButtonProvider | null;
-}) {
-  if (type === 'social' && socialProvider) {
-    const logoImage = getSocialLogoImage(socialProvider);
-
-    return (
-      <div className={`${styles.modalIcon} ${styles.modalIconSocial}`}>
-        {logoImage ? (
-          <img
-            src={logoImage}
-            alt=""
-            className={styles.modalLogoImage}
-            draggable={false}
-            aria-hidden="true"
-          />
-        ) : null}
-      </div>
-    );
-  }
-
+function ModalStatusIcon({ type }: { type: ModalType }) {
   if (type === 'success') {
     return (
       <div className={`${styles.modalIcon} ${styles.modalIconSuccess}`}>
@@ -275,6 +198,14 @@ function isValidBirthDate(value: string) {
   return parseBirthDate(value) !== null;
 }
 
+const requestSignupCheck = async (body: SignupCheckRequest): Promise<CheckResponse> => {
+  return fetcher<CheckResponse>('/auth/signup/check', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+};
+
 const sendPhoneVerificationCode = async (
   payload: SendPhoneVerificationRequest,
 ): Promise<SendPhoneVerificationResponse> => {
@@ -299,13 +230,45 @@ const verifyPhoneVerificationCode = async (
   });
 };
 
-export default function Signup() {
+export default function SocialSignup() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const socialContext = useMemo<SocialSignupContext | null>(() => {
+    const state = (location.state as SocialSignupLocationState | null) ?? null;
+    const searchParams = new URLSearchParams(location.search);
+
+    const stateProvider = state?.provider;
+    const queryProvider = searchParams.get('provider');
+    const storedContext = readStoredSocialSignupContext();
+
+    const provider = isSocialProvider(stateProvider)
+      ? stateProvider
+      : isSocialProvider(queryProvider)
+        ? queryProvider
+        : storedContext?.provider;
+
+    const providerToken =
+      state?.providerToken ?? searchParams.get('providerToken') ?? storedContext?.providerToken ?? '';
+
+    if (!provider || !providerToken) {
+      return null;
+    }
+
+    const rememberMe =
+      state?.rememberMe ??
+      parseRememberMe(searchParams.get('rememberMe')) ??
+      storedContext?.rememberMe ??
+      false;
+
+    return {
+      provider,
+      providerToken,
+      rememberMe: Boolean(rememberMe),
+    };
+  }, [location.search, location.state]);
 
   const [nickname, setNickname] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [gender, setGender] = useState<SignupGender>('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -323,50 +286,27 @@ export default function Signup() {
   const [verifyingCode, setVerifyingCode] = useState(false);
 
   const [nicknameChecked, setNicknameChecked] = useState(false);
-  const [emailChecked, setEmailChecked] = useState(false);
   const [nicknameAvailable, setNicknameAvailable] = useState<boolean | null>(null);
-  const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null);
-
   const [nicknameCheckLoading, setNicknameCheckLoading] = useState(false);
-  const [emailCheckLoading, setEmailCheckLoading] = useState(false);
   const [signupLoading, setSignupLoading] = useState(false);
-  const [socialLoading, setSocialLoading] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
   const [modalTitle, setModalTitle] = useState('안내');
   const [modalMessage, setModalMessage] = useState('');
   const [modalType, setModalType] = useState<ModalType>('info');
-  const [modalAction, setModalAction] = useState<ModalAction>(null);
-  const [modalSocialProvider, setModalSocialProvider] = useState<SocialButtonProvider | null>(null);
-
-  const emailRegex = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/, []);
-
-  // 비밀번호 정책:
-  // 8자 이상, 영문, 숫자, 특수문자 각각 1개 이상 필수 포함
-  const passwordRegex = useMemo(
-    () => /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
-    [],
-  );
+  const [modalAction, setModalAction] = useState<(() => void) | null>(null);
 
   const phoneRegex = useMemo(() => /^01(?:0|1|6|7|8|9)-\d{3,4}-\d{4}$/, []);
 
   const trimmedNickname = nickname.trim();
-  const trimmedEmail = email.trim();
-  const trimmedPassword = password.trim();
   const trimmedBirthDate = birthDate.trim();
   const phoneDigits = normalizePhoneDigits(phoneNumber);
 
   const isNicknameValid = trimmedNickname.length > 0;
-  const isEmailValid = emailRegex.test(trimmedEmail);
-  const isPasswordValid = passwordRegex.test(trimmedPassword);
-  const isPasswordConfirmValid =
-    passwordConfirm.trim().length > 0 && password === passwordConfirm;
   const isBirthValid = isValidBirthDate(trimmedBirthDate);
   const isGenderValid = gender === 'MALE' || gender === 'FEMALE';
   const isPhoneValid = phoneRegex.test(phoneNumber);
-
   const isNicknameCheckDone = nicknameChecked && nicknameAvailable === true;
-  const isEmailCheckDone = emailChecked && emailAvailable === true;
 
   const timerExpired = phoneVerificationSent && !phoneVerified && remainingSeconds === 0;
 
@@ -379,16 +319,33 @@ export default function Signup() {
   const canResendCode = phoneVerificationSent && !phoneVerified && !sendingCode;
 
   const canSubmit =
+    socialContext !== null &&
     isNicknameValid &&
-    isEmailValid &&
-    isPasswordValid &&
-    isPasswordConfirmValid &&
     isBirthValid &&
     isGenderValid &&
     phoneReady &&
     isNicknameCheckDone &&
-    isEmailCheckDone &&
     !signupLoading;
+
+  useEffect(() => {
+    if (!socialContext) {
+      return;
+    }
+
+    sessionStorage.setItem(SOCIAL_SIGNUP_CONTEXT_KEY, JSON.stringify(socialContext));
+  }, [socialContext]);
+
+  useEffect(() => {
+    if (socialContext) {
+      return;
+    }
+
+    setModalTitle('소셜 회원가입 정보 없음');
+    setModalMessage('소셜 로그인 정보가 없습니다. 로그인 화면에서 다시 시도해주세요.');
+    setModalType('error');
+    setModalAction(() => () => navigate('/login', { replace: true }));
+    setShowModal(true);
+  }, [navigate, socialContext]);
 
   useEffect(() => {
     if (!phoneVerificationSent || phoneVerified || remainingSeconds <= 0) {
@@ -416,13 +373,11 @@ export default function Signup() {
     message: string,
     type: ModalType = 'info',
     action?: () => void,
-    socialProvider?: SocialButtonProvider,
   ) => {
     setModalTitle(title);
     setModalMessage(message);
     setModalType(type);
     setModalAction(() => action ?? null);
-    setModalSocialProvider(socialProvider ?? null);
     setShowModal(true);
   };
 
@@ -432,349 +387,17 @@ export default function Signup() {
     if (modalAction) {
       const action = modalAction;
       setModalAction(null);
-      setModalSocialProvider(null);
       action();
       return;
     }
 
     setModalAction(null);
-    setModalSocialProvider(null);
-  };
-
-  const persistSocialAuthSession = (authData: PersistAuthData) => {
-    clearAuthTokens();
-
-    saveAuthTokens(authData.accessToken, undefined);
-
-    saveCurrentUser({
-      ...authData.user,
-      email: authData.user.email ?? '',
-    } as LoginResponse['user']);
-
-    localStorage.removeItem('keepLoggedIn');
-
-    navigate('/rankingZone', { replace: true });
-  };
-
-  const moveToSignupForNewSocialAccount = (provider: SocialProvider, providerToken: string) => {
-    openModal(
-      '추가 정보가 필요해요',
-      '처음 사용하는 소셜 계정입니다. 추가 정보를 입력하면 가입이 완료됩니다.',
-      'social',
-      () =>
-        navigate('/socialSignup', {
-          state: {
-            provider,
-            providerToken,
-            rememberMe: false,
-          },
-        }),
-      provider as SocialButtonProvider,
-    );
-  };
-
-  const completeSocialLogin = async (provider: SocialProvider, providerToken: string) => {
-    const requestBody: SocialCompleteProfileRequest = {
-      provider,
-      providerToken,
-      rememberMe: false,
-    };
-
-    const data = await fetcher<SocialCompleteProfileResponse>('/auth/social/complete-profile', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
-    });
-
-    persistSocialAuthSession({
-      accessToken: data.accessToken,
-      refreshToken: data.refreshToken,
-      user: data.user,
-    });
-  };
-
-  const handleProviderTokenLogin = async (provider: SocialProvider, providerToken: string) => {
-    const loginRequest: SocialLoginRequest = {
-      provider,
-      providerToken,
-    };
-
-    const loginCheck = await fetcher<SocialLoginResponse>('/auth/social/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(loginRequest),
-    });
-
-    if (loginCheck.isNewUser) {
-      moveToSignupForNewSocialAccount(provider, providerToken);
-      return;
-    }
-
-    await completeSocialLogin(provider, providerToken);
-  };
-
-  const handleSocialRedirectCallback = async () => {
-    const storedStateRaw = sessionStorage.getItem(SOCIAL_OAUTH_STATE_KEY);
-    if (!storedStateRaw) return;
-
-    const searchParams = new URLSearchParams(window.location.search);
-    const code = searchParams.get('code');
-    const returnedState = searchParams.get('state') ?? undefined;
-    const error = searchParams.get('error');
-
-    if (!code && !error) return;
-
-    sessionStorage.removeItem(SOCIAL_OAUTH_STATE_KEY);
-    window.history.replaceState(null, '', window.location.pathname);
-
-    if (error) {
-      openModal('소셜 로그인 실패', '소셜 로그인 인증이 취소되었거나 실패했습니다.', 'error');
-      return;
-    }
-
-    if (!code) {
-      openModal('소셜 로그인 실패', '소셜 로그인 인가코드를 확인할 수 없습니다.', 'error');
-      return;
-    }
-
-    let storedState: SocialOAuthState;
-
-    try {
-      storedState = JSON.parse(storedStateRaw) as SocialOAuthState;
-    } catch {
-      openModal(
-        '소셜 로그인 실패',
-        '소셜 로그인 상태값을 확인할 수 없습니다. 다시 시도해주세요.',
-        'error',
-      );
-      return;
-    }
-
-    if (storedState.provider === 'NAVER' && storedState.state !== returnedState) {
-      openModal(
-        '소셜 로그인 실패',
-        '네이버 로그인 상태값이 일치하지 않습니다. 다시 시도해주세요.',
-        'error',
-      );
-      return;
-    }
-
-    setSocialLoading(true);
-
-    try {
-      const exchangeEndpoint =
-        storedState.provider === 'KAKAO'
-          ? '/auth/social/kakao/exchange-code'
-          : '/auth/social/naver/exchange-code';
-
-      const exchangeBody =
-        storedState.provider === 'KAKAO'
-          ? {
-              code,
-              redirectUri: storedState.redirectUri,
-              rememberMe: storedState.rememberMe,
-            }
-          : {
-              code,
-              state: returnedState ?? '',
-              redirectUri: storedState.redirectUri,
-              rememberMe: storedState.rememberMe,
-            };
-
-      const exchangeResult = await fetcher<SocialCodeExchangeResponse>(exchangeEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(exchangeBody),
-      });
-
-      if (exchangeResult.isNewUser) {
-        moveToSignupForNewSocialAccount(storedState.provider, exchangeResult.providerToken);
-        return;
-      }
-
-      await completeSocialLogin(storedState.provider, exchangeResult.providerToken);
-    } catch (err) {
-      console.error('소셜 로그인 콜백 처리 오류:', err);
-      openModal(
-        '소셜 로그인 실패',
-        err instanceof Error ? err.message : '소셜 로그인 처리에 실패했습니다.',
-        'error',
-      );
-    } finally {
-      setSocialLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void handleSocialRedirectCallback();
-    // 최초 진입 시 URL callback만 처리한다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const startKakaoLogin = () => {
-    const clientId = getStringEnv('VITE_KAKAO_REST_API_KEY');
-
-    if (!clientId) {
-      openModal(
-        '카카오 로그인 설정 필요',
-        'VITE_KAKAO_REST_API_KEY가 설정되어 있지 않습니다. 환경변수 설정 후 다시 시도해주세요.',
-        'error',
-      );
-      return;
-    }
-
-    const redirectUri = getSignupRedirectUri();
-    const oauthState: SocialOAuthState = {
-      provider: 'KAKAO',
-      redirectUri,
-      rememberMe: false,
-    };
-
-    sessionStorage.setItem(SOCIAL_OAUTH_STATE_KEY, JSON.stringify(oauthState));
-
-    const url = new URL('https://kauth.kakao.com/oauth/authorize');
-    url.searchParams.set('response_type', 'code');
-    url.searchParams.set('client_id', clientId);
-    url.searchParams.set('redirect_uri', redirectUri);
-
-    window.location.href = url.toString();
-  };
-
-  const startNaverLogin = () => {
-    const clientId = getStringEnv('VITE_NAVER_CLIENT_ID');
-
-    if (!clientId) {
-      openModal(
-        '네이버 로그인 설정 필요',
-        'VITE_NAVER_CLIENT_ID가 설정되어 있지 않습니다. 환경변수 설정 후 다시 시도해주세요.',
-        'error',
-      );
-      return;
-    }
-
-    const redirectUri = getSignupRedirectUri();
-    const state = createRandomState();
-    const oauthState: SocialOAuthState = {
-      provider: 'NAVER',
-      redirectUri,
-      rememberMe: false,
-      state,
-    };
-
-    sessionStorage.setItem(SOCIAL_OAUTH_STATE_KEY, JSON.stringify(oauthState));
-
-    const url = new URL('https://nid.naver.com/oauth2.0/authorize');
-    url.searchParams.set('response_type', 'code');
-    url.searchParams.set('client_id', clientId);
-    url.searchParams.set('redirect_uri', redirectUri);
-    url.searchParams.set('state', state);
-
-    window.location.href = url.toString();
-  };
-
-  const startGoogleLogin = async () => {
-    const clientId = getStringEnv('VITE_GOOGLE_CLIENT_ID');
-
-    if (!clientId) {
-      openModal(
-        '구글 로그인 설정 필요',
-        'VITE_GOOGLE_CLIENT_ID가 설정되어 있지 않습니다. 환경변수 설정 후 다시 시도해주세요.',
-        'error',
-      );
-      return;
-    }
-
-    if (socialLoading) return;
-
-    setSocialLoading(true);
-
-    try {
-      await loadGoogleIdentityScript();
-
-      if (!window.google?.accounts?.id) {
-        throw new Error('Google 로그인 모듈을 사용할 수 없습니다.');
-      }
-
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: (response) => {
-          void (async () => {
-            try {
-              if (!response.credential) {
-                throw new Error('Google ID token을 확인할 수 없습니다.');
-              }
-
-              await handleProviderTokenLogin('GOOGLE', response.credential);
-            } catch (err) {
-              console.error('Google 로그인 오류:', err);
-              openModal(
-                '구글 로그인 실패',
-                err instanceof Error ? err.message : '구글 로그인 처리에 실패했습니다.',
-                'error',
-              );
-            } finally {
-              setSocialLoading(false);
-            }
-          })();
-        },
-      });
-
-      window.google.accounts.id.prompt((notification) => {
-        if (
-          notification.isNotDisplayed?.() ||
-          notification.isSkippedMoment?.() ||
-          notification.isDismissedMoment?.()
-        ) {
-          setSocialLoading(false);
-        }
-      });
-    } catch (err) {
-      console.error('Google 로그인 초기화 오류:', err);
-      setSocialLoading(false);
-      openModal(
-        '구글 로그인 실패',
-        err instanceof Error ? err.message : '구글 로그인 초기화에 실패했습니다.',
-        'error',
-      );
-    }
-  };
-
-  const handleSocialLoginClick = (provider: SocialButtonProvider) => {
-    if (signupLoading || socialLoading) return;
-
-    if (provider === 'KAKAO') {
-      startKakaoLogin();
-      return;
-    }
-
-    if (provider === 'NAVER') {
-      startNaverLogin();
-      return;
-    }
-
-    void startGoogleLogin();
-  };
-
-  const requestSignupCheck = async (
-    body: SignupCheckRequest,
-  ): Promise<CheckResponse> => {
-    return fetcher<CheckResponse>('/auth/signup/check', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
   };
 
   const resetNicknameCheck = (value: string) => {
     setNickname(value);
     setNicknameChecked(false);
     setNicknameAvailable(null);
-  };
-
-  const resetEmailCheck = (value: string) => {
-    setEmail(value);
-    setEmailChecked(false);
-    setEmailAvailable(null);
   };
 
   const handlePhoneNumberChange = (value: string) => {
@@ -831,53 +454,6 @@ export default function Signup() {
       );
     } finally {
       setNicknameCheckLoading(false);
-    }
-  };
-
-  const handleCheckEmail = async () => {
-    if (!trimmedEmail) {
-      openModal('이메일 확인', '이메일을 먼저 입력해주세요.', 'error');
-      return;
-    }
-
-    if (!isEmailValid) {
-      openModal('이메일 확인', '올바른 이메일 형식을 입력해주세요.', 'error');
-      return;
-    }
-
-    setEmailCheckLoading(true);
-
-    try {
-      const data = await requestSignupCheck({
-        type: 'EMAIL',
-        value: trimmedEmail,
-      });
-
-      setEmailChecked(true);
-      setEmailAvailable(data.available);
-
-      openModal(
-        '이메일 중복확인',
-        data.available
-          ? data.message || '사용 가능한 이메일입니다.'
-          : data.message || '이미 사용 중인 이메일입니다.',
-        data.available ? 'success' : 'error',
-      );
-    } catch (error) {
-      console.error('이메일 중복체크 오류:', error);
-
-      setEmailChecked(false);
-      setEmailAvailable(null);
-
-      openModal(
-        '오류',
-        error instanceof Error
-          ? error.message
-          : '이메일 중복확인 요청에 실패했습니다.',
-        'error',
-      );
-    } finally {
-      setEmailCheckLoading(false);
     }
   };
 
@@ -959,6 +535,11 @@ export default function Signup() {
   };
 
   const validateBeforeSubmit = () => {
+    if (!socialContext) {
+      openModal('소셜 회원가입 정보 없음', '로그인 화면에서 다시 시도해주세요.', 'error');
+      return false;
+    }
+
     if (!isNicknameValid) {
       openModal('입력 확인', '닉네임을 입력해주세요.', 'error');
       return false;
@@ -966,30 +547,6 @@ export default function Signup() {
 
     if (!isNicknameCheckDone) {
       openModal('닉네임 확인', '닉네임 중복확인을 완료해주세요.', 'error');
-      return false;
-    }
-
-    if (!isEmailValid) {
-      openModal('이메일 확인', '올바른 이메일 형식을 입력해주세요.', 'error');
-      return false;
-    }
-
-    if (!isEmailCheckDone) {
-      openModal('이메일 확인', '이메일 중복확인을 완료해주세요.', 'error');
-      return false;
-    }
-
-    if (!isPasswordValid) {
-      openModal(
-        '비밀번호 확인',
-        '비밀번호는 8자 이상이며 영문, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.',
-        'error',
-      );
-      return false;
-    }
-
-    if (!isPasswordConfirmValid) {
-      openModal('비밀번호 확인', '비밀번호가 일치하지 않습니다.', 'error');
       return false;
     }
 
@@ -1024,8 +581,9 @@ export default function Signup() {
     return true;
   };
 
-  const handleSignup = async () => {
+  const handleSocialSignup = async () => {
     if (!validateBeforeSubmit()) return;
+    if (!socialContext) return;
     if (gender !== 'MALE' && gender !== 'FEMALE') return;
 
     const parsedBirthDate = parseBirthDate(birthDate);
@@ -1038,33 +596,52 @@ export default function Signup() {
     setSignupLoading(true);
 
     try {
-      const requestBody: SignupRequest = {
-        email: trimmedEmail,
+      const requestBody: SocialCompleteProfileRequest = {
+        provider: socialContext.provider,
+        providerToken: socialContext.providerToken,
         nickname: trimmedNickname,
-        password: trimmedPassword,
         birthDate: parsedBirthDate.isoDate,
         gender,
         phoneNumber: phoneDigits,
         phoneVerificationToken,
+        rememberMe: socialContext.rememberMe,
       };
 
-      await fetcher<SignupResponse>('/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-      });
+      const data = await fetcher<SocialCompleteProfileResponse>(
+        '/auth/social/complete-profile',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+        },
+      );
 
-      openModal('회원가입 완료', '회원가입이 완료되었습니다.', 'success', () => {
-        navigate('/login');
+      clearAuthTokens();
+      saveAuthTokens(
+        data.accessToken,
+        socialContext.rememberMe ? data.refreshToken : undefined,
+      );
+      saveCurrentUser(data.user);
+
+      if (socialContext.rememberMe) {
+        localStorage.setItem('keepLoggedIn', 'true');
+      } else {
+        localStorage.removeItem('keepLoggedIn');
+      }
+
+      sessionStorage.removeItem(SOCIAL_SIGNUP_CONTEXT_KEY);
+
+      openModal('회원가입 완료', '소셜 회원가입이 완료되었습니다.', 'success', () => {
+        navigate('/rankingZone', { replace: true });
       });
     } catch (error) {
-      console.error('회원가입 오류:', error);
+      console.error('소셜 회원가입 오류:', error);
 
       openModal(
         '회원가입 실패',
         error instanceof Error
           ? error.message
-          : '회원가입 요청에 실패했습니다.',
+          : '소셜 회원가입 요청에 실패했습니다.',
         'error',
       );
     } finally {
@@ -1076,31 +653,6 @@ export default function Signup() {
     if (nicknameAvailable === true) return '사용 가능한 닉네임입니다';
     if (nicknameAvailable === false) return '이미 사용 중인 닉네임입니다';
     return '닉네임 중복확인을 해주세요.';
-  };
-
-  const getEmailMessage = () => {
-    if (emailAvailable === true) return '사용 가능한 이메일입니다';
-    if (emailAvailable === false) return '이미 사용 중인 이메일입니다';
-    if (email.trim() && !isEmailValid) return '올바른 이메일 형식으로 입력해주세요.';
-    return '이메일 중복확인을 해주세요.';
-  };
-
-  const getPasswordMessage = () => {
-    if (!password.trim()) {
-      return '8자 이상, 영문, 숫자, 특수문자 각각 1개 이상 필수 포함';
-    }
-
-    if (!isPasswordValid) {
-      return '8자 이상이며 영문, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.';
-    }
-
-    return '사용 가능한 비밀번호 형식입니다.';
-  };
-
-  const getPasswordConfirmMessage = () => {
-    if (!passwordConfirm.trim()) return '';
-    if (!isPasswordConfirmValid) return '비밀번호가 일치하지 않습니다.';
-    return '비밀번호가 일치합니다';
   };
 
   const getBirthDateMessage = () => {
@@ -1123,27 +675,6 @@ export default function Signup() {
       ? styles.successText
       : nicknameAvailable === false
         ? styles.errorText
-        : styles.helperText;
-
-  const emailMessageClass =
-    emailAvailable === true
-      ? styles.successText
-      : emailAvailable === false || (email.trim() && !isEmailValid)
-        ? styles.errorText
-        : styles.helperText;
-
-  const passwordMessageClass =
-    password.trim() && !isPasswordValid
-      ? styles.errorText
-      : password.trim() && isPasswordValid
-        ? styles.successText
-        : styles.helperText;
-
-  const passwordConfirmMessageClass =
-    passwordConfirm.trim() && !isPasswordConfirmValid
-      ? styles.errorText
-      : isPasswordConfirmValid
-        ? styles.successText
         : styles.helperText;
 
   const birthDateMessageClass =
@@ -1175,15 +706,19 @@ export default function Signup() {
         />
 
         <header className={styles.header}>
-          <h1 className={styles.title}>회원가입</h1>
-          <p className={styles.description}>내 코디를 공유하고 평가를 받아보세요</p>
+          <div className={styles.titleRow}>
+            <ProviderLogo provider={socialContext?.provider} />
+            <h1 className={styles.title}>소셜 회원가입</h1>
+          </div>
+
+          <p className={styles.description}>추가 정보를 입력하면 바로 시작할 수 있어요</p>
         </header>
 
         <form
           className={styles.form}
           onSubmit={(event: FormEvent<HTMLFormElement>) => {
             event.preventDefault();
-            void handleSignup();
+            void handleSocialSignup();
           }}
           noValidate
         >
@@ -1221,82 +756,6 @@ export default function Signup() {
             </div>
 
             <p className={nicknameMessageClass}>{getNicknameMessage()}</p>
-          </div>
-
-          <div className={`${styles.fieldGroup} ${styles.emailGroup}`}>
-            <label className={styles.label} htmlFor="email">
-              이메일
-            </label>
-
-            <div className={styles.inputButtonBox}>
-              <input
-                id="email"
-                type="email"
-                className={styles.inputWithButton}
-                value={email}
-                placeholder="이메일을 입력하세요"
-                autoComplete="email"
-                disabled={signupLoading}
-                onChange={(event) => resetEmailCheck(event.target.value)}
-              />
-
-              <button
-                type="button"
-                className={`${styles.innerButton} ${
-                  isEmailCheckDone ? styles.checkButtonDone : ''
-                }`}
-                onClick={handleCheckEmail}
-                disabled={emailCheckLoading || signupLoading || !email.trim()}
-              >
-                {emailCheckLoading
-                  ? '확인중...'
-                  : isEmailCheckDone
-                    ? '확인 완료'
-                    : '중복 확인'}
-              </button>
-            </div>
-
-            <p className={emailMessageClass}>{getEmailMessage()}</p>
-          </div>
-
-          <div className={`${styles.fieldGroup} ${styles.passwordGroup}`}>
-            <label className={styles.label} htmlFor="password">
-              비밀번호
-            </label>
-
-            <input
-              id="password"
-              type="password"
-              className={styles.input}
-              value={password}
-              placeholder="비밀번호를 입력해 주세요"
-              autoComplete="new-password"
-              disabled={signupLoading}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-
-            <p className={passwordMessageClass}>{getPasswordMessage()}</p>
-          </div>
-
-          <div className={`${styles.fieldGroup} ${styles.passwordConfirmGroup}`}>
-            <label className={styles.label} htmlFor="passwordConfirm">
-              비밀번호 재확인
-            </label>
-
-            <input
-              id="passwordConfirm"
-              type="password"
-              className={styles.input}
-              value={passwordConfirm}
-              placeholder="한번 더 입력해주세요"
-              autoComplete="new-password"
-              disabled={signupLoading}
-              onChange={(event) => setPasswordConfirm(event.target.value)}
-            />
-
-            <p className={passwordConfirmMessageClass}>
-              {getPasswordConfirmMessage()}
-            </p>
           </div>
 
           <div className={`${styles.fieldGroup} ${styles.birthDateGroup}`}>
@@ -1485,43 +944,16 @@ export default function Signup() {
 
           <button
             type="submit"
-            className={`${styles.signupSubmitButton} ${bottomOffsetClass} ${
+            className={`${styles.submitButton} ${bottomOffsetClass} ${
               !canSubmit ? styles.buttonDisabled : ''
             }`}
             disabled={!canSubmit}
           >
-            {signupLoading ? '회원가입 중...' : '회원가입'}
+            {signupLoading ? '가입 중...' : '회원가입'}
           </button>
 
-          <div className={`${styles.orRow} ${bottomOffsetClass}`} aria-hidden="true">
-            <span className={styles.orLine} />
-            <span className={styles.orText}>OR</span>
-            <span className={styles.orLine} />
-          </div>
-
-          <div className={`${styles.socialButtonRow} ${bottomOffsetClass}`}>
-            {SOCIAL_LOGIN_BUTTONS.map((socialButton) => (
-              <button
-                key={socialButton.provider}
-                type="button"
-                className={styles.socialButton}
-                aria-label={socialButton.label}
-                disabled={signupLoading || socialLoading}
-                onClick={() => handleSocialLoginClick(socialButton.provider)}
-              >
-                <img
-                  src={socialButton.logoImage}
-                  alt=""
-                  className={styles.socialLogoImage}
-                  draggable={false}
-                  aria-hidden="true"
-                />
-              </button>
-            ))}
-          </div>
-
           <div className={`${styles.loginGuideRow} ${bottomOffsetClass}`}>
-            <span className={styles.loginGuideText}>계정이 이미 있으신가요?</span>
+            <span className={styles.loginGuideText}>다른 계정으로 로그인할까요?</span>
 
             <button
               type="button"
@@ -1537,7 +969,7 @@ export default function Signup() {
         {showModal ? (
           <div className={styles.modalBackdrop}>
             <div className={styles.modalCard}>
-              <ModalStatusIcon type={modalType} socialProvider={modalSocialProvider} />
+              <ModalStatusIcon type={modalType} />
 
               <h3 className={styles.modalTitle}>{modalTitle}</h3>
 
