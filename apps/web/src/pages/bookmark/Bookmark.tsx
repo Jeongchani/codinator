@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Check, ChevronsUp, Trash2, X } from 'lucide-react';
+import { Check, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { BookmarkListItem, RankingPeriod, VoteChoice } from '@codinator/contracts';
 import {
@@ -11,6 +11,7 @@ import {
 } from '../../lib/api';
 import Header from '../../components/Header';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
+import FocusScreen from '../../components/focus/FocusScreen';
 import RankingDetail from '../ranking/RankingDetail';
 import EvaluationDetailFeedback from '../evaluation/EvaluationDetailFeedback';
 import styles from './Bookmark.module.css';
@@ -187,27 +188,6 @@ function mapBookmarkItems(rawItems: BookmarkListItem[]): BookmarkItem[] {
     .filter((item): item is BookmarkItem => item !== null);
 }
 
-function VerticalSwipeIndicator({ above, below }: { above: number; below: number }) {
-  const visibleAbove = Math.min(Math.max(above, 0), 3);
-  const visibleBelow = Math.min(Math.max(below, 0), 3);
-
-  return (
-    <div className={styles.swipeIndicator} aria-hidden="true">
-      <div className={styles.swipeIndicatorStack}>
-        {Array.from({ length: visibleAbove }).map((_, index) => (
-          <div key={`above-${index}`} className={styles.swipeIndicatorDot} />
-        ))}
-
-        <div className={styles.swipeIndicatorActive} />
-
-        {Array.from({ length: visibleBelow }).map((_, index) => (
-          <div key={`below-${index}`} className={styles.swipeIndicatorDot} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 type BookmarkSelectionActionBarProps = {
   countText: string;
   canDelete: boolean;
@@ -281,7 +261,6 @@ export default function Bookmark() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const tabRowRef = useRef<HTMLDivElement | null>(null);
   const cardRefs = useRef<Record<number, HTMLButtonElement | null>>({});
-  const focusScrollRef = useRef<HTMLDivElement | null>(null);
 
   const allTextRef = useRef<HTMLSpanElement | null>(null);
   const ongoingTextRef = useRef<HTMLSpanElement | null>(null);
@@ -340,9 +319,6 @@ export default function Bookmark() {
     () => (focusedItem ? getDefaultPeriod(focusedItem.rankingPeriods) : null),
     [focusedItem],
   );
-
-  const previousSwipeCount = Math.min(Math.max(focusIndex, 0), 3);
-  const nextSwipeCount = Math.min(Math.max(focusItems.length - focusIndex - 1, 0), 3);
 
   const loadBookmarks = useCallback(async () => {
     try {
@@ -452,22 +428,6 @@ export default function Bookmark() {
       }
     };
   }, [isAnimating, incomingTab]);
-
-  useEffect(() => {
-    if (!focusOpen) return;
-
-    const container = focusScrollRef.current;
-    if (!container) return;
-
-    const raf = window.requestAnimationFrame(() => {
-      container.scrollTo({
-        top: container.clientHeight * focusIndex,
-        behavior: 'auto',
-      });
-    });
-
-    return () => window.cancelAnimationFrame(raf);
-  }, [focusIndex, focusOpen]);
 
   const getPointInContainer = useCallback((clientX: number, clientY: number) => {
     const container = containerRef.current;
@@ -854,21 +814,6 @@ export default function Bookmark() {
     toggleSelectedId(item.id);
   };
 
-  const handleFocusScroll = () => {
-    const container = focusScrollRef.current;
-    if (!container) return;
-
-    const pageHeight = container.clientHeight;
-    const nextIndex = Math.max(
-      0,
-      Math.min(Math.round(container.scrollTop / pageHeight), focusItems.length - 1),
-    );
-
-    if (nextIndex !== focusIndex) {
-      setFocusIndex(nextIndex);
-    }
-  };
-
   const renderFocusedSheetContent = () => {
     if (!focusedItem) return null;
 
@@ -1004,62 +949,33 @@ export default function Bookmark() {
       ) : null}
 
       {focusOpen && focusedItem ? (
-        <div className={styles.focusOverlay}>
-          <div ref={focusScrollRef} className={styles.focusViewport} onScroll={handleFocusScroll}>
-            {focusItems.map((item) => (
-              <section key={item.postId} className={styles.focusSlide}>
-                {item.imageUrl ? (
-                  <div
-                    className={styles.focusMainImage}
-                    style={{ backgroundImage: `url(${item.imageUrl})` }}
-                  />
-                ) : (
-                  <div className={styles.focusImageFallback}>이미지 없음</div>
-                )}
-                <div className={styles.topGradient} />
-                <div className={styles.bottomGradient} />
-              </section>
-            ))}
-          </div>
-
-          {sheetOpen ? (
-            <button
-              type="button"
-              className={styles.focusSheetBackdrop}
-              onClick={() => setSheetOpen(false)}
-              aria-label="상세 닫기"
-            />
-          ) : null}
-
-          <div className={styles.headerTitle}>{getTabTitle()}</div>
-
-          <button
-            type="button"
-            onClick={() => {
-              setSheetOpen(false);
-              setFocusOpen(false);
-            }}
-            className={styles.closeBtn}
-            aria-label="닫기"
-          >
-            <X size={18} strokeWidth={2.6} />
-          </button>
-
-          {!sheetOpen ? (
-            <VerticalSwipeIndicator above={previousSwipeCount} below={nextSwipeCount} />
-          ) : null}
-
-          <div className={styles.focusFloatingArea}>
-            <button type="button" className={styles.detailButton} onClick={handleOpenDetailSheet}>
-              <span className={styles.detailButtonText}>상세보기</span>
-              <ChevronsUp size={16} strokeWidth={2.4} className={styles.detailButtonUpIcon} />
-            </button>
-          </div>
-
+        <FocusScreen
+          isOpen={focusOpen}
+          items={focusItems.map((item) => ({
+            id: item.postId,
+            imageUrl: item.imageUrl,
+          }))}
+          activeIndex={focusIndex}
+          onActiveIndexChange={(nextIndex) => {
+            setFocusIndex(nextIndex);
+            setSheetOpen(false);
+          }}
+          closeButtonType="x"
+          onClose={() => {
+            setSheetOpen(false);
+            setFocusOpen(false);
+          }}
+          sheetOpen={sheetOpen}
+          onCloseSheet={() => setSheetOpen(false)}
+          showVoteGraph={false}
+          showDetailButton
+          detailLabel="상세보기"
+          onOpenDetail={handleOpenDetailSheet}
+        >
           <PostDetailBottomSheet isOpen={sheetOpen} onCloseRequest={() => setSheetOpen(false)}>
             {renderFocusedSheetContent()}
           </PostDetailBottomSheet>
-        </div>
+        </FocusScreen>
       ) : null}
 
       {showDeleteConfirm && (

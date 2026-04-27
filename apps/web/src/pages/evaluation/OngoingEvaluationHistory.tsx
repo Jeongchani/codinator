@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
 import type { EvaluationHistoryItem } from '@codinator/contracts';
-import { Check, ChevronLeft, ChevronsUp, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
+import { Check, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import evaluationHistoryBanner from '../../assets/evaluation/평가기록 배너.png';
 import {
@@ -12,6 +11,7 @@ import {
 } from '../../lib/api';
 import Header from '../../components/Header';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
+import FocusScreen from '../../components/focus/FocusScreen';
 import EvaluationDetailFeedback from './EvaluationDetailFeedback';
 import styles from './OngoingEvaluationHistory.module.css';
 
@@ -807,85 +807,27 @@ export default function OngoingEvaluationHistory() {
       ) : null}
 
       {focusedItem ? (
-        <div className={styles.focusOverlay}>
-          <div
-            className={styles.focusImageSection}
-            style={{
-              backgroundImage: focusedItem.imageUrl ? `url(${focusedItem.imageUrl})` : 'none',
-            }}
-          >
-            <div className={styles.focusTopGradient} />
-            <div className={styles.focusBottomGradient} />
-          </div>
-
-          <div className={styles.focusOverlayLayer}>
-            <div className={styles.focusTopBar}>
-              <motion.button
-                type="button"
-                className={styles.focusBackButton}
-                onClick={() => {
-                  setFocusedPostId(null);
-                  setDetailSheetOpen(false);
-                }}
-                aria-label="포커스 닫기"
-                whileTap={{ scale: 0.94 }}
-              >
-                <ChevronLeft size={18} strokeWidth={2.2} color="white" />
-              </motion.button>
-
-              <div className={styles.focusTopBarPlaceholder} aria-hidden="true" />
-            </div>
-
-            <motion.div
-              className={styles.focusVoteGraphArea}
-              aria-hidden="true"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.22, ease: 'easeOut' }}
-            >
-              <div className={styles.focusProgressTrack}>
-                <div
-                  className={styles.focusLikeFill}
-                  style={{ width: `${focusedVoteSummary.likePercent}%` }}
-                />
-                <div
-                  className={styles.focusDislikeFill}
-                  style={{ width: `${focusedVoteSummary.dislikePercent}%` }}
-                />
-
-                <div className={styles.focusLeftPercent}>
-                  <ThumbsUp size={12} strokeWidth={2.2} />
-                  <span>{focusedVoteSummary.likePercent}%</span>
-                </div>
-
-                <div className={styles.focusRightPercent}>
-                  <span>{focusedVoteSummary.dislikePercent}%</span>
-                  <ThumbsDown size={12} strokeWidth={2.2} />
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              className={styles.focusDetailButtonWrap}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.26, ease: 'easeOut' }}
-            >
-              <button
-                type="button"
-                className={styles.focusDetailButton}
-                onClick={() => setDetailSheetOpen(true)}
-              >
-                <span>상세보러가기</span>
-                <span className={styles.focusDetailIcon}>
-                  <ChevronsUp size={20} strokeWidth={2.2} />
-                </span>
-              </button>
-            </motion.div>
-          </div>
-
+        <FocusScreen
+          isOpen={Boolean(focusedItem)}
+          items={[{ id: focusedItem.postId, imageUrl: focusedItem.imageUrl }]}
+          activeIndex={0}
+          closeButtonType="back"
+          onClose={() => {
+            setFocusedPostId(null);
+            setDetailSheetOpen(false);
+          }}
+          sheetOpen={detailSheetOpen}
+          onCloseSheet={() => setDetailSheetOpen(false)}
+          showSwipeIndicator={false}
+          showVoteGraph
+          likePercent={focusedVoteSummary.likePercent}
+          dislikePercent={focusedVoteSummary.dislikePercent}
+          showDetailButton
+          onOpenDetail={() => setDetailSheetOpen(true)}
+          ariaLabel="평가 기록 포커스 화면"
+        >
           {detailSheetOpen ? (
-            <PostDetailBottomSheet isOpen onCloseRequest={() => setDetailSheetOpen(false)}>
+            <PostDetailBottomSheet isOpen={detailSheetOpen} onCloseRequest={() => setDetailSheetOpen(false)}>
               <div ref={sheetContentRef}>
                 <EvaluationDetailFeedback
                   embedded
@@ -898,7 +840,7 @@ export default function OngoingEvaluationHistory() {
               </div>
             </PostDetailBottomSheet>
           ) : null}
-        </div>
+        </FocusScreen>
       ) : null}
     </div>
   );

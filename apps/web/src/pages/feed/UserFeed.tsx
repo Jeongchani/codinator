@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bookmark, ChevronsUp, X } from "lucide-react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-import type { GetUserFeedResponse, RankingPeriod } from "@codinator/contracts";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Bookmark } from 'lucide-react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import type { GetUserFeedResponse, RankingPeriod } from '@codinator/contracts';
 import {
   clearAuthTokens,
   fetcher,
@@ -11,13 +11,14 @@ import {
   isAuthError,
   subscribeBookmarkUpdated,
   togglePostBookmark,
-} from "../../lib/api";
-import Header from "../../components/Header";
-import PostDetailBottomSheet from "../../components/postdetail/PostDetailBottomSheet";
-import RankingDetail from "../ranking/RankingDetail";
-import styles from "./UserFeed.module.css";
+} from '../../lib/api';
+import Header from '../../components/Header';
+import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
+import FocusScreen from '../../components/focus/FocusScreen';
+import RankingDetail from '../ranking/RankingDetail';
+import styles from './UserFeed.module.css';
 
-type FeedListItem = GetUserFeedResponse["items"][number];
+type FeedListItem = GetUserFeedResponse['items'][number];
 
 type FeedCardItem = {
   postId: number;
@@ -25,7 +26,6 @@ type FeedCardItem = {
   createdAt: string;
   rankingPeriods: RankingPeriod[];
 };
-
 
 type UserFeedLocationState = {
   from?: string;
@@ -42,46 +42,24 @@ function sortByLatest(items: FeedListItem[]) {
   });
 }
 
-
 function normalizeRankingPeriods(periods: unknown): RankingPeriod[] {
   if (!Array.isArray(periods)) return [];
 
   return periods
     .map((period) => String(period).toUpperCase())
     .filter((period): period is RankingPeriod => {
-      return period === "WEEKLY" || period === "MONTHLY";
+      return period === 'WEEKLY' || period === 'MONTHLY';
     });
 }
 
 function getDefaultPeriod(periods: RankingPeriod[]): RankingPeriod | null {
-  if (periods.includes("WEEKLY")) return "WEEKLY";
-  if (periods.includes("MONTHLY")) return "MONTHLY";
+  if (periods.includes('WEEKLY')) return 'WEEKLY';
+  if (periods.includes('MONTHLY')) return 'MONTHLY';
   return null;
 }
 
 function formatPeriodLabel(period: RankingPeriod) {
-  return period === "MONTHLY" ? "This Month" : "This Week";
-}
-
-function VerticalSwipeIndicator({ above, below }: { above: number; below: number }) {
-  const visibleAbove = Math.min(Math.max(above, 0), 3);
-  const visibleBelow = Math.min(Math.max(below, 0), 3);
-
-  return (
-    <div className={styles.swipeIndicator} aria-hidden="true">
-      <div className={styles.swipeIndicatorStack}>
-        {Array.from({ length: visibleAbove }).map((_, index) => (
-          <div key={`above-${index}`} className={styles.swipeIndicatorDot} />
-        ))}
-
-        <div className={styles.swipeIndicatorActive} />
-
-        {Array.from({ length: visibleBelow }).map((_, index) => (
-          <div key={`below-${index}`} className={styles.swipeIndicatorDot} />
-        ))}
-      </div>
-    </div>
-  );
+  return period === 'MONTHLY' ? 'This Month' : 'This Week';
 }
 
 export default function UserFeed() {
@@ -93,18 +71,18 @@ export default function UserFeed() {
   const selectedPostIdFromState = locationState?.selectedPostId;
   const shouldOpenDetailSheetFromState = locationState?.openDetailSheet !== false;
   const selectedPostIdFromParam =
-    typeof postId === "string" && postId.trim() && !Number.isNaN(Number(postId))
+    typeof postId === 'string' && postId.trim() && !Number.isNaN(Number(postId))
       ? Number(postId)
       : null;
   const targetPostId = selectedPostIdFromParam ?? selectedPostIdFromState ?? null;
   const isDirectFocusRoute = selectedPostIdFromParam !== null;
 
-  const [displayUserName, setDisplayUserName] = useState("닉네임");
+  const [displayUserName, setDisplayUserName] = useState('닉네임');
   const [items, setItems] = useState<FeedCardItem[]>([]);
   const [bookmarks, setBookmarks] = useState<Record<number, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [bookmarkLoadingIds, setBookmarkLoadingIds] = useState<number[]>([]);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [focusTargetNotFound, setFocusTargetNotFound] = useState(false);
 
   const [focusOpen, setFocusOpen] = useState(false);
@@ -112,12 +90,7 @@ export default function UserFeed() {
   const [focusIndex, setFocusIndex] = useState(0);
   const [focusItems, setFocusItems] = useState<FeedCardItem[]>([]);
 
-  const focusScrollRef = useRef<HTMLDivElement | null>(null);
-
-  const bookmarkLoadingIdSet = useMemo(
-    () => new Set(bookmarkLoadingIds),
-    [bookmarkLoadingIds],
-  );
+  const bookmarkLoadingIdSet = useMemo(() => new Set(bookmarkLoadingIds), [bookmarkLoadingIds]);
 
   const focusedItem = focusItems[focusIndex] ?? null;
   const focusedPeriod = useMemo(
@@ -127,7 +100,7 @@ export default function UserFeed() {
 
   const moveToLogin = useCallback(() => {
     clearAuthTokens();
-    navigate("/login", { replace: true });
+    navigate('/login', { replace: true });
   }, [navigate]);
 
   const loadBookmarks = useCallback(async () => {
@@ -135,8 +108,7 @@ export default function UserFeed() {
       const nextMap = await fetchMyBookmarkMap();
       setBookmarks(nextMap);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "북마크 정보를 불러오지 못했습니다.";
+      const message = err instanceof Error ? err.message : '북마크 정보를 불러오지 못했습니다.';
 
       if (isAuthError(message)) {
         moveToLogin();
@@ -169,14 +141,14 @@ export default function UserFeed() {
 
     const load = async () => {
       if (!userId) {
-        setError("유저 정보가 없습니다.");
+        setError('유저 정보가 없습니다.');
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
-        setError("");
+        setError('');
         setFocusTargetNotFound(false);
         setItems([]);
 
@@ -186,7 +158,7 @@ export default function UserFeed() {
 
         if (cancelled) return;
 
-        setDisplayUserName(feed.user?.nickname ?? "닉네임");
+        setDisplayUserName(feed.user?.nickname ?? '닉네임');
 
         const latestItems = sortByLatest(feed.items ?? []);
         const mappedItems: FeedCardItem[] = latestItems.map((item) => ({
@@ -198,8 +170,7 @@ export default function UserFeed() {
 
         setItems(mappedItems);
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "피드를 불러오지 못했습니다.";
+        const message = err instanceof Error ? err.message : '피드를 불러오지 못했습니다.';
 
         if (isAuthError(message)) {
           moveToLogin();
@@ -240,22 +211,6 @@ export default function UserFeed() {
     setSheetOpen(shouldOpenDetailSheetFromState);
   }, [items, targetPostId, shouldOpenDetailSheetFromState]);
 
-  useEffect(() => {
-    if (!focusOpen) return;
-
-    const container = focusScrollRef.current;
-    if (!container) return;
-
-    const raf = window.requestAnimationFrame(() => {
-      container.scrollTo({
-        top: container.clientHeight * focusIndex,
-        behavior: "auto",
-      });
-    });
-
-    return () => window.cancelAnimationFrame(raf);
-  }, [focusIndex, focusOpen]);
-
   const handleBack = () => {
     if (sheetOpen) {
       setSheetOpen(false);
@@ -275,10 +230,7 @@ export default function UserFeed() {
     navigate(-1);
   };
 
-  const toggleBookmark = async (
-    e: React.MouseEvent<HTMLButtonElement>,
-    postId: number,
-  ) => {
+  const toggleBookmark = async (e: React.MouseEvent<HTMLButtonElement>, postId: number) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -301,8 +253,7 @@ export default function UserFeed() {
         [postId]: nextValue,
       }));
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "북마크 처리에 실패했습니다.";
+      const message = err instanceof Error ? err.message : '북마크 처리에 실패했습니다.';
 
       setBookmarks((prev) => ({
         ...prev,
@@ -329,30 +280,13 @@ export default function UserFeed() {
     setFocusOpen(true);
   };
 
-  const handleFocusScroll = () => {
-    const container = focusScrollRef.current;
-    if (!container) return;
-
-    const pageHeight = container.clientHeight;
-    const nextIndex = Math.max(
-      0,
-      Math.min(Math.round(container.scrollTop / pageHeight), focusItems.length - 1),
-    );
-
-    if (nextIndex !== focusIndex) {
-      setFocusIndex(nextIndex);
-    }
-  };
-
-  const previousSwipeCount = Math.min(Math.max(focusIndex, 0), 3);
-  const nextSwipeCount = Math.min(Math.max(focusItems.length - focusIndex - 1, 0), 3);
   const shouldHideFeedGrid = isDirectFocusRoute && !focusOpen;
 
   const handleOpenDetailSheet = () => {
     if (!focusedItem) return;
 
     if (!focusedPeriod) {
-      window.alert("랭킹 상세가 없는 게시글입니다.");
+      window.alert('랭킹 상세가 없는 게시글입니다.');
       return;
     }
 
@@ -361,21 +295,14 @@ export default function UserFeed() {
 
   return (
     <div className={styles.container}>
-      <Header
-        title={displayUserName}
-        leftAction="back"
-        onBack={handleBack}
-        rightAction="none"
-      />
+      <Header title={displayUserName} leftAction="back" onBack={handleBack} rightAction="none" />
 
       <main className={styles.contentArea}>
         {loading && items.length === 0 ? (
           <div className={styles.messageBox}>불러오는 중...</div>
         ) : null}
 
-        {!loading && error ? (
-          <div className={styles.messageBox}>{error}</div>
-        ) : null}
+        {!loading && error ? <div className={styles.messageBox}>{error}</div> : null}
 
         {!loading && !error && focusTargetNotFound ? (
           <div className={styles.messageBox}>선택한 게시글을 찾을 수 없습니다.</div>
@@ -399,7 +326,7 @@ export default function UserFeed() {
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
+                    if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
                       handleCardClick(item);
                     }
@@ -421,19 +348,15 @@ export default function UserFeed() {
                     <button
                       type="button"
                       className={styles.bookmarkButton}
-                      aria-label={isBookmarked ? "북마크 해제" : "북마크 추가"}
+                      aria-label={isBookmarked ? '북마크 해제' : '북마크 추가'}
                       onClick={(e) => toggleBookmark(e, item.postId)}
                       disabled={isBookmarkLoading}
                     >
                       <Bookmark
                         size={12}
                         strokeWidth={2.2}
-                        className={
-                          isBookmarked
-                            ? styles.bookmarkFilled
-                            : styles.bookmarkDefault
-                        }
-                        fill={isBookmarked ? "currentColor" : "none"}
+                        className={isBookmarked ? styles.bookmarkFilled : styles.bookmarkDefault}
+                        fill={isBookmarked ? 'currentColor' : 'none'}
                       />
                     </button>
                   </div>
@@ -445,86 +368,43 @@ export default function UserFeed() {
       </main>
 
       {focusOpen && focusedItem ? (
-        <div className={styles.focusOverlay}>
-          <div
-            ref={focusScrollRef}
-            className={styles.focusViewport}
-            onScroll={handleFocusScroll}
-          >
-            {focusItems.map((item) => (
-              <section key={item.postId} className={styles.focusSlide}>
-                {item.imageUrl ? (
-                  <div
-                    className={styles.focusMainImage}
-                    style={{ backgroundImage: `url(${item.imageUrl})` }}
-                  />
-                ) : (
-                  <div className={styles.focusImageFallback}>이미지 없음</div>
-                )}
-                <div className={styles.topGradient} />
-                <div className={styles.bottomGradient} />
-              </section>
-            ))}
-          </div>
+        <FocusScreen
+          isOpen={focusOpen}
+          items={focusItems.map((item) => ({
+            id: item.postId,
+            imageUrl: item.imageUrl,
+          }))}
+          activeIndex={focusIndex}
+          onActiveIndexChange={(nextIndex) => {
+            setFocusIndex(nextIndex);
+            setSheetOpen(false);
+          }}
+          closeButtonType="x"
+          onClose={() => {
+            if (isDirectFocusRoute) {
+              navigate(-1);
+              return;
+            }
 
-          {sheetOpen ? (
-            <button
-              type="button"
-              className={styles.focusSheetBackdrop}
-              onClick={() => setSheetOpen(false)}
-              aria-label="상세 닫기"
-            />
-          ) : null}
-
-          <div className={styles.headerTitle}>{focusedPeriod ? formatPeriodLabel(focusedPeriod) : displayUserName}</div>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (isDirectFocusRoute) {
-                navigate(-1);
-                return;
-              }
-
-              setSheetOpen(false);
-              setFocusOpen(false);
-            }}
-            className={styles.closeBtn}
-            aria-label="닫기"
-          >
-            <X size={18} strokeWidth={2.6} />
-          </button>
-
-          {!sheetOpen ? (
-            <VerticalSwipeIndicator
-              above={previousSwipeCount}
-              below={nextSwipeCount}
-            />
-          ) : null}
-
-          <div className={styles.focusFloatingArea}>
-            <button
-              type="button"
-              className={styles.detailButton}
-              onClick={handleOpenDetailSheet}
-              disabled={!focusedPeriod}
-            >
-              <span className={styles.detailButtonText}>상세보기</span>
-              <ChevronsUp size={16} strokeWidth={2.4} className={styles.detailButtonUpIcon} />
-            </button>
-          </div>
-
-          <PostDetailBottomSheet
-            isOpen={sheetOpen}
-            onCloseRequest={() => setSheetOpen(false)}
-          >
+            setSheetOpen(false);
+            setFocusOpen(false);
+          }}
+          sheetOpen={sheetOpen}
+          onCloseSheet={() => setSheetOpen(false)}
+          showVoteGraph={false}
+          showDetailButton
+          detailLabel="상세보기"
+          detailDisabled={!focusedPeriod}
+          onOpenDetail={handleOpenDetailSheet}
+        >
+          <PostDetailBottomSheet isOpen={sheetOpen} onCloseRequest={() => setSheetOpen(false)}>
             {focusedPeriod ? (
               <RankingDetail postId={focusedItem.postId} period={focusedPeriod} hideFeedLink />
             ) : (
               <div className={styles.sheetFallback}>랭킹 상세가 없는 게시글입니다.</div>
             )}
           </PostDetailBottomSheet>
-        </div>
+        </FocusScreen>
       ) : null}
     </div>
   );

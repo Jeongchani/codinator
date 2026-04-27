@@ -1,14 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Check,
-  ChevronsUp,
-  ChevronDown,
-  ImagePlus,
-  Search as SearchIcon,
-  X,
-} from 'lucide-react';
+import { Check, ChevronDown, ImagePlus, Search as SearchIcon, X } from 'lucide-react';
 import type {
   AiGarmentCategory,
   FeedbackTagItem,
@@ -21,6 +14,7 @@ import type {
 } from '@codinator/contracts';
 import Header from '../../components/Header';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
+import FocusScreen from '../../components/focus/FocusScreen';
 import { resolveAssetUrl } from '../../lib/api';
 import SearchFilterSheet, {
   createEmptySearchFilters,
@@ -261,7 +255,9 @@ export default function Search() {
   const [imageUploading, setImageUploading] = useState(false);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<SearchFilterId>('period');
-  const [appliedFilters, setAppliedFilters] = useState<SearchFiltersValue>(() => createEmptySearchFilters());
+  const [appliedFilters, setAppliedFilters] = useState<SearchFiltersValue>(() =>
+    createEmptySearchFilters(),
+  );
   const [keywordOptions, setKeywordOptions] = useState<SearchFilterKeywordOption[]>([]);
   const [feedbackTagOptions, setFeedbackTagOptions] = useState<SearchFilterFeedbackTagOption[]>([]);
   const [resultItems, setResultItems] = useState<ResultCardItem[]>([]);
@@ -619,7 +615,9 @@ export default function Search() {
             onClick={() => handleClickResult(item)}
             aria-label={item.title}
           >
-            {item.imageUrl ? <img src={item.imageUrl} alt="" className={styles.resultImage} /> : null}
+            {item.imageUrl ? (
+              <img src={item.imageUrl} alt="" className={styles.resultImage} />
+            ) : null}
             <span className={styles.resultGradient} />
           </button>
         ))}
@@ -630,12 +628,7 @@ export default function Search() {
   return (
     <>
       <div className={styles.page}>
-        <Header
-          title="검색"
-          leftAction="back"
-          onBack={handleGoBack}
-          rightAction="menu"
-        />
+        <Header title="검색" leftAction="back" onBack={handleGoBack} rightAction="menu" />
 
         <main className={styles.scrollArea}>
           <section className={styles.contentArea}>
@@ -720,7 +713,9 @@ export default function Search() {
                             onClick={() => handleSelectSearchType(option.value)}
                           >
                             <span>{option.label}</span>
-                            {searchType === option.value ? <Check size={14} strokeWidth={2.2} /> : null}
+                            {searchType === option.value ? (
+                              <Check size={14} strokeWidth={2.2} />
+                            ) : null}
                           </button>
                         ))}
                       </div>
@@ -728,7 +723,11 @@ export default function Search() {
                   </div>
                 </div>
 
-                <FilterScroller filters={FILTERS} appliedFilters={appliedFilters} onOpenFilter={handleOpenFilter} />
+                <FilterScroller
+                  filters={FILTERS}
+                  appliedFilters={appliedFilters}
+                  onOpenFilter={handleOpenFilter}
+                />
 
                 <div className={styles.divider} />
 
@@ -785,12 +784,18 @@ export default function Search() {
                 {hasImageResult ? (
                   <div className={styles.imageResultBox}>
                     <div className={styles.uploadedImageWrap}>
-                      <img src={imagePreviewUrl ?? ''} alt="업로드한 이미지" className={styles.uploadedImage} />
+                      <img
+                        src={imagePreviewUrl ?? ''}
+                        alt="업로드한 이미지"
+                        className={styles.uploadedImage}
+                      />
                     </div>
 
                     <div className={styles.imageResultCopy}>
                       <p className={styles.imageResultTitle}>비슷한 스타일을 찾았어요</p>
-                      <p className={styles.imageResultDescription}>찾으시는 스타일을 확인해보세요</p>
+                      <p className={styles.imageResultDescription}>
+                        찾으시는 스타일을 확인해보세요
+                      </p>
                     </div>
 
                     <button
@@ -818,13 +823,19 @@ export default function Search() {
                   </button>
                 )}
 
-                <FilterScroller filters={FILTERS} appliedFilters={appliedFilters} onOpenFilter={handleOpenFilter} />
+                <FilterScroller
+                  filters={FILTERS}
+                  appliedFilters={appliedFilters}
+                  onOpenFilter={handleOpenFilter}
+                />
               </section>
             )}
 
             <section className={styles.resultSection} aria-label="검색 결과">
               <p className={styles.resultCount}>
-                {resultLoading || imageUploading ? '검색 중...' : `검색 결과 ${formatResultCount(resultCount)}개`}
+                {resultLoading || imageUploading
+                  ? '검색 중...'
+                  : `검색 결과 ${formatResultCount(resultCount)}개`}
               </p>
 
               {renderResultGrid()}
@@ -834,7 +845,6 @@ export default function Search() {
           <div className={styles.footerSpacer} aria-hidden="true" />
         </main>
       </div>
-
 
       {filterSheetOpen ? (
         <SearchFilterSheet
@@ -849,46 +859,28 @@ export default function Search() {
       ) : null}
 
       {focusPost ? (
-        <div className={styles.focusOverlay} role="dialog" aria-modal="true" aria-label="게시글 포커스 화면">
-          <div className={styles.focusFrame}>
-            <div
-              className={styles.focusImage}
-              style={{ backgroundImage: `url(${focusPost.imageUrl})` }}
-              aria-hidden="true"
-            />
-            <div className={styles.focusTopGradient} />
-            <div className={styles.focusBottomGradient} />
-
-            <button
-              type="button"
-              className={styles.focusCloseButton}
-              onClick={handleCloseFocus}
-              aria-label="포커스 화면 닫기"
-            >
-              <X size={18} strokeWidth={2.5} />
-            </button>
-
-            {!detailSheetOpen ? (
-              <div className={styles.focusFloatingArea}>
-                <button
-                  type="button"
-                  className={styles.focusDetailButton}
-                  onClick={() => setDetailSheetOpen(true)}
-                >
-                  <span className={styles.focusDetailButtonText}>상세보기</span>
-                  <ChevronsUp size={16} strokeWidth={2.4} className={styles.focusDetailButtonIcon} />
-                </button>
-              </div>
-            ) : null}
-
-            <PostDetailBottomSheet
-              isOpen={detailSheetOpen}
-              postId={focusPost.postId}
-              authorUserId={focusPost.userId}
-              onCloseRequest={() => setDetailSheetOpen(false)}
-            />
-          </div>
-        </div>
+        <FocusScreen
+          isOpen={Boolean(focusPost)}
+          items={[{ id: focusPost.postId, imageUrl: focusPost.imageUrl }]}
+          activeIndex={0}
+          closeButtonType="x"
+          onClose={handleCloseFocus}
+          sheetOpen={detailSheetOpen}
+          onCloseSheet={() => setDetailSheetOpen(false)}
+          showSwipeIndicator={false}
+          showVoteGraph={false}
+          showDetailButton={!detailSheetOpen}
+          detailLabel="상세보기"
+          onOpenDetail={() => setDetailSheetOpen(true)}
+          ariaLabel="게시글 포커스 화면"
+        >
+          <PostDetailBottomSheet
+            isOpen={detailSheetOpen}
+            postId={focusPost.postId}
+            authorUserId={focusPost.userId}
+            onCloseRequest={() => setDetailSheetOpen(false)}
+          />
+        </FocusScreen>
       ) : null}
     </>
   );

@@ -6,6 +6,57 @@
   @apply z-20;
 }
 
+.header {
+  @apply absolute top-0 left-0 w-full bg-white;
+  z-index: 40;
+  height: 93px;
+}
+
+.headerInner {
+  @apply relative w-full h-full px-5;
+}
+
+.title {
+  @apply absolute left-1/2 text-[18px] leading-[22px] font-bold text-black;
+  top: 59px;
+  transform: translateX(-50%) translateY(-50%);
+}
+
+.headerIconButton {
+  @apply absolute left-5 w-6 h-6 flex items-center justify-center bg-transparent text-black border-0 p-0;
+  top: 59px;
+  transform: translateY(-50%);
+}
+
+.headerTextButton {
+  @apply absolute right-5 flex items-center justify-center border-0 bg-transparent p-0 h-[30px] min-w-[42px] text-[13px] font-semibold text-black;
+  top: 59px;
+  transform: translateY(-50%);
+  border-radius: 0;
+  box-shadow: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 140ms ease,
+    opacity 140ms ease,
+    color 140ms ease;
+}
+
+.headerTextButtonPressed {
+  transform: translateY(-50%) scale(0.96);
+  opacity: 0.62;
+  background: transparent;
+  box-shadow: none;
+}
+
+.headerTextButton:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.headerIconButtonFilled {
+  @apply w-6 h-6 flex items-center justify-center text-black border-0 p-0 bg-transparent;
+}
+
 .deleteButtonRed {
   @apply absolute right-5 w-6 h-6 rounded-full flex items-center justify-center border-0 p-0 text-white;
   top: 59px;
@@ -347,7 +398,10 @@
 
 .selectionActionIconSvg {
   @apply w-[16px] h-[16px] text-white;
-}:global(html.dark) .container,
+}
+
+
+:global(html.dark) .container,
 :global(html.dark) .pageBody,
 :global(html.dark) .contentArea,
 :global(html.dark) .scrollArea,
@@ -390,6 +444,7 @@
 :global(html.dark) .tabSection,
 :global(html.dark) .menuItem,
 :global(html.dark) .footer,
+:global(html.dark) .header,
 :global(html.dark) .topArea,
 :global(html.dark) .bottomSheet,
 :global(html.dark) .compareImageWrap {
@@ -409,9 +464,13 @@
 
 :global(html.dark) .activePill {
   background: var(--footer-pill-bg);
-}:global(html.dark) .icon,
+}
+
+:global(html.dark) .menuButton,
+:global(html.dark) .icon,
 :global(html.dark) .label,
 :global(html.dark) .searchButton,
+:global(html.dark) .headerIconButton,
 :global(html.dark) .closeButton,
 :global(html.dark) .cancelButton,
 :global(html.dark) .iconWrap,
@@ -429,7 +488,10 @@
 :global(html.dark) .iconActive,
 :global(html.dark) .labelActive {
   color: var(--footer-pill-text);
-}:global(html.dark) .mainTitle,
+}
+
+:global(html.dark) .title,
+:global(html.dark) .mainTitle,
 :global(html.dark) .sectionTitle,
 :global(html.dark) .fieldTitle,
 :global(html.dark) .mainTitle,
@@ -579,7 +641,11 @@
 :global(html.dark) .messageBox,
 :global(html.dark) .sectionEmpty {
   color: var(--app-text-secondary);
-}:global(html.dark) .tabSection,
+}
+
+:global(html.dark) .header,
+:global(html.dark) .headerInner,
+:global(html.dark) .tabSection,
 :global(html.dark) .contentArea,
 :global(html.dark) .pageBody,
 :global(html.dark) .container,
@@ -596,6 +662,7 @@
 :global(html.dark) .container {
   background-image: none;
 }
+
 
 :global(html.dark) .modalCancelButton,
 :global(html.dark) .modalSecondaryButton,
@@ -637,4 +704,14 @@
 :global(html.dark) .feedbackSuccess,
 :global(html.dark) .sentText {
   color: #86efac;
+}
+
+
+/* 우측 상단 선택/전체선택 버튼은 텍스트만 보이도록 유지 */
+:global(html.dark) .headerTextButton,
+:global(html.dark) .headerTextButtonPressed {
+  background: transparent;
+  color: var(--app-text-strong);
+  border-color: transparent;
+  box-shadow: none;
 }

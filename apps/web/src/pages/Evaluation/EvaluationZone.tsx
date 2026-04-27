@@ -10,6 +10,7 @@ import type {
 import { clearAuthTokens, fetcher, getAuthHeaders, resolveAssetUrl } from '../../lib/api';
 import Reports from '../../components/Reports';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
+import FocusScreen from '../../components/focus/FocusScreen';
 import EvaluationDetailFeedback from './EvaluationDetailFeedback';
 import styles from './EvaluationZone.module.css';
 
@@ -20,37 +21,6 @@ type VoteSummaryState = {
 };
 
 type DisplayPage = { type: 'post'; post: EvaluationListItem } | { type: 'empty' };
-
-const BackIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-    <path
-      d="M11.25 14.25L6 9L11.25 3.75"
-      stroke="white"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const ChevronUpDouble = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-    <path
-      d="M5 12.5L10 7.5L15 12.5"
-      stroke="white"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M5 17L10 12L15 17"
-      stroke="white"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
 
 const ThumbUpIcon = ({ dark = false, size = 28 }: { dark?: boolean; size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 28 28" fill="none" aria-hidden="true">
@@ -94,51 +64,6 @@ const getFallbackVoteSummary = (choice: VoteChoice | null): VoteSummaryState => 
   };
 };
 
-const VerticalSwipeIndicator = ({ above, below }: { above: number; below: number }) => {
-  const visibleAbove = Math.min(Math.max(above, 0), 3);
-  const visibleBelow = Math.min(Math.max(below, 0), 3);
-
-  return (
-    <div className={styles.swipeIndicator} aria-hidden="true">
-      <div className={styles.swipeIndicatorStack}>
-        {Array.from({ length: visibleAbove }).map((_, index) => (
-          <motion.div
-            key={`above-${index}`}
-            className={styles.swipeIndicatorDot}
-            animate={{ opacity: [0.2, 0.44, 0.2], y: [0, -1.5, 0] }}
-            transition={{
-              duration: 1.7,
-              repeat: Infinity,
-              ease: 'easeInOut',
-              delay: 0.1 * (visibleAbove - index),
-            }}
-          />
-        ))}
-
-        <motion.div
-          className={styles.swipeIndicatorActive}
-          animate={{ opacity: [1, 0.84, 1], scaleY: [1, 0.94, 1] }}
-          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-        />
-
-        {Array.from({ length: visibleBelow }).map((_, index) => (
-          <motion.div
-            key={`below-${index}`}
-            className={styles.swipeIndicatorDot}
-            animate={{ opacity: [0.2, 0.44, 0.2], y: [0, 1.5, 0] }}
-            transition={{
-              duration: 1.7,
-              repeat: Infinity,
-              ease: 'easeInOut',
-              delay: 0.1 * (index + 1),
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-};
-
 const EvaluationZone: React.FC = () => {
   const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -161,6 +86,27 @@ const EvaluationZone: React.FC = () => {
       { type: 'empty' } as DisplayPage,
     ];
   }, [posts]);
+
+  const focusItems = useMemo(() => {
+    return pages.map((page, index) => {
+      if (page.type === 'post') {
+        return {
+          id: page.post.evaluationId,
+          imageUrl: resolveAssetUrl(page.post.thumbnailUrl),
+        };
+      }
+
+      return {
+        id: `empty-${index}`,
+        fallbackText: posts.length === 0 ? '현재 평가할 게시글이 없습니다.' : '더 이상 평가할 게시글이 없습니다.',
+        content: (
+          <div className={styles.emptyPageCenterText}>
+            {posts.length === 0 ? '현재 평가할 게시글이 없습니다.' : '더 이상 평가할 게시글이 없습니다.'}
+          </div>
+        ),
+      };
+    });
+  }, [pages, posts.length]);
 
   const currentPage = useMemo(
     () => pages[currentIndex] ?? pages[0] ?? { type: 'empty' },
@@ -274,14 +220,7 @@ const EvaluationZone: React.FC = () => {
     resetCurrentActionState();
   };
 
-  const handleScroll = () => {
-    const container = scrollRef.current;
-    if (!container) return;
-
-    const pageHeight = container.clientHeight;
-    const rawIndex = Math.round(container.scrollTop / pageHeight);
-    const nextIndex = Math.max(0, Math.min(rawIndex, pages.length - 1));
-
+  const handleFocusIndexChange = (nextIndex: number) => {
     if (nextIndex !== currentIndex) {
       const prevPage = pages[currentIndex];
       const prevPost = prevPage?.type === 'post' ? prevPage.post : null;
@@ -296,7 +235,6 @@ const EvaluationZone: React.FC = () => {
       resetCurrentActionState();
     }
   };
-
   const submitVoteImmediately = async (choice: VoteChoice) => {
     if (!currentPost || submitting || hasCurrentVoteSaved) return;
 
@@ -346,9 +284,6 @@ const EvaluationZone: React.FC = () => {
     if (!currentPost || submitting || isEmptyLastPage || hasCurrentVoteSaved) return;
     void submitVoteImmediately(choice);
   };
-
-  const previousSwipeCount = Math.min(Math.max(currentIndex, 0), 3);
-  const nextSwipeCount = Math.min(Math.max(posts.length - currentIndex - 1, 0), 3);
 
   useEffect(() => {
     if (!detailSheetOpen) return;
@@ -402,167 +337,95 @@ const EvaluationZone: React.FC = () => {
     );
   }
 
-  return (
-    <div className={styles.container}>
-      <div className={styles.viewport} ref={scrollRef} onScroll={handleScroll}>
-        {pages.map((page, idx) => (
-          <section
-            key={page.type === 'post' ? page.post.evaluationId : `empty-${idx}`}
-            className={styles.slide}
-          >
-            {page.type === 'post' ? (
-              <div
-                className={styles.imageSection}
-                style={{
-                  backgroundImage: `url(${resolveAssetUrl(page.post.thumbnailUrl)})`,
-                }}
-              >
-                <div className={styles.topGradient} />
-                <div className={styles.bottomGradient} />
-              </div>
-            ) : (
-              <div className={styles.emptyPageSection}>
-                <div className={styles.topGradient} />
-                <div className={styles.bottomGradient} />
-                <div className={styles.emptyPageCenterText}>
-                  {posts.length === 0
-                    ? '현재 평가할 게시글이 없습니다.'
-                    : '더 이상 평가할 게시글이 없습니다.'}
-                </div>
-              </div>
-            )}
-          </section>
-        ))}
-      </div>
+  const overlayChildren = (
+    <>
+      {helperMessage ? <div className={styles.helperText}>{helperMessage}</div> : null}
 
-      <div className={styles.overlay}>
-        <div className={styles.topBar}>
+      {!isEmptyLastPage && !hasCurrentVoteSaved && contentPreview ? (
+        <div className={styles.contentPreview}>
+          <div className={styles.contentPreviewBox}>
+            <p className={styles.contentPreviewText}>{contentPreview}</p>
+          </div>
+        </div>
+      ) : null}
+
+      {!isEmptyLastPage && !isActionActive ? (
+        <div className={styles.bottomActionArea}>
           <motion.button
             type="button"
-            className={styles.backButton}
-            onClick={handleClose}
-            aria-label="뒤로가기"
+            className={`${styles.circleButton} ${styles.circleButtonInactive} ${styles.leftButton}`}
+            onClick={() => handleVoteSelect('LIKE')}
+            aria-label="좋아요"
+            disabled={submitting}
             whileTap={{ scale: 0.94 }}
           >
-            <BackIcon />
+            <ThumbUpIcon size={18} />
           </motion.button>
 
-          {!isEmptyLastPage && currentPost ? (
-            <motion.button
-              type="button"
-              className={styles.reportButton}
-              onClick={() => setReportOpen(true)}
-              aria-label="게시글 신고"
-              whileTap={{ scale: 0.97 }}
-            >
-              신고
-            </motion.button>
-          ) : (
-            <div className={styles.reportPlaceholder} aria-hidden="true" />
-          )}
+          <motion.button
+            type="button"
+            className={`${styles.circleButton} ${styles.circleButtonInactive} ${styles.rightButton}`}
+            onClick={() => handleVoteSelect('DISLIKE')}
+            aria-label="싫어요"
+            disabled={submitting}
+            whileTap={{ scale: 0.94 }}
+          >
+            <ThumbDownIcon size={18} />
+          </motion.button>
         </div>
-
-        {!detailSheetOpen && !isEmptyLastPage ? (
-          <VerticalSwipeIndicator above={previousSwipeCount} below={nextSwipeCount} />
-        ) : null}
-
-        {helperMessage ? <div className={styles.helperText}>{helperMessage}</div> : null}
-
-        {!isEmptyLastPage && !hasCurrentVoteSaved && contentPreview ? (
-          <div className={styles.contentPreview}>
-            <div className={styles.contentPreviewBox}>
-              <p className={styles.contentPreviewText}>{contentPreview}</p>
-            </div>
-          </div>
-        ) : null}
-
-        {!isEmptyLastPage && hasCurrentVoteSaved && (
-          <>
-            <motion.div
-              className={styles.voteGraphArea}
-              aria-hidden="true"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.22, ease: 'easeOut' }}
-            >
-              <div className={styles.progressTrack}>
-                <div className={styles.likeFill} style={{ width: `${likePercent}%` }} />
-                <div className={styles.dislikeFill} style={{ width: `${dislikePercent}%` }} />
-
-                <div className={styles.leftPercent}>
-                  <ThumbUpIcon size={12} />
-                  <span>{likePercent}%</span>
-                </div>
-
-                <div className={styles.rightPercent}>
-                  <span>{dislikePercent}%</span>
-                  <ThumbDownIcon size={12} />
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              className={styles.voteDetailButtonWrap}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.26, ease: 'easeOut' }}
-            >
-              <button
-                type="button"
-                className={styles.voteDetailButton}
-                onClick={() => setDetailSheetOpen(true)}
-              >
-                <span>상세보러가기</span>
-                <span className={styles.voteDetailIcon}>
-                  <ChevronUpDouble />
-                </span>
-              </button>
-            </motion.div>
-          </>
-        )}
-
-        {!isEmptyLastPage && !isActionActive && (
-          <div className={styles.bottomActionArea}>
-            <motion.button
-              type="button"
-              className={`${styles.circleButton} ${styles.circleButtonInactive} ${styles.leftButton}`}
-              onClick={() => handleVoteSelect('LIKE')}
-              aria-label="좋아요"
-              disabled={submitting}
-              whileTap={{ scale: 0.94 }}
-            >
-              <ThumbUpIcon size={18} />
-            </motion.button>
-
-            <motion.button
-              type="button"
-              className={`${styles.circleButton} ${styles.circleButtonInactive} ${styles.rightButton}`}
-              onClick={() => handleVoteSelect('DISLIKE')}
-              aria-label="싫어요"
-              disabled={submitting}
-              whileTap={{ scale: 0.94 }}
-            >
-              <ThumbDownIcon size={18} />
-            </motion.button>
-          </div>
-        )}
-      </div>
-
-      {currentPost && detailSheetOpen ? (
-        <PostDetailBottomSheet
-          isOpen={detailSheetOpen}
-          onCloseRequest={() => setDetailSheetOpen(false)}
-        >
-          <div ref={sheetContentRef}>
-            <EvaluationDetailFeedback
-              embedded
-              postIdOverride={currentPost.postId}
-              voteIdOverride={createdVoteId}
-              voteChoiceOverride={selectedVote}
-            />
-          </div>
-        </PostDetailBottomSheet>
       ) : null}
+    </>
+  );
+
+  const reportAction = !isEmptyLastPage && currentPost ? (
+    <motion.button
+      type="button"
+      className={styles.reportButton}
+      onClick={() => setReportOpen(true)}
+      aria-label="게시글 신고"
+      whileTap={{ scale: 0.97 }}
+    >
+      신고
+    </motion.button>
+  ) : undefined;
+
+  return (
+    <div className={styles.container}>
+      <FocusScreen
+        isOpen
+        items={focusItems}
+        activeIndex={currentIndex}
+        viewportRef={scrollRef}
+        onActiveIndexChange={handleFocusIndexChange}
+        onClose={handleClose}
+        rightAction={reportAction}
+        sheetOpen={detailSheetOpen}
+        onCloseSheet={() => setDetailSheetOpen(false)}
+        showSwipeIndicator={!detailSheetOpen && !isEmptyLastPage}
+        showVoteGraph={!isEmptyLastPage && hasCurrentVoteSaved}
+        likePercent={likePercent}
+        dislikePercent={dislikePercent}
+        showDetailButton={!isEmptyLastPage && hasCurrentVoteSaved}
+        onOpenDetail={() => setDetailSheetOpen(true)}
+        overlayChildren={overlayChildren}
+        ariaLabel="평가존 포커스 화면"
+      >
+        {currentPost && detailSheetOpen ? (
+          <PostDetailBottomSheet
+            isOpen={detailSheetOpen}
+            onCloseRequest={() => setDetailSheetOpen(false)}
+          >
+            <div ref={sheetContentRef}>
+              <EvaluationDetailFeedback
+                embedded
+                postIdOverride={currentPost.postId}
+                voteIdOverride={createdVoteId}
+                voteChoiceOverride={selectedVote}
+              />
+            </div>
+          </PostDetailBottomSheet>
+        ) : null}
+      </FocusScreen>
 
       {currentPost ? (
         <Reports

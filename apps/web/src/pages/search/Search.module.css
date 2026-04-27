@@ -5,6 +5,11 @@
   color: #111111;
 }
 
+
+
+
+
+
 .scrollArea {
   @apply flex-1 min-h-0 overflow-y-auto overflow-x-hidden;
   -webkit-overflow-scrolling: touch;
@@ -224,65 +229,19 @@
   height: 90px;
 }
 
-.focusOverlay {
-  @apply fixed inset-0 z-[2200] flex items-center justify-center bg-black/35;
-}
-
-.focusFrame {
-  @apply relative overflow-hidden bg-black;
-  width: var(--app-width);
-  height: var(--app-height);
-}
-
-.focusImage {
-  @apply absolute inset-0 bg-cover bg-center bg-no-repeat;
-}
-
-.focusTopGradient {
-  @apply absolute left-0 top-0 h-36 w-full;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0) 100%);
-}
-
-.focusBottomGradient {
-  @apply absolute bottom-0 left-0 h-60 w-full;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.22) 100%);
-}
-
-.focusCloseButton {
-  @apply absolute right-4 top-[62px] z-20 flex h-9 w-9 items-center justify-center rounded-full border-0 p-0 text-white;
-  background: rgba(0, 0, 0, 0.32);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-.focusFloatingArea {
-  @apply absolute left-4 bottom-[58px] z-20;
-}
-
-.focusDetailButton {
-  @apply flex h-10 min-w-[102px] items-center justify-center gap-1 rounded-full border-0 px-4 text-[13px] font-semibold text-white;
-  background: rgba(24, 24, 24, 0.66);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-}
-
-.focusDetailButton:active {
-  transform: scale(0.97);
-}
-
-.focusDetailButtonText {
-  @apply leading-none;
-}
-
-.focusDetailButtonIcon {
-  @apply shrink-0;
-}:global(html.dark) .page,
+:global(html.dark) .page,
+:global(html.dark) .header,
 :global(html.dark) .contentArea,
 :global(html.dark) .scrollArea {
   background: var(--app-surface);
   color: var(--app-text);
-}:global(html.dark) .searchInputIcon,
+}
+
+:global(html.dark) 
+
+:global(html.dark) .backButton,
+:global(html.dark) .menuButton,
+:global(html.dark) .searchInputIcon,
 :global(html.dark) .clearInputButton,
 :global(html.dark) .recentChipRemove,
 :global(html.dark) .filterButton svg,
