@@ -19,9 +19,10 @@ import {
   saveCurrentUser,
 } from '../../lib/api';
 
-import { KakaoIcon, NaverIcon, GoogleIcon } from '../../components/icons/social';
-
 import loginHeroImage from '../../assets/login/login-hero.png';
+import kakaoLogoImage from '../../assets/login/social-kakao.png';
+import naverLogoImage from '../../assets/login/social-naver.png';
+import googleLogoImage from '../../assets/login/social-google.png';
 
 import styles from './Login.module.css';
 
@@ -181,7 +182,7 @@ export default function Login() {
   const moveToSignupForNewSocialAccount = () => {
     openModal(
       '추가 정보가 필요해요',
-      '처음 사용하는 소셜 계정입니다. 현재 로그인 화면에서는 기존 소셜 계정 로그인까지 연결되어 있습니다. 신규 소셜 회원가입은 회원가입 화면에서 추가 프로필 입력 흐름을 붙여야 합니다.',
+      '처음 사용하는 소셜 계정입니다. 회원가입 화면에서 추가 정보를 입력해주세요.',
       () => navigate('/signup'),
     );
   };
@@ -609,9 +610,13 @@ export default function Login() {
             disabled={loading}
             onClick={() => handleSocialLoginClick('KAKAO')}
           >
-            <span className={styles.socialLogo}>
-              <KakaoIcon />
-            </span>
+            <img
+              src={kakaoLogoImage}
+              alt=""
+              className={styles.socialLogoImage}
+              draggable={false}
+              aria-hidden="true"
+            />
           </button>
 
           <button
@@ -621,9 +626,13 @@ export default function Login() {
             disabled={loading}
             onClick={() => handleSocialLoginClick('NAVER')}
           >
-            <span className={styles.socialLogo}>
-              <NaverIcon />
-            </span>
+            <img
+              src={naverLogoImage}
+              alt=""
+              className={styles.socialLogoImage}
+              draggable={false}
+              aria-hidden="true"
+            />
           </button>
 
           <button
@@ -633,9 +642,13 @@ export default function Login() {
             disabled={loading}
             onClick={() => handleSocialLoginClick('GOOGLE')}
           >
-            <span className={styles.socialLogo}>
-              <GoogleIcon />
-            </span>
+            <img
+              src={googleLogoImage}
+              alt=""
+              className={styles.socialLogoImage}
+              draggable={false}
+              aria-hidden="true"
+            />
           </button>
         </div>
 

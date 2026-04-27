@@ -38,8 +38,8 @@
   left: 16px;
   top: 133px;
   width: 343px;
-  height: 48px;
-  padding: 8px 16px;
+  height: 42px;
+  padding: 7px 16px;
   border: 0;
   cursor: pointer;
   transition:
@@ -47,9 +47,14 @@
     opacity 160ms ease;
 }
 
-.loginButton:active {
+.loginButton:active:not(:disabled) {
   transform: scale(0.99);
   opacity: 0.92;
+}
+
+.loginButton:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
 .orRow {
@@ -84,19 +89,35 @@
 }
 
 .socialButton {
-  @apply rounded-full bg-white;
+  @apply rounded-full bg-white flex items-center justify-center;
   width: 42px;
   height: 42px;
+  padding: 0;
   border: 1px solid #999999;
+  overflow: hidden;
   cursor: pointer;
   transition:
     transform 160ms ease,
-    background-color 160ms ease;
+    background-color 160ms ease,
+    opacity 160ms ease;
 }
 
-.socialButton:active {
+.socialButton:active:not(:disabled) {
   transform: scale(0.96);
   background-color: #f5f5f5;
+}
+
+.socialButton:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.socialLogoImage {
+  @apply block select-none pointer-events-none;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  object-position: center;
 }
 
 .signupRow {
@@ -121,6 +142,48 @@
   cursor: pointer;
   padding: 0;
   letter-spacing: -0.03em;
+}
+
+.signupButton:active:not(:disabled) {
+  opacity: 0.65;
+}
+
+.signupButton:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+
+.modalBackdrop {
+  @apply absolute inset-0 z-50 flex items-center justify-center bg-black/40 px-4;
+}
+
+.modalCard {
+  @apply w-full max-w-[340px] rounded-2xl bg-white p-6 shadow-xl flex flex-col items-center;
+}
+
+.modalIcon {
+  @apply mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600 text-xl font-bold;
+}
+
+.modalTitle {
+  @apply mb-2 text-center text-lg font-bold text-neutral-900;
+}
+
+.modalMessage {
+  @apply mb-6 text-center text-sm font-medium leading-relaxed text-neutral-500;
+}
+
+.modalButton {
+  @apply w-full rounded-[10px] bg-neutral-900 py-3 text-base font-medium text-white;
+  transition:
+    transform 150ms ease,
+    opacity 150ms ease;
+}
+
+.modalButton:active {
+  transform: scale(0.98);
+  opacity: 0.9;
 }
 
 @media (max-width: 374px) {

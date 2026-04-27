@@ -140,8 +140,8 @@
   left: 16px;
   top: 492px;
   width: 343px;
-  height: 48px;
-  padding: 8px 16px;
+  height: 42px;
+  padding: 7px 16px;
   border: 0;
   cursor: pointer;
   transition:
@@ -197,7 +197,9 @@
   @apply rounded-full bg-white flex items-center justify-center;
   width: 42px;
   height: 42px;
+  padding: 0;
   border: 1px solid #999999;
+  overflow: hidden;
   cursor: pointer;
   transition:
     transform 160ms ease,
@@ -215,16 +217,12 @@
   opacity: 0.7;
 }
 
-.socialLogo {
-  @apply flex items-center justify-center;
-  width: 22px;
-  height: 22px;
-}
-
-.socialLogo > svg {
-  width: 22px;
-  height: 22px;
-  display: block;
+.socialLogoImage {
+  @apply block select-none pointer-events-none;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  object-position: center;
 }
 
 .signupRow {
