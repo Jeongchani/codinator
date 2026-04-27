@@ -1,34 +1,52 @@
-import type { ThemeMode } from '@codinator/contracts';
+import type { ThemeMode } from "@codinator/contracts";
 
-export const THEME_STORAGE_KEY = 'codinator:theme-mode';
+export const THEME_STORAGE_KEY = "codinator:theme-mode";
+export const DEFAULT_THEME_MODE: ThemeMode = "LIGHT";
 
-const DARK_CLASS_NAME = 'dark';
-
-export const applyThemeMode = (theme: ThemeMode): void => {
-  if (typeof document === 'undefined') return;
-
-  const root = document.documentElement;
-  const isDark = theme === 'DARK';
-
-  root.classList.toggle(DARK_CLASS_NAME, isDark);
-  root.setAttribute('data-theme', isDark ? 'dark' : 'light');
-  root.style.colorScheme = isDark ? 'dark' : 'light';
-};
-
-export const saveThemeMode = (theme: ThemeMode): void => {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+export const isThemeMode = (value: unknown): value is ThemeMode => {
+  return value === "LIGHT" || value === "DARK";
 };
 
 export const getStoredThemeMode = (): ThemeMode | null => {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") {
+    return null;
+  }
 
-  const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
-  return stored === 'DARK' || stored === 'LIGHT' ? stored : null;
+  const storedValue = window.localStorage.getItem(THEME_STORAGE_KEY);
+  return isThemeMode(storedValue) ? storedValue : null;
 };
 
-export const initializeThemeMode = (): ThemeMode => {
-  const stored = getStoredThemeMode() ?? 'LIGHT';
-  applyThemeMode(stored);
-  return stored;
+export const persistThemeMode = (theme: ThemeMode): void => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+};
+
+export const applyThemeMode = (theme: ThemeMode): void => {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const root = document.documentElement;
+  const isDark = theme === "DARK";
+
+  root.classList.toggle("dark", isDark);
+  root.dataset.theme = isDark ? "dark" : "light";
+
+  if (typeof document.body !== "undefined") {
+    document.body.dataset.theme = isDark ? "dark" : "light";
+  }
+};
+
+export const saveAndApplyThemeMode = (theme: ThemeMode): void => {
+  persistThemeMode(theme);
+  applyThemeMode(theme);
+};
+
+export const bootstrapThemeMode = (): ThemeMode => {
+  const theme = getStoredThemeMode() ?? DEFAULT_THEME_MODE;
+  applyThemeMode(theme);
+  return theme;
 };

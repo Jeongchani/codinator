@@ -1,5 +1,5 @@
 .header {
-  @apply bg-white shrink-0;
+  @apply relative z-[40] bg-white shrink-0;
   width: var(--app-width);
   height: var(--app-header-height);
 }
@@ -9,52 +9,63 @@
 }
 
 .title {
-  @apply absolute left-1/2 -translate-x-1/2 text-[18px] leading-[22px] font-bold text-black;
+  @apply absolute left-1/2 -translate-x-1/2 text-[18px] leading-[22px] font-bold text-black whitespace-nowrap select-none;
   top: 59px;
   transform: translateX(-50%) translateY(-50%);
 }
 
-.searchButton {
-  @apply absolute left-5 w-6 h-6 flex items-center justify-center text-[#7a7a7a] bg-transparent p-0 border-0;
+.titleClickable {
+  cursor: pointer;
+}
+
+.iconButton {
+  @apply absolute w-6 h-6 flex items-center justify-center text-[#7a7a7a] bg-transparent p-0 border-0;
+  top: 59px;
+  transform: translateY(-50%);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.leftButton {
+  left: 20px;
+}
+
+.rightButton {
+  right: 20px;
+}
+
+.textButton {
+  @apply absolute h-6 flex items-center justify-center bg-transparent p-0 border-0 text-[14px] leading-[18px] font-semibold text-[#111111] whitespace-nowrap;
+  top: 59px;
+  transform: translateY(-50%);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.textButtonPressed {
+  opacity: 0.58;
+}
+
+.textButton:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.customSlot {
+  @apply absolute flex items-center justify-center;
   top: 59px;
   transform: translateY(-50%);
 }
 
-.menuButton {
-  @apply absolute right-5 w-6 h-6 flex items-center justify-center text-[#7a7a7a] bg-transparent p-0 border-0;
-  top: 59px;
-  transform: translateY(-50%);
+:global(html.dark) .header {
+  background: var(--app-surface);
+  color: var(--app-text);
+  border-color: var(--app-border);
 }
 
-
-/* Dark mode */
-.header {
-  background: var(--color-page-bg);
+:global(html.dark) .title {
+  color: var(--app-text-strong);
 }
 
-.title {
-  color: var(--color-text-strong);
-}
-
-.searchButton,
-.menuButton {
-  color: var(--color-text-soft);
-}
-
-
-/* Tokenized color overrides: variables are defined once in styles/global.css. */
-.header {
-  background: var(--color-surface);
-}
-
-.title {
-  color: var(--color-text-strong);
-}
-
-.searchButton {
-  color: var(--color-text-muted);
-}
-
-.menuButton {
-  color: var(--color-text-muted);
+:global(html.dark) .iconButton,
+:global(html.dark) .textButton {
+  color: var(--app-text-secondary);
 }

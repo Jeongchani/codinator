@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, Check, ChevronsUp, Trash2, X } from 'lucide-react';
+import { Check, ChevronsUp, Trash2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { BookmarkListItem, RankingPeriod, VoteChoice } from '@codinator/contracts';
 import {
@@ -9,6 +9,7 @@ import {
   resolveAssetUrl,
   setPostBookmark,
 } from '../../lib/api';
+import Header from '../../components/Header';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
 import RankingDetail from '../ranking/RankingDetail';
 import EvaluationDetailFeedback from '../evaluation/EvaluationDetailFeedback';
@@ -898,46 +899,27 @@ export default function Bookmark() {
       ref={containerRef}
       className={`${styles.container} ${deleteMode ? styles.deleteMode : ''}`}
     >
-      <header className={styles.header}>
-        <div className={styles.headerInner}>
-          <button
-            type="button"
-            className={styles.headerIconButton}
-            onClick={deleteMode ? handleCancelDeleteMode : () => navigate(-1)}
-            aria-label="뒤로가기"
-          >
-            <ChevronLeft size={24} strokeWidth={2.2} />
-          </button>
+      <Header
+        title="북마크"
+        leftAction="back"
+        onBack={deleteMode ? handleCancelDeleteMode : () => navigate(-1)}
+        rightAction="text"
+        rightText={deleteMode ? '전체선택' : '선택'}
+        onRightTextClick={() => {
+          if (deleteMode) {
+            handleToggleSelectAll();
+            setIsSelectButtonPressed(false);
+            return;
+          }
 
-          <h1 className={styles.title}>북마크</h1>
-
-          <button
-            type="button"
-            className={`${styles.headerTextButton} ${
-              isSelectButtonPressed ? styles.headerTextButtonPressed : ''
-            }`}
-            onClick={() => {
-              if (deleteMode) {
-                handleToggleSelectAll();
-                setIsSelectButtonPressed(false);
-                return;
-              }
-
-              handleEnterDeleteMode();
-            }}
-            onTouchStart={() => setIsSelectButtonPressed(true)}
-            onTouchEnd={() => setIsSelectButtonPressed(false)}
-            onTouchCancel={() => setIsSelectButtonPressed(false)}
-            onMouseDown={() => setIsSelectButtonPressed(true)}
-            onMouseUp={() => setIsSelectButtonPressed(false)}
-            onMouseLeave={() => setIsSelectButtonPressed(false)}
-            aria-label={deleteMode ? '전체선택' : '선택'}
-            disabled={loading}
-          >
-            {deleteMode ? '전체선택' : '선택'}
-          </button>
-        </div>
-      </header>
+          handleEnterDeleteMode();
+        }}
+        rightPressed={isSelectButtonPressed}
+        onRightPressStart={() => setIsSelectButtonPressed(true)}
+        onRightPressEnd={() => setIsSelectButtonPressed(false)}
+        rightAriaLabel={deleteMode ? '전체선택' : '선택'}
+        rightDisabled={loading}
+      />
 
       <div className={styles.tabSection}>
         <div ref={tabRowRef} className={styles.tabRow}>

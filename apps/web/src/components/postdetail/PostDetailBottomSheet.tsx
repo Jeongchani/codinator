@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useAnimation } from 'framer-motion';
 import { Bookmark, ChevronsRight, Siren, Tag, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import type { GetRankingPostDetailResponse, RankingPeriod } from '@codinator/contracts';
+import type { GetFeedPostDetailResponse, GetRankingPostDetailResponse, RankingPeriod } from '@codinator/contracts';
 import {
   clearAuthTokens,
   fetchMyBookmarkMap,
@@ -24,6 +24,7 @@ type Props = {
   onClosed?: () => void;
   children?: React.ReactNode;
   postId?: number | null;
+  authorUserId?: number | null;
   period?: RankingPeriod;
   hideFeedLink?: boolean;
 };
@@ -35,7 +36,9 @@ type StructuredFeedbackRow = {
   side: 'LIKE' | 'DISLIKE';
 };
 
-type OutfitItem = NonNullable<GetRankingPostDetailResponse['outfitItems']>[number];
+type PostDetailResponse = GetRankingPostDetailResponse | GetFeedPostDetailResponse;
+
+type OutfitItem = PostDetailResponse['outfitItems'][number];
 
 
 type PostDetailSheetData = {
@@ -148,7 +151,7 @@ function formatCategoryLabel(value: unknown) {
   return categoryMap[key] ?? raw;
 }
 
-function extractKeywordLabels(data: GetRankingPostDetailResponse | null): string[] {
+function extractKeywordLabels(data: PostDetailResponse | null): string[] {
   if (!data) return [];
   const raw = data as unknown as Record<string, unknown>;
   const candidates = [raw.keywords, raw.keywordLabels, raw.tags, raw.postKeywords];
@@ -173,7 +176,7 @@ function extractKeywordLabels(data: GetRankingPostDetailResponse | null): string
   return [...new Set(labels)].slice(0, 5);
 }
 
-function extractStructuredFeedback(data: GetRankingPostDetailResponse | null) {
+function extractStructuredFeedback(data: PostDetailResponse | null) {
   if (!data) {
     return { likeRows: [] as StructuredFeedbackRow[], dislikeRows: [] as StructuredFeedbackRow[] };
   }
@@ -226,7 +229,7 @@ function extractStructuredFeedback(data: GetRankingPostDetailResponse | null) {
 }
 
 
-export function buildPostDetailSheetData(postData: GetRankingPostDetailResponse | null): PostDetailSheetData | null {
+export function buildPostDetailSheetData(postData: PostDetailResponse | null): PostDetailSheetData | null {
   if (!postData) return null;
 
   const likeCount = postData.voteSummary.likeCount ?? 0;
@@ -551,17 +554,19 @@ export function PostDetailBottomSheetContent({
 
 export function RankingDetailSheetContent({
   postId,
+  authorUserId,
   period,
   hideFeedLink = false,
 }: {
   postId?: number | null;
+  authorUserId?: number | null;
   period?: RankingPeriod;
   hideFeedLink?: boolean;
 }) {
   const navigate = useNavigate();
   const { postId: routePostId } = useParams();
   const [searchParams] = useSearchParams();
-  const [postData, setPostData] = useState<GetRankingPostDetailResponse | null>(null);
+  const [postData, setPostData] = useState<PostDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
@@ -583,17 +588,15 @@ export function RankingDetailSheetContent({
 
       try {
         setLoading(true);
-        const candidatePeriods: RankingPeriod[] = explicitPeriod ? [explicitPeriod] : ['WEEKLY', 'MONTHLY'];
-        let matchedData: GetRankingPostDetailResponse | null = null;
+        let matchedData: PostDetailResponse | null = null;
         let lastMessage = '';
 
-        for (const candidate of candidatePeriods) {
+        if (typeof authorUserId === 'number' && Number.isFinite(authorUserId)) {
           try {
-            const data = await fetcher<GetRankingPostDetailResponse>(`/rankings/posts/${activePostId}?period=${candidate}`, {
-              headers: getAuthHeaders(),
-            });
-            matchedData = data;
-            break;
+            matchedData = await fetcher<GetFeedPostDetailResponse>(
+              `/users/${authorUserId}/feed/${activePostId}`,
+              { headers: getAuthHeaders() },
+            );
           } catch (err) {
             const message = err instanceof Error ? err.message : '상세 데이터를 불러오지 못했습니다.';
             if (isAuthError(message)) {
@@ -602,6 +605,27 @@ export function RankingDetailSheetContent({
               return;
             }
             lastMessage = message;
+          }
+        } else {
+          const candidatePeriods: RankingPeriod[] = explicitPeriod ? [explicitPeriod] : ['WEEKLY', 'MONTHLY'];
+
+          for (const candidate of candidatePeriods) {
+            try {
+              const data = await fetcher<GetRankingPostDetailResponse>(
+                `/rankings/posts/${activePostId}?period=${candidate}`,
+                { headers: getAuthHeaders() },
+              );
+              matchedData = data;
+              break;
+            } catch (err) {
+              const message = err instanceof Error ? err.message : '상세 데이터를 불러오지 못했습니다.';
+              if (isAuthError(message)) {
+                clearAuthTokens();
+                navigate('/login');
+                return;
+              }
+              lastMessage = message;
+            }
           }
         }
 
@@ -619,7 +643,7 @@ export function RankingDetailSheetContent({
     return () => {
       cancelled = true;
     };
-  }, [activePostId, explicitPeriod, navigate]);
+  }, [activePostId, authorUserId, explicitPeriod, navigate]);
 
   useEffect(() => {
     if (!activePostId) return;
@@ -683,6 +707,7 @@ export default function PostDetailBottomSheet({
   onClosed,
   children,
   postId,
+  authorUserId,
   period,
   hideFeedLink = false,
 }: Props) {
@@ -896,6 +921,7 @@ export default function PostDetailBottomSheet({
           {shouldRenderDefaultRankingDetail ? (
             <RankingDetailSheetContent
               postId={postId}
+              authorUserId={authorUserId}
               period={period}
               hideFeedLink={hideFeedLink}
             />

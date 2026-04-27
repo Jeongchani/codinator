@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, Check, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { Check, Eye, EyeOff, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { GetMyFeedResponse } from '@codinator/contracts';
 import {
@@ -9,6 +9,7 @@ import {
   isAuthError,
   resolveAssetUrl,
 } from '../../lib/api';
+import Header from '../../components/Header';
 import styles from './MyFeed.module.css';
 
 type TabType = 'all' | 'ongoing' | 'done' | 'hidden';
@@ -956,50 +957,31 @@ export default function MyFeed() {
       ref={containerRef}
       className={`${styles.container} ${isSelectionMode ? styles.selectionMode : ''}`}
     >
-      <header className={styles.header}>
-        <div className={styles.headerInner}>
-          <button
-            type="button"
-            className={styles.headerIconButton}
-            onClick={isSelectionMode ? exitSelectionMode : () => navigate(-1)}
-            aria-label="뒤로가기"
-          >
-            <ChevronLeft size={24} strokeWidth={2.2} />
-          </button>
+      <Header
+        title="나의 피드"
+        leftAction="back"
+        onBack={isSelectionMode ? exitSelectionMode : () => navigate(-1)}
+        rightAction="text"
+        rightText={isSelectionMode ? '전체선택' : '선택'}
+        onRightTextClick={() => {
+          if (isSelectionMode) {
+            handleToggleSelectAll();
+            setIsSelectButtonPressed(false);
+            return;
+          }
 
-          <h1 className={styles.title}>나의 피드</h1>
-
-          <button
-            type="button"
-            className={`${styles.headerTextButton} ${
-              isSelectButtonPressed ? styles.headerTextButtonPressed : ''
-            }`}
-            onClick={() => {
-              if (isSelectionMode) {
-                handleToggleSelectAll();
-                setIsSelectButtonPressed(false);
-                return;
-              }
-
-              ignoreNextSelectionTouchEndRef.current = null;
-              setIsSelectionMode(true);
-              setSelectedIds([]);
-              setShowActionConfirm(false);
-              setPendingAction(null);
-              setIsSelectButtonPressed(false);
-            }}
-            onTouchStart={() => setIsSelectButtonPressed(true)}
-            onTouchEnd={() => setIsSelectButtonPressed(false)}
-            onTouchCancel={() => setIsSelectButtonPressed(false)}
-            onMouseDown={() => setIsSelectButtonPressed(true)}
-            onMouseUp={() => setIsSelectButtonPressed(false)}
-            onMouseLeave={() => setIsSelectButtonPressed(false)}
-            aria-label={isSelectionMode ? '전체선택' : '선택'}
-          >
-            {isSelectionMode ? '전체선택' : '선택'}
-          </button>
-        </div>
-      </header>
+          ignoreNextSelectionTouchEndRef.current = null;
+          setIsSelectionMode(true);
+          setSelectedIds([]);
+          setShowActionConfirm(false);
+          setPendingAction(null);
+          setIsSelectButtonPressed(false);
+        }}
+        rightPressed={isSelectButtonPressed}
+        onRightPressStart={() => setIsSelectButtonPressed(true)}
+        onRightPressEnd={() => setIsSelectButtonPressed(false)}
+        rightAriaLabel={isSelectionMode ? '전체선택' : '선택'}
+      />
 
       <div className={styles.tabSection}>
         <div ref={tabRowRef} className={styles.tabRow}>

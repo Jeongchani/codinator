@@ -1,180 +1,137 @@
-.container {
-  @apply w-[375px] h-[812px] mx-auto relative overflow-hidden bg-slate-50;
-  background: #f3f3ee;
+.root {
+  @apply relative mx-auto bg-white overflow-hidden;
+  width: var(--app-width, 375px);
+  height: var(--app-height, 812px);
+  min-height: var(--app-height, 812px);
 }
 
-.topArea {
-  @apply absolute inset-x-0 top-0;
-  height: 401px;
-  background: linear-gradient(180deg, #f6f6f2 0%, #efefe9 100%);
+.heroSection {
+  @apply absolute left-0 overflow-hidden bg-white;
+  top: 39px;
+  width: 375px;
+  height: 362px;
 }
 
-.colorPanel {
-  @apply absolute inset-0 px-7 pt-9 pb-8 flex flex-col;
+.heroImage {
+  @apply block w-full h-full select-none pointer-events-none;
+  object-fit: cover;
+  object-position: center top;
 }
 
-.colorMeta {
-  @apply text-[12px] font-semibold tracking-[0.22em] text-neutral-400;
-}
-
-.colorName {
-  @apply mt-5 text-[42px] leading-[46px] font-semibold text-neutral-900;
-}
-
-.colorCode {
-  @apply mt-3 text-[18px] font-medium text-neutral-500;
-}
-
-.colorSwatch {
-  @apply mt-auto w-full rounded-[32px];
-  height: 130px;
-  background: linear-gradient(180deg, #fbfbf8 0%, #efefe9 100%);
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 14px 28px rgba(17, 24, 39, 0.06);
-}
-
-.bottomSheet {
-  @apply absolute left-0 top-[401px] w-full rounded-tl-[32px] rounded-tr-[32px] px-6 pt-10 pb-8;
+.contentPanel {
+  @apply absolute left-0 bottom-0 bg-white rounded-t-[32px];
+  width: 375px;
   height: 411px;
-  background: white;
   box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.06);
 }
 
 .title {
-  @apply text-center text-neutral-900 text-[30px] leading-9 font-semibold;
+  @apply absolute text-center text-neutral-900 text-[28px] font-semibold leading-9;
+  left: 48px;
+  top: 54px;
+  width: 288px;
+  letter-spacing: -0.04em;
 }
 
-/* Login.module.css 기준 위치값과 동일 */
 .loginButton {
-  @apply absolute left-1/2 -translate-x-1/2 top-[527px]
-    w-[288px] h-14 rounded-[100px] bg-black
-    flex items-center justify-center
-    text-white text-base font-normal leading-5;
+  @apply absolute flex items-center justify-center bg-black rounded-[10px] text-white text-xl font-medium leading-7;
+  left: 16px;
+  top: 133px;
+  width: 343px;
+  height: 48px;
+  padding: 8px 16px;
+  border: 0;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease;
 }
 
-.orWrap {
-  @apply absolute left-4 top-[608px] w-[343px] flex items-center justify-between;
+.loginButton:active {
+  transform: scale(0.99);
+  opacity: 0.92;
+}
+
+.orRow {
+  @apply absolute flex items-center justify-center;
+  left: 16px;
+  top: 207px;
+  width: 343px;
+  gap: 11px;
 }
 
 .orLine {
-  @apply w-[141px] h-px bg-neutral-200;
+  @apply block h-px bg-stone-300;
+  width: 144px;
 }
 
 .orText {
-  @apply text-neutral-400 text-sm font-medium leading-5 tracking-tight;
+  @apply text-center text-neutral-400 text-sm font-medium leading-5 tracking-tight;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
 }
 
-.socialRow {
-  @apply absolute left-1/2 -translate-x-1/2 top-[652px] flex items-center gap-5;
-}
-
-.socialButton {
-  @apply w-[42px] h-[42px] rounded-full border border-[#999999] bg-white flex items-center justify-center text-neutral-600;
-}
-
-.socialLogo {
-  width: 20px;
-  height: 20px;
-  display: block;
-  flex-shrink: 0;
-}
-
-.bottomText {
-  @apply absolute left-1/2 -translate-x-1/2 top-[734px] inline-flex items-center gap-[5px] whitespace-nowrap;
-}
-
-.bottomMuted {
-  @apply text-neutral-400 text-sm font-medium leading-5;
-}
-
-.bottomLink {
-  @apply bg-transparent border-0 p-0 text-neutral-900 text-sm font-medium leading-5 cursor-pointer;
-}
-
-
-/* Dark mode */
-.container,
-.topArea {
-  background: var(--color-page-bg);
-}
-
-.colorName,
-.title,
-.bottomLink {
-  color: var(--color-text-strong);
-}
-
-.colorMeta,
-.colorCode,
-.orText,
-.bottomMuted {
-  color: var(--color-text-muted);
-}
-
-.colorSwatch,
-.bottomSheet,
-.socialButton {
-  background: var(--color-surface);
-  border-color: var(--color-border);
-}
-
-.loginButton {
-  background: var(--color-inverse-surface);
-  color: var(--color-inverse-text);
-}
-
-.orLine {
-  background: var(--color-border);
-}
-
-
-/* Tokenized color overrides: variables are defined once in styles/global.css. */
-.colorMeta {
-  color: var(--color-text-muted);
-}
-
-.colorName {
-  color: var(--color-text-strong);
-}
-
-.colorCode {
-  color: var(--color-text-muted);
-}
-
-.bottomSheet {
-  background: var(--color-surface);
-}
-
-.title {
-  color: var(--color-text-strong);
-}
-
-/* Login.module.css 기준 위치값과 동일 */
-.loginButton {
-  background: var(--color-inverse-surface);
-  color: var(--color-inverse-text);
-}
-
-.orLine {
-  background: var(--color-surface-3);
-}
-
-.orText {
-  color: var(--color-text-muted);
+.socialButtonRow {
+  @apply absolute flex items-center justify-center;
+  left: 105px;
+  top: 252px;
+  gap: 20px;
 }
 
 .socialButton {
-  background: var(--color-surface);
-  color: var(--color-text-soft);
-  border-color: var(--color-border);
+  @apply rounded-full bg-white;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #999999;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease;
 }
 
-.bottomMuted {
-  color: var(--color-text-muted);
+.socialButton:active {
+  transform: scale(0.96);
+  background-color: #f5f5f5;
 }
 
-.bottomLink {
-  color: var(--color-text-strong);
+.signupRow {
+  @apply absolute flex items-center justify-center;
+  left: 0;
+  top: 334px;
+  width: 100%;
+  gap: 14px;
+}
+
+.signupGuideText {
+  @apply text-center text-neutral-400 text-sm font-medium leading-[18.2px] whitespace-nowrap;
+  width: auto;
+  letter-spacing: -0.03em;
+}
+
+.signupButton {
+  @apply text-center text-neutral-900 text-sm font-medium leading-[18.2px] whitespace-nowrap;
+  width: auto;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  letter-spacing: -0.03em;
+}
+
+@media (max-width: 374px) {
+  .root,
+  .heroSection,
+  .contentPanel {
+    width: 100vw;
+  }
+
+  .loginButton,
+  .orRow {
+    width: calc(100vw - 32px);
+  }
 }

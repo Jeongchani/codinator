@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type {
   ChangePhoneRequest,
@@ -15,6 +14,7 @@ import type {
   VerifyPhoneCodeRequest,
 } from '@codinator/contracts';
 import { clearAuthTokens, fetcher, getAuthHeaders } from '../../lib/api';
+import Header from '../../components/Header';
 import styles from './MyPageEdit.module.css';
 
 type LocationState = {
@@ -505,28 +505,15 @@ export default function MyPageEdit() {
   return (
     <>
       <div className={styles.container}>
-        <header className={styles.header}>
-          <div className={styles.headerInner}>
-            <button
-              type="button"
-              className={styles.headerIconButton}
-              onClick={() => navigate('/myPage')}
-              aria-label="뒤로가기"
-            >
-              <ChevronLeft size={23} strokeWidth={2.2} />
-            </button>
-
-            <h1 className={styles.title}>정보 수정</h1>
-
-            <button
-              type="button"
-              className={styles.cancelButton}
-              onClick={() => navigate('/myPage')}
-            >
-              취소
-            </button>
-          </div>
-        </header>
+        <Header
+          title="정보 수정"
+          leftAction="back"
+          onBack={() => navigate('/myPage')}
+          rightAction="text"
+          rightText="취소"
+          onRightTextClick={() => navigate('/myPage')}
+          rightAriaLabel="취소"
+        />
 
         <main className={styles.contentArea}>
           <section className={styles.sectionBlock}>

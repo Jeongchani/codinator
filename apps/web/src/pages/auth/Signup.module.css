@@ -1,159 +1,455 @@
-.container {
-  @apply w-[375px] h-[1180px] mx-auto bg-white relative overflow-hidden px-4;
+.root {
+  @apply relative mx-auto bg-white overflow-y-auto overflow-x-hidden;
+  width: var(--app-width, 375px);
+  height: var(--app-height, 812px);
+  min-height: var(--app-height, 812px);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-.hero {
-  @apply absolute left-4 top-[70px] w-[320px] px-2.5 py-2 flex flex-col items-start gap-[5px];
+.root::-webkit-scrollbar {
+  display: none;
 }
 
-.heroTitle {
-  @apply w-full text-neutral-900 text-4xl font-medium leading-10;
+.content {
+  @apply relative bg-white overflow-hidden;
+  width: var(--app-width, 375px);
+  min-height: 1460px;
 }
 
-.heroDesc {
-  @apply w-full text-neutral-900 text-xl font-medium leading-7;
+.decorationImage {
+  @apply absolute select-none pointer-events-none;
+  right: 20px;
+  top: 76px;
+  width: 82px;
+  height: 55px;
+  object-fit: contain;
 }
 
-.formBlock {
-  @apply absolute left-4 top-[268px] w-[320px] flex flex-col items-start gap-5;
+.header {
+  @apply absolute left-4;
+  top: 72px;
 }
 
-.field {
-  @apply w-full;
+.title {
+  @apply text-neutral-900 text-[28px] font-bold leading-9;
+  margin: 0;
+  letter-spacing: -0.04em;
 }
 
-.fieldHeader {
-  @apply w-full flex items-center justify-between;
+.description {
+  @apply text-neutral-400 text-sm font-normal leading-5;
+  margin-top: 16px;
+  letter-spacing: -0.03em;
+}
+
+.form {
+  @apply absolute inset-0;
+}
+
+.fieldGroup {
+  @apply absolute;
+  left: 16px;
+  width: 343px;
+}
+
+.nicknameGroup {
+  top: 168px;
+}
+
+.emailGroup {
+  top: 294px;
+}
+
+.passwordGroup {
+  top: 420px;
+}
+
+.passwordConfirmGroup {
+  top: 552px;
+}
+
+.birthDateGroup {
+  top: 684px;
+}
+
+.genderGroup {
+  @apply absolute;
+  left: 16px;
+  top: 828px;
+  width: 343px;
+}
+
+.phoneGroup {
+  top: 928px;
 }
 
 .label {
-  @apply text-neutral-900 text-sm font-medium leading-5;
+  @apply block text-neutral-900 text-base font-bold leading-[22.5px];
+  margin: 0 0 12px;
 }
 
-.requiredLabel {
-  @apply inline-flex items-center gap-1 text-neutral-900 text-sm font-medium leading-5;
-}
-
-.requiredMark {
-  display: none;
-}
-
-.checkButton {
-  @apply h-7 px-3 rounded-full border border-neutral-300 text-[12px] font-medium text-neutral-700 bg-white;
-}
-
-.checkButton:disabled {
-  @apply opacity-50 cursor-not-allowed;
+.input,
+.inputButtonBox {
+  @apply w-full h-12 bg-white rounded-[10px];
+  border: 1px solid #d6d3d1;
 }
 
 .input {
-  @apply w-full bg-transparent border-0 outline-none p-0 text-neutral-900 text-[17px] font-normal leading-6;
+  @apply text-neutral-900 text-[15px] font-normal leading-5 outline-none;
+  padding: 12px 16px;
 }
 
-.input::placeholder {
-  @apply text-neutral-300 text-[17px];
+.inputButtonBox {
+  @apply flex items-center justify-between;
+  padding: 8px 14px 8px 16px;
 }
 
-.line {
-  @apply w-full h-px bg-black mt-1;
+.inputWithButton {
+  @apply min-w-0 flex-1 bg-transparent text-neutral-900 text-[15px] font-normal leading-5 outline-none;
+  padding: 0;
 }
 
-.genderField .line {
-  display: none;
+.input::placeholder,
+.inputWithButton::placeholder,
+.phoneInput::placeholder,
+.verificationInput::placeholder {
+  color: #a3a3a3;
+}
+
+.input:focus,
+.inputButtonBox:focus-within,
+.phoneCard:focus-within,
+.verificationRow:focus-within {
+  border-color: #111111;
+}
+
+.input:disabled,
+.inputWithButton:disabled,
+.phoneInput:disabled,
+.verificationInput:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.innerButton,
+.phoneButton,
+.resendButton,
+.verifyCodeButton {
+  @apply shrink-0 flex items-center justify-center rounded-[10px] text-center text-neutral-900 text-xs font-normal leading-4;
+  height: 30px;
+  padding: 0 16px;
+  border: 1px solid #a3a3a3;
+  background: #ffffff;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    opacity 140ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.innerButton:active:not(:disabled),
+.phoneButton:active:not(:disabled),
+.resendButton:active:not(:disabled),
+.verifyCodeButton:active:not(:disabled) {
+  transform: scale(0.96);
+  background-color: #f5f5f5;
+}
+
+.innerButton:disabled,
+.phoneButton:disabled,
+.resendButton:disabled,
+.verifyCodeButton:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.checkButtonDone {
+  background: #e9f8df;
+  border-color: #9fd17d;
+  color: #3f7f2b;
+  opacity: 1;
+}
+
+.checkButtonDone:disabled {
+  background: #e9f8df;
+  border-color: #9fd17d;
+  color: #3f7f2b;
+  opacity: 1;
+}
+
+.successText {
+  @apply text-lime-700 text-xs font-normal leading-4;
+  margin-top: 14px;
+  min-height: 16px;
 }
 
 .helperText {
-  @apply min-h-[18px] text-[12px] leading-[18px] text-neutral-500 mt-2;
+  @apply text-neutral-400 text-xs font-normal leading-4;
+  margin-top: 14px;
+  min-height: 16px;
+}
+
+.errorText {
+  @apply text-red-600 text-xs font-normal leading-4;
+  margin-top: 14px;
+  min-height: 16px;
 }
 
 .genderRow {
-  @apply flex items-center gap-5 mt-1;
+  @apply flex items-center;
+  gap: 28px;
 }
 
 .genderButton {
-  @apply h-8 inline-flex items-center gap-2 bg-transparent border-0 p-0 cursor-pointer;
+  @apply flex items-center;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    opacity 140ms ease;
 }
 
-.genderCheckSvg {
-  @apply shrink-0;
-  width: 20px;
-  height: 20px;
+.genderButton:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
-.genderText {
-  @apply text-neutral-400 text-[17px] font-medium leading-5;
+.genderButton:disabled {
+  cursor: default;
+  opacity: 0.72;
 }
 
-.genderTextActive {
-  @apply text-neutral-900 text-[17px] font-medium leading-5;
+.genderIconChecked {
+  @apply shrink-0 text-neutral-900;
 }
 
-.phoneRow {
-  @apply w-full flex items-center justify-between mt-1;
+.genderIconUnchecked {
+  @apply shrink-0 text-stone-300;
+  opacity: 0.82;
+}
+
+.genderTextChecked {
+  @apply text-neutral-900 text-base font-bold leading-[22.5px];
+}
+
+.genderTextUnchecked {
+  @apply text-stone-300 text-base font-bold leading-[22.5px];
+}
+
+.phoneCard {
+  @apply w-full bg-white rounded-[18px];
+  min-height: 48px;
+  padding: 8px 14px 8px 16px;
+  border: 1px solid #d6d3d1;
+}
+
+.phoneCardExpanded {
+  padding: 12px 10px 14px;
+}
+
+.phoneTopRow {
+  @apply flex items-center;
+  height: 32px;
+  gap: 10px;
 }
 
 .phoneInput {
-  @apply h-9 rounded-[10px] border border-neutral-300 bg-white
-    text-center text-[15px] leading-5 font-medium text-neutral-900 outline-none;
-  width: 92px;
+  @apply min-w-0 flex-1 bg-transparent text-neutral-900 text-[15px] font-normal leading-5 outline-none;
+  padding: 0;
 }
 
-.phoneInput:first-of-type {
-  width: 88px;
+.phoneButton {
+  padding: 0 14px;
 }
 
-.phoneDash {
-  @apply w-3 text-center text-neutral-500 text-base font-medium shrink-0;
+.sentText {
+  @apply shrink-0 text-right text-[12px] leading-4 text-[#8a8a8a];
 }
 
-.primaryButton {
-  @apply absolute left-1/2 -translate-x-1/2 top-[930px]
-    w-[288px] h-14 rounded-[100px] bg-black
-    text-white text-base font-normal leading-5
-    flex items-center justify-center transition;
+.verificationMetaRow {
+  @apply mt-3 flex items-center justify-between;
+}
+
+.timerText {
+  @apply text-[12px] font-medium leading-4 text-[#7b7b7b];
+}
+
+.resendButton {
+  padding: 0 18px;
+}
+
+.verificationRow {
+  @apply mt-3 flex h-[52px] items-center gap-[10px] rounded-[18px] border border-[#d6d3d1] bg-white pl-[14px] pr-[10px];
+}
+
+.verificationInput {
+  @apply min-w-0 flex-1 border-0 bg-transparent p-0 text-[15px] leading-5 text-[#111111] outline-none;
+}
+
+.verifyCodeButton {
+  padding: 0 18px;
+}
+
+.debugCodeText {
+  @apply mt-1 text-[12px] leading-4 text-[#8a8a8a];
+}
+
+.signupSubmitButton {
+  @apply absolute flex items-center justify-center bg-black rounded-[10px] text-white text-xl font-medium leading-7;
+  left: 16px;
+  width: 343px;
+  height: 48px;
+  padding: 8px 16px;
+  border: 0;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease,
+    background-color 160ms ease;
+}
+
+.signupSubmitButton:active:not(:disabled) {
+  transform: scale(0.99);
+  opacity: 0.92;
+}
+
+.signupSubmitButton:disabled {
+  cursor: default;
 }
 
 .buttonDisabled {
-  @apply opacity-40 cursor-not-allowed;
+  opacity: 0.35;
 }
 
-.orWrap {
-  @apply absolute left-4 top-[1011px] w-[343px] flex items-center justify-between;
+.orRow {
+  @apply absolute flex items-center justify-center;
+  left: 16px;
+  width: 343px;
+  gap: 11px;
 }
 
 .orLine {
-  @apply w-[141px] h-px bg-neutral-200;
+  @apply block h-px bg-stone-300;
+  width: 144px;
 }
 
 .orText {
-  @apply text-neutral-400 text-sm font-medium leading-5 tracking-tight;
+  @apply text-center text-neutral-400 text-sm font-medium leading-5 tracking-tight;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
 }
 
-.socialRow {
-  @apply absolute left-1/2 -translate-x-1/2 top-[1055px] flex items-center gap-5;
+.socialButtonRow {
+  @apply absolute flex items-center justify-center;
+  left: 105px;
+  gap: 20px;
 }
 
 .socialButton {
-  @apply w-[42px] h-[42px] rounded-full border border-[#999999] bg-white flex items-center justify-center text-neutral-600;
+  @apply rounded-full bg-white flex items-center justify-center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #999999;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    opacity 160ms ease;
+}
+
+.socialButton:active:not(:disabled) {
+  transform: scale(0.94);
+  background-color: #f5f5f5;
+}
+
+.socialButton:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
 .socialLogo {
+  @apply flex items-center justify-center;
   width: 20px;
   height: 20px;
-  display: block;
   flex-shrink: 0;
 }
 
-.bottomText {
-  @apply absolute left-1/2 -translate-x-1/2 top-[1137px] inline-flex items-center gap-[5px] whitespace-nowrap;
+.socialLogo > svg {
+  width: 20px;
+  height: 20px;
+  display: block;
 }
 
-.bottomMuted {
-  @apply text-neutral-400 text-sm font-medium leading-5;
+.loginGuideRow {
+  @apply absolute flex items-center justify-center;
+  left: 0;
+  width: 100%;
+  gap: 6px;
 }
 
-.bottomLink {
-  @apply bg-transparent border-0 p-0 text-neutral-900 text-sm font-medium leading-5 cursor-pointer;
+.loginGuideText {
+  @apply text-center text-neutral-400 text-sm font-medium leading-[18.2px] whitespace-nowrap;
+  letter-spacing: -0.03em;
+}
+
+.loginButton {
+  @apply text-center text-neutral-900 text-sm font-medium leading-[18.2px] whitespace-nowrap;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  letter-spacing: -0.03em;
+}
+
+.loginButton:active:not(:disabled) {
+  opacity: 0.65;
+}
+
+.loginButton:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.signupSubmitButton.bottomObjectsDefault {
+  top: 1052px;
+}
+
+.orRow.bottomObjectsDefault {
+  top: 1136px;
+}
+
+.socialButtonRow.bottomObjectsDefault {
+  top: 1181px;
+}
+
+.loginGuideRow.bottomObjectsDefault {
+  top: 1263px;
+}
+
+.signupSubmitButton.bottomObjectsExpanded {
+  top: 1198px;
+}
+
+.orRow.bottomObjectsExpanded {
+  top: 1282px;
+}
+
+.socialButtonRow.bottomObjectsExpanded {
+  top: 1327px;
+}
+
+.loginGuideRow.bottomObjectsExpanded {
+  top: 1409px;
 }
 
 .modalBackdrop {
@@ -170,22 +466,6 @@
   height: 52px;
 }
 
-.modalTitle {
-  @apply mb-2 text-center text-lg font-bold text-neutral-900;
-}
-
-.modalMessage {
-  @apply mb-6 text-center text-sm font-medium leading-relaxed text-neutral-500;
-}
-
-.modalButton {
-  @apply w-full rounded-[100px] bg-neutral-900 py-3 text-base font-medium text-white;
-}
-
-.checkButtonDone {
-  @apply bg-black text-white border-black;
-}
-
 .modalIconSuccess {
   background: #b8f28a;
 }
@@ -198,165 +478,41 @@
   line-height: 1;
 }
 
-
-/* Dark mode */
-.container {
-  background: var(--color-page-bg);
-}
-
-.heroTitle,
-.heroDesc,
-.label,
-.requiredLabel,
-.genderTextActive,
-.bottomLink,
 .modalTitle {
-  color: var(--color-text-strong);
-}
-
-.input,
-.bottomMuted,
-.helperText,
-.orText,
-.phoneDash,
-.modalMessage {
-  color: var(--color-text-muted);
-}
-
-.line,
-.orLine {
-  background: var(--color-border);
-}
-
-.checkButton,
-.genderButton,
-.phoneInput,
-.socialButton,
-.modalCard {
-  background: var(--color-surface);
-  border-color: var(--color-border);
-  color: var(--color-text-strong);
-}
-
-.primaryButton,
-.modalButton {
-  background: var(--color-inverse-surface);
-  color: var(--color-inverse-text);
-}
-
-
-/* Tokenized color overrides: variables are defined once in styles/global.css. */
-.container {
-  background: var(--color-surface);
-}
-
-.heroTitle {
-  color: var(--color-text-strong);
-}
-
-.heroDesc {
-  color: var(--color-text-strong);
-}
-
-.label {
-  color: var(--color-text-strong);
-}
-
-.requiredLabel {
-  color: var(--color-text-strong);
-}
-
-.checkButton {
-  background: var(--color-surface);
-  color: var(--color-text-soft);
-  border-color: var(--color-border);
-}
-
-.input {
-  color: var(--color-text-strong);
-}
-
-.input::placeholder {
-  color: var(--color-text-muted);
-}
-
-.line {
-  background: var(--color-inverse-surface);
-  color: var(--color-inverse-text);
-}
-
-.helperText {
-  color: var(--color-text-muted);
-}
-
-.genderText {
-  color: var(--color-text-muted);
-}
-
-.genderTextActive {
-  color: var(--color-text-strong);
-}
-
-.phoneInput {
-  background: var(--color-surface);
-  color: var(--color-text-strong);
-  border-color: var(--color-border);
-}
-
-.phoneDash {
-  color: var(--color-text-muted);
-}
-
-.primaryButton {
-  background: var(--color-inverse-surface);
-  color: var(--color-inverse-text);
-}
-
-.orLine {
-  background: var(--color-surface-3);
-}
-
-.orText {
-  color: var(--color-text-muted);
-}
-
-.socialButton {
-  background: var(--color-surface);
-  color: var(--color-text-soft);
-  border-color: var(--color-border);
-}
-
-.bottomMuted {
-  color: var(--color-text-muted);
-}
-
-.bottomLink {
-  color: var(--color-text-strong);
-}
-
-.modalBackdrop {
-  background: var(--color-inverse-surface);
-  color: var(--color-inverse-text);
-}
-
-.modalCard {
-  background: var(--color-surface);
-}
-
-.modalTitle {
-  color: var(--color-text-strong);
+  @apply mb-2 text-center text-lg font-bold text-neutral-900;
 }
 
 .modalMessage {
-  color: var(--color-text-muted);
+  @apply mb-6 text-center text-sm font-medium leading-relaxed text-neutral-500;
 }
 
 .modalButton {
-  background: var(--color-inverse-surface);
-  color: var(--color-inverse-text);
+  @apply w-full rounded-[10px] bg-neutral-900 py-3 text-base font-medium text-white;
+  transition:
+    transform 150ms ease,
+    opacity 150ms ease;
 }
 
-.checkButtonDone {
-  background: var(--color-inverse-surface);
-  color: var(--color-inverse-text);
+.modalButton:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+@media (max-width: 374px) {
+  .root,
+  .content {
+    width: 100vw;
+  }
+
+  .fieldGroup,
+  .genderGroup,
+  .signupSubmitButton,
+  .orRow {
+    width: calc(100vw - 32px);
+  }
+
+  .socialButtonRow {
+    left: 50%;
+    transform: translateX(-50%);
+  }
 }

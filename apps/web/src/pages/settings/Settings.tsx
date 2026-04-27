@@ -1,31 +1,31 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { ThemeMode, UpdateSettingsRequest } from '@codinator/contracts';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import type {
+  GetSettingsResponse,
+  ThemeMode,
+  UpdateSettingsRequest,
+} from '@codinator/contracts';
 import {
   Bell,
-  ChevronLeft,
   CircleAlert,
   Megaphone,
-  Menu,
   MoonStar,
   ShieldCheck,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import SideMenu from '../../components/SideMenu';
+import Header from '../../components/Header';
 import {
   clearAuthTokens,
   fetchMySettings,
   isAuthError,
   updateMySettings,
 } from '../../lib/api';
-import { applyThemeMode, getStoredThemeMode, saveThemeMode } from '../../lib/theme';
+import {
+  ensurePushServiceWorkerRegistration,
+  previewForegroundPush,
+  requestBrowserNotificationPermission,
+} from '../../lib/pushNotifications';
+import { saveAndApplyThemeMode } from '../../lib/theme';
 import styles from './Settings.module.css';
-
-type SettingsState = {
-  theme: ThemeMode;
-  pushEnabled: boolean;
-  servicePushEnabled: boolean;
-  marketingPushEnabled: boolean;
-};
 
 type ToggleSwitchProps = {
   checked: boolean;
@@ -36,7 +36,7 @@ type ToggleSwitchProps = {
 };
 
 type SettingRowProps = {
-  icon: React.ReactNode;
+  icon: ReactNode;
   title: string;
   description?: string;
   checked: boolean;
@@ -46,6 +46,9 @@ type SettingRowProps = {
   showDivider?: boolean;
   onToggle: () => void;
 };
+
+type SettingsState = GetSettingsResponse;
+type SavingKey = 'theme' | 'pushEnabled' | 'servicePushEnabled' | 'marketingPushEnabled' | null;
 
 const DEFAULT_SETTINGS: SettingsState = {
   theme: 'LIGHT',
@@ -120,15 +123,15 @@ function SettingRow({
 export default function Settings() {
   const navigate = useNavigate();
 
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [settings, setSettings] = useState<SettingsState>({
-    ...DEFAULT_SETTINGS,
-    theme: getStoredThemeMode() ?? DEFAULT_SETTINGS.theme,
-  });
   const [loading, setLoading] = useState(true);
-  const [savingKeys, setSavingKeys] = useState<string[]>([]);
+  const [savingKey, setSavingKey] = useState<SavingKey>(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS);
 
-  const isDetailDisabled = !settings.pushEnabled;
+  const moveToLogin = useCallback(() => {
+    clearAuthTokens();
+    navigate('/login', { replace: true });
+  }, [navigate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,21 +139,26 @@ export default function Settings() {
     const loadSettings = async () => {
       try {
         setLoading(true);
-        const response = await fetchMySettings();
+        setErrorMessage('');
 
-        if (cancelled) return;
-        setSettings(response);
-        saveThemeMode(response.theme);
-        applyThemeMode(response.theme);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : '설정을 불러오지 못했습니다.';
-        if (isAuthError(message)) {
-          clearAuthTokens();
-          navigate('/login', { replace: true });
+        const response = await fetchMySettings();
+        if (cancelled) {
           return;
         }
 
-        console.warn(message);
+        setSettings(response);
+        saveAndApplyThemeMode(response.theme);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '설정 정보를 불러오지 못했습니다.';
+
+        if (isAuthError(message)) {
+          moveToLogin();
+          return;
+        }
+
+        if (!cancelled) {
+          setErrorMessage(message);
+        }
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -163,111 +171,136 @@ export default function Settings() {
     return () => {
       cancelled = true;
     };
-  }, [navigate]);
+  }, [moveToLogin]);
 
-  const savingMap = useMemo(() => new Set(savingKeys), [savingKeys]);
+  const patchSettings = useCallback(
+    async (partial: UpdateSettingsRequest, nextSavingKey: Exclude<SavingKey, null>) => {
+      const previousSettings = settings;
+      const optimisticSettings: SettingsState = {
+        ...previousSettings,
+        ...partial,
+      };
 
-  const requestNotificationPermission = async () => {
-    if (typeof window === 'undefined' || !('Notification' in window)) return;
-    if (Notification.permission === 'default') {
-      try {
-        await Notification.requestPermission();
-      } catch (error) {
-        console.warn('알림 권한 요청 실패:', error);
+      setSavingKey(nextSavingKey);
+      setErrorMessage('');
+      setSettings(optimisticSettings);
+
+      if (partial.theme) {
+        saveAndApplyThemeMode(partial.theme);
       }
+
+      try {
+        const updated = await updateMySettings(partial);
+        setSettings(updated);
+        saveAndApplyThemeMode(updated.theme);
+      } catch (error) {
+        setSettings(previousSettings);
+        saveAndApplyThemeMode(previousSettings.theme);
+
+        const message = error instanceof Error ? error.message : '설정 저장에 실패했습니다.';
+
+        if (isAuthError(message)) {
+          moveToLogin();
+          return;
+        }
+
+        setErrorMessage(message);
+        window.alert(message);
+      } finally {
+        setSavingKey((current) => (current === nextSavingKey ? null : current));
+      }
+    },
+    [moveToLogin, settings],
+  );
+
+  const handleToggleTheme = async () => {
+    if (loading || savingKey) {
+      return;
     }
+
+    const nextTheme: ThemeMode = settings.theme === 'DARK' ? 'LIGHT' : 'DARK';
+    await patchSettings({ theme: nextTheme }, 'theme');
   };
 
-  const patchSettings = async (partial: UpdateSettingsRequest, savingKey: string) => {
-    const previous = settings;
-    const optimistic = { ...settings, ...partial };
-    setSettings(optimistic);
-
-    if (partial.theme) {
-      saveThemeMode(partial.theme);
-      applyThemeMode(partial.theme);
+  const handleTogglePush = async () => {
+    if (loading || savingKey) {
+      return;
     }
 
-    setSavingKeys((prev) => [...prev, savingKey]);
+    const nextValue = !settings.pushEnabled;
 
-    try {
-      const updated = await updateMySettings(partial);
-      setSettings(updated);
-      saveThemeMode(updated.theme);
-      applyThemeMode(updated.theme);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '설정 저장에 실패했습니다.';
-      setSettings(previous);
-      saveThemeMode(previous.theme);
-      applyThemeMode(previous.theme);
+    if (nextValue) {
+      const permission = await requestBrowserNotificationPermission();
 
-      if (isAuthError(message)) {
-        clearAuthTokens();
-        navigate('/login', { replace: true });
+      if (permission !== 'granted') {
+        const message = '브라우저 알림 권한이 허용되어야 푸시 알림을 켤 수 있어요.';
+        setErrorMessage(message);
+        window.alert(message);
         return;
       }
 
-      window.alert(message);
-    } finally {
-      setSavingKeys((prev) => prev.filter((key) => key !== savingKey));
+      await ensurePushServiceWorkerRegistration();
     }
+
+    await patchSettings(
+      {
+        pushEnabled: nextValue,
+        servicePushEnabled: nextValue ? settings.servicePushEnabled : false,
+        marketingPushEnabled: nextValue ? settings.marketingPushEnabled : false,
+      },
+      'pushEnabled',
+    );
   };
 
-  const handleThemeToggle = () => {
-    const nextTheme: ThemeMode = settings.theme === 'DARK' ? 'LIGHT' : 'DARK';
-    void patchSettings({ theme: nextTheme }, 'theme');
-  };
-
-  const handlePushToggle = async () => {
-    const nextPushEnabled = !settings.pushEnabled;
-    if (nextPushEnabled) {
-      await requestNotificationPermission();
+  const handleToggleServicePush = async () => {
+    if (loading || savingKey || !settings.pushEnabled) {
+      return;
     }
-    void patchSettings({ pushEnabled: nextPushEnabled }, 'pushEnabled');
-  };
 
-  const handleServiceToggle = () => {
-    if (isDetailDisabled) return;
-    void patchSettings(
+    await patchSettings(
       { servicePushEnabled: !settings.servicePushEnabled },
       'servicePushEnabled',
     );
   };
 
-  const handleMarketingToggle = () => {
-    if (isDetailDisabled) return;
-    void patchSettings(
-      { marketingPushEnabled: !settings.marketingPushEnabled },
+  const handleToggleMarketingPush = async () => {
+    if (loading || savingKey || !settings.pushEnabled) {
+      return;
+    }
+
+    const nextValue = !settings.marketingPushEnabled;
+
+    if (nextValue) {
+      const permission = await requestBrowserNotificationPermission();
+
+      if (permission !== 'granted') {
+        const message = '브라우저 알림 권한이 허용되어야 마케팅 알림을 켤 수 있어요.';
+        setErrorMessage(message);
+        window.alert(message);
+        return;
+      }
+
+      await ensurePushServiceWorkerRegistration();
+    }
+
+    await patchSettings(
+      { marketingPushEnabled: nextValue },
       'marketingPushEnabled',
     );
   };
 
+  const isDetailDisabled = !settings.pushEnabled || loading;
+  const isDevPreviewEnabled = import.meta.env.DEV;
+
   return (
     <>
       <div className={styles.container}>
-        <header className={styles.header}>
-          <div className={styles.headerInner}>
-            <button
-              type="button"
-              className={styles.headerIconButton}
-              onClick={() => navigate(-1)}
-              aria-label="뒤로가기"
-            >
-              <ChevronLeft size={23} strokeWidth={2.2} />
-            </button>
-
-            <h1 className={styles.title}>설정</h1>
-
-            <button
-              type="button"
-              className={styles.menuButton}
-              aria-label="사이드 메뉴 열기"
-              onClick={() => setMenuOpen(true)}
-            >
-              <Menu size={25} strokeWidth={2.2} />
-            </button>
-          </div>
-        </header>
+        <Header
+          title="설정"
+          leftAction="back"
+          onBack={() => navigate(-1)}
+          rightAction="menu"
+        />
 
         <main className={styles.contentArea}>
           <section className={styles.sectionBlock}>
@@ -278,8 +311,9 @@ export default function Settings() {
                 icon={<MoonStar size={19} strokeWidth={2.1} />}
                 title="다크모드"
                 checked={settings.theme === 'DARK'}
-                loading={loading || savingMap.has('theme')}
-                onToggle={handleThemeToggle}
+                loading={savingKey === 'theme' || loading}
+                disabled={loading}
+                onToggle={handleToggleTheme}
               />
             </div>
           </section>
@@ -291,10 +325,11 @@ export default function Settings() {
               <SettingRow
                 icon={<Bell size={19} strokeWidth={2.1} />}
                 title="푸시 알림"
-                description="앱의 모든 알림"
+                description="평가 완료, Top 10 달성, 신고 접수 결과 등"
                 checked={settings.pushEnabled}
-                loading={loading || savingMap.has('pushEnabled')}
-                onToggle={handlePushToggle}
+                loading={savingKey === 'pushEnabled' || loading}
+                disabled={loading}
+                onToggle={handleTogglePush}
               />
             </div>
           </section>
@@ -306,12 +341,12 @@ export default function Settings() {
               <SettingRow
                 icon={<ShieldCheck size={19} strokeWidth={2.1} />}
                 title="서비스 알림"
-                description="평가완료, Top 10 달성, 신고 접수 결과"
+                description="평가 완료, Top 10 달성, 신고 접수 결과"
                 checked={settings.servicePushEnabled}
                 disabled={isDetailDisabled}
-                loading={loading || savingMap.has('servicePushEnabled')}
+                loading={savingKey === 'servicePushEnabled'}
                 iconTone="green"
-                onToggle={handleServiceToggle}
+                onToggle={handleToggleServicePush}
               />
 
               <SettingRow
@@ -320,10 +355,10 @@ export default function Settings() {
                 description="이벤트, 프로모션, 광고성 메시지"
                 checked={settings.marketingPushEnabled}
                 disabled={isDetailDisabled}
-                loading={loading || savingMap.has('marketingPushEnabled')}
+                loading={savingKey === 'marketingPushEnabled'}
                 iconTone="blue"
                 showDivider
-                onToggle={handleMarketingToggle}
+                onToggle={handleToggleMarketingPush}
               />
             </div>
           </section>
@@ -335,18 +370,37 @@ export default function Settings() {
               </div>
 
               <p className={styles.infoText}>
-                푸시 알림을 끄면 모든 알림이 꺼집니다.
+                앱이 열려 있으면 상단 배너로 먼저 보여주고,
                 <br />
-                개별 알림 설정은 푸시 알림이 켜져 있을 때 적용됩니다.
+                앱이 닫혀 있거나 백그라운드면 기기 푸시 알림으로 전달돼요.
               </p>
             </div>
+
+            {errorMessage ? <p className={styles.errorText}>{errorMessage}</p> : null}
+
+            {isDevPreviewEnabled ? (
+              <button
+                type="button"
+                className={styles.previewButton}
+                onClick={() => {
+                  previewForegroundPush({
+                    category: 'SERVICE',
+                    title: '평가가 완료되었어요',
+                    body: '내 게시글의 평가가 종료되었어요. 결과를 바로 확인해보세요.',
+                    targetPath: '/myFeed',
+                    actionLabel: '결과 보기',
+                  });
+                }}
+              >
+                알림 미리보기
+              </button>
+            ) : null}
           </section>
 
           <div className={styles.bottomSpacer} aria-hidden="true" />
         </main>
       </div>
 
-      <SideMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
     </>
   );
 }

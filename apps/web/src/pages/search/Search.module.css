@@ -1,238 +1,227 @@
-.container {
-  @apply w-[375px] h-[812px] mx-auto bg-white overflow-hidden flex flex-col;
+.page {
+  @apply bg-white overflow-hidden flex flex-col;
+  width: var(--app-width);
+  height: var(--app-height);
+  color: #111111;
 }
 
-.pageBody {
-  @apply flex-1 min-h-0 flex flex-col;
-}
-
-.topArea {
-  @apply px-4 pt-[10px] pb-[8px];
-}
-
-.searchRow {
-  @apply flex items-center gap-2;
-}
-
-.searchBar {
-  @apply flex-1 h-10 px-3 bg-zinc-100 border border-neutral-200 rounded-[10px] flex items-center gap-2;
-}
-
-.searchIconButton {
-  @apply w-5 h-5 flex items-center justify-center text-neutral-500 shrink-0 bg-transparent border-0 p-0;
-}
-
-.searchInput {
-  @apply flex-1 bg-transparent outline-none border-0 p-0 text-[14px] font-medium text-black;
-}
-
-.searchInput::placeholder {
-  @apply text-neutral-400;
-}
-
-.clearInputButton {
-  @apply w-5 h-5 flex items-center justify-center text-neutral-400 shrink-0 bg-transparent border-0 p-0;
-}
-
-.clearInputButtonVisible {
-  visibility: visible;
-  pointer-events: auto;
-}
-
-.clearInputButtonHidden {
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.filterWrap {
-  @apply relative shrink-0;
-}
-
-.filterButton {
-  @apply h-10 px-3 rounded-[10px] flex items-center gap-1.5 text-neutral-700 bg-zinc-100 border border-neutral-200;
-}
-
-.filterButtonText {
-  @apply text-[12px] font-medium whitespace-nowrap;
-}
-
-.filterDropdown {
-  @apply absolute right-0 top-[44px] w-[160px] bg-white border border-neutral-200 rounded-[14px] shadow-lg p-1.5 z-20;
-}
-
-.filterOption {
-  @apply w-full min-h-[40px] px-3 py-2 rounded-[10px] flex items-center justify-between text-left bg-transparent border-0 text-neutral-700;
-}
-
-.filterOptionActive {
-  @apply bg-neutral-100 text-black;
-}
-
-.filterOptionCheck {
-  @apply text-[11px] font-medium text-neutral-500;
-}
-
-.dropdownDivider {
-  @apply h-px bg-neutral-200 my-1.5;
-}
-
-.aiFilterOption {
-  @apply w-full min-h-[40px] px-3 py-2 rounded-[10px] flex items-center justify-between text-left bg-transparent border-0 text-black;
-}
-
-.aiFilterOptionLeft {
-  @apply flex items-center gap-2 text-[13px] font-medium;
-}
-
-.divider {
-  @apply w-full h-px bg-black/10;
-}
-
-.contentArea {
-  @apply flex-1 overflow-y-auto pt-2 pb-[124px];
-  -ms-overflow-style: none;
+.scrollArea {
+  @apply flex-1 min-h-0 overflow-y-auto overflow-x-hidden;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
 
-.contentArea::-webkit-scrollbar {
+.scrollArea::-webkit-scrollbar,
+.filterScrollArea::-webkit-scrollbar {
   display: none;
 }
 
-.historyActionRow {
-  @apply h-8 px-4 flex items-center justify-end;
+.contentArea {
+  @apply px-4 pb-4;
 }
 
-.clearAllTextButton {
-  @apply text-[12px] font-medium text-neutral-400 bg-transparent border-0 p-0;
+.modeSwitch {
+  @apply relative grid grid-cols-2 items-center overflow-hidden rounded-[10px] bg-zinc-100 p-0.5;
+  width: 343px;
+  height: 40px;
 }
 
-.recentList {
-  @apply pt-1;
+.modeSwitchThumb {
+  @apply absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-[10px] bg-white border border-stone-300 shadow-sm transition-transform duration-300 ease-out;
+  left: 2px;
 }
 
-.recentItem {
-  @apply h-12 px-4 flex items-center justify-between;
+.modeSwitchThumbText {
+  transform: translateX(0);
 }
 
-.recentItemMain {
-  @apply flex-1 min-w-0 flex items-center gap-3 text-left bg-transparent border-0 p-0;
+.modeSwitchThumbImage {
+  transform: translateX(100%);
 }
 
-.recentItemIcon {
-  @apply text-neutral-300 shrink-0;
+.modeButton {
+  @apply relative z-10 h-full rounded-[10px] border-0 bg-transparent p-0 text-center text-[15px] font-normal leading-5 text-neutral-400 transition-colors duration-200;
 }
 
-.recentTextWrap {
-  @apply min-w-0 flex items-center gap-2;
+.modeButtonActive {
+  @apply text-neutral-900;
 }
 
-.recentItemText {
-  @apply truncate text-[14px] font-medium text-neutral-500;
+.textSearchSection {
+  @apply pt-3;
 }
 
-.recentTypeBadge {
-  @apply shrink-0 px-2 h-5 rounded-full bg-neutral-100 text-[11px] font-medium text-neutral-500 inline-flex items-center;
+.textSearchRow {
+  @apply flex items-center gap-3;
 }
 
-.recentDeleteButton {
-  @apply w-7 h-7 ml-3 flex items-center justify-center text-neutral-300 shrink-0 bg-transparent border-0 p-0;
+.searchInputBox {
+  @apply flex h-10 min-w-0 flex-1 items-center justify-between gap-2 rounded-[10px] border border-stone-300 bg-white px-2.5;
 }
 
-.stateBox {
-  @apply px-4 pt-6 flex justify-center;
+.searchInputIcon {
+  @apply shrink-0 text-[#999999];
 }
 
-.stateText {
-  @apply text-center text-neutral-300 text-[14px] font-medium;
+.searchInput {
+  @apply h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-xs font-normal leading-4 text-neutral-900 outline-none placeholder:text-neutral-400;
 }
 
-.errorBox {
-  @apply justify-start;
+.clearInputButton {
+  @apply flex h-5 w-5 shrink-0 items-center justify-center border-0 bg-transparent p-0 text-[#999999];
 }
 
-.errorText {
-  @apply text-[13px] leading-5 text-red-500 font-medium;
+.scopeButton {
+  @apply shrink-0;
 }
 
-.resultWrap {
-  @apply px-[13px] pt-2 pb-5 flex flex-col gap-6;
+.filterScrollArea {
+  @apply mt-3 overflow-x-auto overflow-y-hidden;
+  width: calc(var(--app-width) - 32px);
+  scrollbar-width: none;
 }
 
-.sectionBlock {
-  @apply flex flex-col gap-3;
+.filterRow {
+  @apply flex w-max items-center gap-2.5 pr-4;
 }
 
-.sectionHeader {
-  @apply flex items-center justify-between px-[3px];
+.filterButton {
+  @apply flex h-[30px] shrink-0 items-center justify-center gap-[5px] rounded-[10px] border border-stone-300 bg-white px-3 text-xs font-normal leading-4 text-neutral-900;
 }
 
-.sectionHeaderRight {
-  @apply flex items-center gap-2 shrink-0;
+.filterButton svg {
+  @apply shrink-0 text-[#999999];
 }
 
-.sectionTitle {
-  @apply text-[15px] leading-5 font-semibold text-black;
+.divider {
+  @apply mt-5 h-px w-full bg-stone-300;
 }
 
-.sectionCount {
-  @apply text-[12px] font-medium text-neutral-400;
+.recentHeaderRow {
+  @apply mt-6 flex items-center justify-between;
 }
 
-.moreButton {
-  @apply text-[11px] font-medium text-neutral-400 bg-transparent border-0 p-0 whitespace-nowrap;
+.recentTitle {
+  @apply m-0 text-xs font-normal leading-4 text-neutral-900;
 }
 
-.userList {
-  @apply flex flex-col gap-2;
+.clearAllButton {
+  @apply border-0 bg-transparent p-0 text-center text-xs font-normal leading-4 text-neutral-900;
 }
 
-.userItem {
-  @apply w-full rounded-[14px] border border-neutral-200 bg-white px-4 py-3 flex items-center gap-3 text-left;
+.recentChipRow {
+  @apply mt-6 flex flex-wrap items-center gap-2.5;
 }
 
-.userAvatar {
-  @apply w-11 h-11 rounded-full bg-neutral-100 overflow-hidden flex items-center justify-center text-neutral-500 shrink-0;
+.recentChip {
+  @apply flex h-[30px] items-center justify-center gap-[5px] rounded-[10px] border border-stone-300 bg-zinc-100 px-2.5 text-xs font-normal leading-4 text-neutral-900;
 }
 
-.userAvatarImage {
-  @apply w-full h-full object-cover;
+.recentChipTextButton {
+  @apply border-0 bg-transparent p-0 text-xs font-normal leading-4 text-neutral-900;
 }
 
-.userInfo {
-  @apply min-w-0 flex flex-col gap-0.5;
+.recentChipRemove {
+  @apply flex h-5 w-5 items-center justify-center border-0 bg-transparent p-0 text-[#999999];
 }
 
-.userNickname {
-  @apply text-[15px] leading-5 font-semibold text-black truncate;
+.emptyRecentText {
+  @apply mt-5 text-xs font-normal leading-4 text-neutral-400;
 }
 
-.userSubText {
-  @apply text-[12px] leading-4 text-neutral-400;
+.imageSearchSection {
+  @apply pt-6;
 }
 
-.feedGrid {
-  @apply grid grid-cols-3 gap-x-[8px] gap-y-4;
+.fileInput {
+  @apply hidden;
 }
 
-.feedCard {
-  @apply bg-transparent border-0 p-0 text-left;
+.imageUploadBox {
+  @apply flex h-[104px] w-full items-center justify-center rounded-[10px] border border-stone-300 bg-white p-3;
 }
 
-.feedThumbWrap {
-  @apply w-full rounded-[12px] overflow-hidden bg-neutral-100;
-  aspect-ratio: 1 / 1.35;
+.imageUploadInner {
+  @apply flex h-20 w-full items-center gap-6 rounded-[10px] border border-dashed border-neutral-400 bg-zinc-100 px-5;
 }
 
-.feedThumb {
-  @apply w-full h-full object-cover block;
+.imagePlusIcon {
+  @apply shrink-0 text-[#cccccc];
 }
 
-.feedMetaText {
-  @apply mt-2 text-[11px] leading-[14px] text-neutral-700 break-words;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+.imageUploadText {
+  @apply text-left text-xs font-normal leading-4 text-neutral-400;
+}
+
+.imageResultBox {
+  @apply flex h-[104px] w-full items-center gap-2 rounded-[10px] border border-stone-300 bg-white px-4;
+}
+
+.uploadedImageWrap {
+  @apply flex h-[88px] shrink-0 items-center justify-center overflow-visible bg-transparent;
+  width: auto;
+}
+
+.uploadedImage {
+  @apply block object-contain;
+  height: 88px;
+  width: auto;
+  max-width: 62px;
+}
+
+.imageResultCopy {
+  @apply min-w-0 flex-1;
+}
+
+.imageResultTitle {
+  @apply m-0 text-[12px] font-semibold leading-[18px] text-neutral-900;
   overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+  word-break: keep-all;
+  letter-spacing: -0.02em;
+}
+
+.imageResultDescription {
+  @apply m-0 mt-1 text-[11px] font-normal leading-[15px] text-neutral-400;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+  word-break: keep-all;
+  letter-spacing: -0.01em;
+}
+
+.changeImageButton {
+  @apply flex h-[32px] w-[70px] shrink-0 items-center justify-center rounded-[10px] border border-stone-300 bg-white px-1.5 text-[11px] font-normal leading-4 text-neutral-900;
+}
+
+.resultSection {
+  @apply mt-6;
+}
+
+.imageSearchSection + .resultSection {
+  @apply mt-3;
+}
+
+.resultCount {
+  @apply m-0 text-xs font-normal leading-4 text-neutral-400;
+}
+
+.resultGrid {
+  @apply mt-7 grid grid-cols-3 gap-x-2 gap-y-2;
+}
+
+.resultCard {
+  @apply relative h-[152px] overflow-hidden rounded-[10px] border-0 bg-zinc-300 p-0;
+}
+
+.resultGradient {
+  @apply absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-black/0 to-black/25;
+}
+
+.footerSpacer {
+  @apply shrink-0;
+  height: 90px;
 }
 
 .focusOverlay {
@@ -240,7 +229,9 @@
 }
 
 .focusFrame {
-  @apply relative h-[812px] w-[375px] overflow-hidden bg-black;
+  @apply relative overflow-hidden bg-black;
+  width: var(--app-width);
+  height: var(--app-height);
 }
 
 .focusImage {
@@ -286,183 +277,136 @@
 
 .focusDetailButtonIcon {
   @apply shrink-0;
+}:global(html.dark) .page,
+:global(html.dark) .contentArea,
+:global(html.dark) .scrollArea {
+  background: var(--app-surface);
+  color: var(--app-text);
+}:global(html.dark) .searchInputIcon,
+:global(html.dark) .clearInputButton,
+:global(html.dark) .recentChipRemove,
+:global(html.dark) .filterButton svg,
+:global(html.dark) .imagePlusIcon {
+  color: var(--app-text-secondary);
 }
 
-
-/* Dark mode */
-.container,
-.topArea,
-.contentArea,
-.filterDropdown,
-.recentItem,
-.userItem {
-  background: var(--color-page-bg);
+:global(html.dark) .modeSwitch,
+:global(html.dark) .recentChip,
+:global(html.dark) .imageUploadInner {
+  background: var(--app-surface-muted);
+  border-color: var(--app-border);
 }
 
-.searchBar,
-.filterDropdown,
-.recentItem,
-.userItem {
-  background: var(--color-surface);
-  border-color: var(--color-border);
+:global(html.dark) .modeSwitchThumb,
+:global(html.dark) .searchInputBox,
+:global(html.dark) .filterButton,
+:global(html.dark) .imageUploadBox,
+:global(html.dark) .imageResultBox,
+:global(html.dark) .changeImageButton {
+  background: var(--app-surface);
+  border-color: var(--app-border);
+  color: var(--app-text);
 }
 
-.searchInput,
-.sectionTitle,
-.userNickname,
-.recentItemText {
-  color: var(--color-text-strong);
+:global(html.dark) .modeButton,
+:global(html.dark) .searchInput::placeholder,
+:global(html.dark) .emptyRecentText,
+:global(html.dark) .imageUploadText,
+:global(html.dark) .imageResultDescription,
+:global(html.dark) .resultCount {
+  color: var(--app-text-secondary);
 }
 
-.searchInput::placeholder,
-.searchIconButton,
-.clearInputButton,
-.filterButtonText,
-.sectionCount,
-.userSubText,
-.feedMetaText,
-.stateText,
-.errorText {
-  color: var(--color-text-muted);
+:global(html.dark) .modeButtonActive,
+:global(html.dark) .searchInput,
+:global(html.dark) .filterButton,
+:global(html.dark) .recentTitle,
+:global(html.dark) .clearAllButton,
+:global(html.dark) .recentChip,
+:global(html.dark) .recentChipTextButton,
+:global(html.dark) .imageResultTitle,
+:global(html.dark) .changeImageButton {
+  color: var(--app-text-strong);
 }
 
-.filterOption:hover,
-.filterOptionActive {
-  background: var(--color-surface-2);
-  color: var(--color-text-strong);
+:global(html.dark) .divider {
+  background: var(--app-border);
 }
 
-
-/* Tokenized color overrides: variables are defined once in styles/global.css. */
-.container {
-  background: var(--color-surface);
+:global(html.dark) .resultCard,
+:global(html.dark) .uploadedImageWrap {
+  background: var(--app-surface-muted);
 }
 
-.searchBar {
-  border-color: var(--color-border);
+.filterButtonActive {
+  @apply border-black bg-black text-white;
 }
 
-.searchIconButton {
-  color: var(--color-text-muted);
+.filterButtonActive svg {
+  @apply text-white;
 }
 
-.searchInput {
-  color: var(--color-text-strong);
+:global(html.dark) .filterButtonActive {
+  background: var(--app-text-strong);
+  color: var(--app-surface);
+  border-color: var(--app-text-strong);
 }
 
-.searchInput::placeholder {
-  color: var(--color-text-muted);
+:global(html.dark) .filterButtonActive svg {
+  color: var(--app-surface);
 }
 
-.clearInputButton {
-  color: var(--color-text-muted);
+.searchInputButton {
+  @apply flex h-5 w-5 shrink-0 items-center justify-center border-0 bg-transparent p-0 text-[#999999];
 }
 
-.filterButton {
-  color: var(--color-text-soft);
-  border-color: var(--color-border);
+.scopeWrap {
+  @apply relative shrink-0;
 }
 
-.filterDropdown {
-  background: var(--color-surface);
-  border-color: var(--color-border);
+.scopeMenu {
+  @apply absolute right-0 top-11 z-20 w-[132px] rounded-[14px] border border-stone-300 bg-white p-1.5 shadow-lg;
 }
 
-.filterOption {
-  color: var(--color-text-soft);
+.scopeOption {
+  @apply flex h-9 w-full items-center justify-between rounded-[10px] border-0 bg-transparent px-3 text-left text-xs font-normal leading-4 text-neutral-700;
 }
 
-.filterOptionActive {
-  background: var(--color-surface-2);
-  color: var(--color-text-strong);
+.scopeOptionActive {
+  @apply bg-zinc-100 text-black;
 }
 
-.filterOptionCheck {
-  color: var(--color-text-muted);
+.resultImage {
+  @apply h-full w-full object-cover;
 }
 
-.dropdownDivider {
-  background: var(--color-surface-3);
+.resultErrorText {
+  @apply mt-3 text-xs font-normal leading-4 text-red-500;
 }
 
-.aiFilterOption {
-  color: var(--color-text-strong);
+.resultEmptyText {
+  @apply mt-8 text-center text-xs font-normal leading-4 text-neutral-400;
 }
 
-.divider {
-  background: var(--color-inverse-surface);
-  color: var(--color-inverse-text);
+.resultLoadingText {
+  @apply mt-3 text-xs font-normal leading-4 text-neutral-400;
 }
 
-.clearAllTextButton {
-  color: var(--color-text-muted);
+:global(html.dark) .scopeMenu {
+  background: var(--app-surface);
+  border-color: var(--app-border);
+  box-shadow: 0 12px 30px var(--app-shadow-soft);
 }
 
-.recentItemIcon {
-  color: var(--color-text-muted);
+:global(html.dark) .scopeOption {
+  color: var(--app-text-secondary);
 }
 
-.recentItemText {
-  color: var(--color-text-muted);
+:global(html.dark) .scopeOptionActive {
+  background: var(--app-surface-muted);
+  color: var(--app-text-strong);
 }
 
-.recentTypeBadge {
-  background: var(--color-surface-2);
-  color: var(--color-text-muted);
-}
-
-.recentDeleteButton {
-  color: var(--color-text-muted);
-}
-
-.stateText {
-  color: var(--color-text-muted);
-}
-
-.sectionTitle {
-  color: var(--color-text-strong);
-}
-
-.sectionCount {
-  color: var(--color-text-muted);
-}
-
-.moreButton {
-  color: var(--color-text-muted);
-}
-
-.userItem {
-  background: var(--color-surface);
-  border-color: var(--color-border);
-}
-
-.userAvatar {
-  background: var(--color-surface-2);
-  color: var(--color-text-muted);
-}
-
-.userNickname {
-  color: var(--color-text-strong);
-}
-
-.userSubText {
-  color: var(--color-text-muted);
-}
-
-.feedThumbWrap {
-  background: var(--color-surface-2);
-}
-
-.feedMetaText {
-  color: var(--color-text-soft);
-}
-
-.focusOverlay {
-  background: var(--color-inverse-surface);
-  color: var(--color-inverse-text);
-}
-
-.focusFrame {
-  background: var(--color-inverse-surface);
-  color: var(--color-inverse-text);
+:global(html.dark) .searchInputButton {
+  color: var(--app-text-secondary);
 }

@@ -1,1451 +1,852 @@
-import { useEffect, useMemo, useRef, useState, KeyboardEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ChangeEvent, KeyboardEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
+  Check,
+  ChevronsUp,
+  ChevronDown,
+  ImagePlus,
   Search as SearchIcon,
   X,
-  SlidersHorizontal,
-  Sparkles,
-  ChevronDown,
-  UserRound,
-  ChevronsUp,
-} from "lucide-react";
-import Header from "../../components/Header";
-import PostDetailBottomSheet from "../../components/postdetail/PostDetailBottomSheet";
-import RankingDetail from "../ranking/RankingDetail";
-import { getAccessToken, performApiRequest, resolveAssetUrl } from "../../lib/api";
-import styles from "./Search.module.css";
+} from 'lucide-react';
+import type {
+  AiGarmentCategory,
+  FeedbackTagItem,
+  ImageSearchItem,
+  KeywordItem,
+  PostSearchItem,
+  SearchType,
+  UserSearchItem,
+  VoteChoice,
+} from '@codinator/contracts';
+import Header from '../../components/Header';
+import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
+import { resolveAssetUrl } from '../../lib/api';
+import SearchFilterSheet, {
+  createEmptySearchFilters,
+  getSearchFilterSummary,
+  hasSearchFilterValue,
+} from './SearchFilterSheet';
+import type {
+  PeriodFilterValue,
+  SearchFilterFeedbackTagOption,
+  SearchFilterId,
+  SearchFilterKeywordOption,
+  SearchFiltersValue,
+} from './SearchFilterSheet';
+import {
+  deleteSearchHistory,
+  fetchFeedbackTagOptions,
+  fetchImageSearchResults,
+  fetchKeywordOptions,
+  fetchSearchHistories,
+  fetchSearchResults,
+  uploadSearchImage,
+} from '../../lib/searchApi';
+import styles from './Search.module.css';
 
-type SearchType = "ALL" | "NICKNAME" | "KEYWORD" | "POST";
-type ExpandSectionKey = "users" | "posts" | "keywords";
+type SearchMode = 'text' | 'image';
 
-type RecentSearchItem = {
+type SearchFilter = {
+  id: SearchFilterId;
+  label: string;
+};
+
+type RecentKeyword = {
+  historyId: number;
   query: string;
-  type: SearchType;
-  isAi?: boolean;
 };
 
-type SearchUserItem = {
+type ResultCardItem = {
+  key: string;
+  postId?: number;
   userId: number;
-  nickname: string;
-  profileImageUrl?: string;
-};
-
-type SearchKeywordPostItem = {
-  postId: number;
+  title: string;
   imageUrl: string;
-  keywordsText: string;
-  userId?: number;
-};
-
-type SearchPostItem = {
-  postId: number;
-  imageUrl: string;
-  content: string;
-  userId?: number;
 };
 
 type FocusPostState = {
   postId: number;
   userId: number;
+  title: string;
   imageUrl: string;
-  description: string;
 };
 
-type SearchPageSnapshot = {
-  query: string;
-  searchType: SearchType;
-  searched: boolean;
-  searchResult: unknown;
-  errorMessage: string;
-  visibleCounts: Record<ExpandSectionKey, number>;
-  scrollTop: number;
+type ApiFilterPayload = {
+  periodFrom?: string;
+  periodTo?: string;
+  likeRatioMin?: number;
+  outfitCategories?: string[];
+  keywordIds?: number[];
+  feedbackLikeTagIds?: number[];
+  feedbackDislikeTagIds?: number[];
+  garmentCategory?: AiGarmentCategory;
 };
 
-type SearchProps = {
-  initialRecentSearches?: string[];
-};
-
-const HISTORY_KEY_PREFIX = "searchRecentKeywords";
-const DEFAULT_VISIBLE_COUNT = 6;
-const LOAD_MORE_STEP = 6;
-
-const TYPE_OPTIONS: { value: SearchType; label: string; shortLabel: string }[] = [
-  { value: "ALL", label: "전체 검색", shortLabel: "전체" },
-  { value: "NICKNAME", label: "닉네임", shortLabel: "닉네임" },
-  { value: "KEYWORD", label: "키워드", shortLabel: "키워드" },
-  { value: "POST", label: "게시글", shortLabel: "게시글" },
+const FILTERS: SearchFilter[] = [
+  { id: 'period', label: '기간' },
+  { id: 'likeRatio', label: '좋아요 비율' },
+  { id: 'outfit', label: '아웃핏' },
+  { id: 'keyword', label: '키워드' },
+  { id: 'feedbackTag', label: '피드백 태그' },
 ];
 
-const tok = () => getAccessToken() ?? "";
+const TYPE_OPTIONS: Array<{ value: SearchType; label: string; shortLabel: string }> = [
+  { value: 'ALL', label: '전체 검색', shortLabel: '전체' },
+  { value: 'NICKNAME', label: '닉네임', shortLabel: '닉네임' },
+  { value: 'KEYWORD', label: '키워드', shortLabel: '키워드' },
+  { value: 'POST', label: '게시글', shortLabel: '게시글' },
+  { value: 'OUTFIT_ITEM', label: '아이템명', shortLabel: '아이템' },
+  { value: 'OUTFIT_BRAND', label: '브랜드', shortLabel: '브랜드' },
+];
 
-function getDefaultVisibleCounts(): Record<ExpandSectionKey, number> {
-  return {
-    users: DEFAULT_VISIBLE_COUNT,
-    posts: DEFAULT_VISIBLE_COUNT,
-    keywords: DEFAULT_VISIBLE_COUNT,
-  };
-}
+const PLACEHOLDER_RESULTS = Array.from({ length: 9 }, (_, index) => index + 1);
+const SEARCH_LIMIT = 50;
 
-async function api<T>(method: string, path: string): Promise<T> {
-  const res = await performApiRequest(path, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
+const OUTFIT_CATEGORY_MAP: Record<string, AiGarmentCategory> = {
+  아우터: 'OUTER',
+  상의: 'TOP',
+  하의: 'BOTTOM',
+  신발: 'SHOES',
+  가방: 'BAG',
+  악세사리: 'ACCESSORY',
+  액세서리: 'ACCESSORY',
+};
 
-  const text = await res.text();
-  let data: unknown;
-
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = text;
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
   }
 
-  if (!res.ok) {
-    const raw = data as Record<string, unknown> | null;
-    const msg =
-      raw && typeof raw === "object" && "message" in raw
-        ? Array.isArray(raw.message)
-          ? (raw.message as string[]).join(", ")
-          : String(raw.message)
-        : text;
+  return fallback;
+};
 
-    throw new Error(`[${res.status}] ${msg}`);
+const formatResultCount = (count: number) => count.toLocaleString('ko-KR').padStart(2, '0');
+
+const getTodayDateString = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const date = String(now.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${date}`;
+};
+
+const toStartOfDayIso = (dateValue: string) => {
+  const date = new Date(`${dateValue}T00:00:00`);
+  return date.toISOString();
+};
+
+const toEndOfDayIso = (dateValue: string) => {
+  const date = new Date(`${dateValue}T23:59:59.999`);
+  return date.toISOString();
+};
+
+const getPeriodRange = (period: PeriodFilterValue | null) => {
+  if (!period || period.preset === 'all') {
+    return {};
   }
 
-  return data as T;
-}
+  const today = new Date();
+  const endDate = getTodayDateString();
+  const start = new Date(today);
 
-function parseJwtPayload(token: string): Record<string, unknown> | null {
-  try {
-    const parts = token.split(".");
-    if (parts.length < 2) return null;
-
-    const base64Url = parts[1];
-    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
-    const decoded = atob(padded);
-
-    try {
-      const utf8 = decodeURIComponent(
-        decoded
-          .split("")
-          .map((char) => `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`)
-          .join(""),
-      );
-      return JSON.parse(utf8) as Record<string, unknown>;
-    } catch {
-      return JSON.parse(decoded) as Record<string, unknown>;
-    }
-  } catch {
-    return null;
-  }
-}
-
-function getHistoryStorageKey() {
-  const accessToken = tok();
-
-  if (!accessToken) {
-    return `${HISTORY_KEY_PREFIX}:guest`;
+  if (period.preset === 'today') {
+    return {
+      periodFrom: toStartOfDayIso(endDate),
+      periodTo: toEndOfDayIso(endDate),
+    };
   }
 
-  const payload = parseJwtPayload(accessToken);
-  const candidate =
-    payload?.sub ??
-    payload?.userId ??
-    payload?.id ??
-    payload?.email ??
-    payload?.nickname;
-
-  if (typeof candidate === "string" || typeof candidate === "number") {
-    return `${HISTORY_KEY_PREFIX}:${String(candidate)}`;
+  if (period.preset === 'week') {
+    const day = start.getDay();
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+    start.setDate(start.getDate() + mondayOffset);
   }
 
-  return `${HISTORY_KEY_PREFIX}:guest`;
-}
-
-function getSearchPageStateKey(historyStorageKey: string) {
-  return `${historyStorageKey}:page-state`;
-}
-
-function isSearchType(value: unknown): value is SearchType {
-  return value === "ALL" || value === "NICKNAME" || value === "KEYWORD" || value === "POST";
-}
-
-function normalizeHistoryItem(item: unknown): RecentSearchItem | null {
-  if (typeof item === "string") {
-    const query = item.trim();
-    if (!query) return null;
-    return { query, type: "ALL", isAi: false };
+  if (period.preset === 'month') {
+    start.setDate(1);
   }
 
-  if (!item || typeof item !== "object") return null;
-
-  const raw = item as Record<string, unknown>;
-  const query = typeof raw.query === "string" ? raw.query.trim() : "";
-
-  if (!query) return null;
-
-  return {
-    query,
-    type: isSearchType(raw.type) ? raw.type : "ALL",
-    isAi: raw.isAi === true,
-  };
-}
-
-function getStoredRecentSearches(storageKey: string): RecentSearchItem[] {
-  try {
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed
-      .map(normalizeHistoryItem)
-      .filter((item): item is RecentSearchItem => item !== null);
-  } catch {
-    return [];
+  if (period.preset === 'year') {
+    start.setMonth(0, 1);
   }
-}
 
-function saveRecentSearches(storageKey: string, items: RecentSearchItem[]) {
-  try {
-    localStorage.setItem(storageKey, JSON.stringify(items));
-  } catch {
-    // noop
-  }
-}
-
-function isVisibleCountRecord(
-  value: unknown,
-): value is Record<ExpandSectionKey, number> {
-  if (!value || typeof value !== "object") return false;
-
-  const record = value as Record<string, unknown>;
-
-  return (
-    typeof record.users === "number" &&
-    typeof record.posts === "number" &&
-    typeof record.keywords === "number"
-  );
-}
-
-function getStoredSearchPageSnapshot(
-  storageKey: string,
-): SearchPageSnapshot | null {
-  try {
-    const raw = sessionStorage.getItem(storageKey);
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw) as Partial<SearchPageSnapshot>;
+  if (period.preset === 'custom') {
+    const startDate = period.startDate ?? endDate;
+    const customEndDate = period.endDate ?? endDate;
 
     return {
-      query: typeof parsed.query === "string" ? parsed.query : "",
-      searchType: isSearchType(parsed.searchType) ? parsed.searchType : "ALL",
-      searched: parsed.searched === true,
-      searchResult: parsed.searchResult ?? null,
-      errorMessage:
-        typeof parsed.errorMessage === "string" ? parsed.errorMessage : "",
-      visibleCounts: isVisibleCountRecord(parsed.visibleCounts)
-        ? parsed.visibleCounts
-        : getDefaultVisibleCounts(),
-      scrollTop:
-        typeof parsed.scrollTop === "number" && Number.isFinite(parsed.scrollTop)
-          ? parsed.scrollTop
-          : 0,
+      periodFrom: toStartOfDayIso(startDate),
+      periodTo: toEndOfDayIso(customEndDate),
     };
-  } catch {
-    return null;
-  }
-}
-
-function saveSearchPageSnapshot(
-  storageKey: string,
-  snapshot: SearchPageSnapshot,
-) {
-  try {
-    sessionStorage.setItem(storageKey, JSON.stringify(snapshot));
-  } catch {
-    // noop
-  }
-}
-
-function toRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  return value as Record<string, unknown>;
-}
-
-function toRecordArray(value: unknown): Record<string, unknown>[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => toRecord(item))
-    .filter((item): item is Record<string, unknown> => item !== null);
-}
-
-function pickString(record: Record<string, unknown>, keys: string[]) {
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
-  return "";
-}
-
-function pickNumber(record: Record<string, unknown>, keys: string[]) {
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === "number" && Number.isFinite(value)) {
-      return value;
-    }
-
-    if (typeof value === "string" && value.trim() && !Number.isNaN(Number(value))) {
-      return Number(value);
-    }
   }
 
-  return null;
-}
-
-function pickNestedRecord(record: Record<string, unknown>, keys: string[]) {
-  for (const key of keys) {
-    const nested = toRecord(record[key]);
-    if (nested) return nested;
-  }
-  return null;
-}
-
-function pickNestedNumber(
-  record: Record<string, unknown>,
-  parentKeys: string[],
-  childKeys: string[],
-) {
-  const nested = pickNestedRecord(record, parentKeys);
-  if (!nested) return null;
-  return pickNumber(nested, childKeys);
-}
-
-function pickImageUrl(record: Record<string, unknown>) {
-  const direct = pickString(record, [
-    "thumbnailUrl",
-    "imageUrl",
-    "processedImageUrl",
-    "originalImageUrl",
-    "coverImageUrl",
-    "postImageUrl",
-  ]);
-
-  if (direct) return resolveAssetUrl(direct);
-
-  const image = toRecord(record.image);
-  if (image) {
-    const nestedDirect = pickString(image, [
-      "thumbnailUrl",
-      "imageUrl",
-      "processedImageUrl",
-      "originalImageUrl",
-      "coverImageUrl",
-      "postImageUrl",
-    ]);
-
-    if (nestedDirect) return resolveAssetUrl(nestedDirect);
-  }
-
-  const post = toRecord(record.post);
-  if (post) {
-    const postImage = pickString(post, [
-      "thumbnailUrl",
-      "imageUrl",
-      "processedImageUrl",
-      "originalImageUrl",
-      "coverImageUrl",
-      "postImageUrl",
-    ]);
-
-    if (postImage) return resolveAssetUrl(postImage);
-  }
-
-  const images = record.images;
-  if (Array.isArray(images)) {
-    for (const item of images) {
-      const imageRecord = toRecord(item);
-      if (!imageRecord) continue;
-
-      const nested = pickString(imageRecord, [
-        "thumbnailUrl",
-        "imageUrl",
-        "processedImageUrl",
-        "originalImageUrl",
-        "coverImageUrl",
-        "postImageUrl",
-      ]);
-
-      if (nested) return resolveAssetUrl(nested);
-    }
-  }
-
-  return "";
-}
-
-function pushKeywordPieces(raw: string, target: string[]) {
-  const cleaned = raw.trim();
-  if (!cleaned) return;
-
-  const splitCandidates = cleaned
-    .split(/[\s,]+/)
-    .map((item) => item.replace(/^#/, "").trim())
-    .filter(Boolean);
-
-  const values =
-    splitCandidates.length > 1
-      ? splitCandidates
-      : [cleaned.replace(/^#/, "").trim()];
-
-  for (const value of values) {
-    if (!value) continue;
-    if (!target.includes(value)) {
-      target.push(value);
-    }
-  }
-}
-
-function collectKeywordTexts(record: Record<string, unknown>) {
-  const result: string[] = [];
-
-  const directValues = [
-    pickString(record, ["keyword", "keywordName", "label", "name", "tag"]),
-    pickString(record, ["keywordsText", "keywordText"]),
-  ].filter(Boolean);
-
-  directValues.forEach((value) => pushKeywordPieces(value, result));
-
-  const keywordRecord = pickNestedRecord(record, ["keywordInfo", "keywordItem"]);
-  if (keywordRecord) {
-    const nestedValue = pickString(keywordRecord, ["keyword", "keywordName", "label", "name"]);
-    if (nestedValue) {
-      pushKeywordPieces(nestedValue, result);
-    }
-  }
-
-  const arrayKeys = ["keywords", "feedbackKeywords", "tags"];
-
-  for (const key of arrayKeys) {
-    const value = record[key];
-
-    if (!Array.isArray(value)) continue;
-
-    for (const item of value) {
-      if (typeof item === "string") {
-        pushKeywordPieces(item, result);
-        continue;
-      }
-
-      const keywordObj = toRecord(item);
-      if (!keywordObj) continue;
-
-      const nested = pickString(keywordObj, [
-        "keyword",
-        "keywordName",
-        "label",
-        "name",
-        "tag",
-      ]);
-
-      if (nested) {
-        pushKeywordPieces(nested, result);
-      }
-    }
-  }
-
-  return result;
-}
-
-function formatKeywordsText(record: Record<string, unknown>) {
-  const keywords = collectKeywordTexts(record);
-
-  if (keywords.length === 0) return "";
-
-  return keywords.map((keyword) => `#${keyword}`).join(" ");
-}
-
-function splitHashTags(text: string) {
-  return text
-    .split(/\s+/)
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .map((item) => item.replace(/^#/, "").trim())
-    .filter(Boolean);
-}
-
-function buildCombinedKeywordText(searchedQuery: string, keywordsText: string) {
-  const merged: string[] = [];
-
-  splitHashTags(searchedQuery).forEach((tag) => {
-    if (!merged.includes(tag)) merged.push(tag);
-  });
-
-  splitHashTags(keywordsText).forEach((tag) => {
-    if (!merged.includes(tag)) merged.push(tag);
-  });
-
-  return merged.map((tag) => `#${tag}`).join(" ");
-}
-
-function pickContentText(record: Record<string, unknown>) {
-  const direct = pickString(record, ["content", "caption", "description", "body"]);
-  if (direct) return direct;
-
-  const post = toRecord(record.post);
-  if (post) {
-    const nested = pickString(post, ["content", "caption", "description", "body"]);
-    if (nested) return nested;
-  }
-
-  return "";
-}
-
-function collectCandidateArrays(result: unknown, keys: string[]): Record<string, unknown>[] {
-  if (Array.isArray(result)) {
-    return toRecordArray(result);
-  }
-
-  const root = toRecord(result);
-  if (!root) return [];
-
-  for (const key of keys) {
-    const arr = toRecordArray(root[key]);
-    if (arr.length > 0) return arr;
-  }
-
-  const items = toRecordArray(root.items);
-  if (items.length > 0) return items;
-
-  return [];
-}
-
-function normalizeUsers(result: unknown): SearchUserItem[] {
-  const items = collectCandidateArrays(result, ["users", "nicknames", "nicknameResults"]);
-
-  const mapped = items
-    .map((record): SearchUserItem | null => {
-      const userId =
-        pickNumber(record, ["userId", "id"]) ??
-        pickNestedNumber(record, ["user", "author", "owner"], ["id", "userId"]);
-
-      const nickname =
-        pickString(record, ["nickname", "userNickname", "name"]) ||
-        pickString(pickNestedRecord(record, ["user", "author", "owner"]) ?? {}, [
-          "nickname",
-          "userNickname",
-          "name",
-        ]);
-
-      const profileImageUrl = pickImageUrl(record);
-
-      if (!userId || !nickname) return null;
-
-      return {
-        userId,
-        nickname,
-        ...(profileImageUrl ? { profileImageUrl } : {}),
-      };
-    })
-    .filter((item): item is SearchUserItem => item !== null);
-
-  return Array.from(new Map(mapped.map((item) => [item.userId, item])).values());
-}
-
-function normalizeKeywordPosts(result: unknown): SearchKeywordPostItem[] {
-  const items = collectCandidateArrays(result, [
-    "keywords",
-    "keywordPosts",
-    "keywordResults",
-    "posts",
-    "items",
-  ]);
-
-  const mapped = items
-    .map((record): SearchKeywordPostItem | null => {
-      const postId =
-        pickNumber(record, ["postId", "id"]) ??
-        pickNestedNumber(record, ["post"], ["postId", "id"]);
-
-      const userId =
-        pickNumber(record, ["userId", "authorId", "ownerId"]) ??
-        pickNestedNumber(record, ["user", "author", "owner"], ["id", "userId"]) ??
-        pickNestedNumber(record, ["post"], ["userId", "authorId", "ownerId"]);
-
-      const imageUrl = pickImageUrl(record);
-      const keywordsText = formatKeywordsText(record);
-
-      if (!postId || !imageUrl || !keywordsText) return null;
-
-      return {
-        postId,
-        imageUrl,
-        keywordsText,
-        ...(userId ? { userId } : {}),
-      };
-    })
-    .filter((item): item is SearchKeywordPostItem => item !== null);
-
-  return Array.from(new Map(mapped.map((item) => [item.postId, item])).values());
-}
-
-function normalizePosts(result: unknown): SearchPostItem[] {
-  const items = collectCandidateArrays(result, ["posts", "postResults", "contents", "items"]);
-
-  const mapped = items
-    .map((record): SearchPostItem | null => {
-      const postId =
-        pickNumber(record, ["postId", "id"]) ??
-        pickNestedNumber(record, ["post"], ["postId", "id"]);
-
-      const userId =
-        pickNumber(record, ["userId", "authorId", "ownerId"]) ??
-        pickNestedNumber(record, ["user", "author", "owner"], ["id", "userId"]) ??
-        pickNestedNumber(record, ["post"], ["userId", "authorId", "ownerId"]);
-
-      const imageUrl = pickImageUrl(record);
-      const content = pickContentText(record);
-
-      if (!postId || !imageUrl || !content) return null;
-
-      return {
-        postId,
-        imageUrl,
-        content,
-        ...(userId ? { userId } : {}),
-      };
-    })
-    .filter((item): item is SearchPostItem => item !== null);
-
-  return Array.from(new Map(mapped.map((item) => [item.postId, item])).values());
-}
-
-function getTypeLabel(type: SearchType) {
-  return TYPE_OPTIONS.find((option) => option.value === type)?.shortLabel ?? "전체";
-}
-
-function buildSearchPath(finalQuery: string, type: SearchType) {
-  return `/search?q=${encodeURIComponent(finalQuery)}&type=${type}`;
-}
-
-function makeFallbackKeywordText(query: string) {
-  const trimmed = query.trim();
-  if (!trimmed) return "";
-  return trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
-}
-
-export default function Search({ initialRecentSearches }: SearchProps) {
-  const navigate = useNavigate();
-
-  const historyStorageKey = useMemo(() => getHistoryStorageKey(), []);
-  const pageStateStorageKey = useMemo(
-    () => getSearchPageStateKey(historyStorageKey),
-    [historyStorageKey],
-  );
-  const initialPageSnapshot = useMemo(
-    () => getStoredSearchPageSnapshot(pageStateStorageKey),
-    [pageStateStorageKey],
-  );
-
-  const initialRecentSearchItems = useMemo(
-    () =>
-      (initialRecentSearches ?? [])
-        .map((item) => normalizeHistoryItem(item))
-        .filter((item): item is RecentSearchItem => item !== null),
-    [initialRecentSearches],
-  );
-
-  const [query, setQuery] = useState(initialPageSnapshot?.query ?? "");
-  const [searchType, setSearchType] = useState<SearchType>(
-    initialPageSnapshot?.searchType ?? "ALL",
-  );
-  const [recentSearches, setRecentSearches] = useState<RecentSearchItem[]>(() => {
-    const stored = getStoredRecentSearches(getHistoryStorageKey());
-    if (stored.length > 0) return stored;
-    return (initialRecentSearches ?? [])
-      .map((item) => normalizeHistoryItem(item))
-      .filter((item): item is RecentSearchItem => item !== null);
-  });
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [searched, setSearched] = useState(initialPageSnapshot?.searched ?? false);
-  const [searchResult, setSearchResult] = useState<unknown>(
-    initialPageSnapshot?.searchResult ?? null,
-  );
-  const [errorMessage, setErrorMessage] = useState(
-    initialPageSnapshot?.errorMessage ?? "",
-  );
-  const [visibleCounts, setVisibleCounts] = useState<Record<ExpandSectionKey, number>>(
-    initialPageSnapshot?.visibleCounts ?? getDefaultVisibleCounts(),
-  );
-  const [focusPost, setFocusPost] = useState<FocusPostState | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
-
-  const filterRef = useRef<HTMLDivElement>(null);
-  const contentAreaRef = useRef<HTMLDivElement>(null);
-  const restoredScrollRef = useRef(false);
-
-  const trimmedQuery = useMemo(() => query.trim(), [query]);
-  const loweredQuery = useMemo(() => trimmedQuery.toLowerCase(), [trimmedQuery]);
-
-  const selectedTypeLabel =
-    TYPE_OPTIONS.find((option) => option.value === searchType)?.shortLabel ?? "전체";
-
-  const rawUserResults = useMemo(() => normalizeUsers(searchResult), [searchResult]);
-  const rawKeywordResults = useMemo(() => normalizeKeywordPosts(searchResult), [searchResult]);
-  const rawPostResults = useMemo(() => normalizePosts(searchResult), [searchResult]);
-
-  const displayKeywordResults = useMemo(() => {
-    if (rawKeywordResults.length > 0) return rawKeywordResults;
-
-    if (searchType === "KEYWORD" && rawPostResults.length > 0 && trimmedQuery) {
-      const fallbackTag = makeFallbackKeywordText(trimmedQuery);
-
-      return rawPostResults.map((item) => ({
-        postId: item.postId,
-        imageUrl: item.imageUrl,
-        userId: item.userId,
-        keywordsText: fallbackTag,
-      }));
-    }
-
-    return [];
-  }, [rawKeywordResults, rawPostResults, searchType, trimmedQuery]);
-
-  const userResults = useMemo(() => {
-    if (!loweredQuery) return rawUserResults;
-
-    return rawUserResults.filter((item) =>
-      item.nickname.toLowerCase().includes(loweredQuery),
-    );
-  }, [rawUserResults, loweredQuery]);
-
-  const keywordResults = useMemo(() => {
-    if (!loweredQuery) return displayKeywordResults;
-
-    const normalizedLoweredQuery = loweredQuery.replace(/^#/, "");
-
-    return displayKeywordResults.filter((item) => {
-      const normalizedKeywords = item.keywordsText.toLowerCase();
-      return (
-        normalizedKeywords.includes(loweredQuery) ||
-        normalizedKeywords.includes(normalizedLoweredQuery)
-      );
-    });
-  }, [displayKeywordResults, loweredQuery]);
-
-  const postResults = useMemo(() => {
-    if (!loweredQuery) return rawPostResults;
-
-    return rawPostResults.filter((item) =>
-      item.content.toLowerCase().includes(loweredQuery),
-    );
-  }, [rawPostResults, loweredQuery]);
-
-  const shouldShowRecent = !searched && trimmedQuery.length === 0 && recentSearches.length > 0;
-
-  const allVisualResults = useMemo(() => {
-    if (searchType !== "ALL") {
-      return [] as Array<{
-        postId: number;
-        imageUrl: string;
-        userId?: number;
-        description: string;
-      }>;
-    }
-
-    const combined = [
-      ...keywordResults.map((item) => ({
-        postId: item.postId,
-        imageUrl: item.imageUrl,
-        userId: item.userId,
-        description: item.keywordsText,
-      })),
-      ...postResults.map((item) => ({
-        postId: item.postId,
-        imageUrl: item.imageUrl,
-        userId: item.userId,
-        description: item.content,
-      })),
-    ];
-
-    return Array.from(new Map(combined.map((item) => [item.postId, item])).values());
-  }, [keywordResults, postResults, searchType]);
-
-  const shouldShowAllVisualSection = searchType === "ALL" && allVisualResults.length > 0;
-  const shouldShowUserSection = searchType === "NICKNAME" && userResults.length > 0;
-  const shouldShowPostSection = searchType === "POST" && postResults.length > 0;
-  const shouldShowKeywordSection = searchType === "KEYWORD" && keywordResults.length > 0;
-
-  const hasVisualResults =
-    shouldShowAllVisualSection || shouldShowUserSection || shouldShowPostSection || shouldShowKeywordSection;
-
-  const visibleUserResults = useMemo(
-    () => userResults.slice(0, visibleCounts.users),
-    [userResults, visibleCounts.users],
-  );
-  const visiblePostResults = useMemo(
-    () => postResults.slice(0, visibleCounts.posts),
-    [postResults, visibleCounts.posts],
-  );
-  const visibleAllResults = useMemo(
-    () => allVisualResults.slice(0, visibleCounts.posts),
-    [allVisualResults, visibleCounts.posts],
-  );
-  const visibleKeywordResults = useMemo(
-    () => keywordResults.slice(0, visibleCounts.keywords),
-    [keywordResults, visibleCounts.keywords],
-  );
-
-  const canLoadMoreUsers = userResults.length > visibleCounts.users;
-  const canLoadMoreAll = allVisualResults.length > visibleCounts.posts;
-  const canLoadMorePosts = postResults.length > visibleCounts.posts;
-  const canLoadMoreKeywords = keywordResults.length > visibleCounts.keywords;
-
-  const persistSearchPageSnapshot = (
-    overrides?: Partial<SearchPageSnapshot>,
-  ) => {
-    saveSearchPageSnapshot(pageStateStorageKey, {
-      query,
-      searchType,
-      searched,
-      searchResult,
-      errorMessage,
-      visibleCounts,
-      scrollTop: contentAreaRef.current?.scrollTop ?? 0,
-      ...overrides,
-    });
+  const startDate = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(
+    start.getDate(),
+  ).padStart(2, '0')}`;
+
+  return {
+    periodFrom: toStartOfDayIso(startDate),
+    periodTo: toEndOfDayIso(endDate),
   };
+};
+
+const buildApiFilters = (filters: SearchFiltersValue): ApiFilterPayload => {
+  const period = getPeriodRange(filters.period);
+  const outfitCategories = filters.outfits
+    .map((outfit) => OUTFIT_CATEGORY_MAP[outfit])
+    .filter((category): category is AiGarmentCategory => Boolean(category));
+  const keywordIds = filters.keywords.map((keyword) => keyword.id).filter((id) => id > 0);
+  const feedbackLikeTagIds = filters.feedbackTags
+    .filter((tag) => tag.voteChoice === 'LIKE')
+    .map((tag) => tag.id)
+    .filter((id) => id > 0);
+  const feedbackDislikeTagIds = filters.feedbackTags
+    .filter((tag) => tag.voteChoice === 'DISLIKE')
+    .map((tag) => tag.id)
+    .filter((id) => id > 0);
+
+  return {
+    ...period,
+    likeRatioMin: filters.likeRatio !== null ? filters.likeRatio / 100 : undefined,
+    outfitCategories,
+    keywordIds,
+    feedbackLikeTagIds,
+    feedbackDislikeTagIds,
+    garmentCategory: outfitCategories[0],
+  };
+};
+
+const normalizeKeywordLabel = (label: string) => label.replace(/\s*룩/g, '룩').trim();
+
+const mapKeywordOptions = (items: KeywordItem[]): SearchFilterKeywordOption[] => {
+  return items
+    .map((item) => ({ id: item.id, label: normalizeKeywordLabel(item.label) }))
+    .sort((a, b) => a.id - b.id);
+};
+
+const mapFeedbackTagOptions = (items: FeedbackTagItem[]): SearchFilterFeedbackTagOption[] => {
+  return items
+    .map((item) => ({ id: item.id, label: item.label, voteChoice: item.voteChoice as VoteChoice }))
+    .sort((a, b) => a.id - b.id);
+};
+
+const mapPostResult = (post: PostSearchItem | ImageSearchItem): ResultCardItem => ({
+  key: `post-${post.postId}`,
+  postId: post.postId,
+  userId: post.userId,
+  title: post.content,
+  imageUrl: resolveAssetUrl(post.thumbnailUrl),
+});
+
+const mapUserResult = (user: UserSearchItem): ResultCardItem => ({
+  key: `user-${user.userId}`,
+  userId: user.userId,
+  title: user.nickname,
+  imageUrl: resolveAssetUrl(user.thumbnailUrl),
+});
+
+export default function Search() {
+  const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [mode, setMode] = useState<SearchMode>('text');
+  const [searchType, setSearchType] = useState<SearchType>('ALL');
+  const [typeMenuOpen, setTypeMenuOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [recentKeywords, setRecentKeywords] = useState<RecentKeyword[]>([]);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [imageAssetId, setImageAssetId] = useState<number | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<SearchFilterId>('period');
+  const [appliedFilters, setAppliedFilters] = useState<SearchFiltersValue>(() => createEmptySearchFilters());
+  const [keywordOptions, setKeywordOptions] = useState<SearchFilterKeywordOption[]>([]);
+  const [feedbackTagOptions, setFeedbackTagOptions] = useState<SearchFilterFeedbackTagOption[]>([]);
+  const [resultItems, setResultItems] = useState<ResultCardItem[]>([]);
+  const [resultCount, setResultCount] = useState(0);
+  const [resultLoading, setResultLoading] = useState(false);
+  const [resultError, setResultError] = useState('');
+  const [textSearchSubmitted, setTextSearchSubmitted] = useState(false);
+  const [focusPost, setFocusPost] = useState<FocusPostState | null>(null);
+  const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+
+  const isTextMode = mode === 'text';
+  const isImageMode = mode === 'image';
+  const hasImageResult = Boolean(imagePreviewUrl);
+
+  const currentTypeLabel = useMemo(() => {
+    return TYPE_OPTIONS.find((option) => option.value === searchType)?.shortLabel ?? '전체';
+  }, [searchType]);
+
+  const reloadTextHistories = useCallback(async () => {
+    try {
+      const response = await fetchSearchHistories('TEXT');
+      const histories = response.items
+        .filter((item) => item.searchType === 'TEXT' && item.queryText)
+        .map((item) => ({ historyId: item.historyId, query: item.queryText ?? '' }));
+
+      setRecentKeywords(histories);
+    } catch {
+      setRecentKeywords([]);
+    }
+  }, []);
+
+  const executeTextSearch = useCallback(
+    async (nextQuery = query, nextSearchType = searchType, nextFilters = appliedFilters) => {
+      const trimmedQuery = nextQuery.trim();
+
+      if (!trimmedQuery) {
+        setResultItems([]);
+        setResultCount(0);
+        setResultError('');
+        setTextSearchSubmitted(false);
+        return;
+      }
+
+      const apiFilters = buildApiFilters(nextFilters);
+
+      setResultLoading(true);
+      setResultError('');
+      setTextSearchSubmitted(true);
+
+      try {
+        const response = await fetchSearchResults({
+          q: trimmedQuery,
+          type: nextSearchType,
+          limit: SEARCH_LIMIT,
+          periodFrom: apiFilters.periodFrom,
+          periodTo: apiFilters.periodTo,
+          likeRatioMin: apiFilters.likeRatioMin,
+          outfitCategories: apiFilters.outfitCategories,
+          keywordIds: apiFilters.keywordIds,
+          feedbackLikeTagIds: apiFilters.feedbackLikeTagIds,
+          feedbackDislikeTagIds: apiFilters.feedbackDislikeTagIds,
+        });
+
+        const users = response.users.map(mapUserResult);
+        const posts = response.posts.map(mapPostResult);
+        const nextItems = nextSearchType === 'NICKNAME' ? users : [...posts, ...users];
+
+        setResultItems(nextItems);
+        setResultCount(response.posts.length + response.users.length);
+        void reloadTextHistories();
+      } catch (error) {
+        setResultItems([]);
+        setResultCount(0);
+        setResultError(getErrorMessage(error, '검색 결과를 불러오지 못했습니다.'));
+      } finally {
+        setResultLoading(false);
+      }
+    },
+    [appliedFilters, query, reloadTextHistories, searchType],
+  );
+
+  const executeImageSearch = useCallback(
+    async (nextImageAssetId = imageAssetId, nextFilters = appliedFilters) => {
+      if (!nextImageAssetId) {
+        setResultItems([]);
+        setResultCount(0);
+        setResultError('');
+        return;
+      }
+
+      const apiFilters = buildApiFilters(nextFilters);
+
+      setResultLoading(true);
+      setResultError('');
+
+      try {
+        const response = await fetchImageSearchResults({
+          imageAssetId: nextImageAssetId,
+          limit: SEARCH_LIMIT,
+          periodFrom: apiFilters.periodFrom,
+          periodTo: apiFilters.periodTo,
+          likeRatioMin: apiFilters.likeRatioMin,
+          keywordIds: apiFilters.keywordIds,
+          feedbackLikeTagIds: apiFilters.feedbackLikeTagIds,
+          feedbackDislikeTagIds: apiFilters.feedbackDislikeTagIds,
+          mode: apiFilters.garmentCategory ? 'SINGLE_ITEM' : undefined,
+          garmentCategory: apiFilters.garmentCategory,
+        });
+
+        const items = response.items.map(mapPostResult);
+        setResultItems(items);
+        setResultCount(response.items.length);
+      } catch (error) {
+        setResultItems([]);
+        setResultCount(0);
+        setResultError(getErrorMessage(error, '이미지 검색 결과를 불러오지 못했습니다.'));
+      } finally {
+        setResultLoading(false);
+      }
+    },
+    [appliedFilters, imageAssetId],
+  );
 
   useEffect(() => {
-    const stored = getStoredRecentSearches(historyStorageKey);
+    void reloadTextHistories();
 
-    if (stored.length > 0) {
-      setRecentSearches(stored);
+    const loadMasterData = async () => {
+      const [keywordResult, feedbackResult] = await Promise.allSettled([
+        fetchKeywordOptions(),
+        fetchFeedbackTagOptions(),
+      ]);
+
+      if (keywordResult.status === 'fulfilled') {
+        setKeywordOptions(mapKeywordOptions(keywordResult.value));
+      }
+
+      if (feedbackResult.status === 'fulfilled') {
+        setFeedbackTagOptions(mapFeedbackTagOptions(feedbackResult.value));
+      }
+    };
+
+    void loadMasterData();
+  }, [reloadTextHistories]);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
+    };
+  }, [imagePreviewUrl]);
+
+  useEffect(() => {
+    if (!focusPost) {
       return;
     }
 
-    setRecentSearches(initialRecentSearchItems);
-  }, [historyStorageKey, initialRecentSearchItems]);
-
-  useEffect(() => {
-    saveRecentSearches(historyStorageKey, recentSearches);
-  }, [historyStorageKey, recentSearches]);
-
-  useEffect(() => {
-    persistSearchPageSnapshot();
-  }, [
-    pageStateStorageKey,
-    query,
-    searchType,
-    searched,
-    searchResult,
-    errorMessage,
-    visibleCounts,
-  ]);
-
-  useEffect(() => {
-    if (restoredScrollRef.current) return;
-    restoredScrollRef.current = true;
-
-    const nextScrollTop = initialPageSnapshot?.scrollTop ?? 0;
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (contentAreaRef.current) {
-          contentAreaRef.current.scrollTop = nextScrollTop;
-        }
-      });
-    });
-  }, [initialPageSnapshot]);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (!filterRef.current) return;
-      if (!filterRef.current.contains(e.target as Node)) {
-        setIsFilterOpen(false);
-      }
-    };
-
-    window.addEventListener("mousedown", handleClickOutside);
-    return () => window.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    if (!focusPost) return;
-
     const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = 'hidden';
 
     return () => {
       document.body.style.overflow = previousOverflow;
     };
   }, [focusPost]);
 
-  const pushRecentSearch = (value: string, type: SearchType, isAi = false) => {
-    const nextItem: RecentSearchItem = {
-      query: value,
-      type,
-      isAi,
-    };
-
-    setRecentSearches((prev) =>
-      [
-        nextItem,
-        ...prev.filter(
-          (item) =>
-            !(
-              item.query === value &&
-              item.type === type &&
-              item.isAi === isAi
-            ),
-        ),
-      ].slice(0, 10),
-    );
+  const handleGoBack = () => {
+    navigate(-1);
   };
 
-  const increaseVisibleCount = (section: ExpandSectionKey) => {
-    setVisibleCounts((prev) => ({
-      ...prev,
-      [section]: prev[section] + LOAD_MORE_STEP,
-    }));
-  };
+  const handleChangeMode = (nextMode: SearchMode) => {
+    setMode(nextMode);
+    setTypeMenuOpen(false);
+    setResultError('');
 
-  const executeSearch = async (
-    targetQuery?: string,
-    targetType?: SearchType,
-    isAi = false,
-  ) => {
-    const finalQuery = (targetQuery ?? query).trim();
-    const finalType = targetType ?? searchType;
-    const requestType = isAi ? "ALL" : finalType;
-
-    if (!finalQuery) {
-      setErrorMessage("검색어를 입력하세요");
-      setSearchResult(null);
-      setSearched(false);
+    if (nextMode === 'text') {
+      if (!textSearchSubmitted) {
+        setResultItems([]);
+        setResultCount(0);
+      }
       return;
     }
 
-    setIsLoading(true);
-    setErrorMessage("");
-    setSearched(true);
-    setVisibleCounts(getDefaultVisibleCounts());
+    if (imageAssetId) {
+      void executeImageSearch(imageAssetId, appliedFilters);
+    } else {
+      setResultItems([]);
+      setResultCount(0);
+    }
+  };
 
-    try {
-      let data: unknown;
+  const handleOpenImagePicker = () => {
+    fileInputRef.current?.click();
+  };
 
-      if (requestType === "ALL") {
-        const [nicknameData, postData, keywordData] = await Promise.all([
-          api<unknown>("GET", buildSearchPath(finalQuery, "NICKNAME")),
-          api<unknown>("GET", buildSearchPath(finalQuery, "POST")),
-          api<unknown>("GET", buildSearchPath(finalQuery, "KEYWORD")),
-        ]);
+  const handleChangeImage = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
 
-        const normalizedKeywordPosts = normalizeKeywordPosts(keywordData);
-        const fallbackKeywordText = makeFallbackKeywordText(finalQuery);
+    if (!file) {
+      return;
+    }
 
-        const fallbackKeywordPosts =
-          normalizedKeywordPosts.length > 0
-            ? normalizedKeywordPosts
-            : normalizePosts(keywordData).map((item) => ({
-                postId: item.postId,
-                imageUrl: item.imageUrl,
-                userId: item.userId,
-                keywordsText: fallbackKeywordText,
-              }));
+    const nextPreviewUrl = URL.createObjectURL(file);
 
-        data = {
-          users: normalizeUsers(nicknameData),
-          posts: normalizePosts(postData),
-          keywordPosts: fallbackKeywordPosts,
-        };
-      } else {
-        data = await api<unknown>("GET", buildSearchPath(finalQuery, requestType));
+    setImagePreviewUrl((previousPreviewUrl) => {
+      if (previousPreviewUrl) {
+        URL.revokeObjectURL(previousPreviewUrl);
       }
 
-      setSearchResult(data);
-      pushRecentSearch(finalQuery, requestType, isAi);
-      setQuery(finalQuery);
-      setSearchType(requestType);
+      return nextPreviewUrl;
+    });
 
-      saveSearchPageSnapshot(pageStateStorageKey, {
-        query: finalQuery,
-        searchType: requestType,
-        searched: true,
-        searchResult: data,
-        errorMessage: "",
-        visibleCounts: getDefaultVisibleCounts(),
-        scrollTop: 0,
-      });
+    setMode('image');
+    setImageUploading(true);
+    setResultLoading(true);
+    setResultError('');
+    event.target.value = '';
 
-      requestAnimationFrame(() => {
-        if (contentAreaRef.current) {
-          contentAreaRef.current.scrollTop = 0;
-        }
-      });
+    try {
+      const uploaded = await uploadSearchImage(file);
+      setImageAssetId(uploaded.imageAssetId);
+      await executeImageSearch(uploaded.imageAssetId, appliedFilters);
     } catch (error) {
-      setSearchResult(null);
-      setErrorMessage(error instanceof Error ? error.message : "검색 중 오류가 발생했습니다.");
+      setImageAssetId(null);
+      setResultItems([]);
+      setResultCount(0);
+      setResultError(getErrorMessage(error, '이미지 업로드에 실패했습니다.'));
     } finally {
-      setIsLoading(false);
+      setImageUploading(false);
+      setResultLoading(false);
     }
   };
 
-  const openFeedDetail = (
-    postId: number,
-    imageUrl: string,
-    description: string,
-    userId?: number,
-  ) => {
-    if (!userId) {
-      setErrorMessage(
-        "검색 결과에 userId가 없어서 상세 페이지를 열 수 없어요. search API의 POST/KEYWORD 결과에 userId를 포함해줘야 해요.",
-      );
+  const handleClearQuery = () => {
+    setQuery('');
+    setTextSearchSubmitted(false);
+    setResultItems([]);
+    setResultCount(0);
+    setResultError('');
+  };
+
+  const handleSubmitTextSearch = () => {
+    void executeTextSearch(query, searchType, appliedFilters);
+  };
+
+  const handleSearchInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      handleSubmitTextSearch();
+    }
+  };
+
+  const handleRemoveRecentKeyword = async (historyId: number) => {
+    setRecentKeywords((previousKeywords) =>
+      previousKeywords.filter((keyword) => keyword.historyId !== historyId),
+    );
+
+    try {
+      await deleteSearchHistory(historyId);
+    } catch {
+      void reloadTextHistories();
+    }
+  };
+
+  const handleClearRecentKeywords = async () => {
+    const histories = recentKeywords;
+    setRecentKeywords([]);
+
+    const results = await Promise.allSettled(
+      histories.map((history) => deleteSearchHistory(history.historyId)),
+    );
+
+    if (results.some((result) => result.status === 'rejected')) {
+      void reloadTextHistories();
+    }
+  };
+
+  const handleOpenFilter = (filterId: SearchFilterId) => {
+    setActiveFilter(filterId);
+    setFilterSheetOpen(true);
+  };
+
+  const handleCloseFilterSheet = () => {
+    setFilterSheetOpen(false);
+  };
+
+  const handleApplyFilters = (nextFilters: SearchFiltersValue) => {
+    setAppliedFilters(nextFilters);
+
+    if (isTextMode && textSearchSubmitted && query.trim()) {
+      void executeTextSearch(query, searchType, nextFilters);
       return;
     }
 
-    persistSearchPageSnapshot();
-    setFocusPost({
-      postId,
-      userId,
-      imageUrl,
-      description,
-    });
-    setSheetOpen(true);
+    if (isImageMode && imageAssetId) {
+      void executeImageSearch(imageAssetId, nextFilters);
+    }
+  };
+
+  const handleSelectSearchType = (nextType: SearchType) => {
+    setSearchType(nextType);
+    setTypeMenuOpen(false);
+
+    if (textSearchSubmitted && query.trim()) {
+      void executeTextSearch(query, nextType, appliedFilters);
+    }
+  };
+
+  const handleClickResult = (item: ResultCardItem) => {
+    if (item.postId) {
+      setFocusPost({
+        postId: item.postId,
+        userId: item.userId,
+        title: item.title,
+        imageUrl: item.imageUrl,
+      });
+      setDetailSheetOpen(true);
+      return;
+    }
+
+    navigate(`/user/${item.userId}/feed`);
   };
 
   const handleCloseFocus = () => {
-    setSheetOpen(false);
+    setDetailSheetOpen(false);
     setFocusPost(null);
   };
 
-  const handleInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      executeSearch();
+  const renderResultGrid = () => {
+    if (resultLoading || imageUploading) {
+      return (
+        <div className={styles.resultGrid}>
+          {PLACEHOLDER_RESULTS.map((item) => (
+            <div key={item} className={styles.resultCard} aria-hidden="true">
+              <span className={styles.resultGradient} />
+            </div>
+          ))}
+        </div>
+      );
     }
-  };
 
-  const handleClearInput = () => {
-    const clearedVisibleCounts = getDefaultVisibleCounts();
+    if (resultError) {
+      return <p className={styles.resultErrorText}>{resultError}</p>;
+    }
 
-    setQuery("");
-    setErrorMessage("");
-    setSearchResult(null);
-    setSearched(false);
-    setVisibleCounts(clearedVisibleCounts);
+    if (resultItems.length === 0) {
+      return <p className={styles.resultEmptyText}>검색 결과가 없어요</p>;
+    }
 
-    saveSearchPageSnapshot(pageStateStorageKey, {
-      query: "",
-      searchType,
-      searched: false,
-      searchResult: null,
-      errorMessage: "",
-      visibleCounts: clearedVisibleCounts,
-      scrollTop: 0,
-    });
-
-    requestAnimationFrame(() => {
-      if (contentAreaRef.current) {
-        contentAreaRef.current.scrollTop = 0;
-      }
-    });
-  };
-
-  const handleRemoveRecent = (target: RecentSearchItem) => {
-    setRecentSearches((prev) =>
-      prev.filter(
-        (item) =>
-          !(
-            item.query === target.query &&
-            item.type === target.type &&
-            item.isAi === target.isAi
-          ),
-      ),
+    return (
+      <div className={styles.resultGrid}>
+        {resultItems.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className={styles.resultCard}
+            onClick={() => handleClickResult(item)}
+            aria-label={item.title}
+          >
+            {item.imageUrl ? <img src={item.imageUrl} alt="" className={styles.resultImage} /> : null}
+            <span className={styles.resultGradient} />
+          </button>
+        ))}
+      </div>
     );
   };
 
-  const handleClearAllRecent = () => {
-    setRecentSearches([]);
-  };
-
-  const handleAiSearch = () => {
-    setIsFilterOpen(false);
-    executeSearch(trimmedQuery || query, "ALL", true);
-  };
-
-  const goToUserFeed = (userId: number) => {
-    persistSearchPageSnapshot();
-    navigate(`/user/${userId}/feed`, {
-      state: {
-        from: "search",
-        userId,
-      },
-    });
-  };
-
   return (
-    <div className={styles.container}>
-      <Header title="C:Dinator" />
+    <>
+      <div className={styles.page}>
+        <Header
+          title="검색"
+          leftAction="back"
+          onBack={handleGoBack}
+          rightAction="menu"
+        />
 
-      <div className={styles.pageBody}>
-        <div className={styles.topArea}>
-          <div className={styles.searchRow}>
-            <div className={styles.searchBar}>
-              <button
-                type="button"
-                onClick={() => executeSearch()}
-                aria-label="검색"
-                className={styles.searchIconButton}
-              >
-                <SearchIcon size={18} strokeWidth={2.2} />
-              </button>
-
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={handleInputKeyDown}
-                placeholder="검색어를 입력하세요"
-                className={styles.searchInput}
+        <main className={styles.scrollArea}>
+          <section className={styles.contentArea}>
+            <div className={styles.modeSwitch} role="tablist" aria-label="검색 방식 선택">
+              <span
+                className={`${styles.modeSwitchThumb} ${
+                  isImageMode ? styles.modeSwitchThumbImage : styles.modeSwitchThumbText
+                }`}
+                aria-hidden="true"
               />
 
               <button
                 type="button"
-                onClick={handleClearInput}
-                aria-label="입력한 검색어 지우기"
-                disabled={query.length === 0}
-                className={`${styles.clearInputButton} ${
-                  query.length > 0
-                    ? styles.clearInputButtonVisible
-                    : styles.clearInputButtonHidden
-                }`}
+                role="tab"
+                aria-selected={isTextMode}
+                className={`${styles.modeButton} ${isTextMode ? styles.modeButtonActive : ''}`}
+                onClick={() => handleChangeMode('text')}
               >
-                <X size={16} strokeWidth={2.2} />
+                텍스트 검색
               </button>
-            </div>
 
-            <div className={styles.filterWrap} ref={filterRef}>
               <button
                 type="button"
-                aria-label="검색 필터"
-                className={styles.filterButton}
-                onClick={() => setIsFilterOpen((prev) => !prev)}
+                role="tab"
+                aria-selected={isImageMode}
+                className={`${styles.modeButton} ${isImageMode ? styles.modeButtonActive : ''}`}
+                onClick={() => handleChangeMode('image')}
               >
-                <SlidersHorizontal size={16} strokeWidth={2.2} />
-                <span className={styles.filterButtonText}>{selectedTypeLabel}</span>
-                <ChevronDown size={13} strokeWidth={2.2} />
+                AI 이미지 검색
               </button>
+            </div>
 
-              {isFilterOpen && (
-                <div className={styles.filterDropdown}>
-                  {TYPE_OPTIONS.map((option) => {
-                    const active = option.value === searchType;
+            {isTextMode ? (
+              <section className={styles.textSearchSection} aria-label="텍스트 검색 영역">
+                <div className={styles.textSearchRow}>
+                  <label className={styles.searchInputBox} aria-label="검색어 입력">
+                    <button
+                      type="button"
+                      className={styles.searchInputButton}
+                      onClick={handleSubmitTextSearch}
+                      aria-label="검색하기"
+                    >
+                      <SearchIcon size={20} strokeWidth={2.1} />
+                    </button>
+                    <input
+                      className={styles.searchInput}
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      onKeyDown={handleSearchInputKeyDown}
+                      placeholder="검색어를 입력하세요"
+                    />
+                    <button
+                      type="button"
+                      className={styles.clearInputButton}
+                      onClick={handleClearQuery}
+                      aria-label="검색어 지우기"
+                    >
+                      <X size={20} strokeWidth={2.1} />
+                    </button>
+                  </label>
 
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        className={`${styles.filterOption} ${
-                          active ? styles.filterOptionActive : ""
-                        }`}
-                        onClick={() => {
-                          setSearchType(option.value);
-                          setIsFilterOpen(false);
-                        }}
-                      >
-                        <span>{option.label}</span>
-                        {active && (
-                          <span className={styles.filterOptionCheck}>선택됨</span>
-                        )}
-                      </button>
-                    );
-                  })}
+                  <div className={styles.scopeWrap}>
+                    <button
+                      type="button"
+                      className={`${styles.filterButton} ${styles.scopeButton}`}
+                      onClick={() => setTypeMenuOpen((previous) => !previous)}
+                      aria-expanded={typeMenuOpen}
+                    >
+                      <span>{currentTypeLabel}</span>
+                      <ChevronDown size={20} strokeWidth={2.1} />
+                    </button>
 
-                  <div className={styles.dropdownDivider} />
+                    {typeMenuOpen ? (
+                      <div className={styles.scopeMenu}>
+                        {TYPE_OPTIONS.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            className={`${styles.scopeOption} ${
+                              searchType === option.value ? styles.scopeOptionActive : ''
+                            }`}
+                            onClick={() => handleSelectSearchType(option.value)}
+                          >
+                            <span>{option.label}</span>
+                            {searchType === option.value ? <Check size={14} strokeWidth={2.2} /> : null}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
 
+                <FilterScroller filters={FILTERS} appliedFilters={appliedFilters} onOpenFilter={handleOpenFilter} />
+
+                <div className={styles.divider} />
+
+                <div className={styles.recentHeaderRow}>
+                  <p className={styles.recentTitle}>최근 검색어</p>
                   <button
                     type="button"
-                    className={styles.aiFilterOption}
-                    onClick={handleAiSearch}
+                    className={styles.clearAllButton}
+                    onClick={handleClearRecentKeywords}
                   >
-                    <div className={styles.aiFilterOptionLeft}>
-                      <Sparkles size={15} strokeWidth={2.2} />
-                      <span>AI 검색</span>
-                    </div>
+                    전체 삭제
                   </button>
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
 
-        <div className={styles.divider} />
-
-        <div className={styles.contentArea} ref={contentAreaRef}>
-          {shouldShowRecent && (
-            <>
-              <div className={styles.historyActionRow}>
-                <button
-                  type="button"
-                  onClick={handleClearAllRecent}
-                  className={styles.clearAllTextButton}
-                >
-                  전체 삭제
-                </button>
-              </div>
-
-              <div className={styles.recentList}>
-                {recentSearches.map((item, index) => (
-                  <div
-                    key={`${item.query}-${item.type}-${item.isAi}-${index}`}
-                    className={styles.recentItem}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearchType(item.type);
-                        executeSearch(item.query, item.type, item.isAi);
-                      }}
-                      className={styles.recentItemMain}
-                    >
-                      <SearchIcon
-                        size={18}
-                        strokeWidth={2.1}
-                        className={styles.recentItemIcon}
-                      />
-
-                      <div className={styles.recentTextWrap}>
-                        <span className={styles.recentItemText}>{item.query}</span>
-                        <span className={styles.recentTypeBadge}>
-                          {item.isAi ? "AI 검색" : getTypeLabel(item.type)}
-                        </span>
+                {recentKeywords.length > 0 ? (
+                  <div className={styles.recentChipRow}>
+                    {recentKeywords.map((keyword) => (
+                      <div key={keyword.historyId} className={styles.recentChip}>
+                        <button
+                          type="button"
+                          className={styles.recentChipTextButton}
+                          onClick={() => {
+                            setQuery(keyword.query);
+                            void executeTextSearch(keyword.query, searchType, appliedFilters);
+                          }}
+                        >
+                          {keyword.query}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.recentChipRemove}
+                          onClick={() => handleRemoveRecentKeyword(keyword.historyId)}
+                          aria-label={`${keyword.query} 삭제`}
+                        >
+                          <X size={20} strokeWidth={2.1} />
+                        </button>
                       </div>
-                    </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className={styles.emptyRecentText}>최근 검색어가 없어요</p>
+                )}
+              </section>
+            ) : (
+              <section className={styles.imageSearchSection} aria-label="AI 이미지 검색 영역">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className={styles.fileInput}
+                  onChange={handleChangeImage}
+                />
+
+                {hasImageResult ? (
+                  <div className={styles.imageResultBox}>
+                    <div className={styles.uploadedImageWrap}>
+                      <img src={imagePreviewUrl ?? ''} alt="업로드한 이미지" className={styles.uploadedImage} />
+                    </div>
+
+                    <div className={styles.imageResultCopy}>
+                      <p className={styles.imageResultTitle}>비슷한 스타일을 찾았어요</p>
+                      <p className={styles.imageResultDescription}>찾으시는 스타일을 확인해보세요</p>
+                    </div>
 
                     <button
                       type="button"
-                      onClick={() => handleRemoveRecent(item)}
-                      aria-label={`${item.query} 삭제`}
-                      className={styles.recentDeleteButton}
+                      className={styles.changeImageButton}
+                      onClick={handleOpenImagePicker}
                     >
-                      <X size={16} strokeWidth={2.2} />
+                      사진 변경
                     </button>
                   </div>
-                ))}
-              </div>
-            </>
-          )}
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.imageUploadBox}
+                    onClick={handleOpenImagePicker}
+                  >
+                    <span className={styles.imageUploadInner}>
+                      <ImagePlus size={64} strokeWidth={1.7} className={styles.imagePlusIcon} />
+                      <span className={styles.imageUploadText}>
+                        사진을 업로드하여 원하는
+                        <br />
+                        코디 스타일을 찾아보세요
+                      </span>
+                    </span>
+                  </button>
+                )}
 
-          {isLoading && (
-            <div className={styles.stateBox}>
-              <span className={styles.stateText}>검색 중...</span>
-            </div>
-          )}
+                <FilterScroller filters={FILTERS} appliedFilters={appliedFilters} onOpenFilter={handleOpenFilter} />
+              </section>
+            )}
 
-          {!isLoading && errorMessage && (
-            <div className={`${styles.stateBox} ${styles.errorBox}`}>
-              <span className={styles.errorText}>{errorMessage}</span>
-            </div>
-          )}
+            <section className={styles.resultSection} aria-label="검색 결과">
+              <p className={styles.resultCount}>
+                {resultLoading || imageUploading ? '검색 중...' : `검색 결과 ${formatResultCount(resultCount)}개`}
+              </p>
 
-          {!isLoading && searched && !errorMessage && hasVisualResults && (
-            <div className={styles.resultWrap}>
-              {shouldShowAllVisualSection && (
-                <section className={styles.sectionBlock}>
-                  <div className={styles.sectionHeader}>
-                    <h3 className={styles.sectionTitle}>전체 검색</h3>
+              {renderResultGrid()}
+            </section>
+          </section>
 
-                    <div className={styles.sectionHeaderRight}>
-                      <span className={styles.sectionCount}>{allVisualResults.length}</span>
-
-                      {canLoadMoreAll && (
-                        <button
-                          type="button"
-                          className={styles.moreButton}
-                          onClick={() => increaseVisibleCount("posts")}
-                        >
-                          더보기
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className={styles.feedGrid}>
-                    {visibleAllResults.map((item) => (
-                      <button
-                        key={`all-${item.postId}`}
-                        type="button"
-                        className={styles.feedCard}
-                        onClick={() => openFeedDetail(item.postId, item.imageUrl, item.description, item.userId)}
-                      >
-                        <div className={styles.feedThumbWrap}>
-                          <img
-                            src={item.imageUrl}
-                            alt={item.description}
-                            className={styles.feedThumb}
-                          />
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {shouldShowUserSection && (
-                <section className={styles.sectionBlock}>
-                  <div className={styles.sectionHeader}>
-                    <h3 className={styles.sectionTitle}>닉네임 검색 결과</h3>
-
-                    <div className={styles.sectionHeaderRight}>
-                      <span className={styles.sectionCount}>{userResults.length}</span>
-
-                      {canLoadMoreUsers && (
-                        <button
-                          type="button"
-                          className={styles.moreButton}
-                          onClick={() => increaseVisibleCount("users")}
-                        >
-                          더보기
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className={styles.userList}>
-                    {visibleUserResults.map((user) => (
-                      <button
-                        key={user.userId}
-                        type="button"
-                        className={styles.userItem}
-                        onClick={() => goToUserFeed(user.userId)}
-                      >
-                        <div className={styles.userAvatar}>
-                          {user.profileImageUrl ? (
-                            <img
-                              src={user.profileImageUrl}
-                              alt={user.nickname}
-                              className={styles.userAvatarImage}
-                            />
-                          ) : (
-                            <UserRound size={18} strokeWidth={2.2} />
-                          )}
-                        </div>
-
-                        <div className={styles.userInfo}>
-                          <span className={styles.userNickname}>{user.nickname}</span>
-                          <span className={styles.userSubText}>유저 피드 보러가기</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {shouldShowPostSection && (
-                <section className={styles.sectionBlock}>
-                  <div className={styles.sectionHeader}>
-                    <h3 className={styles.sectionTitle}>게시글 검색 결과</h3>
-
-                    <div className={styles.sectionHeaderRight}>
-                      <span className={styles.sectionCount}>{postResults.length}</span>
-
-                      {canLoadMorePosts && (
-                        <button
-                          type="button"
-                          className={styles.moreButton}
-                          onClick={() => increaseVisibleCount("posts")}
-                        >
-                          더보기
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className={styles.feedGrid}>
-                    {visiblePostResults.map((item) => (
-                      <button
-                        key={`post-${item.postId}`}
-                        type="button"
-                        className={styles.feedCard}
-                        onClick={() => openFeedDetail(item.postId, item.imageUrl, item.content, item.userId)}
-                      >
-                        <div className={styles.feedThumbWrap}>
-                          <img
-                            src={item.imageUrl}
-                            alt={item.content}
-                            className={styles.feedThumb}
-                          />
-                        </div>
-                        <span className={styles.feedMetaText}>{item.content}</span>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {shouldShowKeywordSection && (
-                <section className={styles.sectionBlock}>
-                  <div className={styles.sectionHeader}>
-                    <h3 className={styles.sectionTitle}>키워드 검색 결과</h3>
-
-                    <div className={styles.sectionHeaderRight}>
-                      <span className={styles.sectionCount}>{keywordResults.length}</span>
-
-                      {canLoadMoreKeywords && (
-                        <button
-                          type="button"
-                          className={styles.moreButton}
-                          onClick={() => increaseVisibleCount("keywords")}
-                        >
-                          더보기
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className={styles.feedGrid}>
-                    {visibleKeywordResults.map((item) => (
-                      <button
-                        key={`keyword-${item.postId}`}
-                        type="button"
-                        className={styles.feedCard}
-                        onClick={() => openFeedDetail(item.postId, item.imageUrl, item.keywordsText, item.userId)}
-                      >
-                        <div className={styles.feedThumbWrap}>
-                          <img
-                            src={item.imageUrl}
-                            alt={item.keywordsText}
-                            className={styles.feedThumb}
-                          />
-                        </div>
-                        <span className={styles.feedMetaText}>
-                          {buildCombinedKeywordText(trimmedQuery, item.keywordsText)}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
-            </div>
-          )}
-
-          {!isLoading && searched && !errorMessage && !hasVisualResults && (
-            <div className={styles.stateBox}>
-              <span className={styles.stateText}>검색 결과가 없어요</span>
-            </div>
-          )}
-
-          {!isLoading && !searched && !shouldShowRecent && (
-            <div className={styles.stateBox}>
-              <span className={styles.stateText}>검색어를 입력해보세요</span>
-            </div>
-          )}
-        </div>
+          <div className={styles.footerSpacer} aria-hidden="true" />
+        </main>
       </div>
+
+
+      {filterSheetOpen ? (
+        <SearchFilterSheet
+          isOpen={filterSheetOpen}
+          activeFilter={activeFilter}
+          appliedFilters={appliedFilters}
+          keywordOptions={keywordOptions}
+          feedbackTagOptions={feedbackTagOptions}
+          onClose={handleCloseFilterSheet}
+          onApply={handleApplyFilters}
+        />
+      ) : null}
 
       {focusPost ? (
         <div className={styles.focusOverlay} role="dialog" aria-modal="true" aria-label="게시글 포커스 화면">
@@ -1467,12 +868,12 @@ export default function Search({ initialRecentSearches }: SearchProps) {
               <X size={18} strokeWidth={2.5} />
             </button>
 
-            {!sheetOpen ? (
+            {!detailSheetOpen ? (
               <div className={styles.focusFloatingArea}>
                 <button
                   type="button"
                   className={styles.focusDetailButton}
-                  onClick={() => setSheetOpen(true)}
+                  onClick={() => setDetailSheetOpen(true)}
                 >
                   <span className={styles.focusDetailButtonText}>상세보기</span>
                   <ChevronsUp size={16} strokeWidth={2.4} className={styles.focusDetailButtonIcon} />
@@ -1481,14 +882,46 @@ export default function Search({ initialRecentSearches }: SearchProps) {
             ) : null}
 
             <PostDetailBottomSheet
-              isOpen={sheetOpen}
-              onCloseRequest={() => setSheetOpen(false)}
-            >
-              <RankingDetail postId={focusPost.postId} />
-            </PostDetailBottomSheet>
+              isOpen={detailSheetOpen}
+              postId={focusPost.postId}
+              authorUserId={focusPost.userId}
+              onCloseRequest={() => setDetailSheetOpen(false)}
+            />
           </div>
         </div>
       ) : null}
+    </>
+  );
+}
+
+type FilterScrollerProps = {
+  filters: SearchFilter[];
+  appliedFilters: SearchFiltersValue;
+  onOpenFilter: (filterId: SearchFilterId) => void;
+};
+
+function FilterScroller({ filters, appliedFilters, onOpenFilter }: FilterScrollerProps) {
+  return (
+    <div className={styles.filterScrollArea} aria-label="검색 필터">
+      <div className={styles.filterRow}>
+        {filters.map((filter) => {
+          const summary = getSearchFilterSummary(appliedFilters, filter.id);
+          const hasValue = hasSearchFilterValue(appliedFilters, filter.id);
+          const label = summary || filter.label;
+
+          return (
+            <button
+              key={filter.id}
+              type="button"
+              className={`${styles.filterButton} ${hasValue ? styles.filterButtonActive : ''}`}
+              onClick={() => onOpenFilter(filter.id)}
+            >
+              <span>{label}</span>
+              <ChevronDown size={20} strokeWidth={2.1} />
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

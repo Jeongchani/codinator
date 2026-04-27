@@ -1,104 +1,263 @@
-.container {
-  @apply w-[375px] h-[812px] mx-auto bg-white relative overflow-hidden px-4;
+.root {
+  @apply relative mx-auto bg-white overflow-hidden;
+  width: var(--app-width, 375px);
+  height: var(--app-height, 812px);
+  min-height: var(--app-height, 812px);
 }
 
-.hero {
-  @apply absolute left-4 top-[70px] w-[320px] px-2.5 py-2 flex flex-col items-start gap-[5px];
+.heroImage {
+  @apply absolute left-0 top-0 block select-none pointer-events-none;
+  width: 375px;
+  height: 205px;
+  object-fit: cover;
+  object-position: center top;
 }
 
-.heroTitle {
-  @apply w-full text-neutral-900 text-4xl font-medium leading-10;
+.form {
+  @apply absolute left-0 top-0 w-full h-full;
 }
 
-.heroDesc {
-  @apply w-full text-neutral-900 text-xl font-medium leading-7;
+.emailLabel,
+.passwordLabel {
+  @apply absolute text-neutral-900 text-base font-bold leading-[22.5px];
+  left: 16px;
+  width: 96px;
 }
 
-.formBlock {
-  @apply absolute left-4 top-[268px] w-[320px] flex flex-col items-start gap-3.5;
+.emailLabel {
+  top: 236px;
 }
 
-.label {
-  @apply w-full text-neutral-900 text-sm font-medium leading-5;
+.passwordLabel {
+  top: 325px;
 }
 
 .input {
-  @apply w-full bg-transparent border-0 outline-none p-0 text-neutral-900 text-xl font-normal leading-6;
+  @apply absolute bg-white rounded-[10px] text-[15px] font-normal leading-5 text-neutral-900 outline-none;
+  left: 16px;
+  width: 343px;
+  height: 48px;
+  padding: 12px;
+  border: 1px solid #d6d3d1;
+}
+
+.emailLabel + .input {
+  top: 267px;
+}
+
+.passwordLabel + .input {
+  top: 356px;
 }
 
 .input::placeholder {
-  @apply text-neutral-400;
+  color: #a3a3a3;
 }
 
-.line {
-  @apply w-full h-px bg-black;
+.input:focus {
+  border-color: #111111;
+}
+
+.input:disabled {
+  @apply opacity-70;
 }
 
 .optionRow {
-  @apply absolute left-4 top-[457px] w-[320px] flex items-center justify-between;
+  @apply absolute flex items-center justify-between;
+  left: 16px;
+  top: 426px;
+  width: 343px;
 }
 
 .keepLoginButton {
-  @apply flex items-center gap-2.5 bg-transparent border-0 p-0 cursor-pointer;
+  @apply flex items-center justify-start;
+  width: 135px;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  transform-origin: left center;
+  transition:
+    transform 130ms ease,
+    opacity 130ms ease;
 }
 
-.checkboxSvg {
-  @apply shrink-0;
+.keepLoginButton:active:not(:disabled) {
+  transform: scale(0.95);
 }
 
-.optionText {
-  @apply text-neutral-900 text-sm font-medium leading-5;
+.keepLoginButton:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
-.linkButton {
-  @apply bg-transparent border-0 p-0 text-neutral-900 text-sm font-medium leading-5 cursor-pointer;
+.keepLoginIconChecked {
+  @apply shrink-0 text-neutral-900;
+  transition:
+    color 160ms ease,
+    transform 160ms ease,
+    opacity 160ms ease;
 }
 
-.primaryButton {
-  @apply absolute left-1/2 -translate-x-1/2 top-[527px] w-[288px] h-14 rounded-[100px] bg-black text-white text-base font-normal leading-5 flex items-center justify-center transition;
+.keepLoginIconUnchecked {
+  @apply shrink-0 text-neutral-300;
+  opacity: 0.72;
+  transition:
+    color 160ms ease,
+    transform 160ms ease,
+    opacity 160ms ease;
+}
+
+.keepLoginButton:active:not(:disabled) .keepLoginIconChecked,
+.keepLoginButton:active:not(:disabled) .keepLoginIconUnchecked {
+  transform: scale(0.9);
+}
+
+.keepLoginText {
+  @apply text-center text-neutral-900 text-sm font-medium leading-[18.2px] whitespace-nowrap;
+}
+
+.passwordResetButton {
+  @apply text-center text-neutral-900 text-sm font-medium leading-[18.2px] whitespace-nowrap;
+  width: 144px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.passwordResetButton:active:not(:disabled) {
+  opacity: 0.65;
+}
+
+.passwordResetButton:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.loginButton {
+  @apply absolute flex items-center justify-center bg-black rounded-[10px] text-white text-xl font-medium leading-7;
+  left: 16px;
+  top: 492px;
+  width: 343px;
+  height: 48px;
+  padding: 8px 16px;
+  border: 0;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease;
+}
+
+.loginButton:active:not(:disabled) {
+  transform: scale(0.99);
+  opacity: 0.92;
+}
+
+.loginButton:disabled {
+  cursor: default;
 }
 
 .buttonDisabled {
   @apply opacity-70;
 }
 
-.orWrap {
-  @apply absolute left-4 top-[608px] w-[343px] flex items-center justify-between;
+.orRow {
+  @apply absolute flex items-center justify-center;
+  left: 16px;
+  top: 580px;
+  width: 343px;
+  gap: 11px;
 }
 
 .orLine {
-  @apply w-[141px] h-px bg-neutral-200;
+  @apply block h-px bg-stone-300;
+  width: 144px;
 }
 
 .orText {
-  @apply text-neutral-400 text-sm font-medium leading-5 tracking-tight;
+  @apply text-center text-neutral-400 text-sm font-medium leading-5 tracking-tight;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
 }
 
-.socialRow {
-  @apply absolute left-1/2 -translate-x-1/2 top-[652px] flex items-center gap-5;
+.socialButtonRow {
+  @apply absolute flex items-center justify-center;
+  left: 105px;
+  top: 625px;
+  gap: 20px;
 }
 
 .socialButton {
-  @apply w-[42px] h-[42px] rounded-full border border-[#999999] bg-white flex items-center justify-center text-neutral-600;
+  @apply rounded-full bg-white flex items-center justify-center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #999999;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    opacity 160ms ease;
+}
+
+.socialButton:active:not(:disabled) {
+  transform: scale(0.94);
+  background-color: #f5f5f5;
+}
+
+.socialButton:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
 .socialLogo {
-  width: 20px;
-  height: 20px;
+  @apply flex items-center justify-center;
+  width: 22px;
+  height: 22px;
+}
+
+.socialLogo > svg {
+  width: 22px;
+  height: 22px;
   display: block;
-  flex-shrink: 0;
 }
 
-.bottomText {
-  @apply absolute left-1/2 -translate-x-1/2 top-[734px] inline-flex items-center gap-[5px] whitespace-nowrap;
+.signupRow {
+  @apply absolute flex items-center justify-center;
+  left: 0;
+  top: 724px;
+  width: 100%;
+  gap: 14px;
 }
 
-.bottomMuted {
-  @apply text-neutral-400 text-sm font-medium leading-5;
+.signupGuideText {
+  @apply text-center text-neutral-400 text-sm font-medium leading-[18.2px] whitespace-nowrap;
+  width: auto;
+  letter-spacing: -0.03em;
 }
 
-.bottomLink {
-  @apply bg-transparent border-0 p-0 text-neutral-900 text-sm font-medium leading-5 cursor-pointer;
+.signupButton {
+  @apply text-center text-neutral-900 text-sm font-medium leading-[18.2px] whitespace-nowrap;
+  width: auto;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  letter-spacing: -0.03em;
+}
+
+.signupButton:active:not(:disabled) {
+  opacity: 0.65;
+}
+
+.signupButton:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
 .modalBackdrop {
@@ -122,134 +281,27 @@
 }
 
 .modalButton {
-  @apply w-full rounded-[100px] bg-neutral-900 py-3 text-base font-medium text-white;
+  @apply w-full rounded-[10px] bg-neutral-900 py-3 text-base font-medium text-white;
+  transition:
+    transform 150ms ease,
+    opacity 150ms ease;
 }
 
-
-/* Dark mode */
-.container {
-  background: var(--color-page-bg);
+.modalButton:active {
+  transform: scale(0.98);
+  opacity: 0.9;
 }
 
-.heroTitle,
-.heroDesc,
-.label,
-.optionText,
-.linkButton,
-.bottomLink,
-.modalTitle {
-  color: var(--color-text-strong);
-}
+@media (max-width: 374px) {
+  .root,
+  .heroImage {
+    width: 100vw;
+  }
 
-.input,
-.orText,
-.bottomMuted,
-.modalMessage {
-  color: var(--color-text-muted);
-}
-
-.line,
-.orLine {
-  background: var(--color-border);
-}
-
-.socialButton,
-.modalCard {
-  background: var(--color-surface);
-  border-color: var(--color-border);
-  color: var(--color-text-strong);
-}
-
-.primaryButton,
-.modalButton {
-  background: var(--color-inverse-surface);
-  color: var(--color-inverse-text);
-}
-
-
-/* Tokenized color overrides: variables are defined once in styles/global.css. */
-.container {
-  background: var(--color-surface);
-}
-
-.heroTitle {
-  color: var(--color-text-strong);
-}
-
-.heroDesc {
-  color: var(--color-text-strong);
-}
-
-.label {
-  color: var(--color-text-strong);
-}
-
-.input {
-  color: var(--color-text-strong);
-}
-
-.input::placeholder {
-  color: var(--color-text-muted);
-}
-
-.line {
-  background: var(--color-inverse-surface);
-  color: var(--color-inverse-text);
-}
-
-.optionText {
-  color: var(--color-text-strong);
-}
-
-.linkButton {
-  color: var(--color-text-strong);
-}
-
-.primaryButton {
-  background: var(--color-inverse-surface);
-  color: var(--color-inverse-text);
-}
-
-.orLine {
-  background: var(--color-surface-3);
-}
-
-.orText {
-  color: var(--color-text-muted);
-}
-
-.socialButton {
-  background: var(--color-surface);
-  color: var(--color-text-soft);
-  border-color: var(--color-border);
-}
-
-.bottomMuted {
-  color: var(--color-text-muted);
-}
-
-.bottomLink {
-  color: var(--color-text-strong);
-}
-
-.modalBackdrop {
-  background: var(--color-inverse-surface);
-  color: var(--color-inverse-text);
-}
-
-.modalCard {
-  background: var(--color-surface);
-}
-
-.modalTitle {
-  color: var(--color-text-strong);
-}
-
-.modalMessage {
-  color: var(--color-text-muted);
-}
-
-.modalButton {
-  background: var(--color-inverse-surface);
-  color: var(--color-inverse-text);
+  .input,
+  .optionRow,
+  .loginButton,
+  .orRow {
+    width: calc(100vw - 32px);
+  }
 }

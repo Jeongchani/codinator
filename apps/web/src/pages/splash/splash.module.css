@@ -1,54 +1,158 @@
-/* splash.module.css */
-
-.container {
-  @apply w-96 h-[812px] relative bg-neutral-900 overflow-hidden mx-auto flex flex-col items-center justify-center;
+.root {
+  @apply relative mx-auto bg-white overflow-hidden;
+  width: var(--app-width, 375px);
+  height: var(--app-height, 812px);
+  min-height: var(--app-height, 812px);
 }
 
-.circleBg {
-  @apply w-40 h-40 bg-white rounded-full flex items-center justify-center mb-6;
+.introScreen {
+  @apply absolute inset-0 bg-white overflow-hidden;
 }
 
-.userIconWrapper {
-  @apply w-28 h-28 relative overflow-hidden flex flex-col items-center justify-end;
+.introImage {
+  @apply block w-full h-full select-none;
+  object-fit: cover;
 }
 
-/* SVG 내부 색상이나 세밀한 조정이 필요할 때 사용 */
-.userHead {
-  @apply w-10 h-10 bg-neutral-900 rounded-full mb-1;
+.landingScreen {
+  @apply absolute inset-0 bg-white overflow-hidden;
 }
 
-.userBody {
-  @apply w-20 h-11 bg-neutral-900 rounded-t-full;
+.fadeIn {
+  animation: splashFadeIn 280ms ease-out both;
 }
 
-.logoText {
-  @apply text-white text-3xl font-semibold font-sans capitalize tracking-wider text-center;
+.fadeOut {
+  animation: splashFadeOut 280ms ease-in both;
+  pointer-events: none;
 }
 
-.fadeAnimation {
-  @apply animate-pulse;
+@keyframes splashFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
+@keyframes splashFadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
 
-/* Tokenized color overrides: variables are defined once in styles/global.css. */
-/* splash.module.css */
-
-.container {
-  background: var(--color-inverse-surface);
-  color: var(--color-inverse-text);
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
 }
 
-.circleBg {
-  background: var(--color-surface);
+.pageLabel {
+  @apply absolute text-center text-black text-[15px] font-semibold leading-5;
+  left: 16px;
+  top: 63px;
+  width: 30px;
+  height: 20px;
 }
 
-/* SVG 내부 색상이나 세밀한 조정이 필요할 때 사용 */
-.userHead {
-  background: var(--color-inverse-surface);
-  color: var(--color-inverse-text);
+.skipButton {
+  @apply absolute text-right text-neutral-400 text-[13px] font-normal leading-[18.2px];
+  right: 16px;
+  top: 67px;
+  width: 90px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
 }
 
-.userBody {
-  background: var(--color-inverse-surface);
-  color: var(--color-inverse-text);
+.textArea {
+  @apply absolute flex flex-col justify-center items-start gap-[5px];
+  left: 16px;
+  top: 107px;
+  width: calc(100% - 32px);
+  padding: 10px;
+}
+
+.title {
+  @apply w-full text-[32px] font-semibold leading-[44.8px];
+  letter-spacing: -0.04em;
+}
+
+.pinkText {
+  color: #f472a3;
+}
+
+.tealText {
+  color: #14b8a6;
+}
+
+.blackText {
+  color: #111111;
+}
+
+.subtitle {
+  @apply w-full text-base font-normal leading-[22.4px] text-neutral-400;
+  letter-spacing: -0.03em;
+}
+
+.landingImage {
+  @apply absolute block select-none pointer-events-none;
+  left: 0;
+  top: 268px;
+  width: 384px;
+  height: 384px;
+  object-fit: cover;
+}
+
+.nextButton {
+  @apply absolute flex justify-center items-center bg-black rounded-[10px];
+  left: 16px;
+  right: 16px;
+  top: 702px;
+  height: 48px;
+  padding: 8px 16px;
+  border: 0;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease;
+}
+
+.nextButton:active {
+  transform: scale(0.99);
+  opacity: 0.92;
+}
+
+.nextText {
+  @apply text-center text-white text-xl font-medium leading-7;
+  width: 96px;
+  height: 28px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fadeIn,
+  .fadeOut {
+    animation-duration: 1ms;
+  }
+
+  .nextButton {
+    transition: none;
+  }
+}
+
+@media (max-width: 374px) {
+  .root {
+    width: 100vw;
+  }
+
+  .landingImage {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bookmark, ChevronLeft, ChevronsUp, X } from "lucide-react";
+import { Bookmark, ChevronsUp, X } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { GetUserFeedResponse, RankingPeriod } from "@codinator/contracts";
 import {
@@ -12,6 +12,7 @@ import {
   subscribeBookmarkUpdated,
   togglePostBookmark,
 } from "../../lib/api";
+import Header from "../../components/Header";
 import PostDetailBottomSheet from "../../components/postdetail/PostDetailBottomSheet";
 import RankingDetail from "../ranking/RankingDetail";
 import styles from "./UserFeed.module.css";
@@ -360,22 +361,12 @@ export default function UserFeed() {
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <div className={styles.headerInner}>
-          <button
-            type="button"
-            className={styles.headerIconButton}
-            onClick={handleBack}
-            aria-label="뒤로가기"
-          >
-            <ChevronLeft size={24} strokeWidth={2.2} />
-          </button>
-
-          <h1 className={styles.title}>{displayUserName}</h1>
-
-          <div className={styles.rightPlaceholder} />
-        </div>
-      </header>
+      <Header
+        title={displayUserName}
+        leftAction="back"
+        onBack={handleBack}
+        rightAction="none"
+      />
 
       <main className={styles.contentArea}>
         {loading && items.length === 0 ? (
