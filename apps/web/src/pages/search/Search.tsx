@@ -51,13 +51,24 @@ type RecentKeyword = {
   query: string;
 };
 
-type ResultCardItem = {
+type PostResultCardItem = {
+  kind: 'post';
   key: string;
-  postId?: number;
+  postId: number;
   userId: number;
   title: string;
   imageUrl: string;
 };
+
+type UserResultCardItem = {
+  kind: 'user';
+  key: string;
+  userId: number;
+  title: string;
+  imageUrl: string;
+};
+
+type ResultCardItem = PostResultCardItem | UserResultCardItem;
 
 type FocusPostState = {
   postId: number;
@@ -88,10 +99,6 @@ const FILTERS: SearchFilter[] = [
 const TYPE_OPTIONS: Array<{ value: SearchType; label: string; shortLabel: string }> = [
   { value: 'ALL', label: '전체 검색', shortLabel: '전체' },
   { value: 'NICKNAME', label: '닉네임', shortLabel: '닉네임' },
-  { value: 'KEYWORD', label: '키워드', shortLabel: '키워드' },
-  { value: 'POST', label: '게시글', shortLabel: '게시글' },
-  { value: 'OUTFIT_ITEM', label: '아이템명', shortLabel: '아이템' },
-  { value: 'OUTFIT_BRAND', label: '브랜드', shortLabel: '브랜드' },
 ];
 
 const SEARCH_LIMIT = 50;
@@ -225,7 +232,8 @@ const mapFeedbackTagOptions = (items: FeedbackTagItem[]): SearchFilterFeedbackTa
     .sort((a, b) => a.id - b.id);
 };
 
-const mapPostResult = (post: PostSearchItem | ImageSearchItem): ResultCardItem => ({
+const mapPostResult = (post: PostSearchItem | ImageSearchItem): PostResultCardItem => ({
+  kind: 'post',
   key: `post-${post.postId}`,
   postId: post.postId,
   userId: post.userId,
@@ -233,7 +241,8 @@ const mapPostResult = (post: PostSearchItem | ImageSearchItem): ResultCardItem =
   imageUrl: resolveAssetUrl(post.thumbnailUrl),
 });
 
-const mapUserResult = (user: UserSearchItem): ResultCardItem => ({
+const mapUserResult = (user: UserSearchItem): UserResultCardItem => ({
+  kind: 'user',
   key: `user-${user.userId}`,
   userId: user.userId,
   title: user.nickname,
@@ -323,7 +332,7 @@ export default function Search() {
 
         const users = response.users.map(mapUserResult);
         const posts = response.posts.map(mapPostResult);
-        const nextItems = nextSearchType === 'NICKNAME' ? users : [...posts, ...users];
+        const nextItems = nextSearchType === 'NICKNAME' ? users : [...users, ...posts];
 
         setResultItems(nextItems);
         setResultCount(response.posts.length + response.users.length);
@@ -567,7 +576,7 @@ export default function Search() {
   };
 
   const handleClickResult = (item: ResultCardItem) => {
-    if (item.postId) {
+    if (item.kind === 'post') {
       setFocusPost({
         postId: item.postId,
         userId: item.userId,
@@ -586,7 +595,7 @@ export default function Search() {
     setFocusPost(null);
   };
 
-  const renderResultGrid = () => {
+  const renderSearchResults = () => {
     if (resultLoading || imageUploading) {
       return null;
     }
@@ -599,23 +608,64 @@ export default function Search() {
       return <p className={styles.resultEmptyText}>검색 결과가 없어요</p>;
     }
 
+    const userResults = resultItems.filter(
+      (item): item is UserResultCardItem => item.kind === 'user',
+    );
+    const postResults = resultItems.filter(
+      (item): item is PostResultCardItem => item.kind === 'post',
+    );
+
     return (
-      <div className={styles.resultGrid}>
-        {resultItems.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            className={styles.resultCard}
-            onClick={() => handleClickResult(item)}
-            aria-label={item.title}
+      <>
+        {userResults.length > 0 ? (
+          <div className={styles.userResultList} aria-label="유저 검색 결과">
+            {userResults.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className={styles.userResultCard}
+                onClick={() => handleClickResult(item)}
+                aria-label={`${item.title} 유저 피드 보러가기`}
+              >
+                <span className={styles.userAvatar} aria-hidden="true">
+                  {item.imageUrl ? (
+                    <img src={item.imageUrl} alt="" className={styles.userAvatarImage} />
+                  ) : null}
+                </span>
+
+                <span className={styles.userResultCopy}>
+                  <span className={styles.userNickname}>{item.title}</span>
+                  <span className={styles.userFeedLinkText}>유저 피드 보러가기</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {postResults.length > 0 ? (
+          <div
+            className={`${styles.resultGrid} ${
+              userResults.length > 0 ? styles.resultGridAfterUsers : ''
+            }`}
+            aria-label="게시글 검색 결과"
           >
-            {item.imageUrl ? (
-              <img src={item.imageUrl} alt="" className={styles.resultImage} />
-            ) : null}
-            <span className={styles.resultGradient} />
-          </button>
-        ))}
-      </div>
+            {postResults.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className={styles.resultCard}
+                onClick={() => handleClickResult(item)}
+                aria-label={item.title}
+              >
+                {item.imageUrl ? (
+                  <img src={item.imageUrl} alt="" className={styles.resultImage} />
+                ) : null}
+                <span className={styles.resultGradient} />
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </>
     );
   };
 
@@ -836,7 +886,7 @@ export default function Search() {
                   : `검색 결과 ${formatResultCount(resultCount)}개`}
               </p>
 
-              {renderResultGrid()}
+              {renderSearchResults()}
             </section>
           </section>
 

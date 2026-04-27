@@ -163,15 +163,11 @@
 }
 
 .uploadedImageWrap {
-  @apply flex h-[88px] shrink-0 items-center justify-center overflow-visible bg-transparent;
-  width: auto;
+  @apply flex h-[88px] w-[62px] shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-zinc-100;
 }
 
 .uploadedImage {
-  @apply block object-contain;
-  height: 88px;
-  width: auto;
-  max-width: 62px;
+  @apply block h-full w-full rounded-[10px] object-cover;
 }
 
 .imageResultCopy {
@@ -212,8 +208,40 @@
   @apply m-0 text-xs font-normal leading-4 text-neutral-400;
 }
 
+.userResultList {
+  @apply mt-7 flex flex-col gap-2.5;
+}
+
+.userResultCard {
+  @apply flex h-[70px] w-full items-center gap-3 rounded-[14px] border border-stone-300 bg-white px-4 text-left;
+}
+
+.userAvatar {
+  @apply flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-200;
+}
+
+.userAvatarImage {
+  @apply h-full w-full object-cover;
+}
+
+.userResultCopy {
+  @apply flex min-w-0 flex-col justify-center;
+}
+
+.userNickname {
+  @apply truncate text-[14px] font-semibold leading-5 text-neutral-900;
+}
+
+.userFeedLinkText {
+  @apply mt-0.5 truncate text-[12px] font-normal leading-4 text-neutral-400;
+}
+
 .resultGrid {
   @apply mt-7 grid grid-cols-3 gap-x-2 gap-y-2;
+}
+
+.resultGridAfterUsers {
+  @apply mt-4;
 }
 
 .resultCard {
@@ -259,7 +287,8 @@
 :global(html.dark) .filterButton,
 :global(html.dark) .imageUploadBox,
 :global(html.dark) .imageResultBox,
-:global(html.dark) .changeImageButton {
+:global(html.dark) .changeImageButton,
+:global(html.dark) .userResultCard {
   background: var(--app-surface);
   border-color: var(--app-border);
   color: var(--app-text);
@@ -270,7 +299,8 @@
 :global(html.dark) .emptyRecentText,
 :global(html.dark) .imageUploadText,
 :global(html.dark) .imageResultDescription,
-:global(html.dark) .resultCount {
+:global(html.dark) .resultCount,
+:global(html.dark) .userFeedLinkText {
   color: var(--app-text-secondary);
 }
 
@@ -282,7 +312,8 @@
 :global(html.dark) .recentChip,
 :global(html.dark) .recentChipTextButton,
 :global(html.dark) .imageResultTitle,
-:global(html.dark) .changeImageButton {
+:global(html.dark) .changeImageButton,
+:global(html.dark) .userNickname {
   color: var(--app-text-strong);
 }
 
@@ -291,7 +322,8 @@
 }
 
 :global(html.dark) .resultCard,
-:global(html.dark) .uploadedImageWrap {
+:global(html.dark) .uploadedImageWrap,
+:global(html.dark) .userAvatar {
   background: var(--app-surface-muted);
 }
 
