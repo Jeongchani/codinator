@@ -27,6 +27,7 @@ type Props = {
   authorUserId?: number | null;
   period?: RankingPeriod;
   hideFeedLink?: boolean;
+  initialData?: PostDetailSheetData | null;
 };
 
 type StructuredFeedbackRow = {
@@ -41,7 +42,7 @@ type PostDetailResponse = GetRankingPostDetailResponse | GetFeedPostDetailRespon
 type OutfitItem = PostDetailResponse['outfitItems'][number];
 
 
-type PostDetailSheetData = {
+export type PostDetailSheetData = {
   postId: number;
   authorUserId: number | null;
   authorNickname: string;
@@ -556,11 +557,13 @@ export function RankingDetailSheetContent({
   postId,
   authorUserId,
   period,
+  initialData = null,
   hideFeedLink = false,
 }: {
   postId?: number | null;
   authorUserId?: number | null;
   period?: RankingPeriod;
+  initialData?: PostDetailSheetData | null;
   hideFeedLink?: boolean;
 }) {
   const navigate = useNavigate();
@@ -575,6 +578,7 @@ export function RankingDetailSheetContent({
   const periodParam = searchParams.get('period');
   const explicitPeriod: RankingPeriod | null =
     period ?? (periodParam === 'WEEKLY' || periodParam === 'MONTHLY' ? periodParam : null);
+  const hasInitialFallback = Boolean(initialData && initialData.postId === activePostId);
 
   useEffect(() => {
     let cancelled = false;
@@ -606,8 +610,23 @@ export function RankingDetailSheetContent({
             }
             lastMessage = message;
           }
-        } else {
-          const candidatePeriods: RankingPeriod[] = explicitPeriod ? [explicitPeriod] : ['WEEKLY', 'MONTHLY'];
+        } else if (explicitPeriod) {
+          try {
+            matchedData = await fetcher<GetRankingPostDetailResponse>(
+              `/rankings/posts/${activePostId}?period=${explicitPeriod}`,
+              { headers: getAuthHeaders() },
+            );
+          } catch (err) {
+            const message = err instanceof Error ? err.message : '상세 데이터를 불러오지 못했습니다.';
+            if (isAuthError(message)) {
+              clearAuthTokens();
+              navigate('/login');
+              return;
+            }
+            lastMessage = message;
+          }
+        } else if (!hasInitialFallback) {
+          const candidatePeriods: RankingPeriod[] = ['WEEKLY', 'MONTHLY'];
 
           for (const candidate of candidatePeriods) {
             try {
@@ -643,7 +662,7 @@ export function RankingDetailSheetContent({
     return () => {
       cancelled = true;
     };
-  }, [activePostId, authorUserId, explicitPeriod, navigate]);
+  }, [activePostId, authorUserId, explicitPeriod, hasInitialFallback, navigate]);
 
   useEffect(() => {
     if (!activePostId) return;
@@ -654,7 +673,11 @@ export function RankingDetailSheetContent({
     return unsubscribe;
   }, [activePostId]);
 
-  const sheetData = useMemo(() => buildPostDetailSheetData(postData), [postData]);
+  const sheetData = useMemo(() => {
+    const detailData = buildPostDetailSheetData(postData);
+    if (detailData) return detailData;
+    return initialData && initialData.postId === activePostId ? initialData : null;
+  }, [activePostId, initialData, postData]);
 
   const handleToggleBookmark = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -709,6 +732,7 @@ export default function PostDetailBottomSheet({
   postId,
   authorUserId,
   period,
+  initialData = null,
   hideFeedLink = false,
 }: Props) {
   const controls = useAnimation();
@@ -923,6 +947,7 @@ export default function PostDetailBottomSheet({
               postId={postId}
               authorUserId={authorUserId}
               period={period}
+              initialData={initialData}
               hideFeedLink={hideFeedLink}
             />
           ) : (
