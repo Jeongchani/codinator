@@ -1,4 +1,5 @@
 import type { Id } from '../common/id';
+import type { FeedbackTagSummary, KeywordSummary, OutfitItem, PostAuthorSummary } from '../posts/models';
 
 /**
  * [V3 Batch7] 개인화 추천 목록 아이템
@@ -13,14 +14,24 @@ import type { Id } from '../common/id';
  *          + hiddenAt IS NULL + deletedAt IS NULL + postSearchIndex.isSearchable = true
  *
  * ※ IMAGE search histories는 벡터 기반 처리가 필요하므로 Batch 9 이후 확장 예정
+ *
+ * 상세 필드(author/content/keywords/outfitItems/feedbackSummary)는
+ * 개인화 상세 바텀시트에서 별도 API 호출 없이 바로 사용한다.
  */
 export interface PersonalizedRankingItem {
   postId: Id;
   thumbnailUrl: string | null;
+  // ── 투표 집계 ──
   likeCount: number;
   dislikeCount: number;
   totalCount: number;
   likeRate: number;
+  // ── 상세 바텀시트용 필드 ──
+  author: PostAuthorSummary;
+  content: string;
+  keywords: KeywordSummary[];
+  outfitItems: OutfitItem[];
+  feedbackSummary: FeedbackTagSummary[];
 }
 
 export interface GetPersonalizedRankingsResponse {
