@@ -60,7 +60,7 @@ export class AuthController {
         },
         value: {
           type: 'string',
-          example: 'test@example.com',
+          example: 'alice@codinator.com',
         },
       },
     },

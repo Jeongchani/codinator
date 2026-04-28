@@ -74,8 +74,28 @@ export interface SearchResponse {
 
 export interface ImageSearchRequest {
   imageAssetId: number;
+  /**
+   * 검색 모드. 생략 시 AI 분석 결과(garment 수·면적·얼굴 감지 여부)로 자동 판별.
+   * 프론트가 보내지 않아도 백엔드가 자동으로 결정한다.
+   */
   mode?: ImageSearchMode;
+  /**
+   * [하위 호환 필드] 결과 게시글의 outfit category 필터로 동작한다.
+   * **query 이미지 garment vector 선택 조건 아님** — 벡터 선택은 mode 로만 결정됨.
+   * 새 연동은 outfitCategories 를 사용할 것.
+   * 지정 시 outfitCategories 에 병합 처리됨.
+   * DRESS 는 게시글 카테고리에 존재하지 않으므로 400 오류.
+   */
   garmentCategory?: AiGarmentCategory;
+  /**
+   * 결과 게시글의 outfit 카테고리 필터 (post_search_index.outfitCategories 기준).
+   * 텍스트 검색의 outfitCategories 와 동일한 의미.
+   * 한국어 UI 값(상의/하의/아우터/신발/가방/악세사리/기타) 또는
+   * enum 문자열(TOP/BOTTOM/OUTER/SHOES/BAG/ACCESSORY/ETC) 모두 허용 — 내부 정규화.
+   * DRESS / 원피스 는 게시글 카테고리에 존재하지 않으므로 400 오류.
+   * garmentCategory 도 함께 오면 병합 처리.
+   */
+  outfitCategories?: string[];
 
   /** 커서 (offset 기반). 생략 시 첫 페이지 */
   cursor?: number;
