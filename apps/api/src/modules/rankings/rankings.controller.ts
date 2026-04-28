@@ -78,12 +78,13 @@ export class RankingsController {
       '추천 풀: evaluation.status=ENDED + status=ACTIVE + publishedAt IS NOT NULL + hiddenAt IS NULL.',
       '※ rankingDetails 등재 여부와 무관하게 랭킹존 공개 조건을 사용한다.',
       '커서 기반 페이지네이션 (postId DESC).',
+      '각 아이템에 author/content/keywords/outfitItems/feedbackSummary 포함 — 상세 바텀시트에서 별도 API 없이 사용 가능.',
     ].join(' '),
   })
   @ApiQuery({ name: 'cursor', required: false, type: Number, description: '직전 페이지 마지막 postId' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: '페이지 크기 (기본 20, 최대 50)' })
   @ApiOkResponse({
-    description: '개인화 추천 게시글 목록',
+    description: '개인화 추천 게시글 목록 (상세 바텀시트용 필드 포함)',
     schema: {
       example: {
         items: [
@@ -94,14 +95,13 @@ export class RankingsController {
             dislikeCount: 5,
             totalCount: 35,
             likeRate: 0.8571,
-          },
-          {
-            postId: 37,
-            thumbnailUrl: null,
-            likeCount: 18,
-            dislikeCount: 2,
-            totalCount: 20,
-            likeRate: 0.9,
+            author: { userId: 3, nickname: '밥' },
+            content: '블랙 레더 자켓 데일리룩',
+            keywords: [{ id: 2, code: 'DAILY_LOOK', label: '데일리룩', sortOrder: 0 }],
+            outfitItems: [{ id: 5, category: 'OUTER', itemName: '블랙 레더 자켓', brand: 'ZARA' }],
+            feedbackSummary: [
+              { tagId: 1, code: 'POS_STYLE_GOOD', label: '스타일이 좋아요', count: 12, voteChoice: 'LIKE' },
+            ],
           },
         ],
         nextCursor: 37,
