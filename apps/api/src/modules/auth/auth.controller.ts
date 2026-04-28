@@ -273,34 +273,63 @@ export class AuthController {
   @ApiOperation({
     summary: '소셜 로그인 프로필 완성 — 기존 회원 세션 발급 또는 신규 회원 가입',
     description:
-      '기존 회원(isNewUser=false): provider + providerToken 만 전송하면 즉시 세션 발급. ' +
-      '신규 회원(isNewUser=true): nickname, birthDate, gender, phoneNumber, phoneVerificationToken(SIGN_UP purpose) 추가 필수. ' +
-      'providerToken 은 social/login 에 전달한 원본 token 을 그대로 사용. ' +
-      'rememberMe=true 이면 refresh token 발급 + 세션 저장, false/미입력이면 access token만 발급.',
+      '【기존 회원 (isNewUser=false)】 provider + providerToken 만 전송하면 즉시 세션 발급.\n\n' +
+      '【신규 회원 (isNewUser=true)】 nickname / birthDate / gender / phoneNumber / phoneVerificationToken(SIGN_UP) / password 모두 필수.\n\n' +
+      '▸ password: 신규 소셜가입 시 앱 전용 비밀번호 설정 (8자 이상, 영문·숫자·특수문자 각 1개 이상).\n' +
+      '▸ 기존 일반회원 이메일과 소셜 이메일이 일치하고 provider 에서 이메일 인증을 확인할 수 있는 경우에만 자동 연동 (기존 비밀번호 유지).\n' +
+      '▸ provider 가 이메일을 반환하지 않으면 가입/연동 불가.\n' +
+      '▸ providerToken 은 social/login 에 전달한 원본 token 을 그대로 사용.\n' +
+      '▸ rememberMe=true → refresh token 발급 + 세션 저장 / false·미입력 → access token 만 발급.',
   })
   @ApiBody({
     schema: {
       type: 'object',
       required: ['provider', 'providerToken'],
       properties: {
-        provider: { type: 'string', enum: ['GOOGLE', 'KAKAO', 'NAVER'] },
+        provider: { type: 'string', enum: ['GOOGLE', 'KAKAO', 'NAVER'], example: 'KAKAO' },
         providerToken: {
           type: 'string',
           description: 'social/login 에 전달한 원본 Provider token (서버가 재검증)',
+          example: 'kakao_access_token_here',
         },
-        nickname: { type: 'string', example: '코디네이터' },
-        birthDate: { type: 'string', format: 'date', example: '1995-07-20' },
-        gender: { type: 'string', enum: ['MALE', 'FEMALE'] },
-        phoneNumber: { type: 'string', example: '01012345678' },
+        nickname: {
+          type: 'string',
+          example: '코디네이터',
+          description: '신규 회원 전용 (isNewUser=true)',
+        },
+        birthDate: {
+          type: 'string',
+          format: 'date',
+          example: '1995-07-20',
+          description: '신규 회원 전용 (YYYY-MM-DD)',
+        },
+        gender: {
+          type: 'string',
+          enum: ['MALE', 'FEMALE'],
+          example: 'MALE',
+          description: '신규 회원 전용',
+        },
+        phoneNumber: {
+          type: 'string',
+          example: '01012345678',
+          description: '신규 회원 전용',
+        },
         phoneVerificationToken: {
           type: 'string',
           description: 'purpose=SIGN_UP 전화번호 인증 토큰 (신규 회원 전용)',
+          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        },
+        password: {
+          type: 'string',
+          example: 'MyPass@123',
+          description:
+            '신규 회원 전용 필수. 앱 전용 비밀번호 — 8자 이상, 영문·숫자·특수문자 각 1개 이상. ' +
+            '기존 일반회원 자동 연동(isNewUser=false) 시에는 전송하지 않아도 되며, 기존 비밀번호를 절대 덮어쓰지 않음.',
         },
         rememberMe: { // RememberMe
           type: 'boolean',
           example: true,
-          description:
-            '로그인 상태 유지 여부. true → refresh token 발급 + 세션 저장. false/미입력 → access token만 발급.',
+          description: '로그인 상태 유지. true → refresh token 발급 + 세션 저장. false·미입력 → access token만 발급.',
         },
       },
     },
@@ -327,9 +356,13 @@ export class AuthController {
       },
     },
   })
-  @ApiBadRequestResponse({ description: '토큰 오류 또는 신규 회원 필수 필드 누락' })
+  @ApiBadRequestResponse({
+    description:
+      '토큰 오류 / 신규 회원 필수 필드 누락 / password 정책 불충족 / ' +
+      'provider 이메일 미제공 / 이메일 인증 불가로 자동 연동 차단',
+  })
   @ApiConflictResponse({ description: '이미 사용 중인 닉네임 또는 전화번호' })
-  @ApiForbiddenResponse({ description: '로그인이 제한된 계정' })
+  @ApiForbiddenResponse({ description: '로그인이 제한된 계정 또는 탈퇴 계정' })
   async socialCompleteProfile(
     @Body() dto: SocialCompleteProfileRequest,
     @Req() req: Request, // Auth-UserAgent-Fix
