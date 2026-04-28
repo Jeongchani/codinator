@@ -33,6 +33,12 @@ export interface SocialCompleteProfileRequest {
   phoneNumber?: string;
   phoneVerificationToken?: string; // purpose=SIGN_UP
   /**
+   * 신규 소셜가입 전용 (isNewUser=true 일 때만 필수).
+   * 일반 로그인 비밀번호 정책과 동일: 8자 이상, 영문·숫자·특수문자 각 1개 이상.
+   * 기존 일반회원 연동(isNewUser=false) 시에는 무시되며 기존 passwordHash 를 덮어쓰지 않는다.
+   */
+  password?: string;
+  /**
    * 로그인 상태 유지 여부.
    * true  → refresh token 발급 + user_sessions 저장 (7일 유지)
    * false | 미입력 → access token만 발급, 세션 저장 없음
