@@ -82,17 +82,6 @@ export class ImageIndexingService {
     return this.analyzeAndPersist(imageAssetId, ImageAnalysisPurpose.POST_INDEX);
   }
 
-  /**
-   * query 이미지에서 검색용 벡터를 가져온다.
-   *
-   * ▸ FULL_OUTFIT: OUTFIT scope 벡터 (전신 착장 임베딩)
-   * ▸ SINGLE_ITEM: GARMENT scope 벡터 (단일 의류 임베딩)
-   *
-   * garmentCategory 는 SINGLE_ITEM 모드에서 특정 카테고리를 우선 선택하려는 hint.
-   * hint 가 일치하는 garment 가 없으면 카테고리 무관 최우선 garment 로 자동 fallback.
-   * → garmentCategory 힌트가 없는 경우도 카테고리 무관 최우선 garment 를 반환.
-   * → category filter 는 결과 게시글 필터이므로 이 함수에서는 결과를 좁히지 않는다.
-   */
   async getSearchVector(
     analysisRunId: number,
     mode: 'FULL_OUTFIT' | 'SINGLE_ITEM',
@@ -116,28 +105,17 @@ export class ImageIndexingService {
       return this.parseVectorText(rows[0].vectorText);
     }
 
-    // SINGLE_ITEM: garmentCategory hint 로 우선 선택, 없으면 전체 garment 중 최우선
-    const fetchGarmentVector = (withCategoryHint: boolean) =>
-      this.prisma.$queryRaw<Array<{ vectorText: string }>>(Prisma.sql`
-        SELECT iv.vector::text as "vectorText"
-        FROM "image_vectors" iv
-        JOIN "image_garments" ig ON ig.id = iv."garment_id"
-        WHERE iv."analysis_run_id" = ${analysisRunId}
-          AND iv."target_scope" = 'GARMENT'
-          AND iv."is_active" = true
-          ${withCategoryHint && garmentCategory
-            ? Prisma.sql`AND ig."normalized_category" = ${garmentCategory}::"AiGarmentCategory"`
-            : Prisma.empty}
-        ORDER BY ig."sort_order" ASC, ig."id" ASC
-        LIMIT 1
-      `);
-
-    let rows = await fetchGarmentVector(true);
-
-    // hint 지정이 있는데 해당 category garment 가 없으면 → 카테고리 무관 fallback
-    if (!rows[0]?.vectorText && garmentCategory) {
-      rows = await fetchGarmentVector(false);
-    }
+    const rows = await this.prisma.$queryRaw<Array<{ vectorText: string }>>(Prisma.sql`
+      SELECT iv.vector::text as "vectorText"
+      FROM "image_vectors" iv
+      JOIN "image_garments" ig ON ig.id = iv."garment_id"
+      WHERE iv."analysis_run_id" = ${analysisRunId}
+        AND iv."target_scope" = 'GARMENT'
+        AND iv."is_active" = true
+        ${garmentCategory ? Prisma.sql`AND ig."normalized_category" = ${garmentCategory}::"AiGarmentCategory"` : Prisma.empty}
+      ORDER BY ig."sort_order" ASC, ig."id" ASC
+      LIMIT 1
+    `);
 
     if (!rows[0]?.vectorText) {
       throw new NotFoundException('GARMENT 벡터를 찾을 수 없습니다.');
@@ -422,3 +400,4 @@ export class ImageIndexingService {
     return 'image/jpeg';
   }
 }
+
