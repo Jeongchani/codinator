@@ -3,10 +3,13 @@
   width: var(--app-width, 375px);
   height: var(--app-height, 812px);
   min-height: var(--app-height, 812px);
+
+  --login-top-space: 50px;
 }
 
 .heroImage {
-  @apply absolute left-0 top-0 block select-none pointer-events-none;
+  @apply absolute left-0 block select-none pointer-events-none;
+  top: var(--login-top-space);
   width: 375px;
   height: 205px;
   object-fit: cover;
@@ -14,7 +17,9 @@
 }
 
 .form {
-  @apply absolute left-0 top-0 w-full h-full;
+  @apply absolute left-0 w-full;
+  top: var(--login-top-space);
+  height: calc(100% - var(--login-top-space));
 }
 
 .emailLabel,
