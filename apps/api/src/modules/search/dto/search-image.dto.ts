@@ -6,10 +6,11 @@ import {
   IsInt,
   IsNumber,
   IsOptional,
+  IsString,
   Max,
   Min,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import type {
   AiGarmentCategory,
   ImageSearchMode,
@@ -34,13 +35,36 @@ export class SearchImageDto implements ImageSearchRequest {
   mode?: ImageSearchMode;
 
   @ApiPropertyOptional({
-    enum: ['TOP', 'BOTTOM', 'OUTER', 'SHOES', 'BAG', 'ACCESSORY', 'DRESS', 'ETC'],
+    enum: ['TOP', 'BOTTOM', 'OUTER', 'SHOES', 'BAG', 'ACCESSORY', 'ETC'],
     example: 'TOP',
-    description: 'SINGLE_ITEM 모드에서 우선 사용할 의류 카테고리',
+    description:
+      '[하위 호환 필드] 결과 게시글의 outfit category 필터로 동작합니다. ' +
+      '새 연동은 outfitCategories 를 사용하세요. ' +
+      '단일 카테고리를 지정하면 outfitCategories 로 병합 처리됩니다. ' +
+      'DRESS 는 게시글 카테고리에 존재하지 않으므로 400 오류.',
   })
   @IsOptional()
   @IsEnum(['TOP', 'BOTTOM', 'OUTER', 'SHOES', 'BAG', 'ACCESSORY', 'DRESS', 'ETC'])
   garmentCategory?: AiGarmentCategory;
+
+  @ApiPropertyOptional({
+    type: [String],
+    enum: ['TOP', 'BOTTOM', 'OUTER', 'SHOES', 'BAG', 'ACCESSORY', 'ETC'],
+    example: ['TOP', 'OUTER'],
+    description:
+      '결과 게시글의 outfit category 필터 (post_search_index.outfitCategories 기준). ' +
+      '텍스트 검색의 outfitCategories 와 동일한 의미. ' +
+      '한국어(상의/하의/아우터/신발/가방/악세사리/기타) 또는 enum(TOP/BOTTOM/OUTER/SHOES/BAG/ACCESSORY/ETC) 모두 허용. ' +
+      'DRESS / 원피스 는 게시글 카테고리에 존재하지 않으므로 400 오류. ' +
+      '반복 파라미터로 전달: outfitCategories=TOP&outfitCategories=OUTER',
+  })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    Array.isArray(value) ? value : value != null ? [value] : [],
+  )
+  @IsArray()
+  @IsString({ each: true })
+  outfitCategories?: string[];
 
   @ApiPropertyOptional({
     example: 0,
