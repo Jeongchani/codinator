@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Menu,
@@ -11,9 +11,10 @@ import {
   LogOut,
   ChevronRight,
   Vote,
+  ShieldCog,
 } from 'lucide-react';
 import styles from './SideMenu.module.css';
-import { logoutWithServer } from '../lib/api';
+import { fetchMyProfile, isAdminRole, logoutWithServer } from '../lib/api';
 
 type SideMenuProps = {
   isOpen?: boolean;
@@ -46,6 +47,41 @@ function MenuItem({ icon, label, onClick, showArrow = true }: MenuItemProps) {
 
 export default function SideMenu({ isOpen = false, onClose }: SideMenuProps) {
   const navigate = useNavigate();
+  const [showAdminShortcut, setShowAdminShortcut] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isOpen) {
+      setShowAdminShortcut(false);
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setShowAdminShortcut(false);
+
+    const loadMyRole = async () => {
+      try {
+        const profile = await fetchMyProfile();
+
+        if (cancelled) return;
+
+        setShowAdminShortcut(isAdminRole(profile.role));
+      } catch {
+        if (cancelled) return;
+
+        setShowAdminShortcut(false);
+      }
+    };
+
+    void loadMyRole();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
 
   const handleMove = (path: string) => {
     onClose?.();
@@ -77,6 +113,22 @@ export default function SideMenu({ isOpen = false, onClose }: SideMenuProps) {
         aria-modal="true"
         aria-label="사이드 메뉴"
       >
+        {showAdminShortcut ? (
+          <div className={styles.adminShortcutArea}>
+            <button
+              type="button"
+              className={styles.adminShortcutButton}
+              onClick={() => handleMove('/admin')}
+              aria-label="관리자 페이지로 이동"
+            >
+              <span className={styles.adminShortcutIcon}>
+                <ShieldCog size={25} strokeWidth={2.2} />
+              </span>
+              <span className={styles.adminShortcutText}>관리자 페이지</span>
+            </button>
+          </div>
+        ) : null}
+
         <button
           type="button"
           className={styles.closeButton}

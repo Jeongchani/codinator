@@ -256,9 +256,7 @@ function getFullBirthYear(twoDigitYear: number) {
   const currentYear = new Date().getFullYear();
   const currentTwoDigitYear = currentYear % 100;
 
-  return twoDigitYear <= currentTwoDigitYear
-    ? 2000 + twoDigitYear
-    : 1900 + twoDigitYear;
+  return twoDigitYear <= currentTwoDigitYear ? 2000 + twoDigitYear : 1900 + twoDigitYear;
 }
 
 function parseBirthDate(value: string) {
@@ -274,9 +272,7 @@ function parseBirthDate(value: string) {
   const date = new Date(year, month - 1, day);
 
   const isValid =
-    date.getFullYear() === year &&
-    date.getMonth() === month - 1 &&
-    date.getDate() === day;
+    date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 
   if (!isValid) return null;
 
@@ -323,11 +319,7 @@ export default function Signup() {
   const socialSignupContext = useMemo<SocialSignupContext | null>(() => {
     const state = location.state as SignupLocationState | null;
 
-    if (
-      state?.mode !== 'social' ||
-      !isSocialProvider(state.provider) ||
-      !state.providerToken
-    ) {
+    if (state?.mode !== 'social' || !isSocialProvider(state.provider) || !state.providerToken) {
       return null;
     }
 
@@ -381,10 +373,7 @@ export default function Signup() {
 
   // 비밀번호 정책:
   // 8자 이상, 영문, 숫자, 특수문자 각각 1개 이상 필수 포함
-  const passwordRegex = useMemo(
-    () => /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
-    [],
-  );
+  const passwordRegex = useMemo(() => /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/, []);
 
   const phoneRegex = useMemo(() => /^01(?:0|1|6|7|8|9)-\d{3,4}-\d{4}$/, []);
 
@@ -397,8 +386,7 @@ export default function Signup() {
   const isNicknameValid = trimmedNickname.length > 0;
   const isEmailValid = emailRegex.test(trimmedEmail);
   const isPasswordValid = passwordRegex.test(trimmedPassword);
-  const isPasswordConfirmValid =
-    passwordConfirm.trim().length > 0 && password === passwordConfirm;
+  const isPasswordConfirmValid = passwordConfirm.trim().length > 0 && password === passwordConfirm;
   const isBirthValid = isValidBirthDate(trimmedBirthDate);
   const isGenderValid = gender === 'MALE' || gender === 'FEMALE';
   const isPhoneValid = phoneRegex.test(phoneNumber);
@@ -482,7 +470,8 @@ export default function Signup() {
   const persistSocialAuthSession = (authData: PersistAuthData, rememberMe = false) => {
     clearAuthTokens();
 
-    saveAuthTokens(authData.accessToken, rememberMe ? authData.refreshToken : undefined);
+    const refreshToken = rememberMe ? (authData.refreshToken ?? undefined) : undefined;
+    saveAuthTokens(authData.accessToken, refreshToken);
 
     saveCurrentUser({
       ...authData.user,
@@ -801,9 +790,7 @@ export default function Signup() {
     void startGoogleLogin();
   };
 
-  const requestSignupCheck = async (
-    body: SignupCheckRequest,
-  ): Promise<CheckResponse> => {
+  const requestSignupCheck = async (body: SignupCheckRequest): Promise<CheckResponse> => {
     return fetcher<CheckResponse>('/auth/signup/check', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -870,9 +857,7 @@ export default function Signup() {
 
       openModal(
         '오류',
-        error instanceof Error
-          ? error.message
-          : '닉네임 중복확인 요청에 실패했습니다.',
+        error instanceof Error ? error.message : '닉네임 중복확인 요청에 실패했습니다.',
         'error',
       );
     } finally {
@@ -917,9 +902,7 @@ export default function Signup() {
 
       openModal(
         '오류',
-        error instanceof Error
-          ? error.message
-          : '이메일 중복확인 요청에 실패했습니다.',
+        error instanceof Error ? error.message : '이메일 중복확인 요청에 실패했습니다.',
         'error',
       );
     } finally {
@@ -950,9 +933,7 @@ export default function Signup() {
       setVerifiedPhoneDigits('');
       setVerificationCode('');
       setRemainingSeconds(PHONE_CODE_TTL_SECONDS);
-      setPhoneSendMessage(
-        isResend ? '인증번호를 재요청했습니다.' : '인증번호가 발송되었습니다.',
-      );
+      setPhoneSendMessage(isResend ? '인증번호를 재요청했습니다.' : '인증번호가 발송되었습니다.');
       setPhoneDebugCode(response.debugCode ?? '');
     } catch (error) {
       console.error('인증번호 발송 실패:', error);
@@ -1042,11 +1023,7 @@ export default function Signup() {
     }
 
     if (!isBirthValid) {
-      openModal(
-        '생년월일 확인',
-        '생년월일을 정확히 입력해주세요. 예: 960208',
-        'error',
-      );
+      openModal('생년월일 확인', '생년월일을 정확히 입력해주세요. 예: 960208', 'error');
       return false;
     }
 
@@ -1056,11 +1033,7 @@ export default function Signup() {
     }
 
     if (!isPhoneValid) {
-      openModal(
-        '전화번호 확인',
-        '전화번호를 정확히 입력해주세요. 예: 010-0000-0000',
-        'error',
-      );
+      openModal('전화번호 확인', '전화번호를 정확히 입력해주세요. 예: 010-0000-0000', 'error');
       return false;
     }
 
@@ -1099,14 +1072,11 @@ export default function Signup() {
           rememberMe: socialSignupContext.rememberMe,
         };
 
-        const data = await fetcher<SocialCompleteProfileResponse>(
-          '/auth/social/complete-profile',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody),
-          },
-        );
+        const data = await fetcher<SocialCompleteProfileResponse>('/auth/social/complete-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+        });
 
         openModal('회원가입 완료', '소셜 회원가입이 완료되었습니다.', 'success', () => {
           persistSocialAuthSession(
@@ -1145,9 +1115,7 @@ export default function Signup() {
 
       openModal(
         '회원가입 실패',
-        error instanceof Error
-          ? error.message
-          : '회원가입 요청에 실패했습니다.',
+        error instanceof Error ? error.message : '회원가입 요청에 실패했습니다.',
         'error',
       );
     } finally {
@@ -1336,11 +1304,7 @@ export default function Signup() {
                   onClick={handleCheckEmail}
                   disabled={emailCheckLoading || signupLoading || !email.trim()}
                 >
-                  {emailCheckLoading
-                    ? '확인중...'
-                    : isEmailCheckDone
-                      ? '확인 완료'
-                      : '중복 확인'}
+                  {emailCheckLoading ? '확인중...' : isEmailCheckDone ? '확인 완료' : '중복 확인'}
                 </button>
               </div>
 
@@ -1383,9 +1347,7 @@ export default function Signup() {
               onChange={(event) => setPasswordConfirm(event.target.value)}
             />
 
-            <p className={passwordConfirmMessageClass}>
-              {getPasswordConfirmMessage()}
-            </p>
+            <p className={passwordConfirmMessageClass}>{getPasswordConfirmMessage()}</p>
           </div>
 
           <div className={`${styles.fieldGroup} ${styles.birthDateGroup}`}>
@@ -1425,17 +1387,13 @@ export default function Signup() {
                   size={28}
                   strokeWidth={gender === 'MALE' ? 2.6 : 1.9}
                   className={
-                    gender === 'MALE'
-                      ? styles.genderIconChecked
-                      : styles.genderIconUnchecked
+                    gender === 'MALE' ? styles.genderIconChecked : styles.genderIconUnchecked
                   }
                   aria-hidden="true"
                 />
                 <span
                   className={
-                    gender === 'MALE'
-                      ? styles.genderTextChecked
-                      : styles.genderTextUnchecked
+                    gender === 'MALE' ? styles.genderTextChecked : styles.genderTextUnchecked
                   }
                 >
                   남성
@@ -1453,17 +1411,13 @@ export default function Signup() {
                   size={28}
                   strokeWidth={gender === 'FEMALE' ? 2.6 : 1.9}
                   className={
-                    gender === 'FEMALE'
-                      ? styles.genderIconChecked
-                      : styles.genderIconUnchecked
+                    gender === 'FEMALE' ? styles.genderIconChecked : styles.genderIconUnchecked
                   }
                   aria-hidden="true"
                 />
                 <span
                   className={
-                    gender === 'FEMALE'
-                      ? styles.genderTextChecked
-                      : styles.genderTextUnchecked
+                    gender === 'FEMALE' ? styles.genderTextChecked : styles.genderTextUnchecked
                   }
                 >
                   여성
@@ -1535,9 +1489,7 @@ export default function Signup() {
                       inputMode="numeric"
                       value={verificationCode}
                       onChange={(event) =>
-                        setVerificationCode(
-                          event.target.value.replace(/[^0-9]/g, '').slice(0, 6),
-                        )
+                        setVerificationCode(event.target.value.replace(/[^0-9]/g, '').slice(0, 6))
                       }
                       placeholder="인증번호"
                       className={styles.verificationInput}
@@ -1632,11 +1584,7 @@ export default function Signup() {
 
               <p className={styles.modalMessage}>{modalMessage}</p>
 
-              <button
-                type="button"
-                className={styles.modalButton}
-                onClick={closeModal}
-              >
+              <button type="button" className={styles.modalButton} onClick={closeModal}>
                 확인
               </button>
             </div>

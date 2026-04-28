@@ -25,6 +25,7 @@ import Header from '../../components/Header';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
 import FocusScreen from '../../components/focus/FocusScreen';
 import RankingDetail from './RankingDetail';
+import PersonalizedDetail from './PersonalizedDetail';
 import PersonalizedSection, { type PersonalizedFocusItem } from './PersonalizedSection';
 
 type RankingFocusItem = {
@@ -54,6 +55,19 @@ function RecommendationBanner() {
       <img src={algorithmBanner} alt="추천 알고리즘 banner" className={styles.bannerImage} />
     </section>
   );
+}
+
+function getPersonalizedContentText(item: PersonalizedFocusItem): string {
+  const raw = item.raw as unknown as Record<string, unknown>;
+  const candidates = [raw.content, raw.caption, raw.description];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  return '코디 설명이 없습니다.';
 }
 
 function RankingCard({
@@ -352,41 +366,47 @@ export default function RankingZone() {
   const focusedItem = focusItems[focusIndex] ?? null;
 
   const focusedContentText = focusedItem
-    ? focusContentMap[focusedItem.postId] ?? '내용 불러오는 중...'
+    ? (focusContentMap[focusedItem.postId] ?? '내용 불러오는 중...')
     : '';
 
   useEffect(() => {
     if (!focusOpen || !focusedItem || focusContentMap[focusedItem.postId]) return;
 
+    if (focusedItem.kind === 'personalized') {
+      setFocusContentMap((prev) => ({
+        ...prev,
+        [focusedItem.postId]: getPersonalizedContentText(focusedItem),
+      }));
+      return;
+    }
+
     let cancelled = false;
-    const candidatePeriods: RankingPeriod[] =
-      focusedItem.kind === 'ranking' ? [focusedItem.period] : ['WEEKLY', 'MONTHLY'];
 
     const loadFocusContent = async () => {
-      for (const candidate of candidatePeriods) {
-        try {
-          const data = await fetcher<GetRankingPostDetailResponse>(
-            `/rankings/posts/${focusedItem.postId}?period=${candidate}`,
-            { headers: getAuthHeaders() },
-          );
+      try {
+        const data = await fetcher<GetRankingPostDetailResponse>(
+          `/rankings/posts/${focusedItem.postId}?period=${focusedItem.period}`,
+          { headers: getAuthHeaders() },
+        );
 
-          if (cancelled) return;
+        if (cancelled) return;
 
-          const nextContent = data.content?.trim() || '코디 설명이 없습니다.';
-          setFocusContentMap((prev) => ({ ...prev, [focusedItem.postId]: nextContent }));
+        const nextContent = data.content?.trim() || '코디 설명이 없습니다.';
+        setFocusContentMap((prev) => ({ ...prev, [focusedItem.postId]: nextContent }));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '';
+        if (isAuthError(message)) {
+          clearAuthTokens();
+          moveToLogin();
           return;
-        } catch (err) {
-          const message = err instanceof Error ? err.message : '';
-          if (isAuthError(message)) {
-            clearAuthTokens();
-            moveToLogin();
-            return;
-          }
         }
-      }
 
-      if (!cancelled) {
-        setFocusContentMap((prev) => ({ ...prev, [focusedItem.postId]: '코디 설명이 없습니다.' }));
+        if (!cancelled) {
+          setFocusContentMap((prev) => ({
+            ...prev,
+            [focusedItem.postId]: '코디 설명이 없습니다.',
+          }));
+        }
       }
     };
 
@@ -489,10 +509,11 @@ export default function RankingZone() {
         >
           {sheetOpen ? (
             <PostDetailBottomSheet isOpen={sheetOpen} onCloseRequest={() => setSheetOpen(false)}>
-              <RankingDetail
-                postId={focusedItem.postId}
-                period={focusedItem.kind === 'ranking' ? focusedItem.period : undefined}
-              />
+              {focusedItem.kind === 'ranking' ? (
+                <RankingDetail postId={focusedItem.postId} period={focusedItem.period} />
+              ) : (
+                <PersonalizedDetail item={focusedItem.raw} />
+              )}
             </PostDetailBottomSheet>
           ) : null}
         </FocusScreen>

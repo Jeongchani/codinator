@@ -2,13 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useAnimation } from 'framer-motion';
 import { ChevronsRight, Tag, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import type { GetFeedPostDetailResponse, GetRankingPostDetailResponse, RankingPeriod } from '@codinator/contracts';
-import {
-  clearAuthTokens,
-  fetcher,
-  getAuthHeaders,
-  isAuthError,
-} from '../../lib/api';
+import type {
+  GetFeedPostDetailResponse,
+  GetRankingPostDetailResponse,
+  RankingPeriod,
+} from '@codinator/contracts';
+import { clearAuthTokens, fetcher, getAuthHeaders, isAuthError } from '../../lib/api';
 import sheetStyles from './PostDetailBottomSheet.module.css';
 import detailStyles from '../../pages/ranking/RankingDetail.module.css';
 
@@ -36,7 +35,6 @@ type StructuredFeedbackRow = {
 type PostDetailResponse = GetRankingPostDetailResponse | GetFeedPostDetailResponse;
 
 type OutfitItem = PostDetailResponse['outfitItems'][number];
-
 
 export type PostDetailSheetData = {
   postId: number;
@@ -225,8 +223,9 @@ function extractStructuredFeedback(data: PostDetailResponse | null) {
   };
 }
 
-
-export function buildPostDetailSheetData(postData: PostDetailResponse | null): PostDetailSheetData | null {
+export function buildPostDetailSheetData(
+  postData: PostDetailResponse | null,
+): PostDetailSheetData | null {
   if (!postData) return null;
 
   const likeCount = postData.voteSummary.likeCount ?? 0;
@@ -361,7 +360,11 @@ function OutfitItemsCarousel({ outfitItems }: { outfitItems: OutfitItem[] }) {
 
   return (
     <div className={sheetStyles.outfitCarousel}>
-      <div ref={viewportRef} className={sheetStyles.outfitCarouselViewport} onScroll={updateActiveIndex}>
+      <div
+        ref={viewportRef}
+        className={sheetStyles.outfitCarouselViewport}
+        onScroll={updateActiveIndex}
+      >
         <div className={sheetStyles.outfitCarouselTrack} style={{ gap: `${OUTFIT_CARD_GAP}px` }}>
           {outfitItems.map((item, index) => (
             <div
@@ -373,14 +376,20 @@ function OutfitItemsCarousel({ outfitItems }: { outfitItems: OutfitItem[] }) {
                 <div className={`${sheetStyles.outfitField} ${sheetStyles.outfitCategoryField}`}>
                   <div className={sheetStyles.outfitCategoryInner}>
                     <Tag size={13} strokeWidth={2} className={sheetStyles.outfitCategoryIcon} />
-                    <span className={sheetStyles.outfitFieldValue}>{formatCategoryLabel(item.category)}</span>
+                    <span className={sheetStyles.outfitFieldValue}>
+                      {formatCategoryLabel(item.category)}
+                    </span>
                   </div>
                 </div>
                 <div className={sheetStyles.outfitField}>
-                  <span className={sheetStyles.outfitFieldValue}>{item.brand || '브랜드 미등록'}</span>
+                  <span className={sheetStyles.outfitFieldValue}>
+                    {item.brand || '브랜드 미등록'}
+                  </span>
                 </div>
                 <div className={sheetStyles.outfitField}>
-                  <span className={sheetStyles.outfitFieldValue}>{item.itemName || '상품 이름 미등록'}</span>
+                  <span className={sheetStyles.outfitFieldValue}>
+                    {item.itemName || '상품 이름 미등록'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -408,7 +417,6 @@ function OutfitItemsCarousel({ outfitItems }: { outfitItems: OutfitItem[] }) {
   );
 }
 
-
 export function PostDetailBottomSheetContent({
   data,
   loading,
@@ -434,7 +442,6 @@ export function PostDetailBottomSheetContent({
           </div>
           <p className={detailStyles.contentText}>{data.contentText}</p>
         </div>
-
       </div>
 
       <div className={detailStyles.keywordLaneSection}>
@@ -454,7 +461,11 @@ export function PostDetailBottomSheetContent({
           {!hideFeedLink ? (
             <button type="button" className={detailStyles.feedLinkButton} onClick={onGoToUserFeed}>
               <span className={detailStyles.feedLinkButtonText}>피드 보러가기</span>
-              <ChevronsRight size={14} strokeWidth={2.5} className={detailStyles.feedLinkButtonIcon} />
+              <ChevronsRight
+                size={14}
+                strokeWidth={2.5}
+                className={detailStyles.feedLinkButtonIcon}
+              />
             </button>
           ) : null}
         </div>
@@ -467,19 +478,29 @@ export function PostDetailBottomSheetContent({
       </div>
 
       <div className={detailStyles.evaluationSummaryRow}>
-        <div className={`${detailStyles.evaluationSummaryItem} ${detailStyles.evaluationSummaryLike}`}>
+        <div
+          className={`${detailStyles.evaluationSummaryItem} ${detailStyles.evaluationSummaryLike}`}
+        >
           <ThumbsUp size={13} strokeWidth={2.2} />
           <span>{data.likePercent}%</span>
         </div>
-        <div className={`${detailStyles.evaluationSummaryItem} ${detailStyles.evaluationSummaryDislike}`}>
+        <div
+          className={`${detailStyles.evaluationSummaryItem} ${detailStyles.evaluationSummaryDislike}`}
+        >
           <ThumbsDown size={13} strokeWidth={2.2} />
           <span>{data.dislikePercent}%</span>
         </div>
       </div>
 
       <div className={detailStyles.evaluationTrack}>
-        <div className={detailStyles.evaluationLikeFill} style={{ width: `${data.likePercent}%` }} />
-        <div className={detailStyles.evaluationDislikeFill} style={{ width: `${data.dislikePercent}%` }} />
+        <div
+          className={detailStyles.evaluationLikeFill}
+          style={{ width: `${data.likePercent}%` }}
+        />
+        <div
+          className={detailStyles.evaluationDislikeFill}
+          style={{ width: `${data.dislikePercent}%` }}
+        />
       </div>
 
       <div className={detailStyles.sectionDivider} />
@@ -488,8 +509,18 @@ export function PostDetailBottomSheetContent({
       </div>
 
       <div className={detailStyles.feedbackGrid}>
-        <FeedbackPanel title="좋아요" side="LIKE" count={data.likeCount} rows={data.structuredFeedback.likeRows} />
-        <FeedbackPanel title="싫어요" side="DISLIKE" count={data.dislikeCount} rows={data.structuredFeedback.dislikeRows} />
+        <FeedbackPanel
+          title="좋아요"
+          side="LIKE"
+          count={data.likeCount}
+          rows={data.structuredFeedback.likeRows}
+        />
+        <FeedbackPanel
+          title="싫어요"
+          side="DISLIKE"
+          count={data.dislikeCount}
+          rows={data.structuredFeedback.dislikeRows}
+        />
       </div>
 
       <div className={detailStyles.sectionDivider} />
@@ -501,7 +532,6 @@ export function PostDetailBottomSheetContent({
     </div>
   );
 }
-
 
 export function RankingDetailSheetContent({
   postId,
@@ -550,7 +580,8 @@ export function RankingDetailSheetContent({
               { headers: getAuthHeaders() },
             );
           } catch (err) {
-            const message = err instanceof Error ? err.message : '상세 데이터를 불러오지 못했습니다.';
+            const message =
+              err instanceof Error ? err.message : '상세 데이터를 불러오지 못했습니다.';
             if (isAuthError(message)) {
               clearAuthTokens();
               navigate('/login');
@@ -565,7 +596,8 @@ export function RankingDetailSheetContent({
               { headers: getAuthHeaders() },
             );
           } catch (err) {
-            const message = err instanceof Error ? err.message : '상세 데이터를 불러오지 못했습니다.';
+            const message =
+              err instanceof Error ? err.message : '상세 데이터를 불러오지 못했습니다.';
             if (isAuthError(message)) {
               clearAuthTokens();
               navigate('/login');
@@ -585,7 +617,8 @@ export function RankingDetailSheetContent({
               matchedData = data;
               break;
             } catch (err) {
-              const message = err instanceof Error ? err.message : '상세 데이터를 불러오지 못했습니다.';
+              const message =
+                err instanceof Error ? err.message : '상세 데이터를 불러오지 못했습니다.';
               if (isAuthError(message)) {
                 clearAuthTokens();
                 navigate('/login');
@@ -610,15 +643,11 @@ export function RankingDetailSheetContent({
     };
   }, [activePostId, authorUserId, explicitPeriod, hasInitialFallback, navigate]);
 
-
-
   const sheetData = useMemo(() => {
     const detailData = buildPostDetailSheetData(postData);
     if (detailData) return detailData;
     return initialData && initialData.postId === activePostId ? initialData : null;
   }, [activePostId, initialData, postData]);
-
-
 
   const handleGoToUserFeed = () => {
     const authorUserId = sheetData?.authorUserId;

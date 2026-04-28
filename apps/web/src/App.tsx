@@ -15,13 +15,14 @@ import MyFeed from './pages/feed/MyFeed';
 import MyPostDetailEdit from './pages/post/MyPostDetailEdit';
 import Splash from './pages/splash/Splash';
 import LoginSelect from './pages/login/LoginSelect';
-import TestPage from './TestPage';
+import Admin from './Admin';
 import AppLayout from './AppLayout';
 import UserFeed from './pages/feed/UserFeed';
 import OngoingEvaluationHistory from './pages/evaluation/OngoingEvaluationHistory';
 import Settings from './pages/settings/Settings';
 import PasswordReset from './pages/auth/PasswordReset';
 import ForegroundPushCenter from './components/notifications/ForegroundPushCenter';
+import RequireAdminRoute from './components/RequireAdminRoute';
 
 import { fetchMySettings, getAccessToken } from './lib/api';
 import { applyThemeMode, getStoredThemeMode, saveAndApplyThemeMode } from './lib/theme';
@@ -104,7 +105,14 @@ function AppRoutes() {
 
         <Route path="/rankingDetail/:postId" element={<RankingDetail />} />
 
-        <Route path="/test" element={<TestPage />} />
+        <Route
+          path="/admin"
+          element={
+            <RequireAdminRoute>
+              <Admin />
+            </RequireAdminRoute>
+          }
+        />
 
         <Route element={<AppLayout />}>
           <Route path="/postUpload" element={<PostUpload />} />
