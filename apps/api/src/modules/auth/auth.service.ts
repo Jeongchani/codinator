@@ -517,7 +517,7 @@ export class AuthService {
     const verifier = this.socialVerifierFactory.getVerifier(provider);
     const profile = await verifier.verify(dto.providerToken);
 
-    // 기존 소셜 계정 조회
+    // ── 1. 기존 소셜 계정 조회 ─────────────────────────────────────────────
     const socialAccount = await this.prisma.socialAccount.findUnique({
       where: {
         provider_providerUserId: { provider, providerUserId: profile.providerUserId },
@@ -526,12 +526,19 @@ export class AuthService {
     });
 
     if (socialAccount) {
-      // DELETED 연결 계정: complete-profile 에서 최종 차단 처리
-      const isNewUser = socialAccount.user.status === UserStatus.DELETED;
-      return { isNewUser };
+      const { status } = socialAccount.user;
+      if (status === UserStatus.DELETED) {
+        // 탈퇴 계정 — complete-profile 로 보내도 ForbiddenException 으로 막힘: 여기서 미리 알림
+        return { isNewUser: false, canProceed: false, reason: 'ACCOUNT_DELETED' };
+      }
+      if (status === UserStatus.SUSPENDED) {
+        return { isNewUser: false, canProceed: false, reason: 'ACCOUNT_SUSPENDED' };
+      }
+      // ACTIVE: 기존 연결 계정 — complete-profile 바로 호출 가능
+      return { isNewUser: false, canProceed: true };
     }
 
-    // 소셜 계정 없음: email 없으면 가입/연동 불가 (정책 C)
+    // ── 2. 소셜 계정 없음: email 없으면 가입/연동 불가 (정책 C) ───────────
     if (!profile.providerEmail) {
       throw new BadRequestException(
         '소셜 제공자가 이메일을 반환하지 않아 가입/연동을 진행할 수 없습니다. ' +
@@ -539,19 +546,43 @@ export class AuthService {
       );
     }
 
-    // emailVerified === true 일 때만 기존 회원 자동 연동 후보로 판정 (정책 A/D)
-    // Naver: emailVerified=null → auto-link 불가 → isNewUser=true 반환
+    const providerEmailLower = profile.providerEmail.toLowerCase();
+
+    // ── 3. emailVerified === true: 기존 회원 자동 연동 후보 판정 (정책 A/D) ─
     if (profile.emailVerified === true) {
       const emailUser = await this.prisma.user.findUnique({
-        where: { email: profile.providerEmail.toLowerCase() },
+        where: { email: providerEmailLower },
         select: { id: true, status: true },
       });
-      if (emailUser && emailUser.status === UserStatus.ACTIVE) {
-        return { isNewUser: false };
+      if (emailUser) {
+        if (emailUser.status === UserStatus.DELETED) {
+          return { isNewUser: false, canProceed: false, reason: 'ACCOUNT_DELETED' };
+        }
+        if (emailUser.status === UserStatus.SUSPENDED) {
+          return { isNewUser: false, canProceed: false, reason: 'ACCOUNT_SUSPENDED' };
+        }
+        // ACTIVE: complete-profile 에서 소셜 계정 자동 연동 후 로그인
+        return { isNewUser: false, canProceed: true };
       }
+      // 동일 이메일 회원 없음 → 신규 가입 가능
+      return { isNewUser: true, canProceed: true };
     }
 
-    return { isNewUser: true };
+    // ── 4. emailVerified === null/false (정책 D) ───────────────────────────
+    //   Naver: API 미제공(null) / Google·Kakao: false
+    //   → auto-link 불가. 하지만 동일 이메일 계정이 있으면 complete-profile 에서도 막힘.
+    //   → 미리 확인하여 프론트가 불필요하게 신규가입 화면으로 가지 않도록 알림.
+    const emailUser = await this.prisma.user.findUnique({
+      where: { email: providerEmailLower },
+      select: { id: true, status: true },
+    });
+    if (emailUser) {
+      // 어떤 status 든 auto-link 불가 + 신규 가입도 이메일 중복으로 불가
+      return { isNewUser: false, canProceed: false, reason: 'EMAIL_LINK_BLOCKED' };
+    }
+
+    // 동일 이메일 계정 없음 + emailVerified 불명확 → 신규 가입 허용
+    return { isNewUser: true, canProceed: true };
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -892,13 +923,13 @@ export class AuthService {
     // 1) 인가코드 → access token 교환 // SocialCodeExchange
     const providerToken = await this.fetchKakaoAccessToken(dto.code, dto.redirectUri);
 
-    // 2) 기존 socialLogin 로직 재사용 (계정 조회 + isNewUser 판정) // SocialCodeExchange
-    const { isNewUser } = await this.socialLogin({
+    // 2) 기존 socialLogin 로직 재사용 (계정 조회 + isNewUser/canProceed 판정) // SocialCodeExchange
+    const { isNewUser, canProceed, reason } = await this.socialLogin({
       provider: SocialProvider.KAKAO,
       providerToken,
     });
 
-    return { providerToken, isNewUser };
+    return { providerToken, isNewUser, canProceed, reason };
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -910,13 +941,13 @@ export class AuthService {
     // 1) 인가코드 → access token 교환 // SocialCodeExchange
     const providerToken = await this.fetchNaverAccessToken(dto.code, dto.state, dto.redirectUri);
 
-    // 2) 기존 socialLogin 로직 재사용 (계정 조회 + isNewUser 판정) // SocialCodeExchange
-    const { isNewUser } = await this.socialLogin({
+    // 2) 기존 socialLogin 로직 재사용 (계정 조회 + isNewUser/canProceed 판정) // SocialCodeExchange
+    const { isNewUser, canProceed, reason } = await this.socialLogin({
       provider: SocialProvider.NAVER,
       providerToken,
     });
 
-    return { providerToken, isNewUser };
+    return { providerToken, isNewUser, canProceed, reason };
   }
 
   // ──────────────────────────────────────────────────────────────────────────

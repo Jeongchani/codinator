@@ -226,10 +226,17 @@ export class AuthController {
   @Post('social/login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: '소셜 로그인 — Provider OAuth 토큰으로 소셜 로그인 토큰 발급',
+    summary: '소셜 로그인 — Provider OAuth 토큰으로 소셜 로그인 판정',
     description:
-      'isNewUser=false: 기존 회원 → complete-profile 호출로 세션 발급 가능. ' +
-      'isNewUser=true: 신규 회원 → complete-profile에 프로필 정보 포함하여 호출 필요.',
+      '실제 Provider API 를 호출하여 토큰을 검증하고 기존 회원 여부를 판정합니다.\n\n' +
+      '▸ **canProceed=true + isNewUser=false**: 기존 회원 → complete-profile 바로 호출.\n' +
+      '▸ **canProceed=true + isNewUser=true**: 신규 회원 → 프로필 입력 후 complete-profile 호출.\n' +
+      '▸ **canProceed=false**: 진행 불가 — reason 값을 확인하여 사용자에게 안내.\n\n' +
+      '| reason | 안내 내용 |\n' +
+      '|--------|----------|\n' +
+      '| ACCOUNT_DELETED | 탈퇴 처리된 계정입니다 |\n' +
+      '| ACCOUNT_SUSPENDED | 이용 정지된 계정입니다 |\n' +
+      '| EMAIL_LINK_BLOCKED | 동일 이메일 계정이 존재하지만 provider 이메일 인증 미확인으로 자동 연동 불가. 이메일/비밀번호 로그인 후 소셜 연동 안내 |',
   })
   @ApiBody({
     schema: {
@@ -244,8 +251,8 @@ export class AuthController {
         providerToken: {
           type: 'string',
           description:
-            'GOOGLE: ID token / KAKAO: access token / NAVER: access token',
-          example: 'provider-oauth-token',
+            'GOOGLE: ID token (OpenID Connect) / KAKAO: OAuth access token / NAVER: OAuth access token',
+          example: 'provider-oauth-access-token',
         },
       },
     },
@@ -254,12 +261,23 @@ export class AuthController {
     schema: {
       type: 'object',
       properties: {
-        isNewUser: { type: 'boolean', example: false },
+        isNewUser: { type: 'boolean', example: false, description: 'true: 신규 회원 / false: 기존 회원' },
+        canProceed: {
+          type: 'boolean',
+          example: true,
+          description: 'true: complete-profile 진행 가능 / false: 진행 불가 (reason 확인)',
+        },
+        reason: {
+          type: 'string',
+          nullable: true,
+          enum: ['ACCOUNT_DELETED', 'ACCOUNT_SUSPENDED', 'EMAIL_LINK_BLOCKED'],
+          description: 'canProceed=false 일 때만 포함. 진행 불가 사유.',
+        },
       },
     },
-    description: 'isNewUser=false: complete-profile 바로 호출 가능. true: 프로필 입력 필요.',
+    description: 'canProceed=true 일 때만 complete-profile 호출 진행.',
   })
-  @ApiBadRequestResponse({ description: 'provider 오류' })
+  @ApiBadRequestResponse({ description: 'provider 오류 또는 소셜 제공자가 이메일을 반환하지 않음' })
   @ApiResponse({ status: 401, description: '유효하지 않은 providerToken' })
   @ApiResponse({ status: 502, description: 'Provider 서버 일시 장애' })
   async socialLogin(@Body() dto: SocialLoginRequest): Promise<SocialLoginResponse> {
@@ -416,12 +434,10 @@ export class AuthController {
   @ApiOperation({
     summary: 'Kakao 인가코드 교환 — code → access token → 소셜 로그인 판정',
     description:
-      '프론트에서 Kakao 인가코드(code)를 받아 백엔드에서 access token 으로 교환하고, ' +
-      '기존 회원 여부 판정까지 한 번에 처리합니다.\n\n' +
-      '✅ **Swagger 테스트 방법 (개발 환경 / KAKAO_REAL_VERIFY_ENABLED=false)**\n' +
-      '`code` 에 임의의 문자열(예: `test_kakao_001`), `redirectUri` 에 아무 URL 을 입력하세요. ' +
-      '실제 Kakao API 를 호출하지 않고 stub token 을 반환합니다.\n\n' +
-      '응답의 `providerToken` 을 POST /auth/social/complete-profile 의 `providerToken` 으로 그대로 사용하세요.',
+      '프론트에서 Kakao 인가코드(code)를 받아 백엔드에서 실제 Kakao API 를 호출하여 ' +
+      'access token 으로 교환하고, 기존 회원 여부 판정까지 한 번에 처리합니다.\n\n' +
+      '응답의 `providerToken` 을 POST /auth/social/complete-profile 의 `providerToken` 으로 그대로 사용하세요.\n\n' +
+      '`canProceed=false` 이면 complete-profile 를 호출하지 말고 `reason` 에 따라 사용자에게 안내하세요.',
   })
   @ApiBody({ type: ExchangeKakaoCodeDto })
   @ApiOkResponse({
@@ -432,13 +448,24 @@ export class AuthController {
           type: 'string',
           description: '교환된 Kakao access token. complete-profile 의 providerToken 으로 사용',
         },
-        isNewUser: { type: 'boolean', example: false },
+        isNewUser: { type: 'boolean', example: false, description: 'true: 신규 회원 / false: 기존 회원' },
+        canProceed: {
+          type: 'boolean',
+          example: true,
+          description: 'true: complete-profile 진행 가능 / false: 진행 불가 (reason 확인)',
+        },
+        reason: {
+          type: 'string',
+          nullable: true,
+          enum: ['ACCOUNT_DELETED', 'ACCOUNT_SUSPENDED', 'EMAIL_LINK_BLOCKED'],
+          description: 'canProceed=false 일 때만 포함',
+        },
       },
     },
-    description: '인가코드 교환 성공. isNewUser=false: 바로 complete-profile 호출 가능',
+    description: 'canProceed=true 일 때만 complete-profile 호출 진행.',
   })
   @ApiUnauthorizedResponse({ description: '유효하지 않거나 만료된 Kakao 인가코드' })
-  @ApiBadRequestResponse({ description: 'code / redirectUri 누락' })
+  @ApiBadRequestResponse({ description: 'code / redirectUri 누락 또는 Kakao 이메일 미제공' })
   @ApiResponse({ status: 502, description: 'Kakao 인증 서버 일시 장애' })
   async exchangeKakaoCode(
     @Body() dto: ExchangeKakaoCodeDto,
@@ -454,12 +481,12 @@ export class AuthController {
   @ApiOperation({
     summary: 'Naver 인가코드 교환 — code + state → access token → 소셜 로그인 판정',
     description:
-      '프론트에서 Naver 인가코드(code)와 state 를 받아 백엔드에서 access token 으로 교환하고, ' +
-      '기존 회원 여부 판정까지 한 번에 처리합니다.\n\n' +
-      '✅ **Swagger 테스트 방법 (개발 환경 / NAVER_REAL_VERIFY_ENABLED=false)**\n' +
-      '`code` 에 임의의 문자열(예: `test_naver_001`), `state` 에 아무 값, `redirectUri` 에 아무 URL 을 입력하세요. ' +
-      '실제 Naver API 를 호출하지 않고 stub token 을 반환합니다.\n\n' +
-      '응답의 `providerToken` 을 POST /auth/social/complete-profile 의 `providerToken` 으로 그대로 사용하세요.',
+      '프론트에서 Naver 인가코드(code)와 state 를 받아 백엔드에서 실제 Naver API 를 호출하여 ' +
+      'access token 으로 교환하고, 기존 회원 여부 판정까지 한 번에 처리합니다.\n\n' +
+      '⚠️ **Naver 주의**: Naver API 는 이메일 인증 여부를 제공하지 않으므로 동일 이메일 기존 계정과의 ' +
+      '자동 연동이 불가합니다. 동일 이메일 계정이 있으면 `canProceed=false / reason=EMAIL_LINK_BLOCKED` 로 응답됩니다.\n\n' +
+      '응답의 `providerToken` 을 POST /auth/social/complete-profile 의 `providerToken` 으로 그대로 사용하세요.\n\n' +
+      '`canProceed=false` 이면 complete-profile 를 호출하지 말고 `reason` 에 따라 사용자에게 안내하세요.',
   })
   @ApiBody({ type: ExchangeNaverCodeDto })
   @ApiOkResponse({
@@ -470,13 +497,24 @@ export class AuthController {
           type: 'string',
           description: '교환된 Naver access token. complete-profile 의 providerToken 으로 사용',
         },
-        isNewUser: { type: 'boolean', example: false },
+        isNewUser: { type: 'boolean', example: false, description: 'true: 신규 회원 / false: 기존 회원' },
+        canProceed: {
+          type: 'boolean',
+          example: true,
+          description: 'true: complete-profile 진행 가능 / false: 진행 불가 (reason 확인)',
+        },
+        reason: {
+          type: 'string',
+          nullable: true,
+          enum: ['ACCOUNT_DELETED', 'ACCOUNT_SUSPENDED', 'EMAIL_LINK_BLOCKED'],
+          description: 'canProceed=false 일 때만 포함',
+        },
       },
     },
-    description: '인가코드 교환 성공. isNewUser=false: 바로 complete-profile 호출 가능',
+    description: 'canProceed=true 일 때만 complete-profile 호출 진행.',
   })
   @ApiUnauthorizedResponse({ description: '유효하지 않거나 만료된 Naver 인가코드' })
-  @ApiBadRequestResponse({ description: 'code / state / redirectUri 누락' })
+  @ApiBadRequestResponse({ description: 'code / state / redirectUri 누락 또는 Naver 이메일 미제공' })
   @ApiResponse({ status: 502, description: 'Naver 인증 서버 일시 장애' })
   async exchangeNaverCode(
     @Body() dto: ExchangeNaverCodeDto,
