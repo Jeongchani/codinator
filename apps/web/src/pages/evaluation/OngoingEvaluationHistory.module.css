@@ -70,18 +70,22 @@
 .contentArea {
   @apply absolute left-0 w-full overflow-y-auto px-4 z-10;
   top: 237px;
-  bottom: 0;
-  padding-bottom: 20px;
+  bottom: calc(90px + env(safe-area-inset-bottom));
+  padding-bottom: 28px;
+  min-height: 0;
   -ms-overflow-style: none;
   scrollbar-width: none;
   overflow-x: hidden;
   overscroll-behavior-x: none;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
 }
 
 .contentAreaDeleteMode {
+  bottom: 0;
+  padding-bottom: calc(141px + env(safe-area-inset-bottom));
   touch-action: pan-y;
-  padding-bottom: 141px;
 }
 
 .contentArea::-webkit-scrollbar {
@@ -89,7 +93,8 @@
 }
 
 .groupList {
-  @apply flex flex-col gap-[18px] pb-8;
+  @apply flex flex-col gap-[18px];
+  padding-bottom: 28px;
 }
 
 .groupSection {

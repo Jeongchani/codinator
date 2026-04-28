@@ -1215,9 +1215,15 @@ export default function Signup() {
     ? styles.bottomObjectsExpanded
     : styles.bottomObjectsDefault;
 
+  const contentHeightClass = phoneVerificationSent ? styles.contentExpanded : styles.contentDefault;
+
   return (
     <main className={styles.root}>
-      <div className={`${styles.content} ${isSocialSignup ? styles.socialContent : ''}`}>
+      <div
+        className={`${styles.content} ${contentHeightClass} ${
+          isSocialSignup ? styles.socialContent : ''
+        }`}
+      >
         <img
           src={signupDecorationImage}
           alt=""

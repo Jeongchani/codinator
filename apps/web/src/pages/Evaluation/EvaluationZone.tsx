@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type {
   CreateVoteResponse,
@@ -29,6 +29,8 @@ type VoteSummaryState = {
 
 type DisplayPage = { type: 'post'; post: EvaluationListItem } | { type: 'empty' };
 
+const EVALUATION_PAGE_LIMIT = 10;
+
 const getFallbackVoteSummary = (choice: VoteChoice | null): VoteSummaryState => {
   if (choice === 'LIKE') {
     return {
@@ -57,12 +59,16 @@ const EvaluationZone: React.FC = () => {
   const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const sheetContentRef = useRef<HTMLDivElement | null>(null);
+  const loadingNextPageRef = useRef(false);
 
   const [selectedVote, setSelectedVote] = useState<VoteChoice | null>(null);
   const [createdVoteId, setCreatedVoteId] = useState<number | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [posts, setPosts] = useState<EvaluationListItem[]>([]);
+  const [nextCursor, setNextCursor] = useState<number | null>(null);
+  const [hasLoadedAllEvaluations, setHasLoadedAllEvaluations] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [voteSummaryMap, setVoteSummaryMap] = useState<Record<number, VoteSummaryState>>({});
@@ -123,38 +129,124 @@ const EvaluationZone: React.FC = () => {
     return 100 - likePercent;
   }, [currentVoteSummary, likePercent]);
 
+  const fetchEvaluationPage = useCallback(async (cursor?: number | null) => {
+    const params = new URLSearchParams({ limit: String(EVALUATION_PAGE_LIMIT) });
+
+    if (cursor !== undefined && cursor !== null) {
+      params.set('cursor', String(cursor));
+    }
+
+    return fetcher<GetEvaluationsResponse>(`/evaluations?${params.toString()}`, {
+      headers: getAuthHeaders(),
+    });
+  }, []);
+
+  const handleEvaluationLoadError = useCallback(
+    (err: unknown, fallbackMessage: string) => {
+      const message = err instanceof Error ? err.message : fallbackMessage;
+      setError(message);
+
+      if (isAuthError(message)) {
+        clearAuthTokens();
+        navigate('/login');
+      }
+    },
+    [navigate],
+  );
+
   useEffect(() => {
+    let cancelled = false;
+
     const loadEvaluations = async () => {
       try {
         setLoading(true);
         setError('');
+        setNextCursor(null);
+        setHasLoadedAllEvaluations(false);
 
-        const data = await fetcher<GetEvaluationsResponse>('/evaluations?limit=10', {
-          headers: getAuthHeaders(),
-        });
+        const data = await fetchEvaluationPage(null);
+        if (cancelled) return;
 
         const filteredItems = (data.items ?? []).filter((item) => !item.hasVoted);
+        const nextPageCursor = data.nextCursor ?? null;
+
         setPosts(filteredItems);
+        setNextCursor(nextPageCursor);
+        setHasLoadedAllEvaluations(nextPageCursor === null);
         setCurrentIndex(0);
       } catch (err) {
-        const message = err instanceof Error ? err.message : '평가 목록을 불러오지 못했습니다.';
-        setError(message);
-
-        if (
-          message.includes('Unauthorized') ||
-          message.includes('로그인이 필요합니다') ||
-          message.includes('유효하지 않거나 만료된 토큰')
-        ) {
-          clearAuthTokens();
-          navigate('/login');
+        if (!cancelled) {
+          handleEvaluationLoadError(err, '평가 목록을 불러오지 못했습니다.');
         }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     void loadEvaluations();
-  }, [navigate]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchEvaluationPage, handleEvaluationLoadError]);
+
+  const loadMoreEvaluations = useCallback(async () => {
+    if (loadingNextPageRef.current || hasLoadedAllEvaluations || nextCursor === null) {
+      return;
+    }
+
+    try {
+      loadingNextPageRef.current = true;
+      setLoadingMore(true);
+      setError('');
+
+      const data = await fetchEvaluationPage(nextCursor);
+      const filteredItems = (data.items ?? []).filter((item) => !item.hasVoted);
+      const nextPageCursor = data.nextCursor ?? null;
+
+      setPosts((prev) => {
+        const existingEvaluationIds = new Set(prev.map((post) => post.evaluationId));
+        const uniqueItems = filteredItems.filter(
+          (item) => !existingEvaluationIds.has(item.evaluationId),
+        );
+
+        if (uniqueItems.length === 0) {
+          return prev;
+        }
+
+        return [...prev, ...uniqueItems];
+      });
+
+      setNextCursor(nextPageCursor);
+      setHasLoadedAllEvaluations(nextPageCursor === null);
+    } catch (err) {
+      handleEvaluationLoadError(err, '다음 평가 목록을 불러오지 못했습니다.');
+    } finally {
+      loadingNextPageRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [fetchEvaluationPage, handleEvaluationLoadError, hasLoadedAllEvaluations, nextCursor]);
+
+  useEffect(() => {
+    if (loading || loadingMore || hasLoadedAllEvaluations || nextCursor === null) {
+      return;
+    }
+
+    const isNearLastLoadedPost = posts.length > 0 && currentIndex >= Math.max(0, posts.length - 2);
+
+    if (isEmptyLastPage || isNearLastLoadedPost) {
+      void loadMoreEvaluations();
+    }
+  }, [
+    currentIndex,
+    hasLoadedAllEvaluations,
+    isEmptyLastPage,
+    loadMoreEvaluations,
+    loading,
+    loadingMore,
+    nextCursor,
+    posts.length,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -372,11 +464,15 @@ const EvaluationZone: React.FC = () => {
 
   const helperMessage = error
     ? error
-    : isEmptyLastPage
-      ? posts.length === 0
-        ? '현재 평가할 게시글이 없습니다. 이 페이지가 마지막 평가존 페이지예요.'
-        : '더 이상 평가할 게시글이 없습니다. 이 페이지가 마지막 평가존 페이지예요.'
-      : '';
+    : loadingMore && isEmptyLastPage
+      ? '다음 평가 목록을 불러오는 중...'
+      : isEmptyLastPage
+        ? hasLoadedAllEvaluations
+          ? posts.length === 0
+            ? '현재 평가할 게시글이 없습니다. 이 페이지가 마지막 평가존 페이지예요.'
+            : '더 이상 평가할 게시글이 없습니다. 이 페이지가 마지막 평가존 페이지예요.'
+          : '다음 평가 목록을 불러오는 중...'
+        : '';
 
   if (loading) {
     return (

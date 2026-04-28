@@ -14,7 +14,15 @@
 .content {
   @apply relative bg-white overflow-hidden;
   width: var(--app-width, 375px);
-  min-height: 1460px;
+  min-height: var(--signup-content-height, 1324px);
+}
+
+.contentDefault {
+  --signup-content-height: 1324px;
+}
+
+.contentExpanded {
+  --signup-content-height: 1468px;
 }
 
 .decorationImage {
@@ -528,8 +536,12 @@
   }
 }
 
-.socialContent {
-  min-height: 1390px;
+.socialContent.contentDefault {
+  --signup-content-height: 1200px;
+}
+
+.socialContent.contentExpanded {
+  --signup-content-height: 1348px;
 }
 
 .socialForm .passwordGroup {

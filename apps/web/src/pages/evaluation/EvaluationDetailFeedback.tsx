@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Bookmark, Siren, Tag, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { Tag, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type {
   CreateFeedbackResponse,
@@ -11,15 +10,11 @@ import type {
 } from '@codinator/contracts';
 import {
   clearAuthTokens,
-  fetchMyBookmarkMap,
   fetcher,
   getAuthHeaders,
   isAuthError,
-  subscribeBookmarkUpdated,
-  togglePostBookmark,
   resolveAssetUrl,
 } from '../../lib/api';
-import Reports from '../../components/Reports';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
 import styles from './EvaluationDetailFeedback.module.css';
 
@@ -460,9 +455,6 @@ function EvaluationDetailFeedbackContent({
   const [detailLoading, setDetailLoading] = useState(true);
   const [tagLoading, setTagLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [bookmarkLoading, setBookmarkLoading] = useState(false);
-  const [isBookmarked, setIsBookmarked] = useState(false);
-  const [reportOpen, setReportOpen] = useState(false);
   const [detailError, setDetailError] = useState('');
   const [tagError, setTagError] = useState('');
 
@@ -473,14 +465,9 @@ function EvaluationDetailFeedbackContent({
   const requestDetail = useCallback(async () => {
     if (!postId) throw new Error('게시글 정보가 없습니다.');
 
-    const [response, bookmarkMap] = await Promise.all([
-      fetcher<GetEvaluationPostDetailResponse>(`/evaluations/posts/${postId}`, {
-        headers: getAuthHeaders(),
-      }),
-      fetchMyBookmarkMap(),
-    ]);
-
-    return { response, bookmarkMap };
+    return fetcher<GetEvaluationPostDetailResponse>(`/evaluations/posts/${postId}`, {
+      headers: getAuthHeaders(),
+    });
   }, [postId]);
 
   const requestDetailWithRetry = useCallback(async () => {
@@ -530,10 +517,9 @@ function EvaluationDetailFeedbackContent({
       setDetailLoading(true);
       setDetailError('');
 
-      const payload = await requestDetailWithRetry();
+      const response = await requestDetailWithRetry();
 
-      setData(payload.response);
-      setIsBookmarked(Boolean(payload.bookmarkMap[postId]));
+      setData(response);
     } catch (err) {
       const message = err instanceof Error ? err.message : '평가 상세를 불러오지 못했습니다.';
       setData(null);
@@ -598,47 +584,9 @@ function EvaluationDetailFeedbackContent({
   }, [postId, voteId, voteChoice]);
 
   useEffect(() => {
-    if (!postId) return;
-
-    const unsubscribe = subscribeBookmarkUpdated((detail) => {
-      if (!detail || detail.postId !== postId) return;
-      setIsBookmarked(detail.bookmarked);
-    });
-
-    return unsubscribe;
-  }, [postId]);
-
-  useEffect(() => {
     if (!onHeroImageChange) return;
     onHeroImageChange(getPrimaryEvaluationImageUrl(data));
   }, [data, onHeroImageChange]);
-
-  const handleToggleBookmark = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    if (!postId || bookmarkLoading) return;
-
-    const previous = isBookmarked;
-    setBookmarkLoading(true);
-    setIsBookmarked(!previous);
-
-    try {
-      const nextValue = await togglePostBookmark(postId, previous);
-      setIsBookmarked(nextValue);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : '북마크 처리에 실패했습니다.';
-      setIsBookmarked(previous);
-
-      if (isAuthError(message)) {
-        clearAuthTokens();
-        navigate('/login');
-        return;
-      }
-
-      window.alert(message);
-    } finally {
-      setBookmarkLoading(false);
-    }
-  };
 
   const handleKeywordClick = (id: number) => {
     if (submitting || savedKeywordIds.length > 0) return;
@@ -717,32 +665,6 @@ function EvaluationDetailFeedbackContent({
           <div className={styles.sheetHeaderCopy}>
             <div className={styles.titleRow}>
               <h1 className={styles.mainTitle}>컨텐츠</h1>
-              <div className={styles.sheetActions}>
-                <motion.button
-                  type="button"
-                  className={`${styles.miniActionButton} ${styles.bookmarkActionButton}`}
-                  onClick={handleToggleBookmark}
-                  aria-label={isBookmarked ? '북마크 해제' : '북마크 추가'}
-                  disabled={bookmarkLoading}
-                  whileTap={{ scale: 0.82, y: 1 }}
-                  transition={{ type: 'spring', stiffness: 520, damping: 24 }}
-                >
-                  <Bookmark
-                    size={11}
-                    strokeWidth={2.1}
-                    className={isBookmarked ? styles.bookmarkFilled : styles.bookmarkDefault}
-                    fill={isBookmarked ? 'currentColor' : 'none'}
-                  />
-                </motion.button>
-                <button
-                  type="button"
-                  className={`${styles.miniActionButton} ${styles.reportActionButton}`}
-                  aria-label="신고"
-                  onClick={() => setReportOpen(true)}
-                >
-                  <Siren size={11} strokeWidth={2.1} />
-                </button>
-              </div>
             </div>
             <p className={styles.contentText}>{postDisplayText}</p>
           </div>
@@ -898,14 +820,6 @@ function EvaluationDetailFeedbackContent({
 
         {detailError ? <p className={styles.feedbackErrorText}>{detailError}</p> : null}
       </div>
-
-      <Reports
-        isOpen={reportOpen}
-        onClose={() => setReportOpen(false)}
-        defaultTab="post"
-        postTarget={{ id: postId ?? 0, displayText: postDisplayText }}
-        allowUserReport={false}
-      />
     </>
   );
 }
