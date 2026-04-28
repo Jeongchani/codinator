@@ -35,6 +35,17 @@ export interface SocialCodeExchangeResponse {
    * 이후 POST /auth/social/complete-profile 의 providerToken 필드로 그대로 사용.
    */
   providerToken: string;
-  /** false = 기존 회원 → complete-profile 바로 호출 가능. true = 신규 회원 → 프로필 입력 필요 */
+  /** false = 기존 회원 / true = 신규 회원. canProceed=false 이면 진행 불가 */
   isNewUser: boolean;
+  /**
+   * true: complete-profile 단계로 진행 가능.
+   * false: 진행 불가 — reason 을 확인하여 적절한 안내 표시.
+   * SocialLoginResponse 와 동일한 의미.
+   */
+  canProceed: boolean;
+  /**
+   * canProceed=false 일 때만 설정.
+   * SocialLoginResponse.reason 과 동일한 값 집합.
+   */
+  reason?: 'ACCOUNT_DELETED' | 'ACCOUNT_SUSPENDED' | 'EMAIL_LINK_BLOCKED';
 }
