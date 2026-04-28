@@ -274,6 +274,32 @@ export class RankingsService {
       ...(params.cursor !== undefined ? { id: { lt: params.cursor } } : {}),
     };
 
+    // 상세 바텀시트에 필요한 전체 include (author / keywords / outfitItems / evaluation+feedbacks)
+    const detailInclude = {
+      author: { select: { id: true, nickname: true } },
+      images: {
+        orderBy: IMAGE_ORDER_BY,
+        take: 1,
+        include: POST_IMAGE_INCLUDE,
+      },
+      postKeywords: {
+        orderBy: POST_KEYWORD_ORDER_BY,
+        include: { keyword: true },
+      },
+      outfitItems: { orderBy: OUTFIT_ORDER_BY },
+      evaluation: {
+        include: {
+          votes: {
+            include: {
+              feedbacks: {
+                include: { tag: true },
+              },
+            },
+          },
+        },
+      },
+    } as const;
+
     // 4. 개인화 쿼리 (keyword 필터) 또는 인기 fallback
     const posts = await this.prisma.post.findMany({
       where: {
@@ -295,18 +321,7 @@ export class RankingsService {
         { id: 'desc' },
       ],
       take: limit + 1,
-      include: {
-        images: {
-          orderBy: IMAGE_ORDER_BY,
-          take: 1,
-          include: POST_IMAGE_INCLUDE,
-        },
-        evaluation: {
-          include: {
-            votes: { select: { choice: true } },
-          },
-        },
-      },
+      include: detailInclude,
     });
 
     // 5. 개인화 결과가 부족하면 인기 게시글로 보충 (신규 사용자 fallback)
@@ -329,10 +344,7 @@ export class RankingsService {
         },
         orderBy: [{ postSearchIndex: { likeRatio: 'desc' } }, { id: 'desc' }],
         take: limit + 1 - posts.length,
-        include: {
-          images: { orderBy: IMAGE_ORDER_BY, take: 1, include: POST_IMAGE_INCLUDE },
-          evaluation: { include: { votes: { select: { choice: true } } } },
-        },
+        include: detailInclude,
       });
       finalPosts = [...posts, ...fallbackPosts];
     }
@@ -355,6 +367,14 @@ export class RankingsService {
           dislikeCount,
           totalCount,
           likeRate,
+          author: {
+            userId: post.author.id,
+            nickname: post.author.nickname,
+          },
+          content: post.content,
+          keywords: mapPostKeywords(post.postKeywords),
+          outfitItems: mapOutfitItems(post.outfitItems),
+          feedbackSummary: buildFeedbackSummary(votes),
         };
       }),
       nextCursor: hasMore ? (pageItems[pageItems.length - 1]?.id ?? null) : null,
