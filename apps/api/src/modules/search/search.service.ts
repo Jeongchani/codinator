@@ -30,6 +30,16 @@ import {
 } from '../posts/common/post-presenter.util';
 import { ImageIndexingService } from '../ai/image-indexing.service';
 
+// ── AI 이미지 검색 유사도 최소 기준 ─────────────────────────────────────────────
+/**
+ * 이미지 벡터 검색 결과의 최소 허용 유사도 (cosine similarity 기준).
+ * similarity = 1 - cosine_distance = 1 - (iv.vector <=> queryVector)
+ *
+ * 이 값 미만인 결과는 FULL_OUTFIT / SINGLE_ITEM / auto fallback 모든 경로에서 제외.
+ * 0.3 미만 결과는 후보에 있었더라도 절대 최종 응답에 포함되지 않는다.
+ */
+const IMAGE_SEARCH_MIN_SIMILARITY = 0.3;
+
 // ── Category 정규화: 한국어 UI 값 / AiGarmentCategory / enum 문자열 → GarmentCategory ──
 // DRESS 는 GarmentCategory 에 없으므로 ETC 로 매핑
 const KOREAN_TO_GARMENT_CATEGORY: Record<string, string> = {
@@ -336,6 +346,8 @@ export class SearchService {
     const postMap = new Map(posts.map((post) => [post.id, post]));
 
     const items = pageRows
+      // 서비스 계층 안전 필터: SQL 단계에서 이미 걸러졌지만 방어적으로 재확인
+      .filter((row) => Number(row.similarity) >= IMAGE_SEARCH_MIN_SIMILARITY)
       .map((row) => {
         const post = postMap.get(row.postId);
         if (!post) return null;
@@ -526,6 +538,7 @@ export class SearchService {
       SELECT "postId", similarity
       FROM ranked_vectors
       WHERE rn = 1
+        AND similarity >= ${IMAGE_SEARCH_MIN_SIMILARITY}
       ORDER BY similarity DESC, "postId" DESC
       LIMIT ${fetchLimit}
       OFFSET ${offset}
