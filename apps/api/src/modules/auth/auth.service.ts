@@ -517,7 +517,7 @@ export class AuthService {
     const verifier = this.socialVerifierFactory.getVerifier(provider);
     const profile = await verifier.verify(dto.providerToken);
 
-    // 기존 소셜 계정 조회
+    // ── 1. 기존 소셜 계정 조회 ─────────────────────────────────────────────
     const socialAccount = await this.prisma.socialAccount.findUnique({
       where: {
         provider_providerUserId: { provider, providerUserId: profile.providerUserId },
@@ -525,31 +525,64 @@ export class AuthService {
       include: { user: { select: { id: true, status: true } } },
     });
 
-    let isNewUser: boolean;
-    let existingUserId: number | undefined;
-
     if (socialAccount) {
-      // DELETED 연결 계정: complete-profile에서 최종 차단 처리
-      isNewUser = socialAccount.user.status === UserStatus.DELETED;
-      existingUserId = isNewUser ? undefined : socialAccount.userId;
-    } else {
-      // P0: 소셜 계정 없음 — providerEmail로 기존 user 확인 (이메일 연동 여부 판단)
-      isNewUser = true;
-      if (profile.providerEmail) {
-        const emailUser = await this.prisma.user.findUnique({
-          where: { email: profile.providerEmail.toLowerCase() },
-          select: { id: true, status: true },
-        });
-        if (emailUser && emailUser.status === UserStatus.ACTIVE) {
-          isNewUser = false;
-          existingUserId = emailUser.id;
-        }
+      const { status } = socialAccount.user;
+      if (status === UserStatus.DELETED) {
+        // 탈퇴 계정 — complete-profile 로 보내도 ForbiddenException 으로 막힘: 여기서 미리 알림
+        return { isNewUser: false, canProceed: false, reason: 'ACCOUNT_DELETED' };
       }
+      if (status === UserStatus.SUSPENDED) {
+        return { isNewUser: false, canProceed: false, reason: 'ACCOUNT_SUSPENDED' };
+      }
+      // ACTIVE: 기존 연결 계정 — complete-profile 바로 호출 가능
+      return { isNewUser: false, canProceed: true };
     }
 
+    // ── 2. 소셜 계정 없음: email 없으면 가입/연동 불가 (정책 C) ───────────
+    if (!profile.providerEmail) {
+      throw new BadRequestException(
+        '소셜 제공자가 이메일을 반환하지 않아 가입/연동을 진행할 수 없습니다. ' +
+        '소셜 앱 설정에서 이메일 제공에 동의 후 다시 시도해 주세요.',
+      );
+    }
 
-    return { isNewUser };
+    const providerEmailLower = profile.providerEmail.toLowerCase();
 
+    // ── 3. emailVerified === true: 기존 회원 자동 연동 후보 판정 (정책 A/D) ─
+    if (profile.emailVerified === true) {
+      const emailUser = await this.prisma.user.findUnique({
+        where: { email: providerEmailLower },
+        select: { id: true, status: true },
+      });
+      if (emailUser) {
+        if (emailUser.status === UserStatus.DELETED) {
+          return { isNewUser: false, canProceed: false, reason: 'ACCOUNT_DELETED' };
+        }
+        if (emailUser.status === UserStatus.SUSPENDED) {
+          return { isNewUser: false, canProceed: false, reason: 'ACCOUNT_SUSPENDED' };
+        }
+        // ACTIVE: complete-profile 에서 소셜 계정 자동 연동 후 로그인
+        return { isNewUser: false, canProceed: true };
+      }
+      // 동일 이메일 회원 없음 → 신규 가입 가능
+      return { isNewUser: true, canProceed: true };
+    }
+
+    // ── 4. emailVerified === null/false (정책 D) ───────────────────────────
+    //   Naver: API 미제공(null) / Google·Kakao: false
+    //   → auto-link 불가. 하지만 동일 이메일 계정이 있으면 complete-profile 에서도 막힘.
+    //   → 미리 확인하여 프론트가 불필요하게 신규가입 화면으로 가지 않도록 알림.
+    const emailUser = await this.prisma.user.findUnique({
+      where: { email: providerEmailLower },
+      select: { id: true, status: true },
+    });
+    if (emailUser) {
+      // 어떤 status 든 auto-link 불가 + 신규 가입도 이메일 중복으로 불가
+      return { isNewUser: false, canProceed: false, reason: 'EMAIL_LINK_BLOCKED' };
+    }
+
+    // 동일 이메일 계정 없음 + emailVerified 불명확 → 신규 가입 허용
+    return { isNewUser: true, canProceed: true };
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -565,7 +598,17 @@ export class AuthService {
     const verifier = this.socialVerifierFactory.getVerifier(provider);
     const profile = await verifier.verify(dto.providerToken);
 
-    // 기존 소셜 계정 조회
+    // 정책 C: provider email 없음 → 가입/연동 금지 (fake email 생성 절대 금지)
+    if (!profile.providerEmail) {
+      throw new BadRequestException(
+        '소셜 제공자가 이메일을 반환하지 않아 가입/연동을 진행할 수 없습니다. ' +
+        '소셜 앱 설정에서 이메일 제공에 동의 후 다시 시도해 주세요.',
+      );
+    }
+
+    const providerEmail = profile.providerEmail.toLowerCase();
+
+    // 기존 소셜 계정 조회 (이미 연결된 경우)
     const socialAccount = await this.prisma.socialAccount.findUnique({
       where: {
         provider_providerUserId: { provider, providerUserId: profile.providerUserId },
@@ -573,21 +616,20 @@ export class AuthService {
       include: { user: { select: { id: true, email: true, nickname: true, status: true } } },
     });
 
-    // P0: 소셜 계정은 있으나 연결된 user가 DELETED인 경우 → 재가입 차단
-    if (socialAccount && socialAccount.user.status === UserStatus.DELETED) {
-      throw new ForbiddenException(
-        '탈퇴 처리된 계정입니다. 재가입이 불가합니다. 고객센터에 문의해 주세요.',
-      );
-    }
-
-    // ── 기존 회원 (소셜 계정 정상 연결) ──────────────────────────────────
     if (socialAccount) {
-      const user = socialAccount.user;
+      // 연결된 user 가 DELETED → 재가입 차단
+      if (socialAccount.user.status === UserStatus.DELETED) {
+        throw new ForbiddenException(
+          '탈퇴 처리된 계정입니다. 재가입이 불가합니다. 고객센터에 문의해 주세요.',
+        );
+      }
 
-      if (user.status === UserStatus.SUSPENDED) {
+      if (socialAccount.user.status === UserStatus.SUSPENDED) {
         throw new UnauthorizedException('사용할 수 없는 계정입니다. 고객센터에 문의해 주세요.');
       }
 
+      // ACTIVE: 기존 연결 계정 로그인
+      const user = socialAccount.user;
       await this.assertNoActiveLoginSanction(user.id);
 
       // rememberMe=true → refresh token 발급 + user_sessions 저장 // RememberMe
@@ -610,40 +652,57 @@ export class AuthService {
       };
     }
 
-    // P0: 소셜 계정 없음 — providerEmail 기준으로 기존 user 조회 (이메일 연동)
-    if (profile.providerEmail) {
-      const emailUser = await this.prisma.user.findUnique({
-        where: { email: profile.providerEmail.toLowerCase() },
-        select: { id: true, email: true, nickname: true, status: true },
+    // ── 소셜 계정 없음: email 기준 자동 연동 또는 신규 가입 판단 ──────────
+    //
+    // 정책 A: emailVerified === true 일 때만 auto-link 허용
+    // 정책 D: emailVerified null/false → auto-link 금지
+    //   - Naver: API 미제공(null) → auto-link 불가
+    //   - Google/Kakao: false → auto-link 불가
+    const canAutoLink = profile.emailVerified === true;
+
+    const emailUser = await this.prisma.user.findUnique({
+      where: { email: providerEmail },
+      select: { id: true, email: true, nickname: true, status: true },
+    });
+
+    if (emailUser) {
+      if (!canAutoLink) {
+        // 정책 D: email verified 불명확 → 자동 연동 금지, 명확한 에러 반환
+        throw new BadRequestException(
+          '이 이메일로 가입된 계정이 이미 있지만, 소셜 이메일 인증 상태를 확인할 수 없어 자동 연동이 불가합니다. ' +
+          '이메일/비밀번호로 로그인 후 소셜 계정 연동을 진행해 주세요.',
+        );
+      }
+
+      // canAutoLink === true: 기존 회원에 소셜 계정 연결
+      if (emailUser.status === UserStatus.DELETED) {
+        throw new ForbiddenException(
+          '탈퇴 처리된 계정의 이메일과 동일합니다. 고객센터에 문의해 주세요.',
+        );
+      }
+      if (emailUser.status === UserStatus.SUSPENDED) {
+        throw new UnauthorizedException('사용할 수 없는 계정입니다. 고객센터에 문의해 주세요.');
+      }
+
+      // ACTIVE: 소셜 계정 연결 (기존 passwordHash 절대 덮어쓰지 않음) // 정책 A
+      await this.assertNoActiveLoginSanction(emailUser.id);
+
+      await this.prisma.socialAccount.create({
+        data: {
+          userId: emailUser.id,
+          provider,
+          providerUserId: profile.providerUserId,
+          providerEmail,
+        },
       });
 
-      if (emailUser) {
-        if (emailUser.status === UserStatus.DELETED) {
-          throw new ForbiddenException(
-            '탈퇴 처리된 계정의 이메일과 동일합니다. 고객센터에 문의해 주세요.',
-          );
-        }
-        if (emailUser.status === UserStatus.SUSPENDED) {
-          throw new UnauthorizedException('사용할 수 없는 계정입니다. 고객센터에 문의해 주세요.');
-        }
-
-        // ACTIVE 기존 회원 → 소셜 계정 연결 후 세션 발급 (새 user 생성 없음) // P0
-        await this.assertNoActiveLoginSanction(emailUser.id);
-
-        await this.prisma.socialAccount.create({
-          data: {
-            userId: emailUser.id,
-            provider,
-            providerUserId: profile.providerUserId,
-            providerEmail: profile.providerEmail ?? null,
-          },
-        });
-
+      // rememberMe 준수 // RememberMe
+      if (dto.rememberMe === true) {
         const { accessToken, refreshToken } = await this.createSession(
           emailUser.id,
           emailUser.email,
+          meta,
         );
-
         return {
           accessToken,
           refreshToken,
@@ -651,14 +710,35 @@ export class AuthService {
           isNewUser: false,
         };
       }
+
+      const accessToken = this.authTokenService.signAccessToken(emailUser.id, emailUser.email);
+      return {
+        accessToken,
+        user: { id: emailUser.id, email: emailUser.email, nickname: emailUser.nickname },
+        isNewUser: false,
+      };
     }
 
-    // ── 신규 회원 ─────────────────────────────────────────────────────────
-    const { nickname, birthDate, gender: genderStr, phoneNumber: rawPhone, phoneVerificationToken } = dto;
+    // ── 신규 회원 가입 (동일 이메일 기존 회원 없음) ───────────────────────
+    // 정책 B: password 필수
+    const {
+      nickname,
+      birthDate,
+      gender: genderStr,
+      phoneNumber: rawPhone,
+      phoneVerificationToken,
+      password,
+    } = dto;
 
-    if (!nickname || !birthDate || !genderStr || !rawPhone || !phoneVerificationToken) {
+    if (!nickname || !birthDate || !genderStr || !rawPhone || !phoneVerificationToken || !password) {
       throw new BadRequestException(
-        '신규 회원 가입 시 nickname, birthDate, gender, phoneNumber, phoneVerificationToken 은 필수입니다.',
+        '신규 회원 가입 시 nickname, birthDate, gender, phoneNumber, phoneVerificationToken, password 는 필수입니다.',
+      );
+    }
+
+    if (!isValidPassword(password)) {
+      throw new BadRequestException(
+        '비밀번호는 8자 이상이며 영문, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.',
       );
     }
 
@@ -708,21 +788,19 @@ export class AuthService {
     if (existingNickname) throw new ConflictException('이미 사용 중인 닉네임입니다.');
     if (existingPhone) throw new ConflictException('이미 가입된 전화번호입니다.');
 
-    // 소셜 전용 계정: provider 제공 이메일 우선, 없으면 결정론적 합성 이메일
-    const email =
-      profile.providerEmail ??
-      `${profile.providerUserId.slice(0, 30)}@${provider.toLowerCase()}.social`;
+    // 정책 B: 신규 소셜가입도 passwordHash 저장
+    const passwordHash = await bcrypt.hash(password, 10);
 
     // 트랜잭션: 유저 생성 + 소셜 계정 연결 + 전화번호 인증 USED 처리
     const user = await this.prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
         data: {
-          email,
+          email: providerEmail, // provider 제공 이메일 사용 (fake email 금지)
           nickname: trimmedNickname,
+          passwordHash, // 신규 소셜가입 사용자도 앱 전용 비밀번호 저장
           birthDate: parsedBirthDate,
           gender,
           phoneNumber,
-          // passwordHash 없음 — 소셜 전용 계정
         },
       });
 
@@ -731,7 +809,7 @@ export class AuthService {
           userId: created.id,
           provider,
           providerUserId: profile.providerUserId,
-          providerEmail: profile.providerEmail ?? null,
+          providerEmail,
         },
       });
 
@@ -845,13 +923,13 @@ export class AuthService {
     // 1) 인가코드 → access token 교환 // SocialCodeExchange
     const providerToken = await this.fetchKakaoAccessToken(dto.code, dto.redirectUri);
 
-    // 2) 기존 socialLogin 로직 재사용 (계정 조회 + isNewUser 판정) // SocialCodeExchange
-    const { isNewUser } = await this.socialLogin({
+    // 2) 기존 socialLogin 로직 재사용 (계정 조회 + isNewUser/canProceed 판정) // SocialCodeExchange
+    const { isNewUser, canProceed, reason } = await this.socialLogin({
       provider: SocialProvider.KAKAO,
       providerToken,
     });
 
-    return { providerToken, isNewUser };
+    return { providerToken, isNewUser, canProceed, reason };
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -863,13 +941,13 @@ export class AuthService {
     // 1) 인가코드 → access token 교환 // SocialCodeExchange
     const providerToken = await this.fetchNaverAccessToken(dto.code, dto.state, dto.redirectUri);
 
-    // 2) 기존 socialLogin 로직 재사용 (계정 조회 + isNewUser 판정) // SocialCodeExchange
-    const { isNewUser } = await this.socialLogin({
+    // 2) 기존 socialLogin 로직 재사용 (계정 조회 + isNewUser/canProceed 판정) // SocialCodeExchange
+    const { isNewUser, canProceed, reason } = await this.socialLogin({
       provider: SocialProvider.NAVER,
       providerToken,
     });
 
-    return { providerToken, isNewUser };
+    return { providerToken, isNewUser, canProceed, reason };
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -925,18 +1003,9 @@ export class AuthService {
 
   /**
    * Kakao 인가코드 → access token 교환.
-   * real verify OFF 시 결정론적 stub token 반환 (기존 KakaoSocialVerifier stub 과 호환).
+   * 항상 실제 Kakao 인증 서버로 교환 요청 (mock/stub 없음).
    */ // SocialCodeExchange
   private async fetchKakaoAccessToken(code: string, redirectUri: string): Promise<string> {
-    const realVerifyEnabled =
-      process.env.KAKAO_REAL_VERIFY_ENABLED === 'true' ||
-      process.env.SOCIAL_LOGIN_REAL_VERIFY_ENABLED === 'true';
-
-    if (!realVerifyEnabled) {
-      // stub: code 해시 기반 결정론적 mock token → KakaoSocialVerifier.stubProfile() 과 호환
-      return `stub_kakao_${createHash('sha256').update(code).digest('hex').slice(0, 20)}`;
-    }
-
     const clientId = process.env.KAKAO_REST_API_KEY;
     if (!clientId) {
       throw new BadGatewayException('KAKAO_REST_API_KEY 환경변수가 설정되지 않았습니다.');
@@ -981,21 +1050,13 @@ export class AuthService {
 
   /**
    * Naver 인가코드 → access token 교환.
-   * real verify OFF 시 결정론적 stub token 반환 (기존 NaverSocialVerifier stub 과 호환).
+   * 항상 실제 Naver 인증 서버로 교환 요청 (mock/stub 없음).
    */ // SocialCodeExchange
   private async fetchNaverAccessToken(
     code: string,
     state: string,
     redirectUri: string,
   ): Promise<string> {
-    const realVerifyEnabled =
-      process.env.NAVER_REAL_VERIFY_ENABLED === 'true' ||
-      process.env.SOCIAL_LOGIN_REAL_VERIFY_ENABLED === 'true';
-
-    if (!realVerifyEnabled) {
-      return `stub_naver_${createHash('sha256').update(code).digest('hex').slice(0, 20)}`;
-    }
-
     const clientId = process.env.NAVER_CLIENT_ID;
     const clientSecret = process.env.NAVER_CLIENT_SECRET;
     if (!clientId || !clientSecret) {

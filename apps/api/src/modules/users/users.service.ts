@@ -62,6 +62,8 @@ export class UsersService {
         role: true,
         status: true,
         createdAt: true,
+        passwordHash: true,
+        socialAccounts: { select: { provider: true } },
       },
     });
 
@@ -80,6 +82,10 @@ export class UsersService {
       role: user.role,
       status: user.status,
       createdAt: user.createdAt.toISOString(),
+      /** 비밀번호 설정 여부 — 레거시 소셜 전용 계정은 false */
+      hasPassword: !!user.passwordHash,
+      /** 연결된 소셜 제공자 목록 — 프론트 계정 관리 UI 분기용 */
+      socialProviders: user.socialAccounts.map((sa) => sa.provider),
     };
   }
 
