@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
-import type { GetPersonalizedRankingsResponse, RankingPeriod } from '@codinator/contracts';
+import { useNavigate } from 'react-router-dom';
+import type { GetPersonalizedRankingsResponse } from '@codinator/contracts';
 import {
-  RankingDetailSheetContent,
+  PostDetailBottomSheetContent,
   type PostDetailSheetData,
 } from '../../components/postdetail/PostDetailBottomSheet';
 import detailStyles from './RankingDetail.module.css';
@@ -13,11 +14,9 @@ type Props = {
   hideFeedLink?: boolean;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+type StructuredFeedbackRow = PostDetailSheetData['structuredFeedback']['likeRows'][number];
 
-function toSafeNumber(value: unknown): number | null {
+function toSafeNumber(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
 
   if (typeof value === 'string') {
@@ -25,174 +24,138 @@ function toSafeNumber(value: unknown): number | null {
     if (Number.isFinite(parsed)) return parsed;
   }
 
-  return null;
+  return 0;
 }
 
-function toSafeString(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
+function toSafeText(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
 }
 
-function normalizeRankingPeriod(value: unknown): RankingPeriod | null {
+function clampPercent(value: number) {
+  return Math.min(Math.max(value, 0), 100);
+}
+
+function normalizeVoteChoice(value: unknown): 'LIKE' | 'DISLIKE' | null {
   const text = String(value ?? '').toUpperCase();
 
-  if (text === 'WEEKLY') return 'WEEKLY';
-  if (text === 'MONTHLY') return 'MONTHLY';
+  if (text.includes('DISLIKE') || text.includes('NEGATIVE')) return 'DISLIKE';
+  if (text.includes('LIKE') && !text.includes('UNLIKE')) return 'LIKE';
 
   return null;
 }
 
-function extractAuthorUserId(item: PersonalizedItem): number | null {
-  const raw = item as unknown as Record<string, unknown>;
-  const author = isRecord(raw.author) ? raw.author : null;
+function buildStructuredFeedback(
+  item: PersonalizedItem,
+): PostDetailSheetData['structuredFeedback'] {
+  const feedbackSummary = Array.isArray(item.feedbackSummary) ? item.feedbackSummary : [];
+  const likeRows: StructuredFeedbackRow[] = [];
+  const dislikeRows: StructuredFeedbackRow[] = [];
+  let likeTotal = 0;
+  let dislikeTotal = 0;
 
-  return (
-    toSafeNumber(author?.userId) ??
-    toSafeNumber(author?.id) ??
-    toSafeNumber(raw.authorUserId) ??
-    toSafeNumber(raw.userId)
-  );
-}
+  feedbackSummary.forEach((feedback) => {
+    const label = toSafeText(feedback.label);
+    const side = normalizeVoteChoice(feedback.voteChoice);
+    const count = toSafeNumber(feedback.count);
 
-function extractAuthorNickname(item: PersonalizedItem): string {
-  const raw = item as unknown as Record<string, unknown>;
-  const author = isRecord(raw.author) ? raw.author : null;
+    if (!label || !side || count <= 0) return;
 
-  return (
-    toSafeString(author?.nickname) ??
-    toSafeString(author?.name) ??
-    toSafeString(raw.authorNickname) ??
-    toSafeString(raw.nickname) ??
-    '닉네임'
-  );
-}
+    const row = {
+      label,
+      count,
+      percent: 0,
+      side,
+    } satisfies StructuredFeedbackRow;
 
-function extractContentText(item: PersonalizedItem): string {
-  const raw = item as unknown as Record<string, unknown>;
+    if (side === 'LIKE') {
+      likeRows.push(row);
+      likeTotal += count;
+      return;
+    }
 
-  return (
-    toSafeString(raw.content) ??
-    toSafeString(raw.caption) ??
-    toSafeString(raw.description) ??
-    '코디 설명이 없습니다.'
-  );
-}
-
-function extractKeywordLabels(item: PersonalizedItem): string[] {
-  const raw = item as unknown as Record<string, unknown>;
-  const candidates = [raw.keywords, raw.keywordLabels, raw.tags, raw.postKeywords];
-  const labels: string[] = [];
-
-  candidates.forEach((candidate) => {
-    if (!Array.isArray(candidate)) return;
-
-    candidate.forEach((keyword) => {
-      if (typeof keyword === 'string' && keyword.trim()) {
-        labels.push(keyword.trim());
-        return;
-      }
-
-      if (!isRecord(keyword)) return;
-
-      const label =
-        toSafeString(keyword.label) ??
-        toSafeString(keyword.name) ??
-        toSafeString(keyword.keyword) ??
-        toSafeString(keyword.keywordLabel);
-
-      if (label) labels.push(label);
-    });
+    dislikeRows.push(row);
+    dislikeTotal += count;
   });
 
-  return [...new Set(labels)].slice(0, 5);
+  return {
+    likeRows: likeRows
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+      .map((row) => ({
+        ...row,
+        percent: likeTotal > 0 ? Math.round((row.count / likeTotal) * 100) : 0,
+      })),
+    dislikeRows: dislikeRows
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+      .map((row) => ({
+        ...row,
+        percent: dislikeTotal > 0 ? Math.round((row.count / dislikeTotal) * 100) : 0,
+      })),
+  };
 }
 
-function extractOutfitItems(item: PersonalizedItem): PostDetailSheetData['outfitItems'] {
-  const raw = item as unknown as Record<string, unknown>;
+function buildPersonalizedSheetData(item: PersonalizedItem): PostDetailSheetData {
+  const likeCount = toSafeNumber(item.likeCount);
+  const dislikeCount = toSafeNumber(item.dislikeCount);
+  const responseTotalCount = toSafeNumber(item.totalCount);
+  const totalCount = responseTotalCount > 0 ? responseTotalCount : likeCount + dislikeCount;
+  const rawLikeRate = toSafeNumber(item.likeRate);
 
-  if (!Array.isArray(raw.outfitItems)) return [];
-
-  return raw.outfitItems as PostDetailSheetData['outfitItems'];
-}
-
-function extractRankingPeriod(item: PersonalizedItem): RankingPeriod | undefined {
-  const raw = item as unknown as Record<string, unknown>;
-  const candidates = [raw.rankingPeriod, raw.period, raw.primaryPeriod];
-
-  for (const candidate of candidates) {
-    const period = normalizeRankingPeriod(candidate);
-    if (period) return period;
-  }
-
-  const arrayCandidates = [raw.rankingPeriods, raw.periods];
-
-  for (const candidate of arrayCandidates) {
-    if (!Array.isArray(candidate)) continue;
-
-    const weekly = candidate.some((value) => normalizeRankingPeriod(value) === 'WEEKLY');
-    if (weekly) return 'WEEKLY';
-
-    const monthly = candidate.some((value) => normalizeRankingPeriod(value) === 'MONTHLY');
-    if (monthly) return 'MONTHLY';
-  }
-
-  return undefined;
-}
-
-function buildPersonalizedFallbackData(item: PersonalizedItem): PostDetailSheetData {
-  const raw = item as unknown as Record<string, unknown>;
-  const likeCount = toSafeNumber(raw.likeCount) ?? 0;
-  const dislikeCount = toSafeNumber(raw.dislikeCount) ?? 0;
-  const totalCountFromResponse = toSafeNumber(raw.totalCount);
-  const totalCount = totalCountFromResponse ?? likeCount + dislikeCount;
-  const rawLikeRate = toSafeNumber(raw.likeRate) ?? toSafeNumber(raw.likeRatio);
   const likePercent =
     totalCount > 0
       ? Math.round((likeCount / totalCount) * 100)
-      : rawLikeRate !== null
+      : rawLikeRate > 0
         ? Math.round(rawLikeRate <= 1 ? rawLikeRate * 100 : rawLikeRate)
         : 0;
-  const safeLikePercent = Math.min(Math.max(likePercent, 0), 100);
+  const safeLikePercent = clampPercent(likePercent);
 
   return {
     postId: item.postId,
-    authorUserId: extractAuthorUserId(item),
-    authorNickname: extractAuthorNickname(item),
-    contentText: extractContentText(item),
-    keywordChips: extractKeywordLabels(item),
+    authorUserId: item.author?.userId ?? null,
+    authorNickname: toSafeText(item.author?.nickname) || '닉네임',
+    contentText: toSafeText(item.content) || '코디 설명이 없습니다.',
+    keywordChips: (Array.isArray(item.keywords) ? item.keywords : [])
+      .map((keyword) => toSafeText(keyword.label))
+      .filter(Boolean)
+      .slice(0, 5),
     likeCount,
     dislikeCount,
     totalCount,
     likePercent: safeLikePercent,
-    dislikePercent: totalCount > 0 || rawLikeRate !== null ? 100 - safeLikePercent : 0,
-    structuredFeedback: {
-      likeRows: [],
-      dislikeRows: [],
-    },
-    outfitItems: extractOutfitItems(item),
+    dislikePercent: totalCount > 0 || rawLikeRate > 0 ? 100 - safeLikePercent : 0,
+    structuredFeedback: buildStructuredFeedback(item),
+    outfitItems: (Array.isArray(item.outfitItems)
+      ? item.outfitItems
+      : []) as PostDetailSheetData['outfitItems'],
   };
 }
 
 export default function PersonalizedDetail({ item, hideFeedLink = false }: Props) {
-  const fallbackData = useMemo(() => (item ? buildPersonalizedFallbackData(item) : null), [item]);
+  const navigate = useNavigate();
+  const sheetData = useMemo(() => (item ? buildPersonalizedSheetData(item) : null), [item]);
 
-  if (!item || !fallbackData) {
+  if (!item || !sheetData) {
     return (
       <div className={detailStyles.sheetContent}>개인화 상세 데이터를 불러올 수 없습니다.</div>
     );
   }
 
-  const authorUserId = extractAuthorUserId(item);
-  const period = authorUserId ? extractRankingPeriod(item) : undefined;
+  const handleGoToUserFeed = () => {
+    if (!sheetData.authorUserId) {
+      window.alert('유저 정보를 찾을 수 없습니다.');
+      return;
+    }
+
+    navigate(`/user/${sheetData.authorUserId}/feed`);
+  };
 
   return (
-    <RankingDetailSheetContent
-      postId={item.postId}
-      authorUserId={authorUserId}
-      {...(period ? { period } : {})}
-      initialData={fallbackData}
-      hideFeedLink={hideFeedLink || !authorUserId}
+    <PostDetailBottomSheetContent
+      data={sheetData}
+      loading={false}
+      hideFeedLink={hideFeedLink || !sheetData.authorUserId}
+      onGoToUserFeed={handleGoToUserFeed}
     />
   );
 }

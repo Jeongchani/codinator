@@ -98,6 +98,19 @@ const getSocialLogoImage = (provider: SocialProvider) => {
   return SOCIAL_LOGIN_BUTTONS.find((socialButton) => socialButton.provider === provider)?.logoImage;
 };
 
+const getSocialLoginBlockedMessage = (reason?: string) => {
+  switch (reason) {
+    case 'ACCOUNT_DELETED':
+      return '탈퇴 처리된 계정입니다. 다른 계정으로 로그인해주세요.';
+    case 'ACCOUNT_SUSPENDED':
+      return '정지된 계정입니다. 관리자에게 문의해주세요.';
+    case 'EMAIL_LINK_BLOCKED':
+      return '동일한 이메일로 가입된 계정이 있습니다. 이메일/비밀번호로 로그인한 뒤 소셜 계정 연동을 진행해주세요.';
+    default:
+      return '이 소셜 계정으로는 가입 또는 로그인을 계속 진행할 수 없습니다.';
+  }
+};
+
 const getStringEnv = (key: string): string => {
   const value = import.meta.env[key];
   return typeof value === 'string' ? value.trim() : '';
@@ -163,12 +176,7 @@ export default function Login() {
   const [modalAction, setModalAction] = useState<ModalAction>(null);
   const [modalLogoImage, setModalLogoImage] = useState<string | null>(null);
 
-  const openModal = (
-    title: string,
-    message: string,
-    action?: () => void,
-    logoImage?: string,
-  ) => {
+  const openModal = (title: string, message: string, action?: () => void, logoImage?: string) => {
     setModalTitle(title);
     setModalMessage(message);
     setModalAction(() => action ?? null);
@@ -276,6 +284,16 @@ export default function Login() {
       body: JSON.stringify(loginRequest),
     });
 
+    if (!loginCheck.canProceed) {
+      openModal(
+        '소셜 로그인 실패',
+        getSocialLoginBlockedMessage(loginCheck.reason),
+        undefined,
+        getSocialLogoImage(provider),
+      );
+      return;
+    }
+
     if (loginCheck.isNewUser) {
       moveToSignupForNewSocialAccount(provider, providerToken, rememberMe);
       return;
@@ -349,6 +367,16 @@ export default function Login() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(exchangeBody),
       });
+
+      if (!exchangeResult.canProceed) {
+        openModal(
+          '소셜 로그인 실패',
+          getSocialLoginBlockedMessage(exchangeResult.reason),
+          undefined,
+          getSocialLogoImage(storedState.provider),
+        );
+        return;
+      }
 
       if (exchangeResult.isNewUser) {
         moveToSignupForNewSocialAccount(
@@ -683,9 +711,7 @@ export default function Login() {
           <div className={styles.modalCard}>
             <div
               className={
-                modalLogoImage
-                  ? `${styles.modalIcon} ${styles.modalIconSocial}`
-                  : styles.modalIcon
+                modalLogoImage ? `${styles.modalIcon} ${styles.modalIconSocial}` : styles.modalIcon
               }
             >
               {modalLogoImage ? (
