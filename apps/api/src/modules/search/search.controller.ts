@@ -12,6 +12,7 @@ import {
   ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
+  ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import type { DeleteSearchHistoryResponse, ImageSearchResponse, SearchResponse } from '@codinator/contracts'; // V3 Batch8
 import { AuthTokenService } from '../auth/auth-token.service';
@@ -195,58 +196,125 @@ export class SearchController {
     description: [
       'POST /uploads/search-image 로 업로드한 이미지를 기준으로',
       '공개 가능한 랭킹존 게시글만 vector 유사도 기반으로 검색합니다.',
+      '유사도 0.3 미만 결과는 항상 제외됩니다.',
       '',
-      '**모드 (mode 필드는 선택값)**',
+      '**모드 (mode — 선택값)**',
       '- 생략 시: AI 분석 결과(의류 수·면적·얼굴 감지 여부)를 기반으로 자동 판별합니다.',
-      '  · 복수 의류 감지 또는 얼굴 감지 → FULL_OUTFIT',
-      '  · 단일 의류 + 대면적(areaRatio≥0.6) + 얼굴 없음 → SINGLE_ITEM',
-      '  · 나머지 → FULL_OUTFIT(기본)',
-      '  · 1차 결과가 0건이면 반대 mode로 1회 fallback 재시도합니다.',
-      '- FULL_OUTFIT: 전체 스타일·색감·실루엣 유사도 기반 (OUTFIT 벡터 사용)',
-      '- SINGLE_ITEM: 특정 의류 단품 유사도 기반 (GARMENT 벡터 사용)',
+      '  · 얼굴 없음 + 가장 큰 의류 areaRatio ≥ 0.6 → SINGLE_ITEM',
+      '  · 복수 의류(≥2) 또는 얼굴 감지(≥1) → FULL_OUTFIT',
+      '  · 단일 의류 → SINGLE_ITEM, 의류 없음 → FULL_OUTFIT(기본)',
+      '  · 1차 결과 0건(또는 전부 유사도 0.3 미만)이면 반대 mode로 1회 자동 fallback.',
+      '- FULL_OUTFIT: 전체 착장 스타일·색감·실루엣 유사도 (OUTFIT 벡터)',
+      '- SINGLE_ITEM: 단일 의류 단품 유사도 (GARMENT 벡터)',
       '',
-      '**resolvedMode**: response에 최종 사용된 mode가 반환됩니다.',
+      '**resolvedMode**: 응답에 최종 사용된 mode가 반환됩니다.',
       '',
-      '**필터** — 아래 중 하나 이상 지정 시 교집합 조건으로 적용됩니다.',
+      '**카테고리 필터** (결과 게시글 outfit category 기준)',
+      '- outfitCategories: 허용 값 — TOP / BOTTOM / OUTER / SHOES / BAG / ACCESSORY / ETC',
+      '  한국어(상의/하의/아우터/신발/가방/악세사리/기타)도 허용. DRESS·원피스는 400 오류.',
+      '- garmentCategory: [하위 호환] 단일 값 지정 시 outfitCategories로 병합 처리.',
+      '  ※ query 이미지 벡터 선택에는 영향 없음 — 결과 게시글 필터 전용.',
+      '',
+      '**추가 필터** — 지정 시 교집합 조건으로 적용됩니다.',
       '- periodFrom/periodTo: 게시글 공개 시점(publishedAt) 범위 (ISO 8601)',
       '- likeRatioMin: 0.0~1.0 최소 좋아요 비율',
-      '- keywordIds: 키워드 ID 배열 필터',
+      '- keywordIds: 키워드 ID 배열',
       '- feedbackLikeTagIds: 좋아요 피드백 태그 ID 배열 (voteChoice=LIKE)',
       '- feedbackDislikeTagIds: 싫어요 피드백 태그 ID 배열 (voteChoice=DISLIKE)',
       '',
       '**검색 대상**: evaluation.status=ENDED, post.status=ACTIVE, publishedAt IS NOT NULL,',
       'hiddenAt=null, deletedAt=null, isSearchable=true 인 게시글만 포함됩니다.',
       '',
-      '처음 호출 시 AI 서버에서 이미지를 분석합니다. 이미지 품질이 너무 낮으면 422를 반환합니다.',
-    ].join('\n'), // Batch9-AutoMode
+      '처음 호출 시 AI 서버에서 이미지를 분석합니다.',
+      '이미지 품질이 낮거나 의류/전신이 명확히 보이지 않으면 422를 반환합니다.',
+    ].join('\n'),
   })
   @ApiBody({ type: SearchImageDto })
   @ApiOkResponse({
     description: '이미지 검색 결과 (유사도 내림차순, offset 기반 페이지네이션)',
     schema: {
-      example: {
-        resolvedMode: 'FULL_OUTFIT', // Batch9-AutoMode: mode → resolvedMode
-        queryImageAssetId: 201,
-        analysisRunId: 35,
-        items: [
-          {
-            postId: 12,
-            userId: 3,
-            thumbnailUrl: '/uploads/posts/processed/20260401/uuid.jpg',
-            content: '블랙 레더 자켓 데일리룩',
-            createdAt: '2026-04-01T12:00:00.000Z',
-            similarity: 0.93,
-            keywords: [{ keywordId: 2, label: '데일리룩' }],
+      properties: {
+        resolvedMode: {
+          type: 'string',
+          enum: ['FULL_OUTFIT', 'SINGLE_ITEM'],
+          description: '최종 사용된 검색 모드. mode를 명시했으면 그 값, 생략했으면 자동 판별된 값',
+          example: 'FULL_OUTFIT',
+        },
+        queryImageAssetId: {
+          type: 'integer',
+          description: '검색에 사용된 이미지 자산 ID',
+          example: 201,
+        },
+        analysisRunId: {
+          type: 'integer',
+          description: 'AI 분석 run ID',
+          example: 35,
+        },
+        items: {
+          type: 'array',
+          description: '유사도 내림차순 정렬된 게시글 목록 (similarity ≥ 0.3)',
+          items: {
+            type: 'object',
+            properties: {
+              postId: { type: 'integer', example: 12 },
+              userId: { type: 'integer', example: 3 },
+              thumbnailUrl: {
+                type: 'string',
+                nullable: true,
+                example: '/uploads/posts/processed/20260401/uuid.jpg',
+              },
+              content: { type: 'string', example: '블랙 레더 자켓 데일리룩' },
+              createdAt: {
+                type: 'string',
+                format: 'date-time',
+                example: '2026-04-01T12:00:00.000Z',
+              },
+              similarity: {
+                type: 'number',
+                description: 'cosine similarity (0~1). 항상 0.3 이상',
+                example: 0.93,
+              },
+              keywords: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    keywordId: { type: 'integer', example: 2 },
+                    label: { type: 'string', example: '데일리룩' },
+                  },
+                },
+              },
+            },
           },
-        ],
-        nextCursor: 20,
-        hasMore: true,
+        },
+        nextCursor: {
+          type: 'integer',
+          nullable: true,
+          description: '다음 페이지 offset 커서. 다음 페이지 없으면 null',
+          example: 20,
+        },
+        hasMore: {
+          type: 'boolean',
+          description: '다음 페이지 존재 여부',
+          example: true,
+        },
       },
     },
   })
   @ApiUnauthorizedResponse({ description: 'Bearer Token 누락 또는 만료' })
-  @ApiBadRequestResponse({ description: 'imageAssetId 유효하지 않음 / 필터 형식 오류' })
-  @ApiNotFoundResponse({ description: '검색용 이미지 자산을 찾을 수 없음 / 벡터 없음' })
+  @ApiBadRequestResponse({
+    description: [
+      'imageAssetId 유효하지 않음',
+      '/ outfitCategories·garmentCategory에 DRESS·원피스 등 지원하지 않는 카테고리 포함',
+      '/ keywordIds·feedbackTagIds 존재하지 않음 또는 voteChoice 불일치',
+      '/ periodFrom > periodTo',
+      '/ likeRatioMin 범위 초과',
+    ].join(' '),
+  })
+  @ApiNotFoundResponse({ description: '검색용 이미지 자산을 찾을 수 없음 (소유권 불일치 포함)' })
+  @ApiUnprocessableEntityResponse({
+    description: '이미지 품질이 낮거나 의류/전신이 명확히 보이지 않아 AI 분석에 실패한 경우 (422)',
+  })
   async searchImage(
     @Body() body: SearchImageDto,
     @Headers('authorization') authorization?: string,

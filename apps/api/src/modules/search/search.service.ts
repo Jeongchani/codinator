@@ -29,6 +29,7 @@ import {
   POST_KEYWORD_ORDER_BY,
 } from '../posts/common/post-presenter.util';
 import { ImageIndexingService } from '../ai/image-indexing.service';
+import { normalizeSearchOutfitCategories } from './common/outfit-category.util';
 
 // ── AI 이미지 검색 유사도 최소 기준 ─────────────────────────────────────────────
 /**
@@ -39,38 +40,6 @@ import { ImageIndexingService } from '../ai/image-indexing.service';
  * 0.3 미만 결과는 후보에 있었더라도 절대 최종 응답에 포함되지 않는다.
  */
 const IMAGE_SEARCH_MIN_SIMILARITY = 0.3;
-
-// ── Category 정규화: 한국어 UI 값 / AiGarmentCategory / enum 문자열 → GarmentCategory ──
-// DRESS 는 GarmentCategory 에 없으므로 ETC 로 매핑
-const KOREAN_TO_GARMENT_CATEGORY: Record<string, string> = {
-  '상의': 'TOP',
-  '하의': 'BOTTOM',
-  '아우터': 'OUTER',
-  '신발': 'SHOES',
-  '가방': 'BAG',
-  '악세사리': 'ACCESSORY',
-  '악세서리': 'ACCESSORY', // 표기 변형 허용
-  '기타': 'ETC',
-  '원피스': 'ETC', // AiGarmentCategory.DRESS → GarmentCategory 없음 → ETC
-};
-const VALID_GARMENT_CATEGORIES = new Set(['TOP', 'BOTTOM', 'OUTER', 'SHOES', 'BAG', 'ACCESSORY', 'ETC']);
-
-/**
- * 한국어 UI 값, AiGarmentCategory(DRESS 포함), GarmentCategory enum 문자열을
- * 게시글 도메인 GarmentCategory 로 정규화.
- * 알 수 없는 값은 null 반환 → 호출부에서 filter 처리.
- */
-function normalizeToGarmentCategory(value: string): string | null {
-  const trimmed = value.trim();
-  // 한국어 UI 값
-  if (KOREAN_TO_GARMENT_CATEGORY[trimmed]) return KOREAN_TO_GARMENT_CATEGORY[trimmed];
-  // enum 문자열 (대소문자 무관)
-  const upper = trimmed.toUpperCase();
-  if (VALID_GARMENT_CATEGORIES.has(upper)) return upper;
-  // AiGarmentCategory.DRESS → ETC
-  if (upper === 'DRESS') return 'ETC';
-  return null; // 알 수 없는 값 → 무시
-}
 
 // ── AI 이미지 검색 필터 해결 결과 타입 ───────────────────────────────────────────
 interface ResolvedImageFilters {
@@ -1011,10 +980,8 @@ export class SearchService {
 
     const likeRatioMin = this.parseOptionalRatio(params.likeRatioMin, 'likeRatioMin');
 
-    // outfitCategories: 대소문자 무관 → 대문자 정규화 (post-search-index.util의 normalizeCategory와 동일)
-    const outfitCategories = (params.outfitCategories ?? [])
-      .map((s) => s.trim().toUpperCase())
-      .filter(Boolean);
+    // outfitCategories: 공통 helper로 정규화 (DRESS/원피스 → 400, 알 수 없는 값 → 400)
+    const outfitCategories = normalizeSearchOutfitCategories(params.outfitCategories ?? []);
 
     const [keywordCodes, feedbackLikeCodes, feedbackDislikeCodes] = await Promise.all([
       this.resolveKeywordCodes(params.keywordIds),
@@ -1041,7 +1008,8 @@ export class SearchService {
    *     body.garmentCategory (하위 호환: 기존 프론트가 단일 카테고리로 보내던 필드) 를
    *     모두 합쳐서 GarmentCategory 기준으로 정규화.
    *   - 텍스트 검색의 outfitCategories 와 동일한 의미.
-   *   - 한국어 UI 값 / AiGarmentCategory / GarmentCategory enum 모두 수용.
+   *   - 한국어 UI 값 / GarmentCategory enum 수용.
+   *   - DRESS / 원피스 는 GarmentCategory 에 없으므로 400 BadRequestException.
    *
    * 주의: garmentCategory 는 더 이상 query 이미지 garment vector 선택 조건이 아님.
    *       query vector 선택은 resolveSearchMode / executeVectorSearch 가 독립적으로 처리.
@@ -1058,18 +1026,13 @@ export class SearchService {
 
     const likeRatioMin = this.parseOptionalRatio(body.likeRatioMin, 'likeRatioMin');
 
-    // outfitCategories: 신규 필드 + 하위 호환 garmentCategory 병합 → GarmentCategory 정규화
+    // outfitCategories: 신규 필드 + 하위 호환 garmentCategory 병합 → 공통 helper로 GarmentCategory 정규화
+    // DRESS / 원피스 포함 시 400. 알 수 없는 값 포함 시 400.
     const rawCategories: string[] = [
       ...(body.outfitCategories ?? []),
       ...(body.garmentCategory ? [body.garmentCategory] : []),
     ];
-    const outfitCategories = [
-      ...new Set(
-        rawCategories
-          .map(normalizeToGarmentCategory)
-          .filter((c): c is string => c !== null),
-      ),
-    ];
+    const outfitCategories = normalizeSearchOutfitCategories(rawCategories);
 
     const [keywordCodes, feedbackLikeCodes, feedbackDislikeCodes] = await Promise.all([
       this.resolveKeywordCodes(body.keywordIds),

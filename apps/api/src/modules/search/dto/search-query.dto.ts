@@ -86,8 +86,13 @@ export class SearchQueryDto implements SearchRequest {
 
   @ApiPropertyOptional({
     type: [String],
+    enum: ['TOP', 'BOTTOM', 'OUTER', 'SHOES', 'BAG', 'ACCESSORY', 'ETC'],
     example: ['TOP', 'OUTER'],
-    description: '착용 아이템 카테고리 필터. 대소문자 무관 (내부 정규화). 반복 파라미터로 전달: outfitCategories=TOP&outfitCategories=OUTER',
+    description:
+      '결과 게시글의 착용 아이템 카테고리 필터 (post_search_index.outfitCategories 기준). ' +
+      '한국어(상의/하의/아우터/신발/가방/악세사리/기타) 또는 enum(TOP/BOTTOM/OUTER/SHOES/BAG/ACCESSORY/ETC) 모두 허용. ' +
+      'DRESS / 원피스 는 게시글 카테고리에 존재하지 않으므로 400 오류. ' +
+      '반복 파라미터로 전달: outfitCategories=TOP&outfitCategories=OUTER',
   })
   @IsOptional()
   @Transform(({ value }: { value: unknown }) =>
