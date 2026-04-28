@@ -12,7 +12,6 @@ import type {
   UserSearchItem,
 } from '@codinator/contracts';
 import {
-  AiGarmentCategory,
   EvaluationStatus,
   ImageAnalysisPurpose,
   ImageAssetSourceType,
@@ -21,7 +20,7 @@ import {
   Prisma,
   SearchHistoryType,
   UserStatus,
-} from '@prisma/client'; // V3 Batch8: SearchHistoryType 추가 | Batch9-AutoMode: AiGarmentCategory 추가
+} from '@prisma/client'; // V3 Batch8: SearchHistoryType 추가 | Batch9-AutoMode: AiGarmentCategory 제거(결과 필터 분리)
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   IMAGE_ORDER_BY,
@@ -30,6 +29,49 @@ import {
   POST_KEYWORD_ORDER_BY,
 } from '../posts/common/post-presenter.util';
 import { ImageIndexingService } from '../ai/image-indexing.service';
+
+// ── Category 정규화: 한국어 UI 값 / AiGarmentCategory / enum 문자열 → GarmentCategory ──
+// DRESS 는 GarmentCategory 에 없으므로 ETC 로 매핑
+const KOREAN_TO_GARMENT_CATEGORY: Record<string, string> = {
+  '상의': 'TOP',
+  '하의': 'BOTTOM',
+  '아우터': 'OUTER',
+  '신발': 'SHOES',
+  '가방': 'BAG',
+  '악세사리': 'ACCESSORY',
+  '악세서리': 'ACCESSORY', // 표기 변형 허용
+  '기타': 'ETC',
+  '원피스': 'ETC', // AiGarmentCategory.DRESS → GarmentCategory 없음 → ETC
+};
+const VALID_GARMENT_CATEGORIES = new Set(['TOP', 'BOTTOM', 'OUTER', 'SHOES', 'BAG', 'ACCESSORY', 'ETC']);
+
+/**
+ * 한국어 UI 값, AiGarmentCategory(DRESS 포함), GarmentCategory enum 문자열을
+ * 게시글 도메인 GarmentCategory 로 정규화.
+ * 알 수 없는 값은 null 반환 → 호출부에서 filter 처리.
+ */
+function normalizeToGarmentCategory(value: string): string | null {
+  const trimmed = value.trim();
+  // 한국어 UI 값
+  if (KOREAN_TO_GARMENT_CATEGORY[trimmed]) return KOREAN_TO_GARMENT_CATEGORY[trimmed];
+  // enum 문자열 (대소문자 무관)
+  const upper = trimmed.toUpperCase();
+  if (VALID_GARMENT_CATEGORIES.has(upper)) return upper;
+  // AiGarmentCategory.DRESS → ETC
+  if (upper === 'DRESS') return 'ETC';
+  return null; // 알 수 없는 값 → 무시
+}
+
+// ── AI 이미지 검색 필터 해결 결과 타입 ───────────────────────────────────────────
+interface ResolvedImageFilters {
+  periodFrom: Date | null;
+  periodTo: Date | null;
+  likeRatioMin: number | null;
+  outfitCategories: string[];    // 결과 게시글 outfit category 필터 (GarmentCategory 기준)
+  keywordCodes: string[];
+  feedbackLikeCodes: string[];
+  feedbackDislikeCodes: string[];
+}
 
 // ── TextSearchAdvanced: 텍스트 검색 필터 해결 결과 타입 ────────────────────────
 interface ResolvedTextFilters {
@@ -244,11 +286,11 @@ export class SearchService {
     const filters = await this.resolveImageSearchFilters(body);
 
     // 1차 vector 검색
+    // garmentCategory 는 query vector 선택에서 분리 — filters.outfitCategories 로 결과 필터링
     let finalMode = resolvedMode;
     let rows = await this.executeVectorSearch({
       analysisRunId,
       mode: resolvedMode,
-      garmentCategory: body.garmentCategory as AiGarmentCategory | undefined,
       filters,
       fetchLimit: limit + 1,
       offset,
@@ -265,7 +307,6 @@ export class SearchService {
         const fallbackRows = await this.executeVectorSearch({
           analysisRunId,
           mode: fallbackMode,
-          garmentCategory: body.garmentCategory as AiGarmentCategory | undefined,
           filters,
           fetchLimit: limit + 1,
           offset,
@@ -382,45 +423,32 @@ export class SearchService {
   }
 
   /**
-   * [Batch9-AutoMode] vector 유사도 검색 실행 helper.
+   * [Batch9-AutoMode → FilterUnification] vector 유사도 검색 실행 helper.
    * searchImage()에서 분리하여 1차 검색 + fallback 재시도에서 재사용.
+   *
+   * ▸ garmentCategory 는 query vector 선택 조건에서 완전히 분리됨.
+   *   mode(FULL_OUTFIT/SINGLE_ITEM)는 resolveSearchMode 가 자동 결정.
+   *   category filter 는 결과 게시글의 psi."outfit_categories" 기준으로만 적용.
    */
   private async executeVectorSearch(params: {
     analysisRunId: number;
     mode: ImageSearchMode;
-    garmentCategory?: AiGarmentCategory;
-    filters: {
-      periodFrom: Date | null;
-      periodTo: Date | null;
-      likeRatioMin: number | null;
-      keywordCodes: string[];
-      feedbackLikeCodes: string[];
-      feedbackDislikeCodes: string[];
-    };
+    filters: ResolvedImageFilters;
     fetchLimit: number;
     offset: number;
   }): Promise<Array<{ postId: number; similarity: number }>> {
-    const { analysisRunId, mode, garmentCategory, filters, fetchLimit, offset } = params;
+    const { analysisRunId, mode, filters, fetchLimit, offset } = params;
 
+    // query vector 선택: mode 기반, garmentCategory 힌트 없이 최적 벡터 자동 선택
     const queryVector = await this.imageIndexingService.getSearchVector(
       analysisRunId,
       mode,
-      garmentCategory,
+      // garmentCategory 힌트 제거 — category 는 결과 필터로만 사용
     );
 
     const vectorLiteral = `[${queryVector.map((v) => String(Number(v))).join(',')}]`;
     const vectorSql = Prisma.raw(`'${vectorLiteral}'::vector`);
     const targetScope = mode === ImageSearchMode.FULL_OUTFIT ? 'OUTFIT' : 'GARMENT';
-
-    const garmentJoinSql =
-      targetScope === 'GARMENT'
-        ? Prisma.sql`JOIN "image_garments" ig ON ig.id = iv."garment_id"`
-        : Prisma.empty;
-
-    const garmentCategorySql =
-      targetScope === 'GARMENT' && garmentCategory
-        ? Prisma.sql`AND ig."normalized_category" = ${garmentCategory}::"AiGarmentCategory"`
-        : Prisma.empty;
 
     const periodFromSql = filters.periodFrom
       ? Prisma.sql`AND p."published_at" >= ${filters.periodFrom}`
@@ -434,6 +462,12 @@ export class SearchService {
       filters.likeRatioMin !== null
         ? Prisma.sql`AND psi."like_ratio" >= ${filters.likeRatioMin}`
         : Prisma.empty;
+
+    // outfitCategories: 결과 게시글의 outfit category 필터 (GarmentCategory 기준)
+    // → 텍스트 검색의 outfitCategories 필터와 완전히 동일한 의미
+    const outfitCategoriesSql = filters.outfitCategories.length
+      ? Prisma.sql`AND psi."outfit_categories" && ARRAY[${Prisma.join(filters.outfitCategories)}]::text[]`
+      : Prisma.empty;
 
     const keywordCodesSql = filters.keywordCodes.length
       ? Prisma.sql`AND psi."keyword_codes" && ARRAY[${Prisma.join(filters.keywordCodes)}]::text[]`
@@ -475,14 +509,13 @@ export class SearchService {
         JOIN "post_search_index" psi
           ON psi."post_id" = p.id
          AND psi."is_searchable" = true
-        ${garmentJoinSql}
         WHERE iv."target_scope" = ${Prisma.raw(`'${targetScope}'::"ImageVectorScope"`)}
           AND iv."is_active" = true
           AND p."status" = 'ACTIVE'
           AND p."deleted_at" IS NULL
           AND p."hidden_at" IS NULL
           AND p."published_at" IS NOT NULL
-          ${garmentCategorySql}
+          ${outfitCategoriesSql}
           ${periodFromSql}
           ${periodToSql}
           ${likeRatioMinSql}
@@ -988,13 +1021,21 @@ export class SearchService {
   }
 
   /**
-   * [V3 Batch9] 이미지 검색 필터 정규화 — ID→code 비동기 매핑 포함
+   * [V3 Batch9 → FilterUnification] 이미지 검색 필터 정규화.
    *
-   * - keywordIds: keyword.id 배열 → keyword.code 배열 변환
-   * - feedbackLikeTagIds: feedback_tag.id 배열 → voteChoice=LIKE 검증 후 code 배열 변환
-   * - feedbackDislikeTagIds: feedback_tag.id 배열 → voteChoice=DISLIKE 검증 후 code 배열 변환
+   * outfitCategories: 결과 게시글의 outfit category 필터.
+   *   - body.outfitCategories (신규 명시 필드) 와
+   *     body.garmentCategory (하위 호환: 기존 프론트가 단일 카테고리로 보내던 필드) 를
+   *     모두 합쳐서 GarmentCategory 기준으로 정규화.
+   *   - 텍스트 검색의 outfitCategories 와 동일한 의미.
+   *   - 한국어 UI 값 / AiGarmentCategory / GarmentCategory enum 모두 수용.
+   *
+   * 주의: garmentCategory 는 더 이상 query 이미지 garment vector 선택 조건이 아님.
+   *       query vector 선택은 resolveSearchMode / executeVectorSearch 가 독립적으로 처리.
    */
-  private async resolveImageSearchFilters(body: ImageSearchRequest) {
+  private async resolveImageSearchFilters(
+    body: ImageSearchRequest & { outfitCategories?: string[] },
+  ): Promise<ResolvedImageFilters> {
     const periodFrom = this.parseOptionalDate(body.periodFrom, 'periodFrom');
     const periodTo = this.parseOptionalDate(body.periodTo, 'periodTo');
 
@@ -1003,6 +1044,19 @@ export class SearchService {
     }
 
     const likeRatioMin = this.parseOptionalRatio(body.likeRatioMin, 'likeRatioMin');
+
+    // outfitCategories: 신규 필드 + 하위 호환 garmentCategory 병합 → GarmentCategory 정규화
+    const rawCategories: string[] = [
+      ...(body.outfitCategories ?? []),
+      ...(body.garmentCategory ? [body.garmentCategory] : []),
+    ];
+    const outfitCategories = [
+      ...new Set(
+        rawCategories
+          .map(normalizeToGarmentCategory)
+          .filter((c): c is string => c !== null),
+      ),
+    ];
 
     const [keywordCodes, feedbackLikeCodes, feedbackDislikeCodes] = await Promise.all([
       this.resolveKeywordCodes(body.keywordIds),
@@ -1014,6 +1068,7 @@ export class SearchService {
       periodFrom,
       periodTo,
       likeRatioMin,
+      outfitCategories,
       keywordCodes,
       feedbackLikeCodes,
       feedbackDislikeCodes,
