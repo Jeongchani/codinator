@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Check, ChevronDown, ImagePlus, Search as SearchIcon, X } from 'lucide-react';
 import type {
   AiGarmentCategory,
+  GetFeedPostDetailResponse,
   FeedbackTagItem,
   ImageSearchItem,
   KeywordItem,
@@ -15,7 +16,16 @@ import type {
 import Header from '../../components/Header';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
 import FocusScreen from '../../components/focus/FocusScreen';
-import { resolveAssetUrl } from '../../lib/api';
+import {
+  clearAuthTokens,
+  fetcher,
+  fetchMyBookmarkMap,
+  getAuthHeaders,
+  isAuthError,
+  resolveAssetUrl,
+  subscribeBookmarkUpdated,
+  togglePostBookmark,
+} from '../../lib/api';
 import SearchFilterSheet, {
   createEmptySearchFilters,
   getSearchFilterSummary,
@@ -75,6 +85,11 @@ type FocusPostState = {
   userId: number;
   title: string;
   imageUrl: string;
+};
+
+type FocusVoteSummary = {
+  likeCount: number;
+  dislikeCount: number;
 };
 
 type ApiFilterPayload = {
@@ -272,16 +287,62 @@ export default function Search() {
   const [resultError, setResultError] = useState('');
   const [textSearchSubmitted, setTextSearchSubmitted] = useState(false);
   const [focusPost, setFocusPost] = useState<FocusPostState | null>(null);
+  const [focusContentText, setFocusContentText] = useState('');
+  const [focusVoteSummary, setFocusVoteSummary] = useState<FocusVoteSummary>({
+    likeCount: 0,
+    dislikeCount: 0,
+  });
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+  const [bookmarks, setBookmarks] = useState<Record<number, boolean>>({});
+  const [bookmarkLoadingIds, setBookmarkLoadingIds] = useState<number[]>([]);
 
   const isTextMode = mode === 'text';
   const isImageMode = mode === 'image';
   const hasImageResult = Boolean(imagePreviewUrl);
   const isImageSearchLoading = isImageMode && hasImageResult && (imageUploading || resultLoading);
+  const focusVoteTotal = focusVoteSummary.likeCount + focusVoteSummary.dislikeCount;
+  const focusLikePercent =
+    focusVoteTotal > 0 ? Math.round((focusVoteSummary.likeCount / focusVoteTotal) * 100) : 0;
+  const focusDislikePercent = focusVoteTotal > 0 ? 100 - focusLikePercent : 0;
 
   const currentTypeLabel = useMemo(() => {
     return TYPE_OPTIONS.find((option) => option.value === searchType)?.shortLabel ?? '전체';
   }, [searchType]);
+
+  const moveToLogin = useCallback(() => {
+    clearAuthTokens();
+    navigate('/login', { replace: true });
+  }, [navigate]);
+
+  const loadBookmarks = useCallback(async () => {
+    try {
+      const nextMap = await fetchMyBookmarkMap();
+      setBookmarks(nextMap);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '북마크 정보를 불러오지 못했습니다.';
+      if (isAuthError(message)) moveToLogin();
+    }
+  }, [moveToLogin]);
+
+  useEffect(() => {
+    void loadBookmarks();
+  }, [loadBookmarks]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeBookmarkUpdated((detail) => {
+      if (!detail) {
+        void loadBookmarks();
+        return;
+      }
+
+      setBookmarks((prev) => ({
+        ...prev,
+        [detail.postId]: detail.bookmarked,
+      }));
+    });
+
+    return unsubscribe;
+  }, [loadBookmarks]);
 
   const reloadTextHistories = useCallback(async () => {
     try {
@@ -428,6 +489,71 @@ export default function Search() {
       document.body.style.overflow = previousOverflow;
     };
   }, [focusPost]);
+
+  useEffect(() => {
+    if (!focusPost) {
+      setFocusContentText('');
+      setFocusVoteSummary({ likeCount: 0, dislikeCount: 0 });
+      return;
+    }
+
+    let cancelled = false;
+    setFocusContentText(focusPost.title);
+    setFocusVoteSummary({ likeCount: 0, dislikeCount: 0 });
+
+    const loadFocusDetail = async () => {
+      try {
+        const data = await fetcher<GetFeedPostDetailResponse>(
+          `/users/${focusPost.userId}/feed/${focusPost.postId}`,
+          { headers: getAuthHeaders() },
+        );
+
+        if (cancelled) return;
+
+        setFocusContentText(data.content?.trim() || focusPost.title);
+        setFocusVoteSummary({
+          likeCount: data.voteSummary?.likeCount ?? 0,
+          dislikeCount: data.voteSummary?.dislikeCount ?? 0,
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '';
+        if (isAuthError(message)) {
+          moveToLogin();
+        }
+      }
+    };
+
+    void loadFocusDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [focusPost, moveToLogin]);
+
+  const toggleBookmarkByPostId = async (postId: number) => {
+    if (bookmarkLoadingIds.includes(postId)) return;
+
+    const isBookmarked = Boolean(bookmarks[postId]);
+    setBookmarkLoadingIds((prev) => [...prev, postId]);
+    setBookmarks((prev) => ({ ...prev, [postId]: !isBookmarked }));
+
+    try {
+      const nextValue = await togglePostBookmark(postId, isBookmarked);
+      setBookmarks((prev) => ({ ...prev, [postId]: nextValue }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '북마크 처리에 실패했습니다.';
+      setBookmarks((prev) => ({ ...prev, [postId]: isBookmarked }));
+
+      if (isAuthError(message)) {
+        moveToLogin();
+        return;
+      }
+
+      window.alert(message);
+    } finally {
+      setBookmarkLoadingIds((prev) => prev.filter((id) => id !== postId));
+    }
+  };
 
   const handleGoBack = () => {
     navigate(-1);
@@ -580,7 +706,9 @@ export default function Search() {
         title: item.title,
         imageUrl: item.imageUrl,
       });
-      setDetailSheetOpen(true);
+      setFocusContentText(item.title);
+      setFocusVoteSummary({ likeCount: 0, dislikeCount: 0 });
+      setDetailSheetOpen(false);
       return;
     }
 
@@ -590,6 +718,8 @@ export default function Search() {
   const handleCloseFocus = () => {
     setDetailSheetOpen(false);
     setFocusPost(null);
+    setFocusContentText('');
+    setFocusVoteSummary({ likeCount: 0, dislikeCount: 0 });
   };
 
   const renderSearchResults = () => {
@@ -913,9 +1043,23 @@ export default function Search() {
           sheetOpen={detailSheetOpen}
           onCloseSheet={() => setDetailSheetOpen(false)}
           showSwipeIndicator={false}
-          showVoteGraph={false}
+          showVoteGraph
+          likePercent={focusLikePercent}
+          dislikePercent={focusDislikePercent}
           showDetailButton={!detailSheetOpen}
           detailLabel="상세보기"
+          showActionCounts
+          likeCount={focusVoteSummary.likeCount}
+          dislikeCount={focusVoteSummary.dislikeCount}
+          showBookmarkButton
+          isBookmarked={Boolean(bookmarks[focusPost.postId])}
+          bookmarkDisabled={bookmarkLoadingIds.includes(focusPost.postId)}
+          onBookmarkClick={() => void toggleBookmarkByPostId(focusPost.postId)}
+          reportPostId={focusPost.postId}
+          reportDisplayText={focusContentText || focusPost.title}
+          reportAuthorUserId={focusPost.userId}
+          reportAuthorDisplayText={focusPost.title}
+          contentText={focusContentText || focusPost.title}
           onOpenDetail={() => setDetailSheetOpen(true)}
           ariaLabel="게시글 포커스 화면"
         >

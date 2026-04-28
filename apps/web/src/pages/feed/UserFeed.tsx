@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bookmark } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import type { GetUserFeedResponse, RankingPeriod } from '@codinator/contracts';
+import type { GetFeedPostDetailResponse, GetUserFeedResponse, RankingPeriod } from '@codinator/contracts';
 import {
   clearAuthTokens,
   fetcher,
@@ -25,6 +25,11 @@ type FeedCardItem = {
   imageUrl: string;
   createdAt: string;
   rankingPeriods: RankingPeriod[];
+};
+
+type FocusVoteSummary = {
+  likeCount: number;
+  dislikeCount: number;
 };
 
 type UserFeedLocationState = {
@@ -89,10 +94,21 @@ export default function UserFeed() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [focusIndex, setFocusIndex] = useState(0);
   const [focusItems, setFocusItems] = useState<FeedCardItem[]>([]);
+  const [focusContentMap, setFocusContentMap] = useState<Record<number, string>>({});
+  const [focusVoteSummaryMap, setFocusVoteSummaryMap] = useState<Record<number, FocusVoteSummary>>({});
 
   const bookmarkLoadingIdSet = useMemo(() => new Set(bookmarkLoadingIds), [bookmarkLoadingIds]);
 
   const focusedItem = focusItems[focusIndex] ?? null;
+  const focusedContentText = focusedItem
+    ? focusContentMap[focusedItem.postId] ?? '내용 불러오는 중...'
+    : '';
+  const focusedVoteSummary = focusedItem ? focusVoteSummaryMap[focusedItem.postId] : undefined;
+  const focusedLikeCount = focusedVoteSummary?.likeCount ?? 0;
+  const focusedDislikeCount = focusedVoteSummary?.dislikeCount ?? 0;
+  const focusedVoteTotal = focusedLikeCount + focusedDislikeCount;
+  const focusedLikePercent = focusedVoteTotal > 0 ? Math.round((focusedLikeCount / focusedVoteTotal) * 100) : 0;
+  const focusedDislikePercent = focusedVoteTotal > 0 ? 100 - focusedLikePercent : 0;
   const focusedPeriod = useMemo(
     () => (focusedItem ? getDefaultPeriod(focusedItem.rankingPeriods) : null),
     [focusedItem],
@@ -102,6 +118,53 @@ export default function UserFeed() {
     clearAuthTokens();
     navigate('/login', { replace: true });
   }, [navigate]);
+
+  useEffect(() => {
+    if (!focusOpen || !focusedItem || !userId) return;
+    if (focusContentMap[focusedItem.postId] && focusVoteSummaryMap[focusedItem.postId]) return;
+
+    let cancelled = false;
+
+    const loadFocusContent = async () => {
+      try {
+        const data = await fetcher<GetFeedPostDetailResponse>(
+          `/users/${userId}/feed/${focusedItem.postId}`,
+          { headers: getAuthHeaders() },
+        );
+
+        if (cancelled) return;
+
+        setFocusContentMap((prev) => ({
+          ...prev,
+          [focusedItem.postId]: data.content?.trim() || '코디 설명이 없습니다.',
+        }));
+        setFocusVoteSummaryMap((prev) => ({
+          ...prev,
+          [focusedItem.postId]: {
+            likeCount: data.voteSummary?.likeCount ?? 0,
+            dislikeCount: data.voteSummary?.dislikeCount ?? 0,
+          },
+        }));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '';
+
+        if (isAuthError(message)) {
+          moveToLogin();
+          return;
+        }
+
+        if (!cancelled) {
+          setFocusContentMap((prev) => ({ ...prev, [focusedItem.postId]: '코디 설명이 없습니다.' }));
+        }
+      }
+    };
+
+    void loadFocusContent();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [focusOpen, focusedItem, focusContentMap, focusVoteSummaryMap, moveToLogin, userId]);
 
   const loadBookmarks = useCallback(async () => {
     try {
@@ -230,10 +293,7 @@ export default function UserFeed() {
     navigate(-1);
   };
 
-  const toggleBookmark = async (e: React.MouseEvent<HTMLButtonElement>, postId: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-
+  const toggleBookmarkByPostId = async (postId: number) => {
     if (bookmarkLoadingIdSet.has(postId)) {
       return;
     }
@@ -271,12 +331,18 @@ export default function UserFeed() {
     }
   };
 
+  const toggleBookmark = (e: React.MouseEvent<HTMLButtonElement>, postId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    void toggleBookmarkByPostId(postId);
+  };
+
   const handleCardClick = (clickedItem: FeedCardItem) => {
     const nextIndex = items.findIndex((item) => item.postId === clickedItem.postId);
 
     setFocusItems(items);
     setFocusIndex(nextIndex >= 0 ? nextIndex : 0);
-    setSheetOpen(true);
+    setSheetOpen(false);
     setFocusOpen(true);
   };
 
@@ -391,10 +457,22 @@ export default function UserFeed() {
           }}
           sheetOpen={sheetOpen}
           onCloseSheet={() => setSheetOpen(false)}
-          showVoteGraph={false}
+          showVoteGraph
+          likePercent={focusedLikePercent}
+          dislikePercent={focusedDislikePercent}
           showDetailButton
           detailLabel="상세보기"
           detailDisabled={!focusedPeriod}
+          showActionCounts
+          likeCount={focusedLikeCount}
+          dislikeCount={focusedDislikeCount}
+          showBookmarkButton
+          isBookmarked={Boolean(bookmarks[focusedItem.postId])}
+          bookmarkDisabled={bookmarkLoadingIdSet.has(focusedItem.postId)}
+          onBookmarkClick={() => void toggleBookmarkByPostId(focusedItem.postId)}
+          reportPostId={focusedItem.postId}
+          reportDisplayText={focusedContentText}
+          contentText={focusedContentText}
           onOpenDetail={handleOpenDetailSheet}
         >
           <PostDetailBottomSheet isOpen={sheetOpen} onCloseRequest={() => setSheetOpen(false)}>

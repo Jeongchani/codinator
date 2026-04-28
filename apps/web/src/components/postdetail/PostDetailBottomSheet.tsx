@@ -1,18 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useAnimation } from 'framer-motion';
-import { Bookmark, ChevronsRight, Siren, Tag, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { ChevronsRight, Tag, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { GetFeedPostDetailResponse, GetRankingPostDetailResponse, RankingPeriod } from '@codinator/contracts';
 import {
   clearAuthTokens,
-  fetchMyBookmarkMap,
   fetcher,
   getAuthHeaders,
   isAuthError,
-  subscribeBookmarkUpdated,
-  togglePostBookmark,
 } from '../../lib/api';
-import Reports from '../Reports';
 import sheetStyles from './PostDetailBottomSheet.module.css';
 import detailStyles from '../../pages/ranking/RankingDetail.module.css';
 
@@ -417,21 +413,13 @@ export function PostDetailBottomSheetContent({
   data,
   loading,
   hideFeedLink = false,
-  isBookmarked,
-  bookmarkLoading,
-  onToggleBookmark,
   onGoToUserFeed,
 }: {
   data: PostDetailSheetData | null;
   loading: boolean;
   hideFeedLink?: boolean;
-  isBookmarked: boolean;
-  bookmarkLoading: boolean;
-  onToggleBookmark: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onGoToUserFeed: () => void;
 }) {
-  const [reportOpen, setReportOpen] = useState(false);
-
   if (loading) return <div className={detailStyles.sheetContent}>데이터 로드 중...</div>;
   if (!data) {
     return <div className={detailStyles.sheetContent}>게시글을 불러올 수 없습니다.</div>;
@@ -447,33 +435,6 @@ export function PostDetailBottomSheetContent({
           <p className={detailStyles.contentText}>{data.contentText}</p>
         </div>
 
-        <div className={detailStyles.sheetActions}>
-          <motion.button
-            type="button"
-            className={`${detailStyles.miniActionButton} ${detailStyles.bookmarkActionButton}`}
-            onClick={onToggleBookmark}
-            aria-label={isBookmarked ? '북마크 해제' : '북마크 추가'}
-            disabled={bookmarkLoading}
-            whileTap={{ scale: 0.82, y: 1 }}
-            transition={{ type: 'spring', stiffness: 520, damping: 24 }}
-          >
-            <Bookmark
-              size={11}
-              strokeWidth={2.1}
-              className={isBookmarked ? detailStyles.bookmarkFilled : detailStyles.bookmarkDefault}
-              fill={isBookmarked ? 'currentColor' : 'none'}
-            />
-          </motion.button>
-
-          <button
-            type="button"
-            className={`${detailStyles.miniActionButton} ${detailStyles.reportActionButton}`}
-            aria-label="신고"
-            onClick={() => setReportOpen(true)}
-          >
-            <Siren size={11} strokeWidth={2.1} />
-          </button>
-        </div>
       </div>
 
       <div className={detailStyles.keywordLaneSection}>
@@ -537,17 +498,6 @@ export function PostDetailBottomSheetContent({
       </div>
 
       <OutfitItemsCarousel outfitItems={data.outfitItems} />
-
-      <Reports
-        isOpen={reportOpen}
-        onClose={() => setReportOpen(false)}
-        defaultTab="post"
-        postTarget={{ id: data.postId, displayText: data.contentText }}
-        userTarget={{ id: data.authorUserId ?? 0, displayText: data.authorNickname }}
-        onSubmitted={(_response: unknown, payload: unknown) => {
-          console.log('신고 완료:', payload);
-        }}
-      />
     </div>
   );
 }
@@ -571,8 +521,6 @@ export function RankingDetailSheetContent({
   const [searchParams] = useSearchParams();
   const [postData, setPostData] = useState<PostDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isBookmarked, setIsBookmarked] = useState(false);
-  const [bookmarkLoading, setBookmarkLoading] = useState(false);
 
   const activePostId = postId ?? (routePostId ? Number(routePostId) : null);
   const periodParam = searchParams.get('period');
@@ -648,10 +596,8 @@ export function RankingDetailSheetContent({
           }
         }
 
-        const bookmarkMap = await fetchMyBookmarkMap();
         if (cancelled) return;
         setPostData(matchedData);
-        setIsBookmarked(Boolean(bookmarkMap[activePostId]));
         if (!matchedData && lastMessage) console.warn(lastMessage);
       } finally {
         if (!cancelled) setLoading(false);
@@ -664,14 +610,7 @@ export function RankingDetailSheetContent({
     };
   }, [activePostId, authorUserId, explicitPeriod, hasInitialFallback, navigate]);
 
-  useEffect(() => {
-    if (!activePostId) return;
-    const unsubscribe = subscribeBookmarkUpdated((detail) => {
-      if (!detail || detail.postId !== activePostId) return;
-      setIsBookmarked(detail.bookmarked);
-    });
-    return unsubscribe;
-  }, [activePostId]);
+
 
   const sheetData = useMemo(() => {
     const detailData = buildPostDetailSheetData(postData);
@@ -679,28 +618,7 @@ export function RankingDetailSheetContent({
     return initialData && initialData.postId === activePostId ? initialData : null;
   }, [activePostId, initialData, postData]);
 
-  const handleToggleBookmark = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    if (!activePostId || bookmarkLoading) return;
-    const previous = isBookmarked;
-    setBookmarkLoading(true);
-    setIsBookmarked(!previous);
-    try {
-      const nextValue = await togglePostBookmark(activePostId, previous);
-      setIsBookmarked(nextValue);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : '북마크 처리에 실패했습니다.';
-      setIsBookmarked(previous);
-      if (isAuthError(message)) {
-        clearAuthTokens();
-        navigate('/login');
-        return;
-      }
-      window.alert(message);
-    } finally {
-      setBookmarkLoading(false);
-    }
-  };
+
 
   const handleGoToUserFeed = () => {
     const authorUserId = sheetData?.authorUserId;
@@ -716,9 +634,6 @@ export function RankingDetailSheetContent({
       data={sheetData}
       loading={loading}
       hideFeedLink={hideFeedLink}
-      isBookmarked={isBookmarked}
-      bookmarkLoading={bookmarkLoading}
-      onToggleBookmark={handleToggleBookmark}
       onGoToUserFeed={handleGoToUserFeed}
     />
   );

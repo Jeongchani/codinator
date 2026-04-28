@@ -27,6 +27,7 @@ export type TextSearchApiParams = {
 
 export type ImageSearchApiParams = Omit<ImageSearchRequest, 'imageAssetId'> & {
   imageAssetId: number;
+  outfitCategories?: string[];
 };
 
 export type SearchHistoryType = 'TEXT' | 'IMAGE';

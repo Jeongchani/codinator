@@ -101,9 +101,7 @@ function AppRoutes() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/passwordReset" element={<PasswordReset />} />
 
-        <Route path="/evaluationZone" element={<EvaluationZone />} />
         <Route path="/evaluationDetailFeedback/:postId" element={<EvaluationDetailFeedback />} />
-        <Route path="/ongoingEvaluationHistory" element={<OngoingEvaluationHistory />} />
 
         <Route path="/postUpload" element={<PostUpload />} />
         <Route path="/rankingDetail/:postId" element={<RankingDetail />} />
@@ -115,6 +113,8 @@ function AppRoutes() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/myPage" element={<MyPage />} />
           <Route path="/rankingZone" element={<RankingZone />} />
+          <Route path="/evaluationZone" element={<EvaluationZone />} />
+          <Route path="/ongoingEvaluationHistory" element={<OngoingEvaluationHistory />} />
           <Route path="/user/:userId/feed" element={<UserFeed />} />
           <Route path="/myFeed" element={<MyFeed />} />
           <Route path="/myPostDetailEdit/:postId" element={<MyPostDetailEdit />} />

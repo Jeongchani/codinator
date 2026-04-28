@@ -16,6 +16,7 @@ import {
 } from '../../lib/api';
 import type {
   GetPersonalizedRankingsResponse,
+  GetRankingPostDetailResponse,
   GetRankingsResponse,
   RankingItem,
   RankingPeriod,
@@ -25,7 +26,6 @@ import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomS
 import FocusScreen from '../../components/focus/FocusScreen';
 import RankingDetail from './RankingDetail';
 import PersonalizedSection, { type PersonalizedFocusItem } from './PersonalizedSection';
-import PersonalizedDetail from './PersonalizedDetail';
 
 type RankingFocusItem = {
   kind: 'ranking';
@@ -166,6 +166,7 @@ export default function RankingZone() {
   const [bookmarkPressedIds, setBookmarkPressedIds] = useState<number[]>([]);
   const [focusOpen, setFocusOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [focusContentMap, setFocusContentMap] = useState<Record<number, string>>({});
   const [focusIndex, setFocusIndex] = useState(0);
   const [focusItems, setFocusItems] = useState<FocusItem[]>([]);
   const bookmarkAnimTimeoutMap = useRef<Record<number, number>>({});
@@ -274,9 +275,7 @@ export default function RankingZone() {
     }, 240);
   };
 
-  const handleToggleBookmark = async (e: React.MouseEvent<HTMLButtonElement>, postId: number) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const toggleBookmarkByPostId = async (postId: number) => {
     if (bookmarkLoadingIds.includes(postId)) return;
 
     triggerBookmarkPress(postId);
@@ -299,6 +298,12 @@ export default function RankingZone() {
     } finally {
       setBookmarkLoadingIds((prev) => prev.filter((id) => id !== postId));
     }
+  };
+
+  const handleToggleBookmark = (e: React.MouseEvent<HTMLButtonElement>, postId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    void toggleBookmarkByPostId(postId);
   };
 
   const convertRankingItem = (
@@ -345,6 +350,52 @@ export default function RankingZone() {
   );
 
   const focusedItem = focusItems[focusIndex] ?? null;
+
+  const focusedContentText = focusedItem
+    ? focusContentMap[focusedItem.postId] ?? '내용 불러오는 중...'
+    : '';
+
+  useEffect(() => {
+    if (!focusOpen || !focusedItem || focusContentMap[focusedItem.postId]) return;
+
+    let cancelled = false;
+    const candidatePeriods: RankingPeriod[] =
+      focusedItem.kind === 'ranking' ? [focusedItem.period] : ['WEEKLY', 'MONTHLY'];
+
+    const loadFocusContent = async () => {
+      for (const candidate of candidatePeriods) {
+        try {
+          const data = await fetcher<GetRankingPostDetailResponse>(
+            `/rankings/posts/${focusedItem.postId}?period=${candidate}`,
+            { headers: getAuthHeaders() },
+          );
+
+          if (cancelled) return;
+
+          const nextContent = data.content?.trim() || '코디 설명이 없습니다.';
+          setFocusContentMap((prev) => ({ ...prev, [focusedItem.postId]: nextContent }));
+          return;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : '';
+          if (isAuthError(message)) {
+            clearAuthTokens();
+            moveToLogin();
+            return;
+          }
+        }
+      }
+
+      if (!cancelled) {
+        setFocusContentMap((prev) => ({ ...prev, [focusedItem.postId]: '코디 설명이 없습니다.' }));
+      }
+    };
+
+    void loadFocusContent();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [focusOpen, focusedItem, focusContentMap, moveToLogin]);
 
   const handleCardClick = (item: FocusItem, list: FocusItem[]) => {
     const nextIndex = list.findIndex((candidate) => candidate.postId === item.postId);
@@ -423,15 +474,25 @@ export default function RankingZone() {
           likePercent={likePercent}
           dislikePercent={dislikePercent}
           showDetailButton
+          detailLabel="상세보기"
+          showActionCounts
+          likeCount={focusedItem.likeCount}
+          dislikeCount={focusedItem.dislikeCount}
+          showBookmarkButton
+          isBookmarked={Boolean(bookmarks[focusedItem.postId])}
+          bookmarkDisabled={bookmarkLoadingIds.includes(focusedItem.postId)}
+          onBookmarkClick={() => void toggleBookmarkByPostId(focusedItem.postId)}
+          reportPostId={focusedItem.postId}
+          reportDisplayText={focusedContentText}
+          contentText={focusedContentText}
           onOpenDetail={() => setSheetOpen(true)}
         >
           {sheetOpen ? (
             <PostDetailBottomSheet isOpen={sheetOpen} onCloseRequest={() => setSheetOpen(false)}>
-              {focusedItem.kind === 'personalized' ? (
-                <PersonalizedDetail item={focusedItem.raw} />
-              ) : (
-                <RankingDetail postId={focusedItem.postId} period={focusedItem.period} />
-              )}
+              <RankingDetail
+                postId={focusedItem.postId}
+                period={focusedItem.kind === 'ranking' ? focusedItem.period : undefined}
+              />
             </PostDetailBottomSheet>
           ) : null}
         </FocusScreen>

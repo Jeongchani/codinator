@@ -8,11 +8,8 @@
 }
 
 .reportButton {
-  @apply h-8 rounded-full border-0 px-3 text-[12px] font-semibold text-white pointer-events-auto;
-  background: rgba(0, 0, 0, 0.32);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+  @apply h-9 min-w-[42px] border-0 bg-transparent p-0 text-right text-[14px] font-semibold leading-none tracking-[-0.04em] text-white pointer-events-auto;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.46);
 }
 
 .helperText {

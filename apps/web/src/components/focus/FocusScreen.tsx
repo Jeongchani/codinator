@@ -4,9 +4,11 @@ import {
   useCallback,
   useEffect,
   useRef,
+  useState,
 } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronsUp, ThumbsDown, ThumbsUp, X } from 'lucide-react';
+import { Bookmark, ChevronLeft, List, ThumbsDown, ThumbsUp } from 'lucide-react';
+import Reports from '../Reports';
 import styles from './FocusScreen.module.css';
 
 export type FocusScreenItem = {
@@ -14,11 +16,14 @@ export type FocusScreenItem = {
   imageUrl?: string | null;
   fallbackText?: string;
   content?: ReactNode;
+  contentText?: string | null;
 };
 
 type WritableViewportRef = {
   current: HTMLDivElement | null;
 };
+
+type FocusVoteChoice = 'LIKE' | 'DISLIKE';
 
 type FocusScreenProps = {
   isOpen?: boolean;
@@ -40,6 +45,28 @@ type FocusScreenProps = {
   overlayChildren?: ReactNode;
   children?: ReactNode;
   className?: string;
+  contentText?: string | null;
+  contentLimit?: number;
+  contentFirstLineLimit?: number;
+  showContentPreview?: boolean;
+  showVoteActions?: boolean;
+  showActionCounts?: boolean;
+  likeCount?: number | null;
+  dislikeCount?: number | null;
+  selectedVote?: FocusVoteChoice | null;
+  voteActionDisabled?: boolean;
+  showBookmarkButton?: boolean;
+  isBookmarked?: boolean;
+  bookmarkDisabled?: boolean;
+  onBookmarkClick?: () => void;
+  reportPostId?: number | string | null;
+  reportDisplayText?: string | null;
+  reportAuthorUserId?: number | null;
+  reportAuthorDisplayText?: string | null;
+  allowUserReport?: boolean;
+  onReportClick?: () => void;
+  onLikeClick?: () => void;
+  onDislikeClick?: () => void;
   onClose: () => void;
   onActiveIndexChange?: (nextIndex: number) => void;
   onCloseSheet?: () => void;
@@ -49,6 +76,44 @@ type FocusScreenProps = {
 function clampPercent(value: number) {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(Math.round(value), 100));
+}
+
+function formatCount(value: number | null | undefined) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '0';
+  return Math.max(0, Math.trunc(value)).toLocaleString('ko-KR');
+}
+
+type ContentPreviewLines = {
+  firstLine: string;
+  secondLine: string;
+};
+
+function getContentPreviewLines(
+  value: string | null | undefined,
+  totalLimit: number,
+  firstLineLimit: number,
+): ContentPreviewLines {
+  const text = value?.replace(/\s+/g, ' ').trim() ?? '';
+  if (!text) return { firstLine: '', secondLine: '' };
+
+  const chars = Array.from(text);
+  const safeTotalLimit = Math.max(1, totalLimit);
+  const safeFirstLineLimit = Math.max(1, Math.min(firstLineLimit, safeTotalLimit - 1));
+  const shouldTruncate = chars.length > safeTotalLimit;
+  const limitedChars = shouldTruncate ? chars.slice(0, safeTotalLimit) : chars;
+  const firstLine = limitedChars
+    .slice(0, safeFirstLineLimit)
+    .join('')
+    .replace(/\.{2,}|…/g, '')
+    .trimEnd();
+  const secondLine = limitedChars.slice(safeFirstLineLimit).join('').trimStart();
+
+  return {
+    firstLine,
+    secondLine: shouldTruncate
+      ? `${secondLine.replace(/\.{2,}|…/g, '').trimEnd()}...`
+      : secondLine,
+  };
 }
 
 function VerticalSwipeIndicator({ above, below }: { above: number; below: number }) {
@@ -96,17 +161,12 @@ function VerticalSwipeIndicator({ above, below }: { above: number; below: number
   );
 }
 
-function DetailButtonIcon() {
-  return <ChevronsUp size={20} strokeWidth={2.2} />;
-}
-
 export default function FocusScreen({
   isOpen = true,
   items,
   activeIndex = 0,
   viewportRef,
   ariaLabel = '포커스 화면',
-  closeButtonType = 'back',
   rightAction,
   showTopBar = true,
   showSwipeIndicator = true,
@@ -115,25 +175,69 @@ export default function FocusScreen({
   likePercent = 0,
   dislikePercent,
   showDetailButton = true,
-  detailLabel = '상세보러가기',
+  detailLabel = '상세보기',
   detailDisabled = false,
   overlayChildren,
   children,
   className = '',
+  contentText,
+  contentLimit = 40,
+  contentFirstLineLimit = 20,
+  showContentPreview = true,
+  showVoteActions = true,
+  showActionCounts = false,
+  likeCount = 0,
+  dislikeCount = 0,
+  selectedVote = null,
+  voteActionDisabled = false,
+  showBookmarkButton = false,
+  isBookmarked = false,
+  bookmarkDisabled = false,
+  onBookmarkClick,
+  reportPostId = null,
+  reportDisplayText = null,
+  reportAuthorUserId = null,
+  reportAuthorDisplayText = null,
+  allowUserReport = true,
+  onReportClick,
+  onLikeClick,
+  onDislikeClick,
   onClose,
   onActiveIndexChange,
   onCloseSheet,
   onOpenDetail,
 }: FocusScreenProps) {
+  const [internalReportOpen, setInternalReportOpen] = useState(false);
   const internalViewportRef = useRef<HTMLDivElement | null>(null);
   const itemCount = items.length;
   const resolvedActiveIndex = Math.max(0, Math.min(activeIndex, Math.max(itemCount - 1, 0)));
+  const currentItem = items[resolvedActiveIndex] ?? null;
   const resolvedLikePercent = clampPercent(likePercent);
   const resolvedDislikePercent = clampPercent(
     typeof dislikePercent === 'number' ? dislikePercent : 100 - resolvedLikePercent,
   );
   const previousSwipeCount = Math.min(Math.max(resolvedActiveIndex, 0), 3);
   const nextSwipeCount = Math.min(Math.max(itemCount - resolvedActiveIndex - 1, 0), 3);
+  const previewLines = getContentPreviewLines(
+    currentItem?.contentText ?? contentText,
+    contentLimit,
+    contentFirstLineLimit,
+  );
+  const canShowPreview =
+    showContentPreview && (previewLines.firstLine.length > 0 || previewLines.secondLine.length > 0) && !sheetOpen;
+  const canShowActionRail = !sheetOpen && (showVoteActions || showBookmarkButton || showDetailButton);
+  const hasReportTarget = reportPostId !== null && reportPostId !== undefined;
+
+  const openReport = () => {
+    if (onReportClick) {
+      onReportClick();
+      return;
+    }
+
+    if (hasReportTarget) {
+      setInternalReportOpen(true);
+    }
+  };
 
   const setViewportNode = useCallback(
     (node: HTMLDivElement | null) => {
@@ -183,16 +287,26 @@ export default function FocusScreen({
   };
 
   return (
-    <div className={`${styles.focusOverlay} ${className}`} role="dialog" aria-modal="true" aria-label={ariaLabel}>
+    <div
+      className={`${styles.focusOverlay} ${sheetOpen ? styles.focusOverlaySheetOpen : ""} ${className}`.trim()}
+      role="dialog"
+      aria-modal="true"
+      aria-label={ariaLabel}
+    >
       <div ref={setViewportNode} className={styles.focusViewport} onScroll={handleScroll}>
         {items.map((item) => (
           <section key={item.id} className={styles.focusSlide}>
             {item.imageUrl ? (
-              <div
-                className={styles.focusMainImage}
-                style={{ backgroundImage: `url(${item.imageUrl})` }}
-                aria-hidden="true"
-              />
+              <>
+                <div
+                  className={styles.focusBlurBackground}
+                  style={{ backgroundImage: `url(${item.imageUrl})` }}
+                  aria-hidden="true"
+                />
+                <div className={styles.focusImageFrame}>
+                  <img src={item.imageUrl} alt="" className={styles.focusMainImage} draggable={false} />
+                </div>
+              </>
             ) : (
               <div className={styles.focusImageFallback}>{item.fallbackText ?? '이미지 없음'}</div>
             )}
@@ -201,6 +315,8 @@ export default function FocusScreen({
 
             <div className={styles.topGradient} />
             <div className={styles.bottomGradient} />
+            <div className={styles.leftGradient} />
+            <div className={styles.rightGradient} />
           </section>
         ))}
       </div>
@@ -221,22 +337,107 @@ export default function FocusScreen({
               type="button"
               className={styles.closeButton}
               onClick={onClose}
-              aria-label={closeButtonType === 'x' ? '닫기' : '뒤로가기'}
+              aria-label="뒤로가기"
               whileTap={{ scale: 0.94 }}
             >
-              {closeButtonType === 'x' ? (
-                <X size={18} strokeWidth={2.6} />
-              ) : (
-                <ChevronLeft size={20} strokeWidth={2.2} />
-              )}
+              <ChevronLeft size={20} strokeWidth={2.25} />
             </motion.button>
 
-            {rightAction ? rightAction : <div className={styles.reportPlaceholder} aria-hidden="true" />}
+            {rightAction ? (
+              <div className={styles.reportSlot}>{rightAction}</div>
+            ) : (
+              <button
+                type="button"
+                className={styles.reportTextButton}
+                aria-label="게시글 신고"
+                onClick={openReport}
+                disabled={!onReportClick && !hasReportTarget}
+              >
+                신고
+              </button>
+            )}
           </div>
         ) : null}
 
         {!sheetOpen && showSwipeIndicator && itemCount > 1 ? (
           <VerticalSwipeIndicator above={previousSwipeCount} below={nextSwipeCount} />
+        ) : null}
+
+        {canShowActionRail ? (
+          <div
+            className={`${styles.actionRail} ${!showVoteGraph && !showDetailButton ? styles.actionRailWithoutGraph : ''}`.trim()}
+          >
+            {showVoteActions ? (
+              <>
+                <motion.button
+                  type="button"
+                  className={`${styles.railButton} ${selectedVote === 'LIKE' ? styles.railButtonSelected : ''}`}
+                  onClick={onLikeClick}
+                  disabled={!onLikeClick || voteActionDisabled}
+                  aria-label="좋아요"
+                  whileTap={onLikeClick && !voteActionDisabled ? { scale: 0.94 } : undefined}
+                >
+                  <ThumbsUp className={styles.railIcon} size={18} strokeWidth={2.15} />
+                  {showActionCounts ? (
+                    <span className={styles.railCount}>{formatCount(likeCount)}</span>
+                  ) : (
+                    <span className={styles.railLabel}>좋아요</span>
+                  )}
+                </motion.button>
+
+                <motion.button
+                  type="button"
+                  className={`${styles.railButton} ${selectedVote === 'DISLIKE' ? styles.railButtonSelected : ''}`}
+                  onClick={onDislikeClick}
+                  disabled={!onDislikeClick || voteActionDisabled}
+                  aria-label="싫어요"
+                  whileTap={onDislikeClick && !voteActionDisabled ? { scale: 0.94 } : undefined}
+                >
+                  <ThumbsDown className={styles.railIcon} size={18} strokeWidth={2.15} />
+                  {showActionCounts ? (
+                    <span className={styles.railCount}>{formatCount(dislikeCount)}</span>
+                  ) : (
+                    <span className={styles.railLabel}>싫어요</span>
+                  )}
+                </motion.button>
+              </>
+            ) : null}
+
+            {showBookmarkButton ? (
+              <motion.button
+                type="button"
+                className={`${styles.railButton} ${isBookmarked ? styles.railButtonSelected : ''}`}
+                onClick={onBookmarkClick}
+                disabled={!onBookmarkClick || bookmarkDisabled}
+                aria-label={isBookmarked ? '북마크 해제' : '북마크 추가'}
+                whileTap={onBookmarkClick && !bookmarkDisabled ? { scale: 0.94 } : undefined}
+              >
+                <Bookmark className={styles.railIcon} size={18} strokeWidth={2.1} />
+                <span className={styles.railLabel}>북마크</span>
+              </motion.button>
+            ) : null}
+
+            {showDetailButton ? (
+              <motion.button
+                type="button"
+                className={styles.railButton}
+                onClick={onOpenDetail}
+                disabled={detailDisabled || !onOpenDetail}
+                aria-label={detailLabel}
+                whileTap={onOpenDetail && !detailDisabled ? { scale: 0.94 } : undefined}
+              >
+                <List className={styles.railIcon} size={18} strokeWidth={2.05} />
+                <span className={styles.railLabel}>{detailLabel}</span>
+              </motion.button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {canShowPreview ? (
+          <div className={`${styles.contentCaption} ${!showVoteGraph ? styles.contentCaptionWithoutGraph : ''}`}>
+            <p className={styles.contentCaptionFirstLine}>{previewLines.firstLine}</p>
+            {previewLines.secondLine ? <p className={styles.contentCaptionSecondLine}>{previewLines.secondLine}</p> : null}
+          </div>
         ) : null}
 
         {overlayChildren}
@@ -245,7 +446,7 @@ export default function FocusScreen({
           <motion.div
             className={styles.voteGraphArea}
             aria-hidden="true"
-            key={`vote-bar-${items[resolvedActiveIndex]?.id ?? resolvedActiveIndex}`}
+            key={`vote-bar-${currentItem?.id ?? resolvedActiveIndex}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.22, ease: 'easeOut' }}
@@ -266,29 +467,22 @@ export default function FocusScreen({
             </div>
           </motion.div>
         ) : null}
-
-        {showDetailButton ? (
-          <motion.div
-            className={styles.voteDetailButtonWrap}
-            key={`detail-cta-${items[resolvedActiveIndex]?.id ?? resolvedActiveIndex}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.26, ease: 'easeOut' }}
-          >
-            <button
-              type="button"
-              className={styles.voteDetailButton}
-              onClick={onOpenDetail}
-              disabled={detailDisabled}
-            >
-              <span>{detailLabel}</span>
-              <span className={styles.voteDetailIcon}>
-                <DetailButtonIcon />
-              </span>
-            </button>
-          </motion.div>
-        ) : null}
       </div>
+
+      {hasReportTarget ? (
+        <Reports
+          isOpen={internalReportOpen}
+          onClose={() => setInternalReportOpen(false)}
+          defaultTab="post"
+          allowUserReport={allowUserReport}
+          postTarget={{ id: reportPostId, displayText: reportDisplayText?.trim() || '게시글' }}
+          userTarget={
+            allowUserReport && typeof reportAuthorUserId === 'number'
+              ? { id: reportAuthorUserId, displayText: reportAuthorDisplayText?.trim() || '사용자' }
+              : undefined
+          }
+        />
+      ) : null}
 
       {children}
     </div>

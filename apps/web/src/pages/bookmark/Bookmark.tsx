@@ -28,6 +28,8 @@ type BookmarkItem = {
   rankingPeriods: RankingPeriod[];
   voteId: number | null;
   voteChoice: VoteChoice | null;
+  likeCount: number;
+  dislikeCount: number;
 };
 
 type IndicatorStyle = {
@@ -145,6 +147,21 @@ function extractVoteChoice(raw: Record<string, unknown>): VoteChoice | null {
   return null;
 }
 
+function extractCount(raw: Record<string, unknown>, key: 'likeCount' | 'dislikeCount') {
+  const direct = toSafeNumber(raw[key]);
+  if (direct !== null) return direct;
+
+  const nestedCandidates = [raw.voteSummary, raw.summary, raw.ranking, raw.rankInfo];
+
+  for (const candidate of nestedCandidates) {
+    if (!isRecord(candidate)) continue;
+    const parsed = toSafeNumber(candidate[key]);
+    if (parsed !== null) return parsed;
+  }
+
+  return 0;
+}
+
 function getItemsByTab(items: BookmarkItem[], tab: TabType) {
   if (tab === 'all') return items;
   return items.filter((item) => item.status === tab);
@@ -182,6 +199,8 @@ function mapBookmarkItems(rawItems: BookmarkListItem[]): BookmarkItem[] {
         rankingPeriods: extractRankingPeriods(raw),
         voteId: extractVoteId(raw),
         voteChoice: extractVoteChoice(raw),
+        likeCount: extractCount(raw, 'likeCount'),
+        dislikeCount: extractCount(raw, 'dislikeCount'),
       };
     })
     .filter((item): item is BookmarkItem => item !== null);
@@ -239,6 +258,7 @@ export default function Bookmark() {
   const [slideDirection, setSlideDirection] = useState<SlideDirection>('right');
 
   const [items, setItems] = useState<BookmarkItem[]>([]);
+  const [focusBookmarkState, setFocusBookmarkState] = useState<Record<number, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -318,6 +338,9 @@ export default function Bookmark() {
     () => (focusedItem ? getDefaultPeriod(focusedItem.rankingPeriods) : null),
     [focusedItem],
   );
+  const focusedVoteTotal = (focusedItem?.likeCount ?? 0) + (focusedItem?.dislikeCount ?? 0);
+  const focusedLikePercent = focusedVoteTotal > 0 ? Math.round(((focusedItem?.likeCount ?? 0) / focusedVoteTotal) * 100) : 0;
+  const focusedDislikePercent = focusedVoteTotal > 0 ? 100 - focusedLikePercent : 0;
 
   const loadBookmarks = useCallback(async () => {
     try {
@@ -800,7 +823,7 @@ export default function Bookmark() {
 
       setFocusItems(sourceItems);
       setFocusIndex(nextIndex >= 0 ? nextIndex : 0);
-      setSheetOpen(true);
+      setSheetOpen(false);
       setFocusOpen(true);
       return;
     }
@@ -811,6 +834,41 @@ export default function Bookmark() {
     }
 
     toggleSelectedId(item.id);
+  };
+
+  const handleToggleFocusedBookmark = async () => {
+    if (!focusedItem) return;
+
+    const previous = focusBookmarkState[focusedItem.postId] ?? true;
+    const nextValue = !previous;
+
+    setFocusBookmarkState((prev) => ({
+      ...prev,
+      [focusedItem.postId]: nextValue,
+    }));
+
+    try {
+      await setPostBookmark(focusedItem.postId, nextValue);
+
+      if (!nextValue) {
+        setItems((prev) => prev.filter((item) => item.postId !== focusedItem.postId));
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '북마크 처리에 실패했습니다.';
+
+      setFocusBookmarkState((prev) => ({
+        ...prev,
+        [focusedItem.postId]: previous,
+      }));
+
+      if (isAuthError(message)) {
+        clearAuthTokens();
+        navigate('/login');
+        return;
+      }
+
+      window.alert(message);
+    }
   };
 
   const renderOngoingFocusedSheetContent = () => {
@@ -960,9 +1018,20 @@ export default function Bookmark() {
           }}
           sheetOpen={sheetOpen}
           onCloseSheet={() => setSheetOpen(false)}
-          showVoteGraph={false}
+          showVoteGraph
+          likePercent={focusedLikePercent}
+          dislikePercent={focusedDislikePercent}
           showDetailButton
           detailLabel="상세보기"
+          showActionCounts
+          likeCount={focusedItem.likeCount}
+          dislikeCount={focusedItem.dislikeCount}
+          showBookmarkButton
+          isBookmarked={focusBookmarkState[focusedItem.postId] ?? true}
+          onBookmarkClick={() => void handleToggleFocusedBookmark()}
+          reportPostId={focusedItem.postId}
+          reportDisplayText={focusedItem.title}
+          contentText={focusedItem.title}
           onOpenDetail={handleOpenDetailSheet}
         >
           {focusedItem.status === 'ongoing' ? (

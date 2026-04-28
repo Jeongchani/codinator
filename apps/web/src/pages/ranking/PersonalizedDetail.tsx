@@ -175,13 +175,12 @@ function buildPersonalizedFallbackData(item: PersonalizedItem): PostDetailSheetD
 }
 
 export default function PersonalizedDetail({ item, hideFeedLink = false }: Props) {
-  const fallbackData = useMemo(
-    () => (item ? buildPersonalizedFallbackData(item) : null),
-    [item],
-  );
+  const fallbackData = useMemo(() => (item ? buildPersonalizedFallbackData(item) : null), [item]);
 
   if (!item || !fallbackData) {
-    return <div className={detailStyles.sheetContent}>개인화 상세 데이터를 불러올 수 없습니다.</div>;
+    return (
+      <div className={detailStyles.sheetContent}>개인화 상세 데이터를 불러올 수 없습니다.</div>
+    );
   }
 
   const authorUserId = extractAuthorUserId(item);

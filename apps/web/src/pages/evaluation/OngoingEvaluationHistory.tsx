@@ -6,8 +6,11 @@ import evaluationHistoryBanner from '../../assets/evaluation/평가기록 배너
 import {
   clearAuthTokens,
   fetchAllMyEvaluationHistory,
+  fetchMyBookmarkMap,
   isAuthError,
   resolveAssetUrl,
+  subscribeBookmarkUpdated,
+  togglePostBookmark,
 } from '../../lib/api';
 import Header from '../../components/Header';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
@@ -134,6 +137,8 @@ export default function OngoingEvaluationHistory() {
   const [isHeaderButtonPressed, setIsHeaderButtonPressed] = useState(false);
   const [focusedPostId, setFocusedPostId] = useState<number | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+  const [bookmarks, setBookmarks] = useState<Record<number, boolean>>({});
+  const [bookmarkLoadingIds, setBookmarkLoadingIds] = useState<number[]>([]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const sheetContentRef = useRef<HTMLDivElement | null>(null);
@@ -153,6 +158,61 @@ export default function OngoingEvaluationHistory() {
     clearAuthTokens();
     navigate('/login', { replace: true });
   }, [navigate]);
+
+  const loadBookmarks = useCallback(async () => {
+    try {
+      const nextMap = await fetchMyBookmarkMap();
+      setBookmarks(nextMap);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '북마크 정보를 불러오지 못했습니다.';
+      if (isAuthError(message)) moveToLogin();
+    }
+  }, [moveToLogin]);
+
+  useEffect(() => {
+    void loadBookmarks();
+  }, [loadBookmarks]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeBookmarkUpdated((detail) => {
+      if (!detail) {
+        void loadBookmarks();
+        return;
+      }
+
+      setBookmarks((prev) => ({
+        ...prev,
+        [detail.postId]: detail.bookmarked,
+      }));
+    });
+
+    return unsubscribe;
+  }, [loadBookmarks]);
+
+  const toggleBookmarkByPostId = async (postId: number) => {
+    if (bookmarkLoadingIds.includes(postId)) return;
+
+    const isBookmarked = Boolean(bookmarks[postId]);
+    setBookmarkLoadingIds((prev) => [...prev, postId]);
+    setBookmarks((prev) => ({ ...prev, [postId]: !isBookmarked }));
+
+    try {
+      const nextValue = await togglePostBookmark(postId, isBookmarked);
+      setBookmarks((prev) => ({ ...prev, [postId]: nextValue }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '북마크 처리에 실패했습니다.';
+      setBookmarks((prev) => ({ ...prev, [postId]: isBookmarked }));
+
+      if (isAuthError(message)) {
+        moveToLogin();
+        return;
+      }
+
+      window.alert(message);
+    } finally {
+      setBookmarkLoadingIds((prev) => prev.filter((id) => id !== postId));
+    }
+  };
 
   const loadHistory = useCallback(
     async (showInitialLoading = false) => {
@@ -823,6 +883,18 @@ export default function OngoingEvaluationHistory() {
           likePercent={focusedVoteSummary.likePercent}
           dislikePercent={focusedVoteSummary.dislikePercent}
           showDetailButton
+          detailLabel="상세보기"
+          showActionCounts
+          likeCount={focusedItem.myChoice === 'LIKE' ? 1 : 0}
+          dislikeCount={focusedItem.myChoice === 'DISLIKE' ? 1 : 0}
+          showBookmarkButton
+          isBookmarked={Boolean(bookmarks[focusedItem.postId])}
+          bookmarkDisabled={bookmarkLoadingIds.includes(focusedItem.postId)}
+          onBookmarkClick={() => void toggleBookmarkByPostId(focusedItem.postId)}
+          reportPostId={focusedItem.postId}
+          reportDisplayText={focusedItem.contentPreview}
+          selectedVote={focusedItem.myChoice}
+          contentText={focusedItem.contentPreview}
           onOpenDetail={() => setDetailSheetOpen(true)}
           ariaLabel="평가 기록 포커스 화면"
         >
