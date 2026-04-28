@@ -1,6 +1,5 @@
 import { BadGatewayException, Injectable, UnauthorizedException } from '@nestjs/common';
 import axios from 'axios';
-import { createHash } from 'crypto';
 import { SocialProvider } from '@prisma/client';
 import type { SocialProviderVerifier, SocialUserProfile } from '../social-provider-verifier.interface';
 
@@ -22,21 +21,13 @@ interface GoogleTokenInfoResponse {
  *
  * - 실제 검증: Google tokeninfo endpoint 사용 (서명 + exp 자동 처리)
  * - aud(client_id) 검증: GOOGLE_CLIENT_ID env 설정 시에만
- * - dev fallback: GOOGLE_REAL_VERIFY_ENABLED / SOCIAL_LOGIN_REAL_VERIFY_ENABLED 모두 false 이면
- *                 SHA-256 해시 기반 결정론적 stub 사용
+ * - mock/stub 전략 완전 제거 — real provider verification 만 허용
  */
 @Injectable()
 export class GoogleSocialVerifier implements SocialProviderVerifier {
   private readonly clientId = process.env.GOOGLE_CLIENT_ID ?? '';
-  private readonly realVerifyEnabled =
-    process.env.GOOGLE_REAL_VERIFY_ENABLED === 'true' ||
-    process.env.SOCIAL_LOGIN_REAL_VERIFY_ENABLED === 'true';
 
   async verify(providerToken: string): Promise<SocialUserProfile> {
-    if (!this.realVerifyEnabled) {
-      return this.stubProfile(providerToken);
-    }
-
     let tokenInfo: GoogleTokenInfoResponse;
 
     try {
@@ -83,18 +74,6 @@ export class GoogleSocialVerifier implements SocialProviderVerifier {
       emailVerified: tokenInfo.email_verified === 'true',
       name: tokenInfo.name ?? null,
       profileImageUrl: tokenInfo.picture ?? null,
-    };
-  }
-
-  /** dev/test 용 stub: providerToken 해시 → 결정론적 providerUserId */
-  private stubProfile(providerToken: string): SocialUserProfile {
-    const providerUserId = createHash('sha256').update(providerToken).digest('hex').slice(0, 40);
-    return {
-      provider: SocialProvider.GOOGLE,
-      providerUserId,
-      providerEmail: null,
-      emailVerified: null,
-      name: null,
     };
   }
 }

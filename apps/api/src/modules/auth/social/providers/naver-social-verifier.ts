@@ -1,6 +1,5 @@
 import { BadGatewayException, Injectable, UnauthorizedException } from '@nestjs/common';
 import axios from 'axios';
-import { createHash } from 'crypto';
 import { SocialProvider } from '@prisma/client';
 import type { SocialProviderVerifier, SocialUserProfile } from '../social-provider-verifier.interface';
 
@@ -23,20 +22,14 @@ interface NaverProfileResponse {
  * - 실제 검증: GET https://openapi.naver.com/v1/nid/me (Bearer access token)
  * - providerUserId: response.id
  * - email: response.email (동의 시에만 존재)
- * - email_verified: Naver 는 제공하지 않으므로 null 처리
- * - dev fallback: NAVER_REAL_VERIFY_ENABLED / SOCIAL_LOGIN_REAL_VERIFY_ENABLED 모두 false 이면 stub
+ * - emailVerified: Naver API 가 제공하지 않으므로 null 처리
+ *   → emailVerified=null 이므로 기존 회원 자동 연동(auto-link)은 불가
+ *   → 신규 가입은 허용하되, 동일 이메일 기존 회원이 있으면 연동 불가 에러 반환
+ * - mock/stub 전략 완전 제거 — real provider verification 만 허용
  */
 @Injectable()
 export class NaverSocialVerifier implements SocialProviderVerifier {
-  private readonly realVerifyEnabled =
-    process.env.NAVER_REAL_VERIFY_ENABLED === 'true' ||
-    process.env.SOCIAL_LOGIN_REAL_VERIFY_ENABLED === 'true';
-
   async verify(providerToken: string): Promise<SocialUserProfile> {
-    if (!this.realVerifyEnabled) {
-      return this.stubProfile(providerToken);
-    }
-
     let data: NaverProfileResponse;
 
     try {
@@ -68,21 +61,10 @@ export class NaverSocialVerifier implements SocialProviderVerifier {
       provider: SocialProvider.NAVER,
       providerUserId: profile.id,
       providerEmail: profile.email ?? null,
-      emailVerified: null, // Naver API 미제공
+      emailVerified: null, // Naver API 미제공 — auto-link 불가
       name: profile.name ?? null,
       nickname: profile.nickname ?? null,
       profileImageUrl: profile.profile_image ?? null,
-    };
-  }
-
-  private stubProfile(providerToken: string): SocialUserProfile {
-    const providerUserId = createHash('sha256').update(providerToken).digest('hex').slice(0, 40);
-    return {
-      provider: SocialProvider.NAVER,
-      providerUserId,
-      providerEmail: null,
-      emailVerified: null,
-      name: null,
     };
   }
 }

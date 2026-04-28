@@ -1,6 +1,5 @@
 import { BadGatewayException, Injectable, UnauthorizedException } from '@nestjs/common';
 import axios from 'axios';
-import { createHash } from 'crypto';
 import { SocialProvider } from '@prisma/client';
 import type { SocialProviderVerifier, SocialUserProfile } from '../social-provider-verifier.interface';
 
@@ -24,19 +23,12 @@ interface KakaoUserMeResponse {
  * - 실제 검증: GET https://kapi.kakao.com/v2/user/me (Bearer access token)
  * - providerUserId: kakao id (number → string 변환)
  * - email, is_email_verified: kakao_account 동의항목 허용 시에만 존재
- * - dev fallback: KAKAO_REAL_VERIFY_ENABLED / SOCIAL_LOGIN_REAL_VERIFY_ENABLED 모두 false 이면 stub
+ * - emailVerified: is_email_verified && is_email_valid 모두 true 일 때만 true
+ * - mock/stub 전략 완전 제거 — real provider verification 만 허용
  */
 @Injectable()
 export class KakaoSocialVerifier implements SocialProviderVerifier {
-  private readonly realVerifyEnabled =
-    process.env.KAKAO_REAL_VERIFY_ENABLED === 'true' ||
-    process.env.SOCIAL_LOGIN_REAL_VERIFY_ENABLED === 'true';
-
   async verify(providerToken: string): Promise<SocialUserProfile> {
-    if (!this.realVerifyEnabled) {
-      return this.stubProfile(providerToken);
-    }
-
     let data: KakaoUserMeResponse;
 
     try {
@@ -66,24 +58,21 @@ export class KakaoSocialVerifier implements SocialProviderVerifier {
 
     const account = data.kakao_account;
 
+    // emailVerified: is_email_verified 와 is_email_valid 모두 true 여야 신뢰 가능
+    const emailVerified =
+      account?.is_email_verified === true && account?.is_email_valid === true
+        ? true
+        : account?.is_email_verified === false || account?.is_email_valid === false
+          ? false
+          : null; // 동의항목 미허용 등으로 정보 없음
+
     return {
       provider: SocialProvider.KAKAO,
       providerUserId: String(data.id),
       providerEmail: account?.email ?? null,
-      emailVerified: account?.is_email_verified ?? null,
+      emailVerified,
       nickname: account?.profile?.nickname ?? null,
       profileImageUrl: account?.profile?.profile_image_url ?? null,
-    };
-  }
-
-  private stubProfile(providerToken: string): SocialUserProfile {
-    const providerUserId = createHash('sha256').update(providerToken).digest('hex').slice(0, 40);
-    return {
-      provider: SocialProvider.KAKAO,
-      providerUserId,
-      providerEmail: null,
-      emailVerified: null,
-      name: null,
     };
   }
 }
