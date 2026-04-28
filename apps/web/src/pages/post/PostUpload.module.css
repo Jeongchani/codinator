@@ -6,6 +6,8 @@
   @apply h-full overflow-y-auto bg-white;
   -ms-overflow-style: none;
   scrollbar-width: none;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .scrollArea::-webkit-scrollbar {
@@ -55,7 +57,10 @@
 }
 
 .contentSection {
-  @apply px-4 pt-5 pb-6 bg-white;
+  @apply px-4 pt-5 bg-white;
+  padding-bottom: calc(
+    var(--footer-height, 90px) + var(--footer-offset, 0px) + env(safe-area-inset-bottom) + 24px
+  );
 }
 
 .divider {
@@ -514,7 +519,6 @@
   @apply flex h-[50px] w-full items-center justify-center rounded-full bg-black px-4 text-[15px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50;
 }
 
-
 :global(html.dark) .container,
 :global(html.dark) .pageBody,
 :global(html.dark) .contentArea,
@@ -776,7 +780,6 @@
 :global(html.dark) .container {
   background-image: none;
 }
-
 
 :global(html.dark) .modalCancelButton,
 :global(html.dark) .modalSecondaryButton,

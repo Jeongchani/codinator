@@ -19,11 +19,10 @@ import {
   clearAuthTokens,
   fetcher,
   getAuthHeaders,
-  performApiRequest,
   resolveAssetUrl,
   uploadPostImage,
   type UploadedPostImageResponse,
-  applyManualBlurByImageAsset
+  applyManualBlurByImageAsset,
 } from '../../lib/api';
 import styles from './PostUpload.module.css';
 
@@ -1050,8 +1049,8 @@ export default function PostUpload() {
     try {
       setSubmitting(true);
       if (!uploadedImage?.imageAssetId) {
-      setMessage('업로드된 이미지 자산 정보가 없습니다. 이미지를 다시 업로드해주세요.');
-      return;
+        setMessage('업로드된 이미지 자산 정보가 없습니다. 이미지를 다시 업로드해주세요.');
+        return;
       }
       const outfitItems = wearItems
         .map((item) => ({
@@ -1068,22 +1067,22 @@ export default function PostUpload() {
             itemName: string | null;
           } => item.category !== null && Boolean(item.brand || item.itemName),
         );
-      
+
       //게시글 생성전 수동블러 처리 반영
       if (approvedBlurMode === 'MANUAL' && manualBlurFile && uploadedImage?.imageAssetId) {
-      setMessage('수동 블러 서버 반영 중...');
-      await applyManualBlurByImageAsset(uploadedImage.imageAssetId, manualBlurFile);
-    }
-        setMessage('게시글 생성 중...');
+        setMessage('수동 블러 서버 반영 중...');
+        await applyManualBlurByImageAsset(uploadedImage.imageAssetId, manualBlurFile);
+      }
+      setMessage('게시글 생성 중...');
 
-        await fetcher<CreatePostResponse & { postId?: number }>('/posts', {
+      await fetcher<CreatePostResponse & { postId?: number }>('/posts', {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
-        content: content.trim(),
-        imageAssetId: uploadedImage.imageAssetId,
-        keywordIds: selectedKeywords,
-        outfitItems,
+          content: content.trim(),
+          imageAssetId: uploadedImage.imageAssetId,
+          keywordIds: selectedKeywords,
+          outfitItems,
         }),
       });
 

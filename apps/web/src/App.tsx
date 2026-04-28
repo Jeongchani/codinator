@@ -99,17 +99,17 @@ function AppRoutes() {
         <Route path="/loginSelect" element={<LoginSelect />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/myPage/edit" element={<MyPageEdit />} />
         <Route path="/passwordReset" element={<PasswordReset />} />
 
         <Route path="/evaluationDetailFeedback/:postId" element={<EvaluationDetailFeedback />} />
 
-        <Route path="/postUpload" element={<PostUpload />} />
         <Route path="/rankingDetail/:postId" element={<RankingDetail />} />
-        <Route path="/myPage/edit" element={<MyPageEdit />} />
 
         <Route path="/test" element={<TestPage />} />
 
         <Route element={<AppLayout />}>
+          <Route path="/postUpload" element={<PostUpload />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/myPage" element={<MyPage />} />
           <Route path="/rankingZone" element={<RankingZone />} />
