@@ -206,10 +206,11 @@ export default function LoginSelect() {
   const moveToSignupForNewSocialAccount = (provider: SocialProvider, providerToken: string) => {
     openModal(
       '추가 정보가 필요해요',
-      '처음 사용하는 소셜 계정입니다. 추가 정보를 입력하면 가입이 완료됩니다.',
+      '처음 사용하는 소셜 계정입니다. 회원가입 페이지에서 추가 정보를 입력하면 가입이 완료됩니다.',
       () =>
-        navigate('/socialSignup', {
+        navigate('/signup', {
           state: {
+            mode: 'social',
             provider,
             providerToken,
             rememberMe: false,

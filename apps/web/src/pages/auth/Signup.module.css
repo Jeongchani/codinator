@@ -242,7 +242,7 @@
 }
 
 .phoneCard {
-  @apply w-full bg-white rounded-[18px];
+  @apply w-full bg-white rounded-[10px];
   min-height: 48px;
   padding: 8px 14px 8px 16px;
   border: 1px solid #d6d3d1;
@@ -284,7 +284,7 @@
 }
 
 .verificationRow {
-  @apply mt-3 flex h-[52px] items-center gap-[10px] rounded-[18px] border border-[#d6d3d1] bg-white pl-[14px] pr-[10px];
+  @apply mt-3 flex h-[52px] items-center gap-[10px] rounded-[10px] border border-[#d6d3d1] bg-white pl-[14px] pr-[10px];
 }
 
 .verificationInput {
@@ -527,4 +527,60 @@
     left: 50%;
     transform: translateX(-50%);
   }
+}
+
+.socialContent {
+  min-height: 1390px;
+}
+
+.socialForm .passwordGroup {
+  top: 294px;
+}
+
+.socialForm .passwordConfirmGroup {
+  top: 426px;
+}
+
+.socialForm .birthDateGroup {
+  top: 558px;
+}
+
+.socialForm .genderGroup {
+  top: 702px;
+}
+
+.socialForm .phoneGroup {
+  top: 802px;
+}
+
+.socialForm .signupSubmitButton.bottomObjectsDefault {
+  top: 926px;
+}
+
+.socialForm .signupSubmitButton.bottomObjectsExpanded {
+  top: 1072px;
+}
+
+.socialForm .orRow.bottomObjectsDefault {
+  top: 1010px;
+}
+
+.socialForm .socialButtonRow.bottomObjectsDefault {
+  top: 1055px;
+}
+
+.socialForm .loginGuideRow.bottomObjectsDefault {
+  top: 1137px;
+}
+
+.socialForm .orRow.bottomObjectsExpanded {
+  top: 1156px;
+}
+
+.socialForm .socialButtonRow.bottomObjectsExpanded {
+  top: 1201px;
+}
+
+.socialForm .loginGuideRow.bottomObjectsExpanded {
+  top: 1283px;
 }

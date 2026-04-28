@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import Login from './pages/login/Login';
-import Signup from './pages/auth/Signup';
 import PostUpload from './pages/post/PostUpload';
 import RankingZone from './pages/ranking/RankingZone';
 import RankingDetail from './pages/ranking/RankingDetail';
@@ -23,10 +22,10 @@ import OngoingEvaluationHistory from './pages/evaluation/OngoingEvaluationHistor
 import Settings from './pages/settings/Settings';
 import PasswordReset from './pages/auth/PasswordReset';
 import ForegroundPushCenter from './components/notifications/ForegroundPushCenter';
-import SocialSignup from './pages/auth/SocialSignup';
 
 import { fetchMySettings, getAccessToken } from './lib/api';
 import { applyThemeMode, getStoredThemeMode, saveAndApplyThemeMode } from './lib/theme';
+import Signup from './pages/auth/Signup';
 
 function ThemeSettingsHydrator() {
   const location = useLocation();
@@ -95,7 +94,6 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<Splash onFinish={() => navigate('/loginSelect')} />} />
 
-        <Route path="/socialSignup" element={<SocialSignup />} />
         <Route path="/loginSelect" element={<LoginSelect />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />

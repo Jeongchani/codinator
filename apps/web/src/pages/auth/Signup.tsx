@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { SquareCheck } from 'lucide-react';
 import type {
   Gender,
@@ -75,6 +75,19 @@ type SocialLoginButton = {
   logoImage: string;
 };
 
+type SignupLocationState = {
+  mode?: 'social';
+  provider?: SocialProvider;
+  providerToken?: string;
+  rememberMe?: boolean;
+};
+
+type SocialSignupContext = {
+  provider: SocialProvider;
+  providerToken: string;
+  rememberMe: boolean;
+};
+
 declare global {
   interface Window {
     google?: {
@@ -115,6 +128,10 @@ const SOCIAL_LOGIN_BUTTONS: SocialLoginButton[] = [
 
 const getSocialLogoImage = (provider: SocialProvider) => {
   return SOCIAL_LOGIN_BUTTONS.find((socialButton) => socialButton.provider === provider)?.logoImage;
+};
+
+const isSocialProvider = (value: unknown): value is SocialProvider => {
+  return value === 'GOOGLE' || value === 'NAVER' || value === 'KAKAO';
 };
 
 const getStringEnv = (key: string): string => {
@@ -301,6 +318,27 @@ const verifyPhoneVerificationCode = async (
 
 export default function Signup() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const socialSignupContext = useMemo<SocialSignupContext | null>(() => {
+    const state = location.state as SignupLocationState | null;
+
+    if (
+      state?.mode !== 'social' ||
+      !isSocialProvider(state.provider) ||
+      !state.providerToken
+    ) {
+      return null;
+    }
+
+    return {
+      provider: state.provider,
+      providerToken: state.providerToken,
+      rememberMe: Boolean(state.rememberMe),
+    };
+  }, [location.state]);
+
+  const isSocialSignup = socialSignupContext !== null;
 
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
@@ -367,6 +405,7 @@ export default function Signup() {
 
   const isNicknameCheckDone = nicknameChecked && nicknameAvailable === true;
   const isEmailCheckDone = emailChecked && emailAvailable === true;
+  const isEmailReady = isSocialSignup || (isEmailValid && isEmailCheckDone);
 
   const timerExpired = phoneVerificationSent && !phoneVerified && remainingSeconds === 0;
 
@@ -380,14 +419,13 @@ export default function Signup() {
 
   const canSubmit =
     isNicknameValid &&
-    isEmailValid &&
+    isEmailReady &&
     isPasswordValid &&
     isPasswordConfirmValid &&
     isBirthValid &&
     isGenderValid &&
     phoneReady &&
     isNicknameCheckDone &&
-    isEmailCheckDone &&
     !signupLoading;
 
   useEffect(() => {
@@ -441,17 +479,21 @@ export default function Signup() {
     setModalSocialProvider(null);
   };
 
-  const persistSocialAuthSession = (authData: PersistAuthData) => {
+  const persistSocialAuthSession = (authData: PersistAuthData, rememberMe = false) => {
     clearAuthTokens();
 
-    saveAuthTokens(authData.accessToken, undefined);
+    saveAuthTokens(authData.accessToken, rememberMe ? authData.refreshToken : undefined);
 
     saveCurrentUser({
       ...authData.user,
       email: authData.user.email ?? '',
     } as LoginResponse['user']);
 
-    localStorage.removeItem('keepLoggedIn');
+    if (rememberMe && authData.refreshToken) {
+      localStorage.setItem('keepLoggedIn', 'true');
+    } else {
+      localStorage.removeItem('keepLoggedIn');
+    }
 
     navigate('/rankingZone', { replace: true });
   };
@@ -459,11 +501,12 @@ export default function Signup() {
   const moveToSignupForNewSocialAccount = (provider: SocialProvider, providerToken: string) => {
     openModal(
       '추가 정보가 필요해요',
-      '처음 사용하는 소셜 계정입니다. 추가 정보를 입력하면 가입이 완료됩니다.',
+      '처음 사용하는 소셜 계정입니다. 회원가입 페이지에서 추가 정보를 입력하면 가입이 완료됩니다.',
       'social',
       () =>
-        navigate('/socialSignup', {
+        navigate('/signup', {
           state: {
+            mode: 'social',
             provider,
             providerToken,
             rememberMe: false,
@@ -486,11 +529,14 @@ export default function Signup() {
       body: JSON.stringify(requestBody),
     });
 
-    persistSocialAuthSession({
-      accessToken: data.accessToken,
-      refreshToken: data.refreshToken,
-      user: data.user,
-    });
+    persistSocialAuthSession(
+      {
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        user: data.user,
+      },
+      false,
+    );
   };
 
   const handleProviderTokenLogin = async (provider: SocialProvider, providerToken: string) => {
@@ -969,14 +1015,16 @@ export default function Signup() {
       return false;
     }
 
-    if (!isEmailValid) {
-      openModal('이메일 확인', '올바른 이메일 형식을 입력해주세요.', 'error');
-      return false;
-    }
+    if (!isSocialSignup) {
+      if (!isEmailValid) {
+        openModal('이메일 확인', '올바른 이메일 형식을 입력해주세요.', 'error');
+        return false;
+      }
 
-    if (!isEmailCheckDone) {
-      openModal('이메일 확인', '이메일 중복확인을 완료해주세요.', 'error');
-      return false;
+      if (!isEmailCheckDone) {
+        openModal('이메일 확인', '이메일 중복확인을 완료해주세요.', 'error');
+        return false;
+      }
     }
 
     if (!isPasswordValid) {
@@ -1038,6 +1086,41 @@ export default function Signup() {
     setSignupLoading(true);
 
     try {
+      if (socialSignupContext) {
+        const requestBody: SocialCompleteProfileRequest = {
+          provider: socialSignupContext.provider,
+          providerToken: socialSignupContext.providerToken,
+          nickname: trimmedNickname,
+          password: trimmedPassword,
+          birthDate: parsedBirthDate.isoDate,
+          gender,
+          phoneNumber: phoneDigits,
+          phoneVerificationToken,
+          rememberMe: socialSignupContext.rememberMe,
+        };
+
+        const data = await fetcher<SocialCompleteProfileResponse>(
+          '/auth/social/complete-profile',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody),
+          },
+        );
+
+        openModal('회원가입 완료', '소셜 회원가입이 완료되었습니다.', 'success', () => {
+          persistSocialAuthSession(
+            {
+              accessToken: data.accessToken,
+              refreshToken: data.refreshToken,
+              user: data.user,
+            },
+            socialSignupContext.rememberMe,
+          );
+        });
+        return;
+      }
+
       const requestBody: SignupRequest = {
         email: trimmedEmail,
         nickname: trimmedNickname,
@@ -1166,7 +1249,7 @@ export default function Signup() {
 
   return (
     <main className={styles.root}>
-      <div className={styles.content}>
+      <div className={`${styles.content} ${isSocialSignup ? styles.socialContent : ''}`}>
         <img
           src={signupDecorationImage}
           alt=""
@@ -1176,11 +1259,15 @@ export default function Signup() {
 
         <header className={styles.header}>
           <h1 className={styles.title}>회원가입</h1>
-          <p className={styles.description}>내 코디를 공유하고 평가를 받아보세요</p>
+          <p className={styles.description}>
+            {isSocialSignup
+              ? '추가 정보를 입력하면 바로 시작할 수 있어요'
+              : '내 코디를 공유하고 평가를 받아보세요'}
+          </p>
         </header>
 
         <form
-          className={styles.form}
+          className={`${styles.form} ${isSocialSignup ? styles.socialForm : ''}`}
           onSubmit={(event: FormEvent<HTMLFormElement>) => {
             event.preventDefault();
             void handleSignup();
@@ -1223,41 +1310,43 @@ export default function Signup() {
             <p className={nicknameMessageClass}>{getNicknameMessage()}</p>
           </div>
 
-          <div className={`${styles.fieldGroup} ${styles.emailGroup}`}>
-            <label className={styles.label} htmlFor="email">
-              이메일
-            </label>
+          {!isSocialSignup ? (
+            <div className={`${styles.fieldGroup} ${styles.emailGroup}`}>
+              <label className={styles.label} htmlFor="email">
+                이메일
+              </label>
 
-            <div className={styles.inputButtonBox}>
-              <input
-                id="email"
-                type="email"
-                className={styles.inputWithButton}
-                value={email}
-                placeholder="이메일을 입력하세요"
-                autoComplete="email"
-                disabled={signupLoading}
-                onChange={(event) => resetEmailCheck(event.target.value)}
-              />
+              <div className={styles.inputButtonBox}>
+                <input
+                  id="email"
+                  type="email"
+                  className={styles.inputWithButton}
+                  value={email}
+                  placeholder="이메일을 입력하세요"
+                  autoComplete="email"
+                  disabled={signupLoading}
+                  onChange={(event) => resetEmailCheck(event.target.value)}
+                />
 
-              <button
-                type="button"
-                className={`${styles.innerButton} ${
-                  isEmailCheckDone ? styles.checkButtonDone : ''
-                }`}
-                onClick={handleCheckEmail}
-                disabled={emailCheckLoading || signupLoading || !email.trim()}
-              >
-                {emailCheckLoading
-                  ? '확인중...'
-                  : isEmailCheckDone
-                    ? '확인 완료'
-                    : '중복 확인'}
-              </button>
+                <button
+                  type="button"
+                  className={`${styles.innerButton} ${
+                    isEmailCheckDone ? styles.checkButtonDone : ''
+                  }`}
+                  onClick={handleCheckEmail}
+                  disabled={emailCheckLoading || signupLoading || !email.trim()}
+                >
+                  {emailCheckLoading
+                    ? '확인중...'
+                    : isEmailCheckDone
+                      ? '확인 완료'
+                      : '중복 확인'}
+                </button>
+              </div>
+
+              <p className={emailMessageClass}>{getEmailMessage()}</p>
             </div>
-
-            <p className={emailMessageClass}>{getEmailMessage()}</p>
-          </div>
+          ) : null}
 
           <div className={`${styles.fieldGroup} ${styles.passwordGroup}`}>
             <label className={styles.label} htmlFor="password">
