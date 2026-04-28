@@ -400,4 +400,3 @@ export class ImageIndexingService {
     return 'image/jpeg';
   }
 }
-
