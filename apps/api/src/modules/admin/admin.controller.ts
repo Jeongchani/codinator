@@ -510,13 +510,22 @@ export class AdminController {
   @Delete('feedback-tags/:tagId')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: '피드백 태그 삭제 (ADMIN) — 미사용 태그만 가능' })
+  @ApiOperation({
+    summary: '피드백 태그 비활성화 (ADMIN)',
+    description: [
+      '태그를 `isActive=false` 로 비활성화합니다 (soft delete).',
+      '사용 중 여부와 관계없이 동일하게 처리됩니다.',
+      '- 기존 피드백 이력·집계는 그대로 보존됩니다.',
+      '- 신규 태그 선택 목록(GET /feedback-tags 등)에서 즉시 제외됩니다.',
+    ].join('\n'),
+  })
   @ApiParam({ name: 'tagId', type: Number, example: 1 })
   @ApiOkResponse({
-    description: '삭제 성공',
-    schema: { example: { success: true, message: '피드백 태그가 삭제되었습니다.' } },
+    description: '비활성화 성공',
+    schema: {
+      example: { success: true, message: '피드백 태그가 비활성화 처리되었습니다.' },
+    },
   })
-  @ApiConflictResponse({ description: '피드백에서 사용 중 — isActive=false로 비활성화 권장' })
   @ApiForbiddenResponse({ description: '관리자 권한 없음' })
   @ApiNotFoundResponse({ description: '피드백 태그를 찾을 수 없음' })
   async deleteFeedbackTag(

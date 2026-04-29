@@ -899,7 +899,7 @@ function S_AdminMasters() {
       <div style={C.card}>
         <h3 style={C.h3}>💬 피드백 태그 관리</h3>
         <div style={C.info('blue')}>
-          피드백 태그 삭제는 <strong>미사용 태그만 가능</strong>하다. 수정 시 code와 voteChoice는
+          피드백 태그 삭제는 사용 중 여부에 관계없이 <strong>비활성화(isActive=false)</strong> 처리된다. 수정 시 code와 voteChoice는
           변경할 수 없다.
         </div>
 
@@ -1093,7 +1093,7 @@ function S_AdminMasters() {
           {tagMode === 'DELETE' && (
             <>
               <div style={C.info('red')}>
-                삭제는 <strong>미사용 태그만</strong> 가능하다. 사용 중이면 conflict가 날 수 있다.
+                사용 중 여부에 관계없이 <strong>비활성화(isActive=false)</strong> 처리된다.
               </div>
               <Field label="tagId" value={tagId} onChange={setTagId} placeholder="ex) 2" />
               <button

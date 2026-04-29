@@ -1427,15 +1427,8 @@ export class AdminService {
       throw new NotFoundException('피드백 태그를 찾을 수 없습니다.');
     }
 
-    const usageCount = await this.prisma.feedback.count({ where: { tagId } });
-    if (usageCount > 0) {
-      throw new ConflictException(
-        `${usageCount}개의 피드백에서 사용 중입니다. 삭제 대신 isActive=false로 비활성화하세요.`,
-      );
-    }
-
-    await this.prisma.feedbackTag.delete({ where: { id: tagId } });
-    return { success: true, message: '피드백 태그가 삭제되었습니다.' };
+    await this.prisma.feedbackTag.update({ where: { id: tagId }, data: { isActive: false } });
+    return { success: true, message: '피드백 태그가 비활성화 처리되었습니다.' };
   }
 
   // ─── private helpers ──────────────────────────────────────────────────────────
