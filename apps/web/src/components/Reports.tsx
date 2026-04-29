@@ -278,7 +278,7 @@ export default function Reports({
             <span className={styles.titleIconWrap} aria-hidden="true">
               <Siren size={16} strokeWidth={2.2} className={styles.titleIcon} />
             </span>
-            <h2 className={styles.title}>신고</h2>
+            <h2 className={styles.title}>신고 하기</h2>
           </div>
 
           <button
@@ -378,7 +378,7 @@ export default function Reports({
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               maxLength={100}
-              placeholder="신고제목을입력해주세요."
+              placeholder="신고제목을 입력해주세요."
               className={styles.textInput}
             />
           </div>

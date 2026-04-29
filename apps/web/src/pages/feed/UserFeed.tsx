@@ -113,6 +113,7 @@ export default function UserFeed() {
     () => (focusedItem ? getDefaultPeriod(focusedItem.rankingPeriods) : null),
     [focusedItem],
   );
+  const reportAuthorUserId = userId && !Number.isNaN(Number(userId)) ? Number(userId) : null;
 
   const moveToLogin = useCallback(() => {
     clearAuthTokens();
@@ -472,6 +473,8 @@ export default function UserFeed() {
           onBookmarkClick={() => void toggleBookmarkByPostId(focusedItem.postId)}
           reportPostId={focusedItem.postId}
           reportDisplayText={focusedContentText}
+          reportAuthorUserId={reportAuthorUserId}
+          reportAuthorDisplayText={displayUserName}
           contentText={focusedContentText}
           onOpenDetail={handleOpenDetailSheet}
         >

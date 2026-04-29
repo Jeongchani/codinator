@@ -4,6 +4,8 @@
 
 .scrollArea {
   @apply h-full overflow-y-auto bg-white;
+  box-sizing: border-box;
+  padding-top: 50px;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -615,7 +617,6 @@
   @apply font-semibold text-neutral-900;
 }
 
-
 :global(html.dark) .container,
 :global(html.dark) .pageBody,
 :global(html.dark) .contentArea,
@@ -877,7 +878,6 @@
 :global(html.dark) .container {
   background-image: none;
 }
-
 
 :global(html.dark) .modalCancelButton,
 :global(html.dark) .modalSecondaryButton,

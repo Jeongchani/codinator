@@ -7,7 +7,7 @@ import {
   useState,
 } from 'react';
 import { motion } from 'framer-motion';
-import { Bookmark, ChevronLeft, List, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { Bookmark, ChevronLeft, List, ThumbsDown, ThumbsUp, X } from 'lucide-react';
 import Reports from '../Reports';
 import styles from './FocusScreen.module.css';
 
@@ -61,7 +61,7 @@ type FocusScreenProps = {
   onBookmarkClick?: () => void;
   reportPostId?: number | string | null;
   reportDisplayText?: string | null;
-  reportAuthorUserId?: number | null;
+  reportAuthorUserId?: number | string | null;
   reportAuthorDisplayText?: string | null;
   allowUserReport?: boolean;
   onReportClick?: () => void;
@@ -167,6 +167,7 @@ export default function FocusScreen({
   activeIndex = 0,
   viewportRef,
   ariaLabel = '포커스 화면',
+  closeButtonType = 'back',
   rightAction,
   showTopBar = true,
   showSwipeIndicator = true,
@@ -227,6 +228,16 @@ export default function FocusScreen({
     showContentPreview && (previewLines.firstLine.length > 0 || previewLines.secondLine.length > 0) && !sheetOpen;
   const canShowActionRail = !sheetOpen && (showVoteActions || showBookmarkButton || showDetailButton);
   const hasReportTarget = reportPostId !== null && reportPostId !== undefined;
+  const hasReportAuthorTarget =
+    reportAuthorUserId !== null &&
+    reportAuthorUserId !== undefined &&
+    String(reportAuthorUserId).trim().length > 0;
+  const reportAuthorTarget = hasReportAuthorTarget
+    ? {
+        id: reportAuthorUserId as number | string,
+        displayText: reportAuthorDisplayText?.trim() || '사용자',
+      }
+    : null;
 
   const openReport = () => {
     if (onReportClick) {
@@ -333,15 +344,18 @@ export default function FocusScreen({
       <div className={styles.overlay}>
         {showTopBar ? (
           <div className={styles.topBar}>
-            <motion.button
+            <button
               type="button"
               className={styles.closeButton}
               onClick={onClose}
-              aria-label="뒤로가기"
-              whileTap={{ scale: 0.94 }}
+              aria-label={closeButtonType === 'x' ? '닫기' : '뒤로가기'}
             >
-              <ChevronLeft size={20} strokeWidth={2.25} />
-            </motion.button>
+              {closeButtonType === 'x' ? (
+                <X size={20} strokeWidth={2.25} />
+              ) : (
+                <ChevronLeft size={20} strokeWidth={2.25} />
+              )}
+            </button>
 
             {rightAction ? (
               <div className={styles.reportSlot}>{rightAction}</div>
@@ -476,11 +490,7 @@ export default function FocusScreen({
           defaultTab="post"
           allowUserReport={allowUserReport}
           postTarget={{ id: reportPostId, displayText: reportDisplayText?.trim() || '게시글' }}
-          userTarget={
-            allowUserReport && typeof reportAuthorUserId === 'number'
-              ? { id: reportAuthorUserId, displayText: reportAuthorDisplayText?.trim() || '사용자' }
-              : undefined
-          }
+          userTarget={allowUserReport ? reportAuthorTarget : null}
         />
       ) : null}
 
