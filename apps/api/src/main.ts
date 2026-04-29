@@ -27,7 +27,7 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('Codinator API')
     .setDescription('Codinator 백엔드 API 문서')
-    .setVersion('2.0')
+    .setVersion('3.0')
     .addBearerAuth()
     .build();
 
