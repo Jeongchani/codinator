@@ -104,28 +104,32 @@
 }
 
 .topBar {
-  @apply absolute left-[20px] right-[20px] top-[22px] z-30 flex items-center justify-between;
+  @apply absolute left-0 right-0 top-0 z-30 pointer-events-none;
+  height: var(--app-header-height, 93px);
 }
 
 .reportSlot {
-  @apply pointer-events-auto;
+  @apply absolute right-[20px] pointer-events-auto;
+  top: 59px;
+  transform: translateY(-50%);
 }
 
 .reportTextButton,
 .closeButton {
-  @apply pointer-events-auto border-0 bg-transparent p-0 text-white;
+  @apply absolute pointer-events-auto border-0 bg-transparent p-0 text-white;
+  top: 59px;
+  transform: translateY(-50%);
   -webkit-tap-highlight-color: transparent;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.46);
 }
 
 .reportTextButton {
-  @apply flex h-9 w-11 items-center justify-end text-[14px] font-semibold leading-none tracking-[-0.04em];
+  @apply right-[20px] flex h-6 items-center justify-center text-[14px] font-semibold leading-[18px] tracking-[-0.04em] whitespace-nowrap;
 }
 
 .closeButton {
-  @apply flex h-9 w-11 items-center justify-start;
+  @apply left-[20px] flex h-6 w-6 items-center justify-center;
 }
-
 .closeButton:active,
 .reportTextButton:active {
   opacity: 0.72;

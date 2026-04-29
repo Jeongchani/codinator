@@ -4,6 +4,8 @@
 
 .scrollArea {
   @apply h-full overflow-y-auto bg-white;
+  box-sizing: border-box;
+  padding-top: 50px;
   -ms-overflow-style: none;
   scrollbar-width: none;
   overscroll-behavior-y: contain;
