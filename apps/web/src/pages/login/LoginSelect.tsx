@@ -528,7 +528,7 @@ export default function LoginSelect() {
       </section>
 
       <section className={styles.contentPanel}>
-        <h1 className={styles.title}>내 코디 평가 시작하기</h1>
+        <h1 className={styles.title}>내 코디 확인하기</h1>
 
         <button
           type="button"
