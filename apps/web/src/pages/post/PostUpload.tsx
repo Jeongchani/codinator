@@ -41,6 +41,7 @@ type WearItem = {
 };
 
 type BlurFlowStep = 'idle' | 'decision' | 'manual';
+type SubmitModalKind = 'missingImage' | 'missingContent' | 'finalWarning';
 type BrushTool = 'blur' | 'eraser';
 
 type BrushPreset = {
@@ -182,10 +183,21 @@ function assetUrl(url: string | null | undefined) {
   return resolveAssetUrl(url);
 }
 
-function Modal({ children, onClose }: { children: React.ReactNode; onClose?: () => void }) {
+function Modal({
+  children,
+  onClose,
+  variant = 'default',
+}: {
+  children: React.ReactNode;
+  onClose?: () => void;
+  variant?: 'default' | 'confirm';
+}) {
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+      <div
+        className={cls(styles.modalCard, variant === 'confirm' && styles.confirmModalCard)}
+        onClick={(e) => e.stopPropagation()}
+      >
         {children}
       </div>
     </div>
@@ -842,9 +854,11 @@ export default function PostUpload() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
+  const scrollAreaRef = useRef<HTMLDivElement | null>(null);
+  const contentTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const [content, setContent] = useState('');
-  const [message, setMessage] = useState('이미지와 설명을 입력하면 게시글을 등록할 수 있습니다.');
+  const [, setMessage] = useState('이미지와 설명을 입력하면 게시글을 등록할 수 있습니다.');
   const [submitting, setSubmitting] = useState(false);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -863,6 +877,7 @@ export default function PostUpload() {
   const [manualPreviewUrl, setManualPreviewUrl] = useState<string | null>(null);
   const [manualBlurFile, setManualBlurFile] = useState<File | null>(null);
   const [approvedBlurMode, setApprovedBlurMode] = useState<'AUTO' | 'MANUAL' | null>(null);
+  const [submitModalKind, setSubmitModalKind] = useState<SubmitModalKind | null>(null);
 
   const previewUrl = useMemo(() => approvedPreview || '', [approvedPreview]);
 
@@ -878,8 +893,6 @@ export default function PostUpload() {
     [keywordOptions, selectedKeywords],
   );
 
-  const visibleStatusMessage =
-    message && message !== '이미지와 설명을 입력하면 게시글을 등록할 수 있습니다.' ? message : '';
 
   const handleBack = () => {
     navigate(-1);
@@ -887,6 +900,59 @@ export default function PostUpload() {
 
   const handleOpenFilePicker = () => {
     fileInputRef.current?.click();
+  };
+
+  const closeSubmitModal = () => {
+    if (submitting) return;
+    setSubmitModalKind(null);
+  };
+
+  const focusContentTextarea = () => {
+    const textarea = contentTextareaRef.current;
+    if (!textarea) return;
+
+    const scrollArea = scrollAreaRef.current;
+
+    if (scrollArea) {
+      const scrollRect = scrollArea.getBoundingClientRect();
+      const textareaRect = textarea.getBoundingClientRect();
+      const nextScrollTop =
+        scrollArea.scrollTop + textareaRect.top - scrollRect.top - 96;
+
+      scrollArea.scrollTo({
+        top: Math.max(0, nextScrollTop),
+        behavior: 'smooth',
+      });
+    } else {
+      textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    const cursorPosition = textarea.value.length;
+
+    try {
+      textarea.focus({ preventScroll: true });
+    } catch {
+      textarea.focus();
+    }
+
+    textarea.setSelectionRange(cursorPosition, cursorPosition);
+  };
+
+  const handleMoveToContentInput = () => {
+    if (submitting) return;
+
+    setSubmitModalKind(null);
+
+    // 모바일 키보드가 열리려면 사용자 터치 이벤트 안에서 focus가 먼저 실행되어야 합니다.
+    focusContentTextarea();
+
+    window.requestAnimationFrame(() => {
+      focusContentTextarea();
+    });
+
+    window.setTimeout(() => {
+      focusContentTextarea();
+    }, 220);
   };
 
   const resetBlurState = () => {
@@ -924,6 +990,7 @@ export default function PostUpload() {
     }
 
     setSelectedFile(file);
+    setSubmitModalKind(null);
     resetBlurState();
 
     if (!file) {
@@ -1028,24 +1095,7 @@ export default function PostUpload() {
     setMessage('');
   };
 
-  const handleSubmit = async () => {
-    if (!selectedFile) {
-      setMessage('이미지를 먼저 선택해주세요.');
-      return;
-    }
-
-    if (!approvedBlurMode || !uploadedImage) {
-      setMessage('먼저 블러 확인을 완료해주세요.');
-      setBlurDecisionOpen(true);
-      setBlurStep('decision');
-      return;
-    }
-
-    if (!content.trim()) {
-      setMessage('게시글 설명을 입력해주세요.');
-      return;
-    }
-
+  const submitPost = async () => {
     try {
       setSubmitting(true);
       if (!uploadedImage?.imageAssetId) {
@@ -1067,6 +1117,11 @@ export default function PostUpload() {
             itemName: string | null;
           } => item.category !== null && Boolean(item.brand || item.itemName),
         );
+
+      if (!content.trim()) {
+        setMessage('게시글 설명을 입력해주세요.');
+        return;
+      }
 
       //게시글 생성전 수동블러 처리 반영
       if (approvedBlurMode === 'MANUAL' && manualBlurFile && uploadedImage?.imageAssetId) {
@@ -1097,6 +1152,40 @@ export default function PostUpload() {
     }
   };
 
+  const handleSubmit = () => {
+    if (!selectedFile) {
+      setMessage('');
+      setSubmitModalKind('missingImage');
+      return;
+    }
+
+    if (!approvedBlurMode || !uploadedImage) {
+      setMessage('');
+      setBlurDecisionOpen(true);
+      setBlurStep('decision');
+      return;
+    }
+
+    if (!content.trim()) {
+      setMessage('');
+      setSubmitModalKind('missingContent');
+      return;
+    }
+
+    setMessage('');
+    setSubmitModalKind('finalWarning');
+  };
+
+  const handleConfirmSubmit = () => {
+    if (!content.trim()) {
+      setSubmitModalKind('missingContent');
+      return;
+    }
+
+    setSubmitModalKind(null);
+    void submitPost();
+  };
+
   useEffect(() => {
     const loadKeywords = async () => {
       try {
@@ -1122,7 +1211,7 @@ export default function PostUpload() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.scrollArea}>
+      <div className={styles.scrollArea} ref={scrollAreaRef}>
         <section className={styles.heroSection}>
           <div className={styles.heroMediaFrame}>
             {previewUrl ? (
@@ -1189,6 +1278,7 @@ export default function PostUpload() {
 
             <textarea
               id="post-content"
+              ref={contentTextareaRef}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="코디 컨셉 타이핑"
@@ -1333,9 +1423,6 @@ export default function PostUpload() {
             </div>
           </section>
 
-          {visibleStatusMessage ? (
-            <p className={styles.statusMessage}>{visibleStatusMessage}</p>
-          ) : null}
 
           <div className={styles.submitArea}>
             <button
@@ -1350,6 +1437,87 @@ export default function PostUpload() {
         </section>
       </div>
 
+
+      {submitModalKind === 'missingImage' && (
+        <Modal variant="confirm" onClose={closeSubmitModal}>
+          <h3 className={styles.confirmModalTitle}>이미지가 필요해요</h3>
+
+          <p className={styles.confirmModalDescription}>
+            사진 1장을 업로드해야 게시글을 작성할 수 있습니다.
+          </p>
+
+          <div className={styles.confirmModalButtonRow}>
+            <button type="button" className={styles.confirmModalCancelButton} onClick={closeSubmitModal}>
+              닫기
+            </button>
+
+            <button
+              type="button"
+              className={styles.confirmModalPrimaryButton}
+              onClick={() => {
+                closeSubmitModal();
+                handleOpenFilePicker();
+              }}
+            >
+              사진 선택
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {submitModalKind === 'missingContent' && (
+        <Modal variant="confirm" onClose={closeSubmitModal}>
+          <h3 className={styles.confirmModalTitle}>게시글 설명이 필요해요</h3>
+
+          <p className={styles.confirmModalDescription}>
+            게시글 설명은 필수 입력값입니다. 내용을 입력한 뒤 다시 작성 완료를 눌러주세요.
+          </p>
+
+          <div className={styles.confirmModalButtonRow}>
+            <button
+              type="button"
+              className={styles.confirmModalCancelButton}
+              onClick={closeSubmitModal}
+            >
+              닫기
+            </button>
+
+            <button
+              type="button"
+              className={styles.confirmModalPrimaryButton}
+              onClick={handleMoveToContentInput}
+            >
+              내용 입력
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {submitModalKind === 'finalWarning' && (
+        <Modal variant="confirm" onClose={closeSubmitModal}>
+          <h3 className={styles.confirmModalTitle}>업로드 전 확인할까요?</h3>
+
+          <p className={styles.confirmModalDescription}>
+            얼굴이 충분히 가려졌는지 확인해주세요. 얼굴 노출 또는 신고 누적 시 게시글 숨김이나
+            이용 제한이 적용될 수 있습니다.
+          </p>
+
+          <div className={styles.confirmModalButtonRow}>
+            <button type="button" className={styles.confirmModalCancelButton} onClick={closeSubmitModal}>
+              다시 확인
+            </button>
+
+            <button
+              type="button"
+              className={styles.confirmModalDangerButton}
+              onClick={handleConfirmSubmit}
+              disabled={submitting}
+            >
+              {submitting ? '처리 중...' : '업로드'}
+            </button>
+          </div>
+        </Modal>
+      )}
       {blurDecisionOpen && uploadedImage && (
         <Modal onClose={() => setBlurDecisionOpen(false)}>
           {blurStep === 'decision' && (
