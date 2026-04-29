@@ -1,0 +1,381 @@
+.container {
+  @apply w-[375px] h-[812px] mx-auto relative overflow-hidden bg-neutral-300 shadow-2xl;
+}
+
+.emptyPageCenterText {
+  @apply absolute left-6 right-6 top-1/2 -translate-y-1/2 text-center text-white text-[16px] font-semibold leading-[1.7];
+  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+}
+
+.reportButton {
+  @apply h-9 min-w-[42px] border-0 bg-transparent p-0 text-right text-[14px] font-semibold leading-none tracking-[-0.04em] text-white pointer-events-auto;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.46);
+}
+
+.helperText {
+  @apply absolute left-6 right-6 bottom-[156px] text-center text-white text-[14px] leading-[1.6] pointer-events-none;
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+}
+
+.contentPreview {
+  @apply absolute left-[36px] right-[36px] bottom-[104px] z-30 pointer-events-none flex justify-center;
+}
+
+.contentPreviewBox {
+  @apply max-w-full rounded-full px-4 py-[9px];
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.contentPreviewText {
+  @apply m-0 w-full whitespace-nowrap overflow-hidden text-ellipsis text-center text-[12px] leading-none font-medium text-white;
+  opacity: 0.9;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.bottomActionArea {
+  @apply absolute inset-x-0 bottom-[42px] h-12 z-30;
+}
+
+.circleButton {
+  @apply absolute top-0 h-12 w-12 rounded-full flex items-center justify-center border-0 pointer-events-auto;
+  background: rgba(0, 0, 0, 0.44);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.circleButton:disabled {
+  opacity: 0.65;
+}
+
+.leftButton {
+  left: 36px;
+}
+
+.rightButton {
+  right: 36px;
+}
+
+.circleButtonInactive {
+  background: rgba(0, 0, 0, 0.44);
+}
+
+.loadingState {
+  @apply absolute inset-0 bg-neutral-900 flex flex-col items-center justify-center;
+}
+
+.loadingTitle {
+  @apply text-white text-2xl font-bold mb-4;
+}
+
+.statusText {
+  @apply text-center text-white text-[14px] leading-[1.7];
+}
+
+:global(html.dark) .container,
+:global(html.dark) .pageBody,
+:global(html.dark) .contentArea,
+:global(html.dark) .scrollArea,
+:global(html.dark) .sheetScrollArea,
+:global(html.dark) .bottomSheet,
+:global(html.dark) .sheetContent,
+:global(html.dark) .contentPanel,
+:global(html.dark) .card,
+:global(html.dark) .formBlock,
+:global(html.dark) .modalCard,
+:global(html.dark) .panel,
+:global(html.dark) .sheetRoot,
+:global(html.dark) .accountCard,
+:global(html.dark) .summaryCard,
+:global(html.dark) .inputBox,
+:global(html.dark) .inputRowBox,
+:global(html.dark) .phoneCard,
+:global(html.dark) .searchBar,
+:global(html.dark) .filterDropdown,
+:global(html.dark) .keywordCard,
+:global(html.dark) .feedbackComposerCard,
+:global(html.dark) .feedbackPanel,
+:global(html.dark) .targetBox,
+:global(html.dark) .optionMenu,
+:global(html.dark) .selectionActionSurface,
+:global(html.dark) .infoCard,
+:global(html.dark) .userItem,
+:global(html.dark) .stateBox,
+:global(html.dark) .errorBox,
+:global(html.dark) .loadingBox,
+:global(html.dark) .emptyState,
+:global(html.dark) .emptyCard,
+:global(html.dark) .emptyShell,
+:global(html.dark) .field,
+:global(html.dark) .socialButton,
+:global(html.dark) .whiteActionButton,
+:global(html.dark) .fieldActionButton,
+:global(html.dark) .selectionGlassButton,
+:global(html.dark) .tabButton,
+:global(html.dark) .tabSection,
+:global(html.dark) .menuItem,
+:global(html.dark) .footer,
+:global(html.dark) .header,
+:global(html.dark) .topArea,
+:global(html.dark) .bottomSheet,
+:global(html.dark) .compareImageWrap {
+  background: var(--app-surface);
+  color: var(--app-text);
+  border-color: var(--app-border);
+  box-shadow: 0 12px 30px var(--app-shadow-soft);
+}
+
+:global(html.dark) .footer {
+  background: var(--footer-bg);
+  border-color: var(--footer-border);
+  box-shadow:
+    0 2px 5px var(--footer-shadow-outer),
+    inset 0 1px 0 var(--footer-shadow-inner);
+}
+
+:global(html.dark) .activePill {
+  background: var(--footer-pill-bg);
+}
+
+:global(html.dark) .menuButton,
+:global(html.dark) .icon,
+:global(html.dark) .label,
+:global(html.dark) .searchButton,
+:global(html.dark) .headerIconButton,
+:global(html.dark) .closeButton,
+:global(html.dark) .cancelButton,
+:global(html.dark) .iconWrap,
+:global(html.dark) .arrowIcon,
+:global(html.dark) .logoutIcon,
+:global(html.dark) .recentItemIcon,
+:global(html.dark) .clearInputButton,
+:global(html.dark) .filterOptionCheck,
+:global(html.dark) .infoIconWrap,
+:global(html.dark) .optionMenuLabel {
+  color: var(--app-text-secondary);
+}
+
+:global(html.dark) .menuButtonActive,
+:global(html.dark) .iconActive,
+:global(html.dark) .labelActive {
+  color: var(--footer-pill-text);
+}
+
+:global(html.dark) .title,
+:global(html.dark) .mainTitle,
+:global(html.dark) .sectionTitle,
+:global(html.dark) .fieldTitle,
+:global(html.dark) .mainTitle,
+:global(html.dark) .modalTitle,
+:global(html.dark) .mainTitle,
+:global(html.dark) .accountLabel,
+:global(html.dark) .menuLabel,
+:global(html.dark) .logoutText,
+:global(html.dark) .mainTitle,
+:global(html.dark) .otherTitle,
+:global(html.dark) .mainTitle,
+:global(html.dark) .rowTitle,
+:global(html.dark) .modalTitle,
+:global(html.dark) .heroTitle,
+:global(html.dark) .sectionCount,
+:global(html.dark) .summaryValue,
+:global(html.dark) .summaryLabel,
+:global(html.dark) .authorName,
+:global(html.dark) .mainTitle,
+:global(html.dark) .contentText,
+:global(html.dark) .sectionMetaText,
+:global(html.dark) .fieldTitle,
+:global(html.dark) .targetText,
+:global(html.dark) .label,
+:global(html.dark) .requiredLabel,
+:global(html.dark) .colorName,
+:global(html.dark) .colorCode,
+:global(html.dark) .userNickname,
+:global(html.dark) .stateTitle,
+:global(html.dark) .recentItemText,
+:global(html.dark) .feedMetaText,
+:global(html.dark) .rowTitle,
+:global(html.dark) .titleRow,
+:global(html.dark) .mainTitle,
+:global(html.dark) .sheetHeaderCopy,
+:global(html.dark) .sectionHeader,
+:global(html.dark) .sectionHeaderRow,
+:global(html.dark) .accountValue,
+:global(html.dark) .sheetHeader {
+  color: var(--app-text-strong);
+}
+
+:global(html.dark) .heroDesc,
+:global(html.dark) .bottomText,
+:global(html.dark) .bottomMuted,
+:global(html.dark) .helperText,
+:global(html.dark) .modalDescription,
+:global(html.dark) .rowDescription,
+:global(html.dark) .infoText,
+:global(html.dark) .accountValue,
+:global(html.dark) .labelText,
+:global(html.dark) .labelSubText,
+:global(html.dark) .sectionMetaText,
+:global(html.dark) .subText,
+:global(html.dark) .stateDescription,
+:global(html.dark) .stateText,
+:global(html.dark) .targetPlaceholder,
+:global(html.dark) .fieldActionButtonDisabled,
+:global(html.dark) .modalHelperText,
+:global(html.dark) .bottomLink,
+:global(html.dark) .optionText,
+:global(html.dark) .sentText,
+:global(html.dark) .debugCodeText,
+:global(html.dark) .timerText,
+:global(html.dark) .dateText,
+:global(html.dark) .keywordLimitText,
+:global(html.dark) .lengthText,
+:global(html.dark) .errorText,
+:global(html.dark) .emptyText,
+:global(html.dark) .emptyKeywordText,
+:global(html.dark) .feedLinkButtonText,
+:global(html.dark) .recentTypeBadge,
+:global(html.dark) .contentPreviewText,
+:global(html.dark) .feedbackHintText,
+:global(html.dark) .feedbackEmptyText {
+  color: var(--app-text-secondary);
+}
+
+:global(html.dark) .input,
+:global(html.dark) .phoneInput,
+:global(html.dark) .searchInput,
+:global(html.dark) .itemInput,
+:global(html.dark) .contentTextarea,
+:global(html.dark) .textInput,
+:global(html.dark) .textarea,
+:global(html.dark) .passwordModalInput,
+:global(html.dark) .keywordSearchInput {
+  background: var(--app-surface-muted);
+  color: var(--app-text);
+  border-color: var(--app-border);
+}
+
+:global(html.dark) .line,
+:global(html.dark) .divider,
+:global(html.dark) .rowDivider,
+:global(html.dark) .sectionDivider,
+:global(html.dark) .dropdownDivider {
+  background: var(--app-border);
+  border-color: var(--app-border);
+}
+
+:global(html.dark) .keywordChip,
+:global(html.dark) .selectedKeywordChip,
+:global(html.dark) .recentTypeBadge,
+:global(html.dark) .choiceBadge,
+:global(html.dark) .keywordSuggestionChip,
+:global(html.dark) .feedbackCompleteInset,
+:global(html.dark) .itemSelectButton,
+:global(html.dark) .selectMenu,
+:global(html.dark) .selectOption,
+:global(html.dark) .selectOptionActive,
+:global(html.dark) .compareFloatingLabel,
+:global(html.dark) .contentPreviewBox,
+:global(html.dark) .feedbackEmptyBox,
+:global(html.dark) .tagButton,
+:global(html.dark) .keywordSuggestionWrap {
+  background: var(--app-surface-muted);
+  color: var(--app-text);
+  border-color: var(--app-border);
+}
+
+:global(html.dark) .cardImageFallback,
+:global(html.dark) .heroPlaceholder,
+:global(html.dark) .heroPlaceholderText,
+:global(html.dark) .focusImageFallback,
+:global(html.dark) .emptyPageSection,
+:global(html.dark) .messageBox,
+:global(html.dark) .heroMediaFrame,
+:global(html.dark) .banner,
+:global(html.dark) .colorPanel,
+:global(html.dark) .bottomSheet,
+:global(html.dark) .thumbnail,
+:global(html.dark) .feedThumbWrap {
+  background-color: var(--app-surface-muted);
+  color: var(--app-text-secondary);
+  border-color: var(--app-border);
+}
+
+:global(html.dark) .tabText,
+:global(html.dark) .statText,
+:global(html.dark) .statIcon,
+:global(html.dark) .sectionCount,
+:global(html.dark) .userSubText,
+:global(html.dark) .helperText,
+:global(html.dark) .contentText,
+:global(html.dark) .emptyState,
+:global(html.dark) .messageBox,
+:global(html.dark) .sectionEmpty {
+  color: var(--app-text-secondary);
+}
+
+:global(html.dark) .header,
+:global(html.dark) .headerInner,
+:global(html.dark) .tabSection,
+:global(html.dark) .contentArea,
+:global(html.dark) .pageBody,
+:global(html.dark) .container,
+:global(html.dark) .bottomSheet,
+:global(html.dark) .sheetRoot,
+:global(html.dark) .scrollArea,
+:global(html.dark) .sheetScrollArea {
+  background-color: var(--app-surface);
+}
+
+:global(html.dark) .contentArea,
+:global(html.dark) .pageBody,
+:global(html.dark) .scrollArea,
+:global(html.dark) .container {
+  background-image: none;
+}
+
+:global(html.dark) .modalCancelButton,
+:global(html.dark) .modalSecondaryButton,
+:global(html.dark) .fieldActionButton,
+:global(html.dark) .nicknameCheckButton,
+:global(html.dark) .sendCodeButton,
+:global(html.dark) .verifyCodeButton,
+:global(html.dark) .resendButton,
+:global(html.dark) .checkButton,
+:global(html.dark) .loginButton,
+:global(html.dark) .clearAllTextButton,
+:global(html.dark) .moreButton,
+:global(html.dark) .feedLinkButton,
+:global(html.dark) .changeButton,
+:global(html.dark) .linkButton,
+:global(html.dark) .keepLoginButton,
+:global(html.dark) .retryButton,
+:global(html.dark) .miniActionButton,
+:global(html.dark) .bookmarkActionButton,
+:global(html.dark) .reportActionButton,
+:global(html.dark) .headerTextButton,
+:global(html.dark) .filterButton,
+:global(html.dark) .modalActionButton {
+  background: var(--app-surface-muted);
+  color: var(--app-text);
+  border-color: var(--app-border);
+}
+
+:global(html.dark) .errorText,
+:global(html.dark) .modalHelperError,
+:global(html.dark) .feedbackErrorText,
+:global(html.dark) .feedbackError,
+:global(html.dark) .deleteButtonRed,
+:global(html.dark) .modalDangerButton {
+  color: #f87171;
+}
+
+:global(html.dark) .successText,
+:global(html.dark) .feedbackSavedText,
+:global(html.dark) .feedbackSuccess,
+:global(html.dark) .sentText {
+  color: #86efac;
+}
