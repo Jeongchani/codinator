@@ -18,36 +18,65 @@
   @apply absolute inset-0 bg-white overflow-hidden;
 }
 
-.fadeIn {
-  animation: splashFadeIn 280ms ease-out both;
+.introFadeIn {
+  animation: introFadeIn 320ms ease-out both;
 }
 
-.fadeOut {
-  animation: splashFadeOut 280ms ease-in both;
+.introFadeOut {
+  animation: introFadeOut 320ms ease-in both;
   pointer-events: none;
 }
 
-@keyframes splashFadeIn {
+.onboardingFadeIn {
+  animation: onboardingFadeIn 320ms ease-out both;
+}
+
+.onboardingSlideOutLeft {
+  animation: onboardingSlideOutLeft 320ms ease-in both;
+  pointer-events: none;
+}
+
+@keyframes introFadeIn {
   from {
     opacity: 0;
-    transform: translateY(8px);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
-@keyframes splashFadeOut {
+@keyframes introFadeOut {
   from {
     opacity: 1;
-    transform: translateY(0);
   }
 
   to {
     opacity: 0;
-    transform: translateY(-8px);
+  }
+}
+
+@keyframes onboardingFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes onboardingSlideOutLeft {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(-48px);
   }
 }
 
@@ -135,8 +164,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fadeIn,
-  .fadeOut {
+  .introFadeIn,
+  .introFadeOut,
+  .onboardingFadeIn,
+  .onboardingSlideOutLeft {
     animation-duration: 1ms;
   }
 
