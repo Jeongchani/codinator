@@ -630,7 +630,17 @@ export class AdminController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: '사용자 상태 변경 (ADMIN)',
-    description: 'DELETED 상태 변경은 SUPER_ADMIN만 가능합니다.',
+    description: [
+      '- `DELETED` 처리 및 `ACTIVE` 복구는 **SUPER_ADMIN** 전용입니다.',
+      '- `SUSPENDED` ↔ `ACTIVE` 전환은 OPERATOR_ADMIN 이상 가능합니다.',
+      '',
+      '**복구 (DELETED → ACTIVE)**',
+      '- `status: ACTIVE` 를 전송하면 소프트삭제된 유저도 복구할 수 있습니다.',
+      '- 복구 시 `deletedAt` 이 자동으로 `null` 로 초기화됩니다.',
+      '',
+      '**자기 자신 제한**',
+      '- 관리자는 자기 자신을 `DELETED` 또는 `SUSPENDED` 처리할 수 없습니다 (403).',
+    ].join('\n'),
   })
   @ApiParam({ name: 'userId', type: Number, example: 5, description: '대상 사용자 ID' })
   @ApiBody({ type: ChangeUserStatusDto })
@@ -644,8 +654,8 @@ export class AdminController {
       },
     },
   })
-  @ApiBadRequestResponse({ description: '잘못된 status 값' })
-  @ApiForbiddenResponse({ description: '관리자 권한 없음 또는 SUPER_ADMIN 전용 작업' })
+  @ApiBadRequestResponse({ description: '잘못된 status 값 또는 이미 해당 상태인 경우' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음, SUPER_ADMIN 전용 작업, 또는 자기 자신 대상 금지 작업' })
   @ApiNotFoundResponse({ description: '사용자를 찾을 수 없음' })
   async changeUserStatus(
     @Param('userId', ParseIntPipe) userId: number,
@@ -714,7 +724,11 @@ export class AdminController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: '사용자 제재 생성 (ADMIN)',
-    description: 'PERMANENT_BAN 유형은 SUPER_ADMIN만 가능합니다.',
+    description: [
+      '- `PERMANENT_BAN` 유형은 **SUPER_ADMIN** 전용입니다.',
+      '- `TEMP_SUSPENSION` / `POST_RESTRICTION` 은 OPERATOR_ADMIN 이상 가능합니다.',
+      '- 관리자는 자기 자신에게 제재를 생성할 수 없습니다 (403).',
+    ].join('\n'),
   })
   @ApiBody({ type: CreateSanctionDto })
   @ApiOkResponse({
@@ -732,7 +746,7 @@ export class AdminController {
     },
   })
   @ApiBadRequestResponse({ description: '유효성 검사 실패 또는 endsAt이 startsAt보다 이전' })
-  @ApiForbiddenResponse({ description: '관리자 권한 없음 또는 SUPER_ADMIN 전용 작업' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음, SUPER_ADMIN 전용 작업, 또는 자기 자신 대상 제재 금지' })
   @ApiNotFoundResponse({ description: '대상 사용자를 찾을 수 없음' })
   async createSanction(
     @Body() body: CreateSanctionDto,
