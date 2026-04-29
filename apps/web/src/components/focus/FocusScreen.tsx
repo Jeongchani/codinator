@@ -1,6 +1,13 @@
-import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { motion } from 'framer-motion';
-import { Bookmark, ChevronLeft, List, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { Bookmark, ChevronLeft, List, ThumbsDown, ThumbsUp, X } from 'lucide-react';
 import Reports from '../Reports';
 import styles from './FocusScreen.module.css';
 
@@ -54,7 +61,7 @@ type FocusScreenProps = {
   onBookmarkClick?: () => void;
   reportPostId?: number | string | null;
   reportDisplayText?: string | null;
-  reportAuthorUserId?: number | null;
+  reportAuthorUserId?: number | string | null;
   reportAuthorDisplayText?: string | null;
   allowUserReport?: boolean;
   onReportClick?: () => void;
@@ -103,7 +110,9 @@ function getContentPreviewLines(
 
   return {
     firstLine,
-    secondLine: shouldTruncate ? `${secondLine.replace(/\.{2,}|…/g, '').trimEnd()}...` : secondLine,
+    secondLine: shouldTruncate
+      ? `${secondLine.replace(/\.{2,}|…/g, '').trimEnd()}...`
+      : secondLine,
   };
 }
 
@@ -158,6 +167,7 @@ export default function FocusScreen({
   activeIndex = 0,
   viewportRef,
   ariaLabel = '포커스 화면',
+  closeButtonType = 'back',
   rightAction,
   showTopBar = true,
   showSwipeIndicator = true,
@@ -215,12 +225,19 @@ export default function FocusScreen({
     contentFirstLineLimit,
   );
   const canShowPreview =
-    showContentPreview &&
-    (previewLines.firstLine.length > 0 || previewLines.secondLine.length > 0) &&
-    !sheetOpen;
-  const canShowActionRail =
-    !sheetOpen && (showVoteActions || showBookmarkButton || showDetailButton);
+    showContentPreview && (previewLines.firstLine.length > 0 || previewLines.secondLine.length > 0) && !sheetOpen;
+  const canShowActionRail = !sheetOpen && (showVoteActions || showBookmarkButton || showDetailButton);
   const hasReportTarget = reportPostId !== null && reportPostId !== undefined;
+  const hasReportAuthorTarget =
+    reportAuthorUserId !== null &&
+    reportAuthorUserId !== undefined &&
+    String(reportAuthorUserId).trim().length > 0;
+  const reportAuthorTarget = hasReportAuthorTarget
+    ? {
+        id: reportAuthorUserId as number | string,
+        displayText: reportAuthorDisplayText?.trim() || '사용자',
+      }
+    : null;
 
   const openReport = () => {
     if (onReportClick) {
@@ -273,10 +290,7 @@ export default function FocusScreen({
     if (!container) return;
 
     const pageHeight = container.clientHeight || 1;
-    const nextIndex = Math.max(
-      0,
-      Math.min(Math.round(container.scrollTop / pageHeight), itemCount - 1),
-    );
+    const nextIndex = Math.max(0, Math.min(Math.round(container.scrollTop / pageHeight), itemCount - 1));
 
     if (nextIndex !== resolvedActiveIndex) {
       onActiveIndexChange?.(nextIndex);
@@ -285,7 +299,7 @@ export default function FocusScreen({
 
   return (
     <div
-      className={`${styles.focusOverlay} ${sheetOpen ? styles.focusOverlaySheetOpen : ''} ${className}`.trim()}
+      className={`${styles.focusOverlay} ${sheetOpen ? styles.focusOverlaySheetOpen : ""} ${className}`.trim()}
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel}
@@ -301,12 +315,7 @@ export default function FocusScreen({
                   aria-hidden="true"
                 />
                 <div className={styles.focusImageFrame}>
-                  <img
-                    src={item.imageUrl}
-                    alt=""
-                    className={styles.focusMainImage}
-                    draggable={false}
-                  />
+                  <img src={item.imageUrl} alt="" className={styles.focusMainImage} draggable={false} />
                 </div>
               </>
             ) : (
@@ -339,9 +348,13 @@ export default function FocusScreen({
               type="button"
               className={styles.closeButton}
               onClick={onClose}
-              aria-label="뒤로가기"
+              aria-label={closeButtonType === 'x' ? '닫기' : '뒤로가기'}
             >
-              <ChevronLeft size={20} strokeWidth={2.25} />
+              {closeButtonType === 'x' ? (
+                <X size={20} strokeWidth={2.25} />
+              ) : (
+                <ChevronLeft size={20} strokeWidth={2.25} />
+              )}
             </button>
 
             {rightAction ? (
@@ -435,13 +448,9 @@ export default function FocusScreen({
         ) : null}
 
         {canShowPreview ? (
-          <div
-            className={`${styles.contentCaption} ${!showVoteGraph ? styles.contentCaptionWithoutGraph : ''}`}
-          >
+          <div className={`${styles.contentCaption} ${!showVoteGraph ? styles.contentCaptionWithoutGraph : ''}`}>
             <p className={styles.contentCaptionFirstLine}>{previewLines.firstLine}</p>
-            {previewLines.secondLine ? (
-              <p className={styles.contentCaptionSecondLine}>{previewLines.secondLine}</p>
-            ) : null}
+            {previewLines.secondLine ? <p className={styles.contentCaptionSecondLine}>{previewLines.secondLine}</p> : null}
           </div>
         ) : null}
 
@@ -481,11 +490,7 @@ export default function FocusScreen({
           defaultTab="post"
           allowUserReport={allowUserReport}
           postTarget={{ id: reportPostId, displayText: reportDisplayText?.trim() || '게시글' }}
-          userTarget={
-            allowUserReport && typeof reportAuthorUserId === 'number'
-              ? { id: reportAuthorUserId, displayText: reportAuthorDisplayText?.trim() || '사용자' }
-              : undefined
-          }
+          userTarget={allowUserReport ? reportAuthorTarget : null}
         />
       ) : null}
 

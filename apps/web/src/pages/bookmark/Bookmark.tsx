@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Check, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import type { BookmarkListItem, RankingPeriod, VoteChoice } from '@codinator/contracts';
+import type { BookmarkListItem, GetRankingPostDetailResponse, RankingPeriod, VoteChoice } from '@codinator/contracts';
 import {
   clearAuthTokens,
   fetchAllMyBookmarks,
+  fetcher,
+  getAuthHeaders,
   isAuthError,
   resolveAssetUrl,
   setPostBookmark,
@@ -30,6 +32,8 @@ type BookmarkItem = {
   voteChoice: VoteChoice | null;
   likeCount: number;
   dislikeCount: number;
+  authorUserId?: number | string | null;
+  authorDisplayText?: string | null;
 };
 
 type IndicatorStyle = {
@@ -68,6 +72,76 @@ function toSafeNumber(value: unknown): number | null {
   return null;
 }
 
+type ReportAuthorTarget = {
+  userId: number | string;
+  displayText: string;
+};
+
+function toReportTargetId(value: unknown): number | string | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  return null;
+}
+
+function getStringValue(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function extractReportAuthorTarget(value: unknown): ReportAuthorTarget | null {
+  const records: Record<string, unknown>[] = [];
+
+  if (isRecord(value)) {
+    records.push(value);
+
+    const nestedCandidates = [
+      value.author,
+      value.user,
+      value.writer,
+      value.owner,
+      value.creator,
+      value.createdBy,
+      value.authorInfo,
+    ];
+
+    nestedCandidates.forEach((candidate) => {
+      if (isRecord(candidate)) records.push(candidate);
+    });
+  }
+
+  for (const record of records) {
+    const userId =
+      toReportTargetId(record.userId) ??
+      toReportTargetId(record.authorUserId) ??
+      toReportTargetId(record.authorId) ??
+      toReportTargetId(record.id) ??
+      toReportTargetId(record.writerId) ??
+      toReportTargetId(record.ownerId) ??
+      toReportTargetId(record.createdById);
+
+    if (userId === null) continue;
+
+    const displayText =
+      getStringValue(record.nickname) ??
+      getStringValue(record.name) ??
+      getStringValue(record.displayName) ??
+      getStringValue(record.username) ??
+      getStringValue(record.email) ??
+      '사용자';
+
+    return { userId, displayText };
+  }
+
+  return null;
+}
+
+
 function normalizeVoteChoice(value: unknown): VoteChoice | null {
   const text = String(value ?? '').toUpperCase();
 
@@ -88,7 +162,14 @@ function normalizeRankingPeriods(periods: unknown): RankingPeriod[] {
 }
 
 function extractRankingPeriods(raw: Record<string, unknown>): RankingPeriod[] {
-  const candidates = [raw.rankingPeriods, raw.periods, raw.rankingPeriod, raw.period];
+  const candidates = [
+    raw.rankingPeriods,
+    raw.periods,
+    raw.rankingPeriod,
+    raw.period,
+    raw.rankInfo,
+    raw.ranking,
+  ];
 
   for (const candidate of candidates) {
     if (Array.isArray(candidate)) {
@@ -98,6 +179,11 @@ function extractRankingPeriods(raw: Record<string, unknown>): RankingPeriod[] {
 
     if (typeof candidate === 'string') {
       const normalized = normalizeRankingPeriods([candidate]);
+      if (normalized.length > 0) return normalized;
+    }
+
+    if (isRecord(candidate)) {
+      const normalized = normalizeRankingPeriods([candidate.period, candidate.rankingPeriod]);
       if (normalized.length > 0) return normalized;
     }
   }
@@ -189,6 +275,7 @@ function mapBookmarkItems(rawItems: BookmarkListItem[]): BookmarkItem[] {
       const raw = item as BookmarkListItem & Record<string, unknown>;
 
       const status: BookmarkItem['status'] = evaluationStatus === 'OPEN' ? 'ongoing' : 'done';
+      const authorTarget = extractReportAuthorTarget(raw);
 
       return {
         id: postId,
@@ -201,6 +288,8 @@ function mapBookmarkItems(rawItems: BookmarkListItem[]): BookmarkItem[] {
         voteChoice: extractVoteChoice(raw),
         likeCount: extractCount(raw, 'likeCount'),
         dislikeCount: extractCount(raw, 'dislikeCount'),
+        authorUserId: authorTarget?.userId ?? null,
+        authorDisplayText: authorTarget?.displayText ?? null,
       };
     })
     .filter((item): item is BookmarkItem => item !== null);
@@ -259,6 +348,7 @@ export default function Bookmark() {
 
   const [items, setItems] = useState<BookmarkItem[]>([]);
   const [focusBookmarkState, setFocusBookmarkState] = useState<Record<number, boolean>>({});
+  const [focusAuthorMap, setFocusAuthorMap] = useState<Record<number, ReportAuthorTarget>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -342,6 +432,49 @@ export default function Bookmark() {
   const focusedLikePercent =
     focusedVoteTotal > 0 ? Math.round(((focusedItem?.likeCount ?? 0) / focusedVoteTotal) * 100) : 0;
   const focusedDislikePercent = focusedVoteTotal > 0 ? 100 - focusedLikePercent : 0;
+  const focusedReportAuthor = focusedItem
+    ? focusedItem.authorUserId !== null && focusedItem.authorUserId !== undefined
+      ? {
+          userId: focusedItem.authorUserId,
+          displayText: focusedItem.authorDisplayText?.trim() || '사용자',
+        }
+      : focusAuthorMap[focusedItem.postId] ?? null
+    : null;
+
+  useEffect(() => {
+    if (!focusOpen || !focusedItem || focusedItem.status === 'ongoing' || !focusedPeriod) return;
+    if (focusedItem.authorUserId || focusAuthorMap[focusedItem.postId]) return;
+
+    let cancelled = false;
+
+    const loadFocusedAuthor = async () => {
+      try {
+        const data = await fetcher<GetRankingPostDetailResponse>(
+          `/rankings/posts/${focusedItem.postId}?period=${focusedPeriod}`,
+          { headers: getAuthHeaders() },
+        );
+
+        if (cancelled) return;
+
+        const authorTarget = extractReportAuthorTarget(data);
+        if (authorTarget) {
+          setFocusAuthorMap((prev) => ({ ...prev, [focusedItem.postId]: authorTarget }));
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '';
+        if (isAuthError(message)) {
+          clearAuthTokens();
+          navigate('/login', { replace: true });
+        }
+      }
+    };
+
+    void loadFocusedAuthor();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [focusOpen, focusedItem, focusedPeriod, focusAuthorMap, navigate]);
 
   const loadBookmarks = useCallback(async () => {
     try {
@@ -1032,6 +1165,8 @@ export default function Bookmark() {
           onBookmarkClick={() => void handleToggleFocusedBookmark()}
           reportPostId={focusedItem.postId}
           reportDisplayText={focusedItem.title}
+          reportAuthorUserId={focusedReportAuthor?.userId ?? null}
+          reportAuthorDisplayText={focusedReportAuthor?.displayText ?? null}
           contentText={focusedItem.title}
           onOpenDetail={handleOpenDetailSheet}
         >

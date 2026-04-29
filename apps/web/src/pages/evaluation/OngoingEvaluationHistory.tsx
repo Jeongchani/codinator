@@ -36,6 +36,8 @@ type HistoryCardItem = EvaluationHistoryItem & {
   imageUrl: string;
   groupLabel: string;
   sortTimestamp: number;
+  authorUserId?: number | string | null;
+  authorDisplayText?: string | null;
 };
 
 type HistoryGroup = {
@@ -122,6 +124,80 @@ function getFallbackVoteSummary(choice: EvaluationHistoryItem['myChoice']) {
 
   return { likePercent: 0, dislikePercent: 100 };
 }
+
+type ReportAuthorTarget = {
+  userId: number | string;
+  displayText: string;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function toReportTargetId(value: unknown): number | string | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  return null;
+}
+
+function getStringValue(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function extractReportAuthorTarget(value: unknown): ReportAuthorTarget | null {
+  const records: Record<string, unknown>[] = [];
+
+  if (isRecord(value)) {
+    records.push(value);
+
+    const nestedCandidates = [
+      value.author,
+      value.user,
+      value.writer,
+      value.owner,
+      value.creator,
+      value.createdBy,
+      value.authorInfo,
+    ];
+
+    nestedCandidates.forEach((candidate) => {
+      if (isRecord(candidate)) records.push(candidate);
+    });
+  }
+
+  for (const record of records) {
+    const userId =
+      toReportTargetId(record.userId) ??
+      toReportTargetId(record.authorUserId) ??
+      toReportTargetId(record.authorId) ??
+      toReportTargetId(record.id) ??
+      toReportTargetId(record.writerId) ??
+      toReportTargetId(record.ownerId) ??
+      toReportTargetId(record.createdById);
+
+    if (userId === null) continue;
+
+    const displayText =
+      getStringValue(record.nickname) ??
+      getStringValue(record.name) ??
+      getStringValue(record.displayName) ??
+      getStringValue(record.username) ??
+      getStringValue(record.email) ??
+      '사용자';
+
+    return { userId, displayText };
+  }
+
+  return null;
+}
+
 
 export default function OngoingEvaluationHistory() {
   const navigate = useNavigate();
@@ -252,12 +328,15 @@ export default function OngoingEvaluationHistory() {
     const normalizedItems: HistoryCardItem[] = items
       .map((item) => {
         const sortTimestamp = new Date(item.votedAt).getTime();
+        const authorTarget = extractReportAuthorTarget(item as unknown);
 
         return {
           ...item,
           imageUrl: resolveAssetUrl(item.thumbnailUrl),
           groupLabel: getGroupLabel(item.votedAt),
           sortTimestamp: Number.isNaN(sortTimestamp) ? 0 : sortTimestamp,
+          authorUserId: authorTarget?.userId ?? null,
+          authorDisplayText: authorTarget?.displayText ?? null,
         };
       })
       .sort((a, b) => b.sortTimestamp - a.sortTimestamp);
@@ -283,6 +362,13 @@ export default function OngoingEvaluationHistory() {
     if (focusedPostId === null) return null;
     return flatItems.find((item) => item.postId === focusedPostId) ?? null;
   }, [flatItems, focusedPostId]);
+  const focusedReportAuthor =
+    focusedItem && focusedItem.authorUserId !== null && focusedItem.authorUserId !== undefined
+      ? {
+          userId: focusedItem.authorUserId,
+          displayText: focusedItem.authorDisplayText?.trim() || '사용자',
+        }
+      : null;
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   const allVisibleSelected = useMemo(
@@ -893,6 +979,8 @@ export default function OngoingEvaluationHistory() {
           onBookmarkClick={() => void toggleBookmarkByPostId(focusedItem.postId)}
           reportPostId={focusedItem.postId}
           reportDisplayText={focusedItem.contentPreview}
+          reportAuthorUserId={focusedReportAuthor?.userId ?? null}
+          reportAuthorDisplayText={focusedReportAuthor?.displayText ?? null}
           selectedVote={focusedItem.myChoice}
           contentText={focusedItem.contentPreview}
           onOpenDetail={() => setDetailSheetOpen(true)}

@@ -41,6 +41,80 @@ type RankingFocusItem = {
 
 type FocusItem = RankingFocusItem | PersonalizedFocusItem;
 
+type ReportAuthorTarget = {
+  userId: number | string;
+  displayText: string;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function toReportTargetId(value: unknown): number | string | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  return null;
+}
+
+function getStringValue(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function getReportAuthorTarget(value: unknown): ReportAuthorTarget | null {
+  const records: Record<string, unknown>[] = [];
+
+  if (isRecord(value)) {
+    records.push(value);
+
+    const nestedCandidates = [
+      value.author,
+      value.user,
+      value.writer,
+      value.owner,
+      value.creator,
+      value.createdBy,
+      value.authorInfo,
+    ];
+
+    nestedCandidates.forEach((candidate) => {
+      if (isRecord(candidate)) records.push(candidate);
+    });
+  }
+
+  for (const record of records) {
+    const userId =
+      toReportTargetId(record.userId) ??
+      toReportTargetId(record.authorUserId) ??
+      toReportTargetId(record.authorId) ??
+      toReportTargetId(record.id) ??
+      toReportTargetId(record.writerId) ??
+      toReportTargetId(record.ownerId) ??
+      toReportTargetId(record.createdById);
+
+    if (userId === null) continue;
+
+    const displayText =
+      getStringValue(record.nickname) ??
+      getStringValue(record.name) ??
+      getStringValue(record.displayName) ??
+      getStringValue(record.username) ??
+      getStringValue(record.email) ??
+      '사용자';
+
+    return { userId, displayText };
+  }
+
+  return null;
+}
+
+
 function HeroBanner() {
   return (
     <section className={`${styles.bannerBlock} ${styles.heroBanner}`} aria-label="랭킹존 배너">
@@ -181,6 +255,7 @@ export default function RankingZone() {
   const [focusOpen, setFocusOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [focusContentMap, setFocusContentMap] = useState<Record<number, string>>({});
+  const [focusAuthorMap, setFocusAuthorMap] = useState<Record<number, ReportAuthorTarget>>({});
   const [focusIndex, setFocusIndex] = useState(0);
   const [focusItems, setFocusItems] = useState<FocusItem[]>([]);
   const bookmarkAnimTimeoutMap = useRef<Record<number, number>>({});
@@ -368,6 +443,10 @@ export default function RankingZone() {
   const focusedContentText = focusedItem
     ? (focusContentMap[focusedItem.postId] ?? '내용 불러오는 중...')
     : '';
+  const focusedReportAuthor = focusedItem
+    ? focusAuthorMap[focusedItem.postId] ??
+      (focusedItem.kind === 'personalized' ? getReportAuthorTarget(focusedItem.raw) : null)
+    : null;
 
   useEffect(() => {
     if (!focusOpen || !focusedItem || focusContentMap[focusedItem.postId]) return;
@@ -377,6 +456,15 @@ export default function RankingZone() {
         ...prev,
         [focusedItem.postId]: getPersonalizedContentText(focusedItem),
       }));
+
+      const authorTarget = getReportAuthorTarget(focusedItem.raw);
+      if (authorTarget) {
+        setFocusAuthorMap((prev) => ({
+          ...prev,
+          [focusedItem.postId]: authorTarget,
+        }));
+      }
+
       return;
     }
 
@@ -392,7 +480,12 @@ export default function RankingZone() {
         if (cancelled) return;
 
         const nextContent = data.content?.trim() || '코디 설명이 없습니다.';
+        const authorTarget = getReportAuthorTarget(data);
+
         setFocusContentMap((prev) => ({ ...prev, [focusedItem.postId]: nextContent }));
+        if (authorTarget) {
+          setFocusAuthorMap((prev) => ({ ...prev, [focusedItem.postId]: authorTarget }));
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : '';
         if (isAuthError(message)) {
@@ -504,6 +597,8 @@ export default function RankingZone() {
           onBookmarkClick={() => void toggleBookmarkByPostId(focusedItem.postId)}
           reportPostId={focusedItem.postId}
           reportDisplayText={focusedContentText}
+          reportAuthorUserId={focusedReportAuthor?.userId ?? null}
+          reportAuthorDisplayText={focusedReportAuthor?.displayText ?? null}
           contentText={focusedContentText}
           onOpenDetail={() => setSheetOpen(true)}
         >
