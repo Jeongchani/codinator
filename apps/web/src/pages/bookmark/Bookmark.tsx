@@ -173,9 +173,7 @@ function getDefaultPeriod(periods: RankingPeriod[]): RankingPeriod | null {
   return null;
 }
 
-function formatPeriodLabel(period: RankingPeriod) {
-  return period === 'MONTHLY' ? 'This Month' : 'This Week';
-}
+
 
 function mapBookmarkItems(rawItems: BookmarkListItem[]): BookmarkItem[] {
   return rawItems
@@ -1213,15 +1211,6 @@ export default function Bookmark() {
       </div>
     );
   }
-
-  function getTabTitle() {
-    return focusedItem?.status === 'ongoing'
-      ? '평가 상세'
-      : focusedPeriod
-        ? formatPeriodLabel(focusedPeriod)
-        : '북마크';
-  }
-
   function nextPaneEnterClass() {
     return slideDirection === 'right' ? styles.enterFromRight : styles.enterFromLeft;
   }

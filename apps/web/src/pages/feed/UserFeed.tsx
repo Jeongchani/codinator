@@ -62,11 +62,6 @@ function getDefaultPeriod(periods: RankingPeriod[]): RankingPeriod | null {
   if (periods.includes('MONTHLY')) return 'MONTHLY';
   return null;
 }
-
-function formatPeriodLabel(period: RankingPeriod) {
-  return period === 'MONTHLY' ? 'This Month' : 'This Week';
-}
-
 export default function UserFeed() {
   const navigate = useNavigate();
   const location = useLocation();

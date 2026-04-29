@@ -294,17 +294,8 @@ function FeedbackPanel({
     </div>
   );
 }
-
-type OutfitDragInfo = {
-  offset: {
-    x: number;
-  };
-};
-
 const OUTFIT_CARD_WIDTH = 168;
-const OUTFIT_CARD_GAP = 12;
-const OUTFIT_CAROUSEL_SPRING = { type: 'spring', stiffness: 260, damping: 28 } as const;
-
+const OUTFIT_CARD_GAP = 12;
 function OutfitItemsCarousel({ outfitItems }: { outfitItems: OutfitItem[] }) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);

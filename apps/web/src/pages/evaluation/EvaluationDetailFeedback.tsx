@@ -458,9 +458,7 @@ function EvaluationDetailFeedbackContent({
   const [detailError, setDetailError] = useState('');
   const [tagError, setTagError] = useState('');
 
-  const canWriteFeedback = Boolean(postId && voteId && voteChoice);
-  const isReadOnlyDetail = Boolean(postId) && allowReadonlyDetail && !canWriteFeedback;
-  const shouldLoadTags = canWriteFeedback && !hideFeedbackSection;
+  const canWriteFeedback = Boolean(postId && voteId && voteChoice);  const shouldLoadTags = canWriteFeedback && !hideFeedbackSection;
 
   const requestDetail = useCallback(async () => {
     if (!postId) throw new Error('게시글 정보가 없습니다.');
