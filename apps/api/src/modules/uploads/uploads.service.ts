@@ -11,7 +11,6 @@ import {
   BlurMethod,
   ImageAnalysisPurpose,
   ImageAssetSourceType,
-  PostStatus,
 } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
@@ -65,90 +64,6 @@ export class UploadsService {
     file: Express.Multer.File,
   ): Promise<UploadSearchImageResponse> {
     return this.saveSearchImageAsset(userId, file);
-  }
-
-  // ── PATCH /uploads/posts/:postId/manual-blur ─────────────────────────────
-  // 게시글 생성 이후 postId 기준으로 수동 블러를 적용하는 기존 endpoint.
-  // Batch4: AUTO 차단 로직 제거 → 시나리오 3 (AI 성공 후 수동 override) 허용.
-
-  async applyManualBlur(
-    userId: number,
-    postId: number,
-    file: Express.Multer.File,
-  ): Promise<ManualBlurResponse> {
-    this.validateImage(file);
-
-    const post = await this.prisma.post.findUnique({
-      where: { id: postId },
-      select: { id: true, authorId: true, status: true, deletedAt: true },
-    });
-
-    if (!post || post.status === PostStatus.DELETED || post.deletedAt) {
-      throw new NotFoundException('게시글을 찾을 수 없습니다.');
-    }
-
-    if (post.authorId !== userId) {
-      throw new ForbiddenException('본인 게시글에만 수동 블러를 적용할 수 있습니다.');
-    }
-
-    const postImage = await this.prisma.postImage.findFirst({
-      where: { postId, isPrimary: true },
-      select: {
-        id: true,
-        imageAssetId: true,
-        imageAsset: {
-          select: { aiBlurStatus: true, blurMethod: true },
-        },
-      },
-    });
-
-    if (!postImage) {
-      throw new NotFoundException('게시글 이미지를 찾을 수 없습니다.');
-    }
-
-    // Batch4: AUTO 후 수동 override 허용 (기존 422 차단 제거)
-    // blurMethod가 무엇이든 사용자가 manual blur를 선택하면 processedImageUrl을 교체한다.
-    // aiBlurStatus는 AI 파이프라인 결과이므로 변경하지 않는다.
-
-    const processedImageUrl = await this.persistManualBlurFile(file);
-
-    const updatedAsset = await this.prisma.imageAsset.update({
-      where: { id: postImage.imageAssetId },
-      data: {
-        processedImageUrl,
-        blurMethod: BlurMethod.MANUAL, // 최종 채택 방식 = MANUAL
-        // aiBlurStatus: 변경 없음 — AI 파이프라인 결과 보존
-      },
-      select: { id: true, updatedAt: true },
-    });
-
-    try {
-      await this.imageIndexingService.invalidateCurrentRuns(
-        updatedAsset.id,
-        ImageAnalysisPurpose.POST_INDEX,
-      );
-      await this.imageIndexingService.ensureCurrentAnalysisRun(
-        updatedAsset.id,
-        ImageAnalysisPurpose.POST_INDEX,
-      );
-    } catch (error) {
-      this.logger.warn(
-        `수동 블러 재분석 실패 — postId=${postId}, imageAssetId=${updatedAsset.id}, error=${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-
-    this.logger.log(
-      `수동 블러 적용(postId) — postId=${postId}, imageAssetId=${updatedAsset.id}, ` +
-        `이전blurMethod=${postImage.imageAsset.blurMethod}, url=${processedImageUrl}`,
-    );
-
-    return {
-      imageAssetId: updatedAsset.id,
-      postId,
-      processedImageUrl,
-      blurMethod: 'MANUAL',
-      updatedAt: updatedAsset.updatedAt.toISOString(),
-    };
   }
 
   // ── PATCH /uploads/image-assets/:imageAssetId/manual-blur ─────────────────
