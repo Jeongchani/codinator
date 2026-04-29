@@ -18,7 +18,7 @@ import {
 } from '../../lib/api';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
 import FocusScreen from '../../components/focus/FocusScreen';
-import EvaluationDetailFeedback from './EvaluationDetailFeedback';
+import EvaluationDetailFeedback from '../evaluation/EvaluationDetailFeedback';
 import styles from './EvaluationZone.module.css';
 
 type VoteSummaryState = {
