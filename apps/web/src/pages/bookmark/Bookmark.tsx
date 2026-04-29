@@ -339,7 +339,8 @@ export default function Bookmark() {
     [focusedItem],
   );
   const focusedVoteTotal = (focusedItem?.likeCount ?? 0) + (focusedItem?.dislikeCount ?? 0);
-  const focusedLikePercent = focusedVoteTotal > 0 ? Math.round(((focusedItem?.likeCount ?? 0) / focusedVoteTotal) * 100) : 0;
+  const focusedLikePercent =
+    focusedVoteTotal > 0 ? Math.round(((focusedItem?.likeCount ?? 0) / focusedVoteTotal) * 100) : 0;
   const focusedDislikePercent = focusedVoteTotal > 0 ? 100 - focusedLikePercent : 0;
 
   const loadBookmarks = useCallback(async () => {
@@ -1060,7 +1061,7 @@ export default function Bookmark() {
           >
             <p className={styles.modalTitle}>북마크에서 삭제할까요?</p>
             <p className={styles.modalDesc}>
-              선택한 {selectedIds.length}개의 게시글이 북마크에서 삭제됩니다.
+              선택한 {selectedIds.length}개 게시글을 북마크에서 삭제합니다.
             </p>
 
             <div className={styles.modalActions}>
@@ -1074,13 +1075,13 @@ export default function Bookmark() {
               </button>
               <button
                 type="button"
-                className={styles.modalDeleteButton}
+                className={`${styles.modalActionButton} ${styles.modalDeleteButton}`}
                 onClick={() => {
                   void handleDeleteSelected();
                 }}
                 disabled={deleteLoading}
               >
-                삭제
+                {deleteLoading ? '삭제 중...' : '삭제'}
               </button>
             </div>
           </div>
