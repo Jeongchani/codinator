@@ -433,8 +433,8 @@ export class AdminService {
 
     const targetStatus = body.status as PostStatus;
 
-    // V3 Batch11: DELETED는 SUPER_ADMIN만, 나머지는 OPERATOR_ADMIN 이상
-    if (targetStatus === PostStatus.DELETED) {
+    // V3 Batch11: DELETED·ACTIVE(복구)는 SUPER_ADMIN만, 나머지는 OPERATOR_ADMIN 이상
+    if (targetStatus === PostStatus.DELETED || targetStatus === PostStatus.ACTIVE) {
       await this.assertSuperAdmin(adminId);
     } else {
       await this.assertOperatorAdmin(adminId);
@@ -445,7 +445,12 @@ export class AdminService {
       select: { id: true, status: true, deletedAt: true },
     });
 
-    if (!post || post.status === PostStatus.DELETED || post.deletedAt) {
+    if (!post) {
+      throw new NotFoundException('게시글을 찾을 수 없습니다.');
+    }
+
+    // ACTIVE 복구가 아닌 경우에만 DELETED 게시글 차단
+    if (targetStatus !== PostStatus.ACTIVE && (post.status === PostStatus.DELETED || post.deletedAt)) {
       throw new NotFoundException('게시글을 찾을 수 없습니다.');
     }
 
@@ -466,6 +471,7 @@ export class AdminService {
       updateData.hiddenAt = null;
       updateData.hiddenReason = null;
       updateData.hiddenById = null;
+      updateData.deletedAt = null; // DELETED → ACTIVE 복구 시 초기화
     } else if (targetStatus === PostStatus.DELETED) {
       updateData.deletedAt = now;
     }

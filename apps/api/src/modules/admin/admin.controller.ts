@@ -243,7 +243,17 @@ export class AdminController {
   @Patch('posts/:postId/status')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: '게시글 상태 강제 변경 (ADMIN)' })
+  @ApiOperation({
+    summary: '게시글 상태 강제 변경 (ADMIN)',
+    description: [
+      '- `DELETED` 처리 및 `ACTIVE` 복구는 **SUPER_ADMIN** 전용입니다.',
+      '- `HIDDEN` ↔ `ACTIVE` 전환은 OPERATOR_ADMIN 이상 가능합니다.',
+      '',
+      '**복구 (DELETED → ACTIVE)**',
+      '- `status: ACTIVE` 를 전송하면 삭제된 게시글도 복구할 수 있습니다.',
+      '- 복구 시 `deletedAt`, `hiddenAt`, `hiddenReason`, `hiddenById` 가 자동으로 `null` 초기화됩니다.',
+    ].join('\n'),
+  })
   @ApiParam({ name: 'postId', type: Number, example: 12, description: '게시글 ID' })
   @ApiBody({ type: ChangePostStatusDto })
   @ApiOkResponse({
@@ -259,8 +269,8 @@ export class AdminController {
     },
   })
   @ApiBadRequestResponse({ description: '잘못된 status 값 또는 hiddenReason 규칙 위반' })
-  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
-  @ApiNotFoundResponse({ description: '게시글을 찾을 수 없음 (이미 삭제됨 포함)' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음 또는 SUPER_ADMIN 전용 작업' })
+  @ApiNotFoundResponse({ description: '게시글을 찾을 수 없음' })
   async changePostStatus(
     @Param('postId', ParseIntPipe) postId: number,
     @Body() body: ChangePostStatusDto,

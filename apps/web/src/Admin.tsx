@@ -1131,11 +1131,6 @@ function S_AdminSanctions() {
   const [endSanctionId, setEndSanctionId] = useState('');
   const [endSanctionReason, setEndSanctionReason] = useState('');
 
-  const [restrictionUserId, setRestrictionUserId] = useState('');
-  const [restrictionReason, setRestrictionReason] = useState('');
-  const [restrictionStartsAt, setRestrictionStartsAt] = useState('');
-  const [restrictionEndsAt, setRestrictionEndsAt] = useState('');
-
   return (
     <PageShell
       title="🚫 제재 관리"
@@ -1293,64 +1288,6 @@ function S_AdminSanctions() {
           }}
         >
           제재 종료
-        </button>
-      </div>
-
-      <div style={C.card}>
-        <h3 style={C.h3}>➕ 게시글 제한 / 로그인 제한 생성</h3>
-        <Field
-          label="userId"
-          value={restrictionUserId}
-          onChange={setRestrictionUserId}
-          placeholder="ex) 7"
-        />
-        <TextAreaField
-          label="reason"
-          value={restrictionReason}
-          onChange={setRestrictionReason}
-          placeholder="반복 위반 행위"
-        />
-        <Field
-          label="startsAt (선택, ISO 8601)"
-          value={restrictionStartsAt}
-          onChange={setRestrictionStartsAt}
-          placeholder="2026-04-23T00:00:00.000Z"
-        />
-        <Field
-          label="endsAt (선택, ISO 8601)"
-          value={restrictionEndsAt}
-          onChange={setRestrictionEndsAt}
-          placeholder="2026-05-23T00:00:00.000Z"
-        />
-        <button
-          style={C.btn('#553c9a')}
-          onClick={() => {
-            const body: Record<string, unknown> = { reason: restrictionReason.trim() };
-            if (restrictionStartsAt.trim()) body.startsAt = restrictionStartsAt.trim();
-            if (restrictionEndsAt.trim()) body.endsAt = restrictionEndsAt.trim();
-            run(
-              () =>
-                api('POST', `/admin/users/${restrictionUserId}/sanctions/post-restriction`, body),
-              setRes,
-            );
-          }}
-        >
-          게시글 제한 제재 생성
-        </button>
-        <button
-          style={C.btn('#553c9a')}
-          onClick={() => {
-            const body: Record<string, unknown> = { reason: restrictionReason.trim() };
-            if (restrictionStartsAt.trim()) body.startsAt = restrictionStartsAt.trim();
-            if (restrictionEndsAt.trim()) body.endsAt = restrictionEndsAt.trim();
-            run(
-              () =>
-                api('POST', `/admin/users/${restrictionUserId}/sanctions/login-restriction`, body),
-              setRes,
-            );
-          }}
-        >
-          로그인 제한 제재 생성
         </button>
       </div>
 
