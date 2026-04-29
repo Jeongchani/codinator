@@ -1,16 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Check,
-  ChevronsUp,
-  ChevronDown,
-  ImagePlus,
-  Search as SearchIcon,
-  X,
-} from 'lucide-react';
+import { Check, ChevronDown, ImagePlus, Search as SearchIcon, X } from 'lucide-react';
 import type {
   AiGarmentCategory,
+  GetFeedPostDetailResponse,
   FeedbackTagItem,
   ImageSearchItem,
   KeywordItem,
@@ -21,7 +15,17 @@ import type {
 } from '@codinator/contracts';
 import Header from '../../components/Header';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
-import { resolveAssetUrl } from '../../lib/api';
+import FocusScreen from '../../components/focus/FocusScreen';
+import {
+  clearAuthTokens,
+  fetcher,
+  fetchMyBookmarkMap,
+  getAuthHeaders,
+  isAuthError,
+  resolveAssetUrl,
+  subscribeBookmarkUpdated,
+  togglePostBookmark,
+} from '../../lib/api';
 import SearchFilterSheet, {
   createEmptySearchFilters,
   getSearchFilterSummary,
@@ -57,19 +61,35 @@ type RecentKeyword = {
   query: string;
 };
 
-type ResultCardItem = {
+type PostResultCardItem = {
+  kind: 'post';
   key: string;
-  postId?: number;
+  postId: number;
   userId: number;
   title: string;
   imageUrl: string;
 };
+
+type UserResultCardItem = {
+  kind: 'user';
+  key: string;
+  userId: number;
+  title: string;
+  imageUrl: string;
+};
+
+type ResultCardItem = PostResultCardItem | UserResultCardItem;
 
 type FocusPostState = {
   postId: number;
   userId: number;
   title: string;
   imageUrl: string;
+};
+
+type FocusVoteSummary = {
+  likeCount: number;
+  dislikeCount: number;
 };
 
 type ApiFilterPayload = {
@@ -80,7 +100,6 @@ type ApiFilterPayload = {
   keywordIds?: number[];
   feedbackLikeTagIds?: number[];
   feedbackDislikeTagIds?: number[];
-  garmentCategory?: AiGarmentCategory;
 };
 
 const FILTERS: SearchFilter[] = [
@@ -94,13 +113,8 @@ const FILTERS: SearchFilter[] = [
 const TYPE_OPTIONS: Array<{ value: SearchType; label: string; shortLabel: string }> = [
   { value: 'ALL', label: '전체 검색', shortLabel: '전체' },
   { value: 'NICKNAME', label: '닉네임', shortLabel: '닉네임' },
-  { value: 'KEYWORD', label: '키워드', shortLabel: '키워드' },
-  { value: 'POST', label: '게시글', shortLabel: '게시글' },
-  { value: 'OUTFIT_ITEM', label: '아이템명', shortLabel: '아이템' },
-  { value: 'OUTFIT_BRAND', label: '브랜드', shortLabel: '브랜드' },
 ];
 
-const PLACEHOLDER_RESULTS = Array.from({ length: 9 }, (_, index) => index + 1);
 const SEARCH_LIMIT = 50;
 
 const OUTFIT_CATEGORY_MAP: Record<string, AiGarmentCategory> = {
@@ -214,7 +228,6 @@ const buildApiFilters = (filters: SearchFiltersValue): ApiFilterPayload => {
     keywordIds,
     feedbackLikeTagIds,
     feedbackDislikeTagIds,
-    garmentCategory: outfitCategories[0],
   };
 };
 
@@ -232,7 +245,8 @@ const mapFeedbackTagOptions = (items: FeedbackTagItem[]): SearchFilterFeedbackTa
     .sort((a, b) => a.id - b.id);
 };
 
-const mapPostResult = (post: PostSearchItem | ImageSearchItem): ResultCardItem => ({
+const mapPostResult = (post: PostSearchItem | ImageSearchItem): PostResultCardItem => ({
+  kind: 'post',
   key: `post-${post.postId}`,
   postId: post.postId,
   userId: post.userId,
@@ -240,7 +254,8 @@ const mapPostResult = (post: PostSearchItem | ImageSearchItem): ResultCardItem =
   imageUrl: resolveAssetUrl(post.thumbnailUrl),
 });
 
-const mapUserResult = (user: UserSearchItem): ResultCardItem => ({
+const mapUserResult = (user: UserSearchItem): UserResultCardItem => ({
+  kind: 'user',
   key: `user-${user.userId}`,
   userId: user.userId,
   title: user.nickname,
@@ -261,7 +276,9 @@ export default function Search() {
   const [imageUploading, setImageUploading] = useState(false);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<SearchFilterId>('period');
-  const [appliedFilters, setAppliedFilters] = useState<SearchFiltersValue>(() => createEmptySearchFilters());
+  const [appliedFilters, setAppliedFilters] = useState<SearchFiltersValue>(() =>
+    createEmptySearchFilters(),
+  );
   const [keywordOptions, setKeywordOptions] = useState<SearchFilterKeywordOption[]>([]);
   const [feedbackTagOptions, setFeedbackTagOptions] = useState<SearchFilterFeedbackTagOption[]>([]);
   const [resultItems, setResultItems] = useState<ResultCardItem[]>([]);
@@ -270,15 +287,62 @@ export default function Search() {
   const [resultError, setResultError] = useState('');
   const [textSearchSubmitted, setTextSearchSubmitted] = useState(false);
   const [focusPost, setFocusPost] = useState<FocusPostState | null>(null);
+  const [focusContentText, setFocusContentText] = useState('');
+  const [focusVoteSummary, setFocusVoteSummary] = useState<FocusVoteSummary>({
+    likeCount: 0,
+    dislikeCount: 0,
+  });
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+  const [bookmarks, setBookmarks] = useState<Record<number, boolean>>({});
+  const [bookmarkLoadingIds, setBookmarkLoadingIds] = useState<number[]>([]);
 
   const isTextMode = mode === 'text';
   const isImageMode = mode === 'image';
   const hasImageResult = Boolean(imagePreviewUrl);
+  const isImageSearchLoading = isImageMode && hasImageResult && (imageUploading || resultLoading);
+  const focusVoteTotal = focusVoteSummary.likeCount + focusVoteSummary.dislikeCount;
+  const focusLikePercent =
+    focusVoteTotal > 0 ? Math.round((focusVoteSummary.likeCount / focusVoteTotal) * 100) : 0;
+  const focusDislikePercent = focusVoteTotal > 0 ? 100 - focusLikePercent : 0;
 
   const currentTypeLabel = useMemo(() => {
     return TYPE_OPTIONS.find((option) => option.value === searchType)?.shortLabel ?? '전체';
   }, [searchType]);
+
+  const moveToLogin = useCallback(() => {
+    clearAuthTokens();
+    navigate('/login', { replace: true });
+  }, [navigate]);
+
+  const loadBookmarks = useCallback(async () => {
+    try {
+      const nextMap = await fetchMyBookmarkMap();
+      setBookmarks(nextMap);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '북마크 정보를 불러오지 못했습니다.';
+      if (isAuthError(message)) moveToLogin();
+    }
+  }, [moveToLogin]);
+
+  useEffect(() => {
+    void loadBookmarks();
+  }, [loadBookmarks]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeBookmarkUpdated((detail) => {
+      if (!detail) {
+        void loadBookmarks();
+        return;
+      }
+
+      setBookmarks((prev) => ({
+        ...prev,
+        [detail.postId]: detail.bookmarked,
+      }));
+    });
+
+    return unsubscribe;
+  }, [loadBookmarks]);
 
   const reloadTextHistories = useCallback(async () => {
     try {
@@ -327,7 +391,7 @@ export default function Search() {
 
         const users = response.users.map(mapUserResult);
         const posts = response.posts.map(mapPostResult);
-        const nextItems = nextSearchType === 'NICKNAME' ? users : [...posts, ...users];
+        const nextItems = nextSearchType === 'NICKNAME' ? users : [...users, ...posts];
 
         setResultItems(nextItems);
         setResultCount(response.posts.length + response.users.length);
@@ -364,11 +428,10 @@ export default function Search() {
           periodFrom: apiFilters.periodFrom,
           periodTo: apiFilters.periodTo,
           likeRatioMin: apiFilters.likeRatioMin,
+          outfitCategories: apiFilters.outfitCategories,
           keywordIds: apiFilters.keywordIds,
           feedbackLikeTagIds: apiFilters.feedbackLikeTagIds,
           feedbackDislikeTagIds: apiFilters.feedbackDislikeTagIds,
-          mode: apiFilters.garmentCategory ? 'SINGLE_ITEM' : undefined,
-          garmentCategory: apiFilters.garmentCategory,
         });
 
         const items = response.items.map(mapPostResult);
@@ -427,6 +490,71 @@ export default function Search() {
     };
   }, [focusPost]);
 
+  useEffect(() => {
+    if (!focusPost) {
+      setFocusContentText('');
+      setFocusVoteSummary({ likeCount: 0, dislikeCount: 0 });
+      return;
+    }
+
+    let cancelled = false;
+    setFocusContentText(focusPost.title);
+    setFocusVoteSummary({ likeCount: 0, dislikeCount: 0 });
+
+    const loadFocusDetail = async () => {
+      try {
+        const data = await fetcher<GetFeedPostDetailResponse>(
+          `/users/${focusPost.userId}/feed/${focusPost.postId}`,
+          { headers: getAuthHeaders() },
+        );
+
+        if (cancelled) return;
+
+        setFocusContentText(data.content?.trim() || focusPost.title);
+        setFocusVoteSummary({
+          likeCount: data.voteSummary?.likeCount ?? 0,
+          dislikeCount: data.voteSummary?.dislikeCount ?? 0,
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '';
+        if (isAuthError(message)) {
+          moveToLogin();
+        }
+      }
+    };
+
+    void loadFocusDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [focusPost, moveToLogin]);
+
+  const toggleBookmarkByPostId = async (postId: number) => {
+    if (bookmarkLoadingIds.includes(postId)) return;
+
+    const isBookmarked = Boolean(bookmarks[postId]);
+    setBookmarkLoadingIds((prev) => [...prev, postId]);
+    setBookmarks((prev) => ({ ...prev, [postId]: !isBookmarked }));
+
+    try {
+      const nextValue = await togglePostBookmark(postId, isBookmarked);
+      setBookmarks((prev) => ({ ...prev, [postId]: nextValue }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '북마크 처리에 실패했습니다.';
+      setBookmarks((prev) => ({ ...prev, [postId]: isBookmarked }));
+
+      if (isAuthError(message)) {
+        moveToLogin();
+        return;
+      }
+
+      window.alert(message);
+    } finally {
+      setBookmarkLoadingIds((prev) => prev.filter((id) => id !== postId));
+    }
+  };
+
   const handleGoBack = () => {
     navigate(-1);
   };
@@ -477,6 +605,8 @@ export default function Search() {
     setImageUploading(true);
     setResultLoading(true);
     setResultError('');
+    setResultItems([]);
+    setResultCount(0);
     event.target.value = '';
 
     try {
@@ -569,14 +699,16 @@ export default function Search() {
   };
 
   const handleClickResult = (item: ResultCardItem) => {
-    if (item.postId) {
+    if (item.kind === 'post') {
       setFocusPost({
         postId: item.postId,
         userId: item.userId,
         title: item.title,
         imageUrl: item.imageUrl,
       });
-      setDetailSheetOpen(true);
+      setFocusContentText(item.title);
+      setFocusVoteSummary({ likeCount: 0, dislikeCount: 0 });
+      setDetailSheetOpen(false);
       return;
     }
 
@@ -586,19 +718,13 @@ export default function Search() {
   const handleCloseFocus = () => {
     setDetailSheetOpen(false);
     setFocusPost(null);
+    setFocusContentText('');
+    setFocusVoteSummary({ likeCount: 0, dislikeCount: 0 });
   };
 
-  const renderResultGrid = () => {
+  const renderSearchResults = () => {
     if (resultLoading || imageUploading) {
-      return (
-        <div className={styles.resultGrid}>
-          {PLACEHOLDER_RESULTS.map((item) => (
-            <div key={item} className={styles.resultCard} aria-hidden="true">
-              <span className={styles.resultGradient} />
-            </div>
-          ))}
-        </div>
-      );
+      return null;
     }
 
     if (resultError) {
@@ -609,33 +735,71 @@ export default function Search() {
       return <p className={styles.resultEmptyText}>검색 결과가 없어요</p>;
     }
 
+    const userResults = resultItems.filter(
+      (item): item is UserResultCardItem => item.kind === 'user',
+    );
+    const postResults = resultItems.filter(
+      (item): item is PostResultCardItem => item.kind === 'post',
+    );
+
     return (
-      <div className={styles.resultGrid}>
-        {resultItems.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            className={styles.resultCard}
-            onClick={() => handleClickResult(item)}
-            aria-label={item.title}
+      <>
+        {userResults.length > 0 ? (
+          <div className={styles.userResultList} aria-label="유저 검색 결과">
+            {userResults.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className={styles.userResultCard}
+                onClick={() => handleClickResult(item)}
+                aria-label={`${item.title} 유저 피드 보러가기`}
+              >
+                <span className={styles.userAvatar} aria-hidden="true">
+                  {item.imageUrl ? (
+                    <img src={item.imageUrl} alt="" className={styles.userAvatarImage} />
+                  ) : null}
+                </span>
+
+                <span className={styles.userResultCopy}>
+                  <span className={styles.userNickname}>{item.title}</span>
+                  <span className={styles.userFeedLinkText}>유저 피드 보러가기</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {postResults.length > 0 ? (
+          <div
+            className={`${styles.resultGrid} ${
+              userResults.length > 0 ? styles.resultGridAfterUsers : ''
+            }`}
+            aria-label="게시글 검색 결과"
           >
-            {item.imageUrl ? <img src={item.imageUrl} alt="" className={styles.resultImage} /> : null}
-            <span className={styles.resultGradient} />
-          </button>
-        ))}
-      </div>
+            {postResults.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className={styles.resultCard}
+                onClick={() => handleClickResult(item)}
+                aria-label={item.title}
+              >
+                {item.imageUrl ? (
+                  <img src={item.imageUrl} alt="" className={styles.resultImage} />
+                ) : null}
+                <span className={styles.resultGradient} />
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </>
     );
   };
 
   return (
     <>
       <div className={styles.page}>
-        <Header
-          title="검색"
-          leftAction="back"
-          onBack={handleGoBack}
-          rightAction="menu"
-        />
+        <Header title="검색" leftAction="back" onBack={handleGoBack} rightAction="menu" />
 
         <main className={styles.scrollArea}>
           <section className={styles.contentArea}>
@@ -720,7 +884,9 @@ export default function Search() {
                             onClick={() => handleSelectSearchType(option.value)}
                           >
                             <span>{option.label}</span>
-                            {searchType === option.value ? <Check size={14} strokeWidth={2.2} /> : null}
+                            {searchType === option.value ? (
+                              <Check size={14} strokeWidth={2.2} />
+                            ) : null}
                           </button>
                         ))}
                       </div>
@@ -728,7 +894,11 @@ export default function Search() {
                   </div>
                 </div>
 
-                <FilterScroller filters={FILTERS} appliedFilters={appliedFilters} onOpenFilter={handleOpenFilter} />
+                <FilterScroller
+                  filters={FILTERS}
+                  appliedFilters={appliedFilters}
+                  onOpenFilter={handleOpenFilter}
+                />
 
                 <div className={styles.divider} />
 
@@ -785,12 +955,22 @@ export default function Search() {
                 {hasImageResult ? (
                   <div className={styles.imageResultBox}>
                     <div className={styles.uploadedImageWrap}>
-                      <img src={imagePreviewUrl ?? ''} alt="업로드한 이미지" className={styles.uploadedImage} />
+                      <img
+                        src={imagePreviewUrl ?? ''}
+                        alt="업로드한 이미지"
+                        className={styles.uploadedImage}
+                      />
                     </div>
 
                     <div className={styles.imageResultCopy}>
-                      <p className={styles.imageResultTitle}>비슷한 스타일을 찾았어요</p>
-                      <p className={styles.imageResultDescription}>찾으시는 스타일을 확인해보세요</p>
+                      <p className={styles.imageResultTitle}>
+                        {isImageSearchLoading ? '스타일을 찾고 있어요' : '비슷한 스타일을 찾았어요'}
+                      </p>
+                      <p className={styles.imageResultDescription}>
+                        {isImageSearchLoading
+                          ? '잠시만 기다려 주세요...'
+                          : '찾으시는 스타일을 확인해보세요'}
+                      </p>
                     </div>
 
                     <button
@@ -818,23 +998,28 @@ export default function Search() {
                   </button>
                 )}
 
-                <FilterScroller filters={FILTERS} appliedFilters={appliedFilters} onOpenFilter={handleOpenFilter} />
+                <FilterScroller
+                  filters={FILTERS}
+                  appliedFilters={appliedFilters}
+                  onOpenFilter={handleOpenFilter}
+                />
               </section>
             )}
 
             <section className={styles.resultSection} aria-label="검색 결과">
               <p className={styles.resultCount}>
-                {resultLoading || imageUploading ? '검색 중...' : `검색 결과 ${formatResultCount(resultCount)}개`}
+                {resultLoading || imageUploading
+                  ? '검색 중...'
+                  : `검색 결과 ${formatResultCount(resultCount)}개`}
               </p>
 
-              {renderResultGrid()}
+              {renderSearchResults()}
             </section>
           </section>
 
           <div className={styles.footerSpacer} aria-hidden="true" />
         </main>
       </div>
-
 
       {filterSheetOpen ? (
         <SearchFilterSheet
@@ -849,46 +1034,42 @@ export default function Search() {
       ) : null}
 
       {focusPost ? (
-        <div className={styles.focusOverlay} role="dialog" aria-modal="true" aria-label="게시글 포커스 화면">
-          <div className={styles.focusFrame}>
-            <div
-              className={styles.focusImage}
-              style={{ backgroundImage: `url(${focusPost.imageUrl})` }}
-              aria-hidden="true"
-            />
-            <div className={styles.focusTopGradient} />
-            <div className={styles.focusBottomGradient} />
-
-            <button
-              type="button"
-              className={styles.focusCloseButton}
-              onClick={handleCloseFocus}
-              aria-label="포커스 화면 닫기"
-            >
-              <X size={18} strokeWidth={2.5} />
-            </button>
-
-            {!detailSheetOpen ? (
-              <div className={styles.focusFloatingArea}>
-                <button
-                  type="button"
-                  className={styles.focusDetailButton}
-                  onClick={() => setDetailSheetOpen(true)}
-                >
-                  <span className={styles.focusDetailButtonText}>상세보기</span>
-                  <ChevronsUp size={16} strokeWidth={2.4} className={styles.focusDetailButtonIcon} />
-                </button>
-              </div>
-            ) : null}
-
-            <PostDetailBottomSheet
-              isOpen={detailSheetOpen}
-              postId={focusPost.postId}
-              authorUserId={focusPost.userId}
-              onCloseRequest={() => setDetailSheetOpen(false)}
-            />
-          </div>
-        </div>
+        <FocusScreen
+          isOpen={Boolean(focusPost)}
+          items={[{ id: focusPost.postId, imageUrl: focusPost.imageUrl }]}
+          activeIndex={0}
+          closeButtonType="x"
+          onClose={handleCloseFocus}
+          sheetOpen={detailSheetOpen}
+          onCloseSheet={() => setDetailSheetOpen(false)}
+          showSwipeIndicator={false}
+          showVoteGraph
+          likePercent={focusLikePercent}
+          dislikePercent={focusDislikePercent}
+          showDetailButton={!detailSheetOpen}
+          detailLabel="상세보기"
+          showActionCounts
+          likeCount={focusVoteSummary.likeCount}
+          dislikeCount={focusVoteSummary.dislikeCount}
+          showBookmarkButton
+          isBookmarked={Boolean(bookmarks[focusPost.postId])}
+          bookmarkDisabled={bookmarkLoadingIds.includes(focusPost.postId)}
+          onBookmarkClick={() => void toggleBookmarkByPostId(focusPost.postId)}
+          reportPostId={focusPost.postId}
+          reportDisplayText={focusContentText || focusPost.title}
+          reportAuthorUserId={focusPost.userId}
+          reportAuthorDisplayText={focusPost.title}
+          contentText={focusContentText || focusPost.title}
+          onOpenDetail={() => setDetailSheetOpen(true)}
+          ariaLabel="게시글 포커스 화면"
+        >
+          <PostDetailBottomSheet
+            isOpen={detailSheetOpen}
+            postId={focusPost.postId}
+            authorUserId={focusPost.userId}
+            onCloseRequest={() => setDetailSheetOpen(false)}
+          />
+        </FocusScreen>
       ) : null}
     </>
   );

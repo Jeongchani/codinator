@@ -1,19 +1,27 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { SquareCheck } from 'lucide-react';
 import type {
   Gender,
+  LoginResponse,
   SendPhoneVerificationRequest,
   SendPhoneVerificationResponse,
   SignupRequest,
   SignupResponse,
+  SocialCodeExchangeResponse,
+  SocialCompleteProfileRequest,
+  SocialCompleteProfileResponse,
+  SocialLoginRequest,
+  SocialLoginResponse,
+  SocialProvider,
   VerifyPhoneCodeRequest,
 } from '@codinator/contracts';
 
-import { fetcher } from '../../lib/api';
-import { KakaoIcon, NaverIcon, GoogleIcon } from '../../components/icons/social';
-
+import { clearAuthTokens, fetcher, saveAuthTokens, saveCurrentUser } from '../../lib/api';
 import signupDecorationImage from '../../assets/auth/signup-decoration.png';
+import kakaoLogoImage from '../../assets/login/social-kakao.png';
+import naverLogoImage from '../../assets/login/social-naver.png';
+import googleLogoImage from '../../assets/login/social-google.png';
 
 import styles from './Signup.module.css';
 
@@ -33,11 +41,171 @@ type VerifyPhoneCodeResponse = {
 };
 
 type SignupGender = Gender | '';
-type ModalType = 'success' | 'error' | 'info';
+type ModalType = 'success' | 'error' | 'info' | 'social';
+type ModalAction = (() => void) | null;
+type OAuthProvider = Extract<SocialProvider, 'KAKAO' | 'NAVER'>;
+type SocialButtonProvider = Extract<SocialProvider, 'GOOGLE' | 'NAVER' | 'KAKAO'>;
+
+type SocialOAuthState = {
+  provider: OAuthProvider;
+  redirectUri: string;
+  rememberMe: boolean;
+  state?: string;
+};
+
+type GoogleCredentialResponse = {
+  credential?: string;
+};
+
+type GooglePromptMomentNotification = {
+  isNotDisplayed?: () => boolean;
+  isSkippedMoment?: () => boolean;
+  isDismissedMoment?: () => boolean;
+};
+
+type PersistAuthData = {
+  accessToken: SocialCompleteProfileResponse['accessToken'];
+  refreshToken?: SocialCompleteProfileResponse['refreshToken'] | null;
+  user: SocialCompleteProfileResponse['user'];
+};
+
+type SocialLoginButton = {
+  provider: SocialButtonProvider;
+  label: string;
+  logoImage: string;
+};
+
+type SignupLocationState = {
+  mode?: 'social';
+  provider?: SocialProvider;
+  providerToken?: string;
+  rememberMe?: boolean;
+};
+
+type SocialSignupContext = {
+  provider: SocialProvider;
+  providerToken: string;
+  rememberMe: boolean;
+};
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: {
+            client_id: string;
+            callback: (response: GoogleCredentialResponse) => void;
+          }) => void;
+          prompt: (callback?: (notification: GooglePromptMomentNotification) => void) => void;
+        };
+      };
+    };
+  }
+}
 
 const PHONE_CODE_TTL_SECONDS = 5 * 60;
+const SOCIAL_OAUTH_STATE_KEY = 'codinator:socialOAuthState';
+const GOOGLE_IDENTITY_SCRIPT_ID = 'google-identity-services';
 
-function ModalStatusIcon({ type }: { type: ModalType }) {
+const SOCIAL_LOGIN_BUTTONS: SocialLoginButton[] = [
+  {
+    provider: 'KAKAO',
+    label: '카카오 간편 회원가입',
+    logoImage: kakaoLogoImage,
+  },
+  {
+    provider: 'NAVER',
+    label: '네이버 간편 회원가입',
+    logoImage: naverLogoImage,
+  },
+  {
+    provider: 'GOOGLE',
+    label: '구글 간편 회원가입',
+    logoImage: googleLogoImage,
+  },
+];
+
+const getSocialLogoImage = (provider: SocialProvider) => {
+  return SOCIAL_LOGIN_BUTTONS.find((socialButton) => socialButton.provider === provider)?.logoImage;
+};
+
+const isSocialProvider = (value: unknown): value is SocialProvider => {
+  return value === 'GOOGLE' || value === 'NAVER' || value === 'KAKAO';
+};
+
+const getStringEnv = (key: string): string => {
+  const value = import.meta.env[key];
+  return typeof value === 'string' ? value.trim() : '';
+};
+
+const createRandomState = () => {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+};
+
+const getSignupRedirectUri = () => `${window.location.origin}${window.location.pathname}`;
+
+const loadGoogleIdentityScript = () => {
+  return new Promise<void>((resolve, reject) => {
+    if (window.google?.accounts?.id) {
+      resolve();
+      return;
+    }
+
+    const existingScript = document.getElementById(
+      GOOGLE_IDENTITY_SCRIPT_ID,
+    ) as HTMLScriptElement | null;
+
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve(), { once: true });
+      existingScript.addEventListener(
+        'error',
+        () => reject(new Error('Google 로그인 스크립트 로드에 실패했습니다.')),
+        { once: true },
+      );
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = GOOGLE_IDENTITY_SCRIPT_ID;
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Google 로그인 스크립트 로드에 실패했습니다.'));
+    document.head.appendChild(script);
+  });
+};
+
+function ModalStatusIcon({
+  type,
+  socialProvider,
+}: {
+  type: ModalType;
+  socialProvider?: SocialButtonProvider | null;
+}) {
+  if (type === 'social' && socialProvider) {
+    const logoImage = getSocialLogoImage(socialProvider);
+
+    return (
+      <div className={`${styles.modalIcon} ${styles.modalIconSocial}`}>
+        {logoImage ? (
+          <img
+            src={logoImage}
+            alt=""
+            className={styles.modalLogoImage}
+            draggable={false}
+            aria-hidden="true"
+          />
+        ) : null}
+      </div>
+    );
+  }
+
   if (type === 'success') {
     return (
       <div className={`${styles.modalIcon} ${styles.modalIconSuccess}`}>
@@ -88,9 +256,7 @@ function getFullBirthYear(twoDigitYear: number) {
   const currentYear = new Date().getFullYear();
   const currentTwoDigitYear = currentYear % 100;
 
-  return twoDigitYear <= currentTwoDigitYear
-    ? 2000 + twoDigitYear
-    : 1900 + twoDigitYear;
+  return twoDigitYear <= currentTwoDigitYear ? 2000 + twoDigitYear : 1900 + twoDigitYear;
 }
 
 function parseBirthDate(value: string) {
@@ -106,9 +272,7 @@ function parseBirthDate(value: string) {
   const date = new Date(year, month - 1, day);
 
   const isValid =
-    date.getFullYear() === year &&
-    date.getMonth() === month - 1 &&
-    date.getDate() === day;
+    date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 
   if (!isValid) return null;
 
@@ -150,6 +314,23 @@ const verifyPhoneVerificationCode = async (
 
 export default function Signup() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const socialSignupContext = useMemo<SocialSignupContext | null>(() => {
+    const state = location.state as SignupLocationState | null;
+
+    if (state?.mode !== 'social' || !isSocialProvider(state.provider) || !state.providerToken) {
+      return null;
+    }
+
+    return {
+      provider: state.provider,
+      providerToken: state.providerToken,
+      rememberMe: Boolean(state.rememberMe),
+    };
+  }, [location.state]);
+
+  const isSocialSignup = socialSignupContext !== null;
 
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
@@ -179,21 +360,20 @@ export default function Signup() {
   const [nicknameCheckLoading, setNicknameCheckLoading] = useState(false);
   const [emailCheckLoading, setEmailCheckLoading] = useState(false);
   const [signupLoading, setSignupLoading] = useState(false);
+  const [socialLoading, setSocialLoading] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
   const [modalTitle, setModalTitle] = useState('안내');
   const [modalMessage, setModalMessage] = useState('');
   const [modalType, setModalType] = useState<ModalType>('info');
-  const [modalAction, setModalAction] = useState<(() => void) | null>(null);
+  const [modalAction, setModalAction] = useState<ModalAction>(null);
+  const [modalSocialProvider, setModalSocialProvider] = useState<SocialButtonProvider | null>(null);
 
   const emailRegex = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/, []);
 
   // 비밀번호 정책:
   // 8자 이상, 영문, 숫자, 특수문자 각각 1개 이상 필수 포함
-  const passwordRegex = useMemo(
-    () => /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
-    [],
-  );
+  const passwordRegex = useMemo(() => /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/, []);
 
   const phoneRegex = useMemo(() => /^01(?:0|1|6|7|8|9)-\d{3,4}-\d{4}$/, []);
 
@@ -206,14 +386,14 @@ export default function Signup() {
   const isNicknameValid = trimmedNickname.length > 0;
   const isEmailValid = emailRegex.test(trimmedEmail);
   const isPasswordValid = passwordRegex.test(trimmedPassword);
-  const isPasswordConfirmValid =
-    passwordConfirm.trim().length > 0 && password === passwordConfirm;
+  const isPasswordConfirmValid = passwordConfirm.trim().length > 0 && password === passwordConfirm;
   const isBirthValid = isValidBirthDate(trimmedBirthDate);
   const isGenderValid = gender === 'MALE' || gender === 'FEMALE';
   const isPhoneValid = phoneRegex.test(phoneNumber);
 
   const isNicknameCheckDone = nicknameChecked && nicknameAvailable === true;
   const isEmailCheckDone = emailChecked && emailAvailable === true;
+  const isEmailReady = isSocialSignup || (isEmailValid && isEmailCheckDone);
 
   const timerExpired = phoneVerificationSent && !phoneVerified && remainingSeconds === 0;
 
@@ -227,14 +407,13 @@ export default function Signup() {
 
   const canSubmit =
     isNicknameValid &&
-    isEmailValid &&
+    isEmailReady &&
     isPasswordValid &&
     isPasswordConfirmValid &&
     isBirthValid &&
     isGenderValid &&
     phoneReady &&
     isNicknameCheckDone &&
-    isEmailCheckDone &&
     !signupLoading;
 
   useEffect(() => {
@@ -263,11 +442,13 @@ export default function Signup() {
     message: string,
     type: ModalType = 'info',
     action?: () => void,
+    socialProvider?: SocialButtonProvider,
   ) => {
     setModalTitle(title);
     setModalMessage(message);
     setModalType(type);
     setModalAction(() => action ?? null);
+    setModalSocialProvider(socialProvider ?? null);
     setShowModal(true);
   };
 
@@ -277,16 +458,339 @@ export default function Signup() {
     if (modalAction) {
       const action = modalAction;
       setModalAction(null);
+      setModalSocialProvider(null);
       action();
       return;
     }
 
     setModalAction(null);
+    setModalSocialProvider(null);
   };
 
-  const requestSignupCheck = async (
-    body: SignupCheckRequest,
-  ): Promise<CheckResponse> => {
+  const persistSocialAuthSession = (authData: PersistAuthData, rememberMe = false) => {
+    clearAuthTokens();
+
+    const refreshToken = rememberMe ? (authData.refreshToken ?? undefined) : undefined;
+    saveAuthTokens(authData.accessToken, refreshToken);
+
+    saveCurrentUser({
+      ...authData.user,
+      email: authData.user.email ?? '',
+    } as LoginResponse['user']);
+
+    if (rememberMe && authData.refreshToken) {
+      localStorage.setItem('keepLoggedIn', 'true');
+    } else {
+      localStorage.removeItem('keepLoggedIn');
+    }
+
+    navigate('/rankingZone', { replace: true });
+  };
+
+  const moveToSignupForNewSocialAccount = (provider: SocialProvider, providerToken: string) => {
+    openModal(
+      '추가 정보가 필요해요',
+      '처음 사용하는 소셜 계정입니다. 회원가입 페이지에서 추가 정보를 입력하면 가입이 완료됩니다.',
+      'social',
+      () =>
+        navigate('/signup', {
+          state: {
+            mode: 'social',
+            provider,
+            providerToken,
+            rememberMe: false,
+          },
+        }),
+      provider as SocialButtonProvider,
+    );
+  };
+
+  const completeSocialLogin = async (provider: SocialProvider, providerToken: string) => {
+    const requestBody: SocialCompleteProfileRequest = {
+      provider,
+      providerToken,
+      rememberMe: false,
+    };
+
+    const data = await fetcher<SocialCompleteProfileResponse>('/auth/social/complete-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
+
+    persistSocialAuthSession(
+      {
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        user: data.user,
+      },
+      false,
+    );
+  };
+
+  const handleProviderTokenLogin = async (provider: SocialProvider, providerToken: string) => {
+    const loginRequest: SocialLoginRequest = {
+      provider,
+      providerToken,
+    };
+
+    const loginCheck = await fetcher<SocialLoginResponse>('/auth/social/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(loginRequest),
+    });
+
+    if (loginCheck.isNewUser) {
+      moveToSignupForNewSocialAccount(provider, providerToken);
+      return;
+    }
+
+    await completeSocialLogin(provider, providerToken);
+  };
+
+  const handleSocialRedirectCallback = async () => {
+    const storedStateRaw = sessionStorage.getItem(SOCIAL_OAUTH_STATE_KEY);
+    if (!storedStateRaw) return;
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const code = searchParams.get('code');
+    const returnedState = searchParams.get('state') ?? undefined;
+    const error = searchParams.get('error');
+
+    if (!code && !error) return;
+
+    sessionStorage.removeItem(SOCIAL_OAUTH_STATE_KEY);
+    window.history.replaceState(null, '', window.location.pathname);
+
+    if (error) {
+      openModal('소셜 로그인 실패', '소셜 로그인 인증이 취소되었거나 실패했습니다.', 'error');
+      return;
+    }
+
+    if (!code) {
+      openModal('소셜 로그인 실패', '소셜 로그인 인가코드를 확인할 수 없습니다.', 'error');
+      return;
+    }
+
+    let storedState: SocialOAuthState;
+
+    try {
+      storedState = JSON.parse(storedStateRaw) as SocialOAuthState;
+    } catch {
+      openModal(
+        '소셜 로그인 실패',
+        '소셜 로그인 상태값을 확인할 수 없습니다. 다시 시도해주세요.',
+        'error',
+      );
+      return;
+    }
+
+    if (storedState.provider === 'NAVER' && storedState.state !== returnedState) {
+      openModal(
+        '소셜 로그인 실패',
+        '네이버 로그인 상태값이 일치하지 않습니다. 다시 시도해주세요.',
+        'error',
+      );
+      return;
+    }
+
+    setSocialLoading(true);
+
+    try {
+      const exchangeEndpoint =
+        storedState.provider === 'KAKAO'
+          ? '/auth/social/kakao/exchange-code'
+          : '/auth/social/naver/exchange-code';
+
+      const exchangeBody =
+        storedState.provider === 'KAKAO'
+          ? {
+              code,
+              redirectUri: storedState.redirectUri,
+              rememberMe: storedState.rememberMe,
+            }
+          : {
+              code,
+              state: returnedState ?? '',
+              redirectUri: storedState.redirectUri,
+              rememberMe: storedState.rememberMe,
+            };
+
+      const exchangeResult = await fetcher<SocialCodeExchangeResponse>(exchangeEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(exchangeBody),
+      });
+
+      if (exchangeResult.isNewUser) {
+        moveToSignupForNewSocialAccount(storedState.provider, exchangeResult.providerToken);
+        return;
+      }
+
+      await completeSocialLogin(storedState.provider, exchangeResult.providerToken);
+    } catch (err) {
+      console.error('소셜 로그인 콜백 처리 오류:', err);
+      openModal(
+        '소셜 로그인 실패',
+        err instanceof Error ? err.message : '소셜 로그인 처리에 실패했습니다.',
+        'error',
+      );
+    } finally {
+      setSocialLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void handleSocialRedirectCallback();
+    // 최초 진입 시 URL callback만 처리한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const startKakaoLogin = () => {
+    const clientId = getStringEnv('VITE_KAKAO_REST_API_KEY');
+
+    if (!clientId) {
+      openModal(
+        '카카오 로그인 설정 필요',
+        'VITE_KAKAO_REST_API_KEY가 설정되어 있지 않습니다. 환경변수 설정 후 다시 시도해주세요.',
+        'error',
+      );
+      return;
+    }
+
+    const redirectUri = getSignupRedirectUri();
+    const oauthState: SocialOAuthState = {
+      provider: 'KAKAO',
+      redirectUri,
+      rememberMe: false,
+    };
+
+    sessionStorage.setItem(SOCIAL_OAUTH_STATE_KEY, JSON.stringify(oauthState));
+
+    const url = new URL('https://kauth.kakao.com/oauth/authorize');
+    url.searchParams.set('response_type', 'code');
+    url.searchParams.set('client_id', clientId);
+    url.searchParams.set('redirect_uri', redirectUri);
+
+    window.location.href = url.toString();
+  };
+
+  const startNaverLogin = () => {
+    const clientId = getStringEnv('VITE_NAVER_CLIENT_ID');
+
+    if (!clientId) {
+      openModal(
+        '네이버 로그인 설정 필요',
+        'VITE_NAVER_CLIENT_ID가 설정되어 있지 않습니다. 환경변수 설정 후 다시 시도해주세요.',
+        'error',
+      );
+      return;
+    }
+
+    const redirectUri = getSignupRedirectUri();
+    const state = createRandomState();
+    const oauthState: SocialOAuthState = {
+      provider: 'NAVER',
+      redirectUri,
+      rememberMe: false,
+      state,
+    };
+
+    sessionStorage.setItem(SOCIAL_OAUTH_STATE_KEY, JSON.stringify(oauthState));
+
+    const url = new URL('https://nid.naver.com/oauth2.0/authorize');
+    url.searchParams.set('response_type', 'code');
+    url.searchParams.set('client_id', clientId);
+    url.searchParams.set('redirect_uri', redirectUri);
+    url.searchParams.set('state', state);
+
+    window.location.href = url.toString();
+  };
+
+  const startGoogleLogin = async () => {
+    const clientId = getStringEnv('VITE_GOOGLE_CLIENT_ID');
+
+    if (!clientId) {
+      openModal(
+        '구글 로그인 설정 필요',
+        'VITE_GOOGLE_CLIENT_ID가 설정되어 있지 않습니다. 환경변수 설정 후 다시 시도해주세요.',
+        'error',
+      );
+      return;
+    }
+
+    if (socialLoading) return;
+
+    setSocialLoading(true);
+
+    try {
+      await loadGoogleIdentityScript();
+
+      if (!window.google?.accounts?.id) {
+        throw new Error('Google 로그인 모듈을 사용할 수 없습니다.');
+      }
+
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: (response) => {
+          void (async () => {
+            try {
+              if (!response.credential) {
+                throw new Error('Google ID token을 확인할 수 없습니다.');
+              }
+
+              await handleProviderTokenLogin('GOOGLE', response.credential);
+            } catch (err) {
+              console.error('Google 로그인 오류:', err);
+              openModal(
+                '구글 로그인 실패',
+                err instanceof Error ? err.message : '구글 로그인 처리에 실패했습니다.',
+                'error',
+              );
+            } finally {
+              setSocialLoading(false);
+            }
+          })();
+        },
+      });
+
+      window.google.accounts.id.prompt((notification) => {
+        if (
+          notification.isNotDisplayed?.() ||
+          notification.isSkippedMoment?.() ||
+          notification.isDismissedMoment?.()
+        ) {
+          setSocialLoading(false);
+        }
+      });
+    } catch (err) {
+      console.error('Google 로그인 초기화 오류:', err);
+      setSocialLoading(false);
+      openModal(
+        '구글 로그인 실패',
+        err instanceof Error ? err.message : '구글 로그인 초기화에 실패했습니다.',
+        'error',
+      );
+    }
+  };
+
+  const handleSocialLoginClick = (provider: SocialButtonProvider) => {
+    if (signupLoading || socialLoading) return;
+
+    if (provider === 'KAKAO') {
+      startKakaoLogin();
+      return;
+    }
+
+    if (provider === 'NAVER') {
+      startNaverLogin();
+      return;
+    }
+
+    void startGoogleLogin();
+  };
+
+  const requestSignupCheck = async (body: SignupCheckRequest): Promise<CheckResponse> => {
     return fetcher<CheckResponse>('/auth/signup/check', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -353,9 +857,7 @@ export default function Signup() {
 
       openModal(
         '오류',
-        error instanceof Error
-          ? error.message
-          : '닉네임 중복확인 요청에 실패했습니다.',
+        error instanceof Error ? error.message : '닉네임 중복확인 요청에 실패했습니다.',
         'error',
       );
     } finally {
@@ -400,9 +902,7 @@ export default function Signup() {
 
       openModal(
         '오류',
-        error instanceof Error
-          ? error.message
-          : '이메일 중복확인 요청에 실패했습니다.',
+        error instanceof Error ? error.message : '이메일 중복확인 요청에 실패했습니다.',
         'error',
       );
     } finally {
@@ -433,9 +933,7 @@ export default function Signup() {
       setVerifiedPhoneDigits('');
       setVerificationCode('');
       setRemainingSeconds(PHONE_CODE_TTL_SECONDS);
-      setPhoneSendMessage(
-        isResend ? '인증번호를 재요청했습니다.' : '인증번호가 발송되었습니다.',
-      );
+      setPhoneSendMessage(isResend ? '인증번호를 재요청했습니다.' : '인증번호가 발송되었습니다.');
       setPhoneDebugCode(response.debugCode ?? '');
     } catch (error) {
       console.error('인증번호 발송 실패:', error);
@@ -498,14 +996,16 @@ export default function Signup() {
       return false;
     }
 
-    if (!isEmailValid) {
-      openModal('이메일 확인', '올바른 이메일 형식을 입력해주세요.', 'error');
-      return false;
-    }
+    if (!isSocialSignup) {
+      if (!isEmailValid) {
+        openModal('이메일 확인', '올바른 이메일 형식을 입력해주세요.', 'error');
+        return false;
+      }
 
-    if (!isEmailCheckDone) {
-      openModal('이메일 확인', '이메일 중복확인을 완료해주세요.', 'error');
-      return false;
+      if (!isEmailCheckDone) {
+        openModal('이메일 확인', '이메일 중복확인을 완료해주세요.', 'error');
+        return false;
+      }
     }
 
     if (!isPasswordValid) {
@@ -523,11 +1023,7 @@ export default function Signup() {
     }
 
     if (!isBirthValid) {
-      openModal(
-        '생년월일 확인',
-        '생년월일을 정확히 입력해주세요. 예: 960208',
-        'error',
-      );
+      openModal('생년월일 확인', '생년월일을 정확히 입력해주세요. 예: 960208', 'error');
       return false;
     }
 
@@ -537,11 +1033,7 @@ export default function Signup() {
     }
 
     if (!isPhoneValid) {
-      openModal(
-        '전화번호 확인',
-        '전화번호를 정확히 입력해주세요. 예: 010-0000-0000',
-        'error',
-      );
+      openModal('전화번호 확인', '전화번호를 정확히 입력해주세요. 예: 010-0000-0000', 'error');
       return false;
     }
 
@@ -567,6 +1059,38 @@ export default function Signup() {
     setSignupLoading(true);
 
     try {
+      if (socialSignupContext) {
+        const requestBody: SocialCompleteProfileRequest = {
+          provider: socialSignupContext.provider,
+          providerToken: socialSignupContext.providerToken,
+          nickname: trimmedNickname,
+          password: trimmedPassword,
+          birthDate: parsedBirthDate.isoDate,
+          gender,
+          phoneNumber: phoneDigits,
+          phoneVerificationToken,
+          rememberMe: socialSignupContext.rememberMe,
+        };
+
+        const data = await fetcher<SocialCompleteProfileResponse>('/auth/social/complete-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+        });
+
+        openModal('회원가입 완료', '소셜 회원가입이 완료되었습니다.', 'success', () => {
+          persistSocialAuthSession(
+            {
+              accessToken: data.accessToken,
+              refreshToken: data.refreshToken,
+              user: data.user,
+            },
+            socialSignupContext.rememberMe,
+          );
+        });
+        return;
+      }
+
       const requestBody: SignupRequest = {
         email: trimmedEmail,
         nickname: trimmedNickname,
@@ -591,9 +1115,7 @@ export default function Signup() {
 
       openModal(
         '회원가입 실패',
-        error instanceof Error
-          ? error.message
-          : '회원가입 요청에 실패했습니다.',
+        error instanceof Error ? error.message : '회원가입 요청에 실패했습니다.',
         'error',
       );
     } finally {
@@ -693,9 +1215,15 @@ export default function Signup() {
     ? styles.bottomObjectsExpanded
     : styles.bottomObjectsDefault;
 
+  const contentHeightClass = phoneVerificationSent ? styles.contentExpanded : styles.contentDefault;
+
   return (
     <main className={styles.root}>
-      <div className={styles.content}>
+      <div
+        className={`${styles.content} ${contentHeightClass} ${
+          isSocialSignup ? styles.socialContent : ''
+        }`}
+      >
         <img
           src={signupDecorationImage}
           alt=""
@@ -705,11 +1233,15 @@ export default function Signup() {
 
         <header className={styles.header}>
           <h1 className={styles.title}>회원가입</h1>
-          <p className={styles.description}>내 코디를 공유하고 평가를 받아보세요</p>
+          <p className={styles.description}>
+            {isSocialSignup
+              ? '추가 정보를 입력하면 바로 시작할 수 있어요'
+              : '내 코디를 공유하고 평가를 받아보세요'}
+          </p>
         </header>
 
         <form
-          className={styles.form}
+          className={`${styles.form} ${isSocialSignup ? styles.socialForm : ''}`}
           onSubmit={(event: FormEvent<HTMLFormElement>) => {
             event.preventDefault();
             void handleSignup();
@@ -752,41 +1284,39 @@ export default function Signup() {
             <p className={nicknameMessageClass}>{getNicknameMessage()}</p>
           </div>
 
-          <div className={`${styles.fieldGroup} ${styles.emailGroup}`}>
-            <label className={styles.label} htmlFor="email">
-              이메일
-            </label>
+          {!isSocialSignup ? (
+            <div className={`${styles.fieldGroup} ${styles.emailGroup}`}>
+              <label className={styles.label} htmlFor="email">
+                이메일
+              </label>
 
-            <div className={styles.inputButtonBox}>
-              <input
-                id="email"
-                type="email"
-                className={styles.inputWithButton}
-                value={email}
-                placeholder="이메일을 입력하세요"
-                autoComplete="email"
-                disabled={signupLoading}
-                onChange={(event) => resetEmailCheck(event.target.value)}
-              />
+              <div className={styles.inputButtonBox}>
+                <input
+                  id="email"
+                  type="email"
+                  className={styles.inputWithButton}
+                  value={email}
+                  placeholder="이메일을 입력하세요"
+                  autoComplete="email"
+                  disabled={signupLoading}
+                  onChange={(event) => resetEmailCheck(event.target.value)}
+                />
 
-              <button
-                type="button"
-                className={`${styles.innerButton} ${
-                  isEmailCheckDone ? styles.checkButtonDone : ''
-                }`}
-                onClick={handleCheckEmail}
-                disabled={emailCheckLoading || signupLoading || !email.trim()}
-              >
-                {emailCheckLoading
-                  ? '확인중...'
-                  : isEmailCheckDone
-                    ? '확인 완료'
-                    : '중복 확인'}
-              </button>
+                <button
+                  type="button"
+                  className={`${styles.innerButton} ${
+                    isEmailCheckDone ? styles.checkButtonDone : ''
+                  }`}
+                  onClick={handleCheckEmail}
+                  disabled={emailCheckLoading || signupLoading || !email.trim()}
+                >
+                  {emailCheckLoading ? '확인중...' : isEmailCheckDone ? '확인 완료' : '중복 확인'}
+                </button>
+              </div>
+
+              <p className={emailMessageClass}>{getEmailMessage()}</p>
             </div>
-
-            <p className={emailMessageClass}>{getEmailMessage()}</p>
-          </div>
+          ) : null}
 
           <div className={`${styles.fieldGroup} ${styles.passwordGroup}`}>
             <label className={styles.label} htmlFor="password">
@@ -823,9 +1353,7 @@ export default function Signup() {
               onChange={(event) => setPasswordConfirm(event.target.value)}
             />
 
-            <p className={passwordConfirmMessageClass}>
-              {getPasswordConfirmMessage()}
-            </p>
+            <p className={passwordConfirmMessageClass}>{getPasswordConfirmMessage()}</p>
           </div>
 
           <div className={`${styles.fieldGroup} ${styles.birthDateGroup}`}>
@@ -865,17 +1393,13 @@ export default function Signup() {
                   size={28}
                   strokeWidth={gender === 'MALE' ? 2.6 : 1.9}
                   className={
-                    gender === 'MALE'
-                      ? styles.genderIconChecked
-                      : styles.genderIconUnchecked
+                    gender === 'MALE' ? styles.genderIconChecked : styles.genderIconUnchecked
                   }
                   aria-hidden="true"
                 />
                 <span
                   className={
-                    gender === 'MALE'
-                      ? styles.genderTextChecked
-                      : styles.genderTextUnchecked
+                    gender === 'MALE' ? styles.genderTextChecked : styles.genderTextUnchecked
                   }
                 >
                   남성
@@ -893,17 +1417,13 @@ export default function Signup() {
                   size={28}
                   strokeWidth={gender === 'FEMALE' ? 2.6 : 1.9}
                   className={
-                    gender === 'FEMALE'
-                      ? styles.genderIconChecked
-                      : styles.genderIconUnchecked
+                    gender === 'FEMALE' ? styles.genderIconChecked : styles.genderIconUnchecked
                   }
                   aria-hidden="true"
                 />
                 <span
                   className={
-                    gender === 'FEMALE'
-                      ? styles.genderTextChecked
-                      : styles.genderTextUnchecked
+                    gender === 'FEMALE' ? styles.genderTextChecked : styles.genderTextUnchecked
                   }
                 >
                   여성
@@ -975,9 +1495,7 @@ export default function Signup() {
                       inputMode="numeric"
                       value={verificationCode}
                       onChange={(event) =>
-                        setVerificationCode(
-                          event.target.value.replace(/[^0-9]/g, '').slice(0, 6),
-                        )
+                        setVerificationCode(event.target.value.replace(/[^0-9]/g, '').slice(0, 6))
                       }
                       placeholder="인증번호"
                       className={styles.verificationInput}
@@ -1029,38 +1547,24 @@ export default function Signup() {
           </div>
 
           <div className={`${styles.socialButtonRow} ${bottomOffsetClass}`}>
-            <button
-              type="button"
-              className={styles.socialButton}
-              aria-label="카카오 회원가입"
-              disabled={signupLoading}
-            >
-              <span className={styles.socialLogo}>
-                <KakaoIcon />
-              </span>
-            </button>
-
-            <button
-              type="button"
-              className={styles.socialButton}
-              aria-label="네이버 회원가입"
-              disabled={signupLoading}
-            >
-              <span className={styles.socialLogo}>
-                <NaverIcon />
-              </span>
-            </button>
-
-            <button
-              type="button"
-              className={styles.socialButton}
-              aria-label="구글 회원가입"
-              disabled={signupLoading}
-            >
-              <span className={styles.socialLogo}>
-                <GoogleIcon />
-              </span>
-            </button>
+            {SOCIAL_LOGIN_BUTTONS.map((socialButton) => (
+              <button
+                key={socialButton.provider}
+                type="button"
+                className={styles.socialButton}
+                aria-label={socialButton.label}
+                disabled={signupLoading || socialLoading}
+                onClick={() => handleSocialLoginClick(socialButton.provider)}
+              >
+                <img
+                  src={socialButton.logoImage}
+                  alt=""
+                  className={styles.socialLogoImage}
+                  draggable={false}
+                  aria-hidden="true"
+                />
+              </button>
+            ))}
           </div>
 
           <div className={`${styles.loginGuideRow} ${bottomOffsetClass}`}>
@@ -1080,17 +1584,13 @@ export default function Signup() {
         {showModal ? (
           <div className={styles.modalBackdrop}>
             <div className={styles.modalCard}>
-              <ModalStatusIcon type={modalType} />
+              <ModalStatusIcon type={modalType} socialProvider={modalSocialProvider} />
 
               <h3 className={styles.modalTitle}>{modalTitle}</h3>
 
               <p className={styles.modalMessage}>{modalMessage}</p>
 
-              <button
-                type="button"
-                className={styles.modalButton}
-                onClick={closeModal}
-              >
+              <button type="button" className={styles.modalButton} onClick={closeModal}>
                 확인
               </button>
             </div>

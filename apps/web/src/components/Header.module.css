@@ -1,5 +1,5 @@
 .header {
-  @apply relative z-[40] bg-white shrink-0;
+  @apply bg-white shrink-0;
   width: var(--app-width);
   height: var(--app-header-height);
 }

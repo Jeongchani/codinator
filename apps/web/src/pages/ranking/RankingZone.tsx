@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
 import { Bookmark, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import styles from './RankingZone.module.css';
@@ -17,15 +16,17 @@ import {
 } from '../../lib/api';
 import type {
   GetPersonalizedRankingsResponse,
+  GetRankingPostDetailResponse,
   GetRankingsResponse,
   RankingItem,
   RankingPeriod,
 } from '@codinator/contracts';
 import Header from '../../components/Header';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
+import FocusScreen from '../../components/focus/FocusScreen';
 import RankingDetail from './RankingDetail';
-import PersonalizedSection, { type PersonalizedFocusItem } from './PersonalizedSection';
 import PersonalizedDetail from './PersonalizedDetail';
+import PersonalizedSection, { type PersonalizedFocusItem } from './PersonalizedSection';
 
 type RankingFocusItem = {
   kind: 'ranking';
@@ -39,37 +40,6 @@ type RankingFocusItem = {
 };
 
 type FocusItem = RankingFocusItem | PersonalizedFocusItem;
-
-const BackIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-    <path
-      d="M11.25 14.25L6 9L11.25 3.75"
-      stroke="white"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const ChevronUpDouble = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-    <path
-      d="M5 12.5L10 7.5L15 12.5"
-      stroke="white"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M5 17L10 12L15 17"
-      stroke="white"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
 
 function HeroBanner() {
   return (
@@ -85,6 +55,19 @@ function RecommendationBanner() {
       <img src={algorithmBanner} alt="추천 알고리즘 banner" className={styles.bannerImage} />
     </section>
   );
+}
+
+function getPersonalizedContentText(item: PersonalizedFocusItem): string {
+  const raw = item.raw as unknown as Record<string, unknown>;
+  const candidates = [raw.content, raw.caption, raw.description];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  return '코디 설명이 없습니다.';
 }
 
 function RankingCard({
@@ -183,51 +166,6 @@ function RankingSection({
   );
 }
 
-function VerticalSwipeIndicator({ above, below }: { above: number; below: number }) {
-  const visibleAbove = Math.min(Math.max(above, 0), 3);
-  const visibleBelow = Math.min(Math.max(below, 0), 3);
-
-  return (
-    <div className={styles.swipeIndicator} aria-hidden="true">
-      <div className={styles.swipeIndicatorStack}>
-        {Array.from({ length: visibleAbove }).map((_, index) => (
-          <motion.div
-            key={`above-${index}`}
-            className={styles.swipeIndicatorDot}
-            animate={{ opacity: [0.2, 0.44, 0.2], y: [0, -1.5, 0] }}
-            transition={{
-              duration: 1.7,
-              repeat: Infinity,
-              ease: 'easeInOut',
-              delay: 0.1 * (visibleAbove - index),
-            }}
-          />
-        ))}
-
-        <motion.div
-          className={styles.swipeIndicatorActive}
-          animate={{ opacity: [1, 0.84, 1], scaleY: [1, 0.94, 1] }}
-          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-        />
-
-        {Array.from({ length: visibleBelow }).map((_, index) => (
-          <motion.div
-            key={`below-${index}`}
-            className={styles.swipeIndicatorDot}
-            animate={{ opacity: [0.2, 0.44, 0.2], y: [0, 1.5, 0] }}
-            transition={{
-              duration: 1.7,
-              repeat: Infinity,
-              ease: 'easeInOut',
-              delay: 0.1 * (index + 1),
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function RankingZone() {
   const navigate = useNavigate();
   const [weeklyRankings, setWeeklyRankings] = useState<RankingItem[]>([]);
@@ -242,10 +180,10 @@ export default function RankingZone() {
   const [bookmarkPressedIds, setBookmarkPressedIds] = useState<number[]>([]);
   const [focusOpen, setFocusOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [focusContentMap, setFocusContentMap] = useState<Record<number, string>>({});
   const [focusIndex, setFocusIndex] = useState(0);
   const [focusItems, setFocusItems] = useState<FocusItem[]>([]);
   const bookmarkAnimTimeoutMap = useRef<Record<number, number>>({});
-  const focusScrollRef = useRef<HTMLDivElement | null>(null);
 
   const moveToLogin = useCallback(() => {
     clearAuthTokens();
@@ -351,9 +289,7 @@ export default function RankingZone() {
     }, 240);
   };
 
-  const handleToggleBookmark = async (e: React.MouseEvent<HTMLButtonElement>, postId: number) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const toggleBookmarkByPostId = async (postId: number) => {
     if (bookmarkLoadingIds.includes(postId)) return;
 
     triggerBookmarkPress(postId);
@@ -376,6 +312,12 @@ export default function RankingZone() {
     } finally {
       setBookmarkLoadingIds((prev) => prev.filter((id) => id !== postId));
     }
+  };
+
+  const handleToggleBookmark = (e: React.MouseEvent<HTMLButtonElement>, postId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    void toggleBookmarkByPostId(postId);
   };
 
   const convertRankingItem = (
@@ -423,6 +365,58 @@ export default function RankingZone() {
 
   const focusedItem = focusItems[focusIndex] ?? null;
 
+  const focusedContentText = focusedItem
+    ? (focusContentMap[focusedItem.postId] ?? '내용 불러오는 중...')
+    : '';
+
+  useEffect(() => {
+    if (!focusOpen || !focusedItem || focusContentMap[focusedItem.postId]) return;
+
+    if (focusedItem.kind === 'personalized') {
+      setFocusContentMap((prev) => ({
+        ...prev,
+        [focusedItem.postId]: getPersonalizedContentText(focusedItem),
+      }));
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadFocusContent = async () => {
+      try {
+        const data = await fetcher<GetRankingPostDetailResponse>(
+          `/rankings/posts/${focusedItem.postId}?period=${focusedItem.period}`,
+          { headers: getAuthHeaders() },
+        );
+
+        if (cancelled) return;
+
+        const nextContent = data.content?.trim() || '코디 설명이 없습니다.';
+        setFocusContentMap((prev) => ({ ...prev, [focusedItem.postId]: nextContent }));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '';
+        if (isAuthError(message)) {
+          clearAuthTokens();
+          moveToLogin();
+          return;
+        }
+
+        if (!cancelled) {
+          setFocusContentMap((prev) => ({
+            ...prev,
+            [focusedItem.postId]: '코디 설명이 없습니다.',
+          }));
+        }
+      }
+    };
+
+    void loadFocusContent();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [focusOpen, focusedItem, focusContentMap, moveToLogin]);
+
   const handleCardClick = (item: FocusItem, list: FocusItem[]) => {
     const nextIndex = list.findIndex((candidate) => candidate.postId === item.postId);
     setFocusItems(list);
@@ -431,40 +425,6 @@ export default function RankingZone() {
     setFocusOpen(true);
   };
 
-  const handleFocusScroll = () => {
-    const container = focusScrollRef.current;
-    if (!container) return;
-
-    const pageHeight = container.clientHeight;
-    const nextIndex = Math.max(
-      0,
-      Math.min(Math.round(container.scrollTop / pageHeight), focusItems.length - 1),
-    );
-
-    if (nextIndex !== focusIndex) {
-      setFocusIndex(nextIndex);
-      setSheetOpen(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!focusOpen) return;
-
-    const container = focusScrollRef.current;
-    if (!container) return;
-
-    const raf = window.requestAnimationFrame(() => {
-      container.scrollTo({
-        top: container.clientHeight * focusIndex,
-        behavior: 'auto',
-      });
-    });
-
-    return () => window.cancelAnimationFrame(raf);
-  }, [focusOpen, focusIndex]);
-
-  const previousSwipeCount = Math.min(Math.max(focusIndex, 0), 3);
-  const nextSwipeCount = Math.min(Math.max(focusItems.length - focusIndex - 1, 0), 3);
   const totalCount = (focusedItem?.likeCount ?? 0) + (focusedItem?.dislikeCount ?? 0);
   const likePercent =
     totalCount > 0 ? Math.round(((focusedItem?.likeCount ?? 0) / totalCount) * 100) : 0;
@@ -513,108 +473,50 @@ export default function RankingZone() {
       </div>
 
       {focusOpen && focusedItem ? (
-        <div className={styles.focusOverlay}>
-          <div ref={focusScrollRef} className={styles.focusViewport} onScroll={handleFocusScroll}>
-            {focusItems.map((item) => (
-              <section
-                key={`${item.kind}-${item.sectionTitle}-${item.postId}`}
-                className={styles.focusSlide}
-              >
-                <div
-                  className={styles.focusMainImage}
-                  style={{ backgroundImage: item.imageUrl ? `url(${item.imageUrl})` : undefined }}
-                />
-                <div className={styles.topGradient} />
-                <div className={styles.bottomGradient} />
-              </section>
-            ))}
-          </div>
-
-          {sheetOpen ? (
-            <button
-              type="button"
-              className={styles.focusSheetBackdrop}
-              onClick={() => setSheetOpen(false)}
-              aria-label="상세 닫기"
-            />
-          ) : null}
-
-          <div className={styles.overlay}>
-            <div className={styles.topBar}>
-              <motion.button
-                type="button"
-                className={styles.backButton}
-                onClick={() => {
-                  setSheetOpen(false);
-                  setFocusOpen(false);
-                }}
-                aria-label="뒤로가기"
-                whileTap={{ scale: 0.94 }}
-              >
-                <BackIcon />
-              </motion.button>
-
-              <div className={styles.reportPlaceholder} aria-hidden="true" />
-            </div>
-
-            {!sheetOpen ? (
-              <VerticalSwipeIndicator above={previousSwipeCount} below={nextSwipeCount} />
-            ) : null}
-
-            <motion.div
-              className={styles.voteGraphArea}
-              aria-hidden="true"
-              key={`vote-bar-${focusedItem.kind}-${focusedItem.postId}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.22, ease: 'easeOut' }}
-            >
-              <div className={styles.progressTrack}>
-                <div className={styles.likeFill} style={{ width: `${likePercent}%` }} />
-                <div className={styles.dislikeFill} style={{ width: `${dislikePercent}%` }} />
-
-                <div className={styles.leftPercent}>
-                  <ThumbsUp size={12} strokeWidth={2.2} />
-                  <span>{likePercent}%</span>
-                </div>
-
-                <div className={styles.rightPercent}>
-                  <span>{dislikePercent}%</span>
-                  <ThumbsDown size={12} strokeWidth={2.2} />
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              className={styles.voteDetailButtonWrap}
-              key={`detail-cta-${focusedItem.kind}-${focusedItem.postId}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.26, ease: 'easeOut' }}
-            >
-              <button
-                type="button"
-                className={styles.voteDetailButton}
-                onClick={() => setSheetOpen(true)}
-              >
-                <span>상세보러가기</span>
-                <span className={styles.voteDetailIcon}>
-                  <ChevronUpDouble />
-                </span>
-              </button>
-            </motion.div>
-          </div>
-
+        <FocusScreen
+          isOpen={focusOpen}
+          items={focusItems.map((item) => ({
+            id: `${item.kind}-${item.sectionTitle}-${item.postId}`,
+            imageUrl: item.imageUrl,
+          }))}
+          activeIndex={focusIndex}
+          onActiveIndexChange={(nextIndex) => {
+            setFocusIndex(nextIndex);
+            setSheetOpen(false);
+          }}
+          onClose={() => {
+            setSheetOpen(false);
+            setFocusOpen(false);
+          }}
+          sheetOpen={sheetOpen}
+          onCloseSheet={() => setSheetOpen(false)}
+          showVoteGraph
+          likePercent={likePercent}
+          dislikePercent={dislikePercent}
+          showDetailButton
+          detailLabel="상세보기"
+          showActionCounts
+          likeCount={focusedItem.likeCount}
+          dislikeCount={focusedItem.dislikeCount}
+          showBookmarkButton
+          isBookmarked={Boolean(bookmarks[focusedItem.postId])}
+          bookmarkDisabled={bookmarkLoadingIds.includes(focusedItem.postId)}
+          onBookmarkClick={() => void toggleBookmarkByPostId(focusedItem.postId)}
+          reportPostId={focusedItem.postId}
+          reportDisplayText={focusedContentText}
+          contentText={focusedContentText}
+          onOpenDetail={() => setSheetOpen(true)}
+        >
           {sheetOpen ? (
             <PostDetailBottomSheet isOpen={sheetOpen} onCloseRequest={() => setSheetOpen(false)}>
-              {focusedItem.kind === 'personalized' ? (
-                <PersonalizedDetail item={focusedItem.raw} />
-              ) : (
+              {focusedItem.kind === 'ranking' ? (
                 <RankingDetail postId={focusedItem.postId} period={focusedItem.period} />
+              ) : (
+                <PersonalizedDetail item={focusedItem.raw} />
               )}
             </PostDetailBottomSheet>
           ) : null}
-        </div>
+        </FocusScreen>
       ) : null}
     </div>
   );

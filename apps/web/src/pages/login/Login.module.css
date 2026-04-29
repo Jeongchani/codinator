@@ -3,10 +3,13 @@
   width: var(--app-width, 375px);
   height: var(--app-height, 812px);
   min-height: var(--app-height, 812px);
+
+  --login-top-space: 50px;
 }
 
 .heroImage {
-  @apply absolute left-0 top-0 block select-none pointer-events-none;
+  @apply absolute left-0 block select-none pointer-events-none;
+  top: var(--login-top-space);
   width: 375px;
   height: 205px;
   object-fit: cover;
@@ -14,7 +17,9 @@
 }
 
 .form {
-  @apply absolute left-0 top-0 w-full h-full;
+  @apply absolute left-0 w-full;
+  top: var(--login-top-space);
+  height: calc(100% - var(--login-top-space));
 }
 
 .emailLabel,
@@ -140,8 +145,8 @@
   left: 16px;
   top: 492px;
   width: 343px;
-  height: 48px;
-  padding: 8px 16px;
+  height: 42px;
+  padding: 7px 16px;
   border: 0;
   cursor: pointer;
   transition:
@@ -197,7 +202,8 @@
   @apply rounded-full bg-white flex items-center justify-center;
   width: 42px;
   height: 42px;
-  border: 1px solid #999999;
+  padding: 0;
+  overflow: hidden;
   cursor: pointer;
   transition:
     transform 160ms ease,
@@ -215,16 +221,12 @@
   opacity: 0.7;
 }
 
-.socialLogo {
-  @apply flex items-center justify-center;
-  width: 22px;
-  height: 22px;
-}
-
-.socialLogo > svg {
-  width: 22px;
-  height: 22px;
-  display: block;
+.socialLogoImage {
+  @apply block select-none pointer-events-none;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  object-position: center;
 }
 
 .signupRow {
@@ -270,6 +272,21 @@
 
 .modalIcon {
   @apply mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600 text-xl font-bold;
+  overflow: hidden;
+}
+
+.modalIconSocial {
+  background: #ffffff;
+  border: 1px solid #d6d3d1;
+  color: inherit;
+}
+
+.modalLogoImage {
+  @apply block select-none pointer-events-none;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  object-position: center;
 }
 
 .modalTitle {

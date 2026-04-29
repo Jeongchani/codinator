@@ -3,6 +3,7 @@ import type {
   BookmarkListItem,
   EvaluationHistoryItem,
   GetEvaluationHistoryResponse,
+  GetMeResponse,
   GetMyBookmarksResponse,
   GetSettingsResponse,
   LogoutResponse,
@@ -170,6 +171,16 @@ export const getAuthOnlyHeaders = (): HeadersInit => {
         Authorization: `Bearer ${accessToken}`,
       }
     : {};
+};
+
+export const isAdminRole = (role?: string | null): role is 'SUPER_ADMIN' | 'OPERATOR_ADMIN' => {
+  return role === 'SUPER_ADMIN' || role === 'OPERATOR_ADMIN';
+};
+
+export const fetchMyProfile = async (): Promise<GetMeResponse> => {
+  return fetcher<GetMeResponse>('/users/me', {
+    headers: getAuthHeaders(),
+  });
 };
 
 export const refreshAccessToken = async (): Promise<string | null> => {

@@ -12,21 +12,18 @@ import type {
   SocialProvider,
 } from '@codinator/contracts';
 
-import {
-  clearAuthTokens,
-  fetcher,
-  saveAuthTokens,
-  saveCurrentUser,
-} from '../../lib/api';
-
-import { KakaoIcon, NaverIcon, GoogleIcon } from '../../components/icons/social';
+import { clearAuthTokens, fetcher, saveAuthTokens, saveCurrentUser } from '../../lib/api';
 
 import loginHeroImage from '../../assets/login/login-hero.png';
+import kakaoLogoImage from '../../assets/login/social-kakao.png';
+import naverLogoImage from '../../assets/login/social-naver.png';
+import googleLogoImage from '../../assets/login/social-google.png';
 
 import styles from './Login.module.css';
 
 type ModalAction = (() => void) | null;
 type OAuthProvider = Extract<SocialProvider, 'KAKAO' | 'NAVER'>;
+type SocialButtonProvider = Extract<SocialProvider, 'GOOGLE' | 'NAVER' | 'KAKAO'>;
 
 type SocialOAuthState = {
   provider: OAuthProvider;
@@ -54,6 +51,12 @@ type PersistAuthData = {
   user: LoginResponse['user'] | SocialCompleteProfileResponse['user'];
 };
 
+type SocialLoginButton = {
+  provider: SocialButtonProvider;
+  label: string;
+  logoImage: string;
+};
+
 declare global {
   interface Window {
     google?: {
@@ -72,6 +75,41 @@ declare global {
 
 const SOCIAL_OAUTH_STATE_KEY = 'codinator:socialOAuthState';
 const GOOGLE_IDENTITY_SCRIPT_ID = 'google-identity-services';
+
+const SOCIAL_LOGIN_BUTTONS: SocialLoginButton[] = [
+  {
+    provider: 'KAKAO',
+    label: '카카오 간편 로그인',
+    logoImage: kakaoLogoImage,
+  },
+  {
+    provider: 'NAVER',
+    label: '네이버 간편 로그인',
+    logoImage: naverLogoImage,
+  },
+  {
+    provider: 'GOOGLE',
+    label: '구글 간편 로그인',
+    logoImage: googleLogoImage,
+  },
+];
+
+const getSocialLogoImage = (provider: SocialProvider) => {
+  return SOCIAL_LOGIN_BUTTONS.find((socialButton) => socialButton.provider === provider)?.logoImage;
+};
+
+const getSocialLoginBlockedMessage = (reason?: string) => {
+  switch (reason) {
+    case 'ACCOUNT_DELETED':
+      return '탈퇴 처리된 계정입니다. 다른 계정으로 로그인해주세요.';
+    case 'ACCOUNT_SUSPENDED':
+      return '정지된 계정입니다. 관리자에게 문의해주세요.';
+    case 'EMAIL_LINK_BLOCKED':
+      return '동일한 이메일로 가입된 계정이 있습니다. 이메일/비밀번호로 로그인한 뒤 소셜 계정 연동을 진행해주세요.';
+    default:
+      return '이 소셜 계정으로는 가입 또는 로그인을 계속 진행할 수 없습니다.';
+  }
+};
 
 const getStringEnv = (key: string): string => {
   const value = import.meta.env[key];
@@ -136,11 +174,13 @@ export default function Login() {
   const [modalTitle, setModalTitle] = useState('안내');
   const [modalMessage, setModalMessage] = useState('');
   const [modalAction, setModalAction] = useState<ModalAction>(null);
+  const [modalLogoImage, setModalLogoImage] = useState<string | null>(null);
 
-  const openModal = (title: string, message: string, action?: () => void) => {
+  const openModal = (title: string, message: string, action?: () => void, logoImage?: string) => {
     setModalTitle(title);
     setModalMessage(message);
     setModalAction(() => action ?? null);
+    setModalLogoImage(logoImage ?? null);
     setShowModal(true);
   };
 
@@ -150,17 +190,19 @@ export default function Login() {
     if (modalAction) {
       const action = modalAction;
       setModalAction(null);
+      setModalLogoImage(null);
       action();
       return;
     }
 
     setModalAction(null);
+    setModalLogoImage(null);
   };
 
   const persistAuthSession = (authData: PersistAuthData, rememberMe: boolean) => {
     clearAuthTokens();
 
-    const refreshToken = rememberMe ? authData.refreshToken ?? undefined : undefined;
+    const refreshToken = rememberMe ? (authData.refreshToken ?? undefined) : undefined;
 
     saveAuthTokens(authData.accessToken, refreshToken);
 
@@ -178,11 +220,24 @@ export default function Login() {
     navigate('/rankingZone', { replace: true });
   };
 
-  const moveToSignupForNewSocialAccount = () => {
+  const moveToSignupForNewSocialAccount = (
+    provider: SocialProvider,
+    providerToken: string,
+    rememberMe: boolean,
+  ) => {
     openModal(
       '추가 정보가 필요해요',
-      '처음 사용하는 소셜 계정입니다. 현재 로그인 화면에서는 기존 소셜 계정 로그인까지 연결되어 있습니다. 신규 소셜 회원가입은 회원가입 화면에서 추가 프로필 입력 흐름을 붙여야 합니다.',
-      () => navigate('/signup'),
+      '처음 사용하는 소셜 계정입니다. 회원가입 페이지에서 추가 정보를 입력하면 가입이 완료됩니다.',
+      () =>
+        navigate('/signup', {
+          state: {
+            mode: 'social',
+            provider,
+            providerToken,
+            rememberMe,
+          },
+        }),
+      getSocialLogoImage(provider),
     );
   };
 
@@ -197,14 +252,11 @@ export default function Login() {
       rememberMe,
     };
 
-    const data = await fetcher<SocialCompleteProfileResponse>(
-      '/auth/social/complete-profile',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-      },
-    );
+    const data = await fetcher<SocialCompleteProfileResponse>('/auth/social/complete-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
 
     persistAuthSession(
       {
@@ -232,8 +284,18 @@ export default function Login() {
       body: JSON.stringify(loginRequest),
     });
 
+    if (!loginCheck.canProceed) {
+      openModal(
+        '소셜 로그인 실패',
+        getSocialLoginBlockedMessage(loginCheck.reason),
+        undefined,
+        getSocialLogoImage(provider),
+      );
+      return;
+    }
+
     if (loginCheck.isNewUser) {
-      moveToSignupForNewSocialAccount();
+      moveToSignupForNewSocialAccount(provider, providerToken, rememberMe);
       return;
     }
 
@@ -306,8 +368,22 @@ export default function Login() {
         body: JSON.stringify(exchangeBody),
       });
 
+      if (!exchangeResult.canProceed) {
+        openModal(
+          '소셜 로그인 실패',
+          getSocialLoginBlockedMessage(exchangeResult.reason),
+          undefined,
+          getSocialLogoImage(storedState.provider),
+        );
+        return;
+      }
+
       if (exchangeResult.isNewUser) {
-        moveToSignupForNewSocialAccount();
+        moveToSignupForNewSocialAccount(
+          storedState.provider,
+          exchangeResult.providerToken,
+          storedState.rememberMe,
+        );
         return;
       }
 
@@ -363,9 +439,7 @@ export default function Login() {
       console.error('로그인 에러:', error);
 
       const message =
-        error instanceof Error
-          ? error.message
-          : '로그인 요청에 실패했습니다. 다시 시도해주세요.';
+        error instanceof Error ? error.message : '로그인 요청에 실패했습니다. 다시 시도해주세요.';
 
       openModal('로그인 실패', message);
     } finally {
@@ -501,7 +575,7 @@ export default function Login() {
     }
   };
 
-  const handleSocialLoginClick = (provider: SocialProvider) => {
+  const handleSocialLoginClick = (provider: SocialButtonProvider) => {
     if (provider === 'KAKAO') {
       startKakaoLogin();
       return;
@@ -566,11 +640,7 @@ export default function Login() {
             <SquareCheck
               size={25}
               strokeWidth={keepLoggedIn ? 2.6 : 1.7}
-              className={
-                keepLoggedIn
-                  ? styles.keepLoginIconChecked
-                  : styles.keepLoginIconUnchecked
-              }
+              className={keepLoggedIn ? styles.keepLoginIconChecked : styles.keepLoginIconUnchecked}
               aria-hidden="true"
             />
 
@@ -602,41 +672,24 @@ export default function Login() {
         </div>
 
         <div className={styles.socialButtonRow}>
-          <button
-            type="button"
-            className={styles.socialButton}
-            aria-label="카카오 간편 로그인"
-            disabled={loading}
-            onClick={() => handleSocialLoginClick('KAKAO')}
-          >
-            <span className={styles.socialLogo}>
-              <KakaoIcon />
-            </span>
-          </button>
-
-          <button
-            type="button"
-            className={styles.socialButton}
-            aria-label="네이버 간편 로그인"
-            disabled={loading}
-            onClick={() => handleSocialLoginClick('NAVER')}
-          >
-            <span className={styles.socialLogo}>
-              <NaverIcon />
-            </span>
-          </button>
-
-          <button
-            type="button"
-            className={styles.socialButton}
-            aria-label="구글 간편 로그인"
-            disabled={loading}
-            onClick={() => handleSocialLoginClick('GOOGLE')}
-          >
-            <span className={styles.socialLogo}>
-              <GoogleIcon />
-            </span>
-          </button>
+          {SOCIAL_LOGIN_BUTTONS.map((socialButton) => (
+            <button
+              key={socialButton.provider}
+              type="button"
+              className={styles.socialButton}
+              aria-label={socialButton.label}
+              disabled={loading}
+              onClick={() => handleSocialLoginClick(socialButton.provider)}
+            >
+              <img
+                src={socialButton.logoImage}
+                alt=""
+                className={styles.socialLogoImage}
+                draggable={false}
+                aria-hidden="true"
+              />
+            </button>
+          ))}
         </div>
 
         <div className={styles.signupRow}>
@@ -656,7 +709,23 @@ export default function Login() {
       {showModal ? (
         <div className={styles.modalBackdrop}>
           <div className={styles.modalCard}>
-            <div className={styles.modalIcon}>!</div>
+            <div
+              className={
+                modalLogoImage ? `${styles.modalIcon} ${styles.modalIconSocial}` : styles.modalIcon
+              }
+            >
+              {modalLogoImage ? (
+                <img
+                  src={modalLogoImage}
+                  alt=""
+                  className={styles.modalLogoImage}
+                  draggable={false}
+                  aria-hidden="true"
+                />
+              ) : (
+                '!'
+              )}
+            </div>
 
             <h3 className={styles.modalTitle}>{modalTitle}</h3>
 

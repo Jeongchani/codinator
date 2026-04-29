@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
 import type { EvaluationHistoryItem } from '@codinator/contracts';
-import { Check, ChevronLeft, ChevronsUp, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
+import { Check, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import evaluationHistoryBanner from '../../assets/evaluation/평가기록 배너.png';
 import {
   clearAuthTokens,
   fetchAllMyEvaluationHistory,
+  fetchMyBookmarkMap,
   isAuthError,
   resolveAssetUrl,
+  subscribeBookmarkUpdated,
+  togglePostBookmark,
 } from '../../lib/api';
 import Header from '../../components/Header';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
+import FocusScreen from '../../components/focus/FocusScreen';
 import EvaluationDetailFeedback from './EvaluationDetailFeedback';
 import styles from './OngoingEvaluationHistory.module.css';
 
@@ -134,6 +137,8 @@ export default function OngoingEvaluationHistory() {
   const [isHeaderButtonPressed, setIsHeaderButtonPressed] = useState(false);
   const [focusedPostId, setFocusedPostId] = useState<number | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+  const [bookmarks, setBookmarks] = useState<Record<number, boolean>>({});
+  const [bookmarkLoadingIds, setBookmarkLoadingIds] = useState<number[]>([]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const sheetContentRef = useRef<HTMLDivElement | null>(null);
@@ -153,6 +158,61 @@ export default function OngoingEvaluationHistory() {
     clearAuthTokens();
     navigate('/login', { replace: true });
   }, [navigate]);
+
+  const loadBookmarks = useCallback(async () => {
+    try {
+      const nextMap = await fetchMyBookmarkMap();
+      setBookmarks(nextMap);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '북마크 정보를 불러오지 못했습니다.';
+      if (isAuthError(message)) moveToLogin();
+    }
+  }, [moveToLogin]);
+
+  useEffect(() => {
+    void loadBookmarks();
+  }, [loadBookmarks]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeBookmarkUpdated((detail) => {
+      if (!detail) {
+        void loadBookmarks();
+        return;
+      }
+
+      setBookmarks((prev) => ({
+        ...prev,
+        [detail.postId]: detail.bookmarked,
+      }));
+    });
+
+    return unsubscribe;
+  }, [loadBookmarks]);
+
+  const toggleBookmarkByPostId = async (postId: number) => {
+    if (bookmarkLoadingIds.includes(postId)) return;
+
+    const isBookmarked = Boolean(bookmarks[postId]);
+    setBookmarkLoadingIds((prev) => [...prev, postId]);
+    setBookmarks((prev) => ({ ...prev, [postId]: !isBookmarked }));
+
+    try {
+      const nextValue = await togglePostBookmark(postId, isBookmarked);
+      setBookmarks((prev) => ({ ...prev, [postId]: nextValue }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '북마크 처리에 실패했습니다.';
+      setBookmarks((prev) => ({ ...prev, [postId]: isBookmarked }));
+
+      if (isAuthError(message)) {
+        moveToLogin();
+        return;
+      }
+
+      window.alert(message);
+    } finally {
+      setBookmarkLoadingIds((prev) => prev.filter((id) => id !== postId));
+    }
+  };
 
   const loadHistory = useCallback(
     async (showInitialLoading = false) => {
@@ -807,85 +867,39 @@ export default function OngoingEvaluationHistory() {
       ) : null}
 
       {focusedItem ? (
-        <div className={styles.focusOverlay}>
-          <div
-            className={styles.focusImageSection}
-            style={{
-              backgroundImage: focusedItem.imageUrl ? `url(${focusedItem.imageUrl})` : 'none',
-            }}
-          >
-            <div className={styles.focusTopGradient} />
-            <div className={styles.focusBottomGradient} />
-          </div>
-
-          <div className={styles.focusOverlayLayer}>
-            <div className={styles.focusTopBar}>
-              <motion.button
-                type="button"
-                className={styles.focusBackButton}
-                onClick={() => {
-                  setFocusedPostId(null);
-                  setDetailSheetOpen(false);
-                }}
-                aria-label="포커스 닫기"
-                whileTap={{ scale: 0.94 }}
-              >
-                <ChevronLeft size={18} strokeWidth={2.2} color="white" />
-              </motion.button>
-
-              <div className={styles.focusTopBarPlaceholder} aria-hidden="true" />
-            </div>
-
-            <motion.div
-              className={styles.focusVoteGraphArea}
-              aria-hidden="true"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.22, ease: 'easeOut' }}
-            >
-              <div className={styles.focusProgressTrack}>
-                <div
-                  className={styles.focusLikeFill}
-                  style={{ width: `${focusedVoteSummary.likePercent}%` }}
-                />
-                <div
-                  className={styles.focusDislikeFill}
-                  style={{ width: `${focusedVoteSummary.dislikePercent}%` }}
-                />
-
-                <div className={styles.focusLeftPercent}>
-                  <ThumbsUp size={12} strokeWidth={2.2} />
-                  <span>{focusedVoteSummary.likePercent}%</span>
-                </div>
-
-                <div className={styles.focusRightPercent}>
-                  <span>{focusedVoteSummary.dislikePercent}%</span>
-                  <ThumbsDown size={12} strokeWidth={2.2} />
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              className={styles.focusDetailButtonWrap}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.26, ease: 'easeOut' }}
-            >
-              <button
-                type="button"
-                className={styles.focusDetailButton}
-                onClick={() => setDetailSheetOpen(true)}
-              >
-                <span>상세보러가기</span>
-                <span className={styles.focusDetailIcon}>
-                  <ChevronsUp size={20} strokeWidth={2.2} />
-                </span>
-              </button>
-            </motion.div>
-          </div>
-
+        <FocusScreen
+          isOpen={Boolean(focusedItem)}
+          items={[{ id: focusedItem.postId, imageUrl: focusedItem.imageUrl }]}
+          activeIndex={0}
+          closeButtonType="back"
+          onClose={() => {
+            setFocusedPostId(null);
+            setDetailSheetOpen(false);
+          }}
+          sheetOpen={detailSheetOpen}
+          onCloseSheet={() => setDetailSheetOpen(false)}
+          showSwipeIndicator={false}
+          showVoteGraph
+          likePercent={focusedVoteSummary.likePercent}
+          dislikePercent={focusedVoteSummary.dislikePercent}
+          showDetailButton
+          detailLabel="상세보기"
+          showActionCounts
+          likeCount={focusedItem.myChoice === 'LIKE' ? 1 : 0}
+          dislikeCount={focusedItem.myChoice === 'DISLIKE' ? 1 : 0}
+          showBookmarkButton
+          isBookmarked={Boolean(bookmarks[focusedItem.postId])}
+          bookmarkDisabled={bookmarkLoadingIds.includes(focusedItem.postId)}
+          onBookmarkClick={() => void toggleBookmarkByPostId(focusedItem.postId)}
+          reportPostId={focusedItem.postId}
+          reportDisplayText={focusedItem.contentPreview}
+          selectedVote={focusedItem.myChoice}
+          contentText={focusedItem.contentPreview}
+          onOpenDetail={() => setDetailSheetOpen(true)}
+          ariaLabel="평가 기록 포커스 화면"
+        >
           {detailSheetOpen ? (
-            <PostDetailBottomSheet isOpen onCloseRequest={() => setDetailSheetOpen(false)}>
+            <PostDetailBottomSheet isOpen={detailSheetOpen} onCloseRequest={() => setDetailSheetOpen(false)}>
               <div ref={sheetContentRef}>
                 <EvaluationDetailFeedback
                   embedded
@@ -898,7 +912,7 @@ export default function OngoingEvaluationHistory() {
               </div>
             </PostDetailBottomSheet>
           ) : null}
-        </div>
+        </FocusScreen>
       ) : null}
     </div>
   );

@@ -9,6 +9,51 @@
   @apply z-20;
 }
 
+.header {
+  @apply absolute top-0 left-0 w-full bg-white z-20;
+  height: 93px;
+}
+
+.headerInner {
+  @apply relative w-full h-full px-4;
+}
+
+.title {
+  @apply absolute left-1/2 text-[18px] leading-[22px] font-bold text-black;
+  top: 59px;
+  transform: translateX(-50%) translateY(-50%);
+}
+
+.headerIconButton {
+  @apply absolute left-4 w-6 h-6 flex items-center justify-center bg-transparent text-black border-0 p-0;
+  top: 59px;
+  transform: translateY(-50%);
+}
+
+.headerTextButton {
+  @apply absolute right-4 flex items-center justify-center rounded-[999px] border-0 px-[10px] h-[30px] text-[11px] font-medium text-white;
+  top: 59px;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.62);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+  transition:
+    transform 140ms ease,
+    opacity 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.headerTextButton:disabled {
+  opacity: 0.74;
+}
+
+.headerTextButtonPressed {
+  transform: translateY(-50%) scale(0.96);
+  opacity: 0.94;
+  background: rgba(0, 0, 0, 0.75);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+}
+
 .banner {
   @apply absolute left-0 top-[105px] overflow-hidden;
   width: 100%;
@@ -25,18 +70,22 @@
 .contentArea {
   @apply absolute left-0 w-full overflow-y-auto px-4 z-10;
   top: 237px;
-  bottom: 0;
-  padding-bottom: 20px;
+  bottom: calc(90px + env(safe-area-inset-bottom));
+  padding-bottom: 28px;
+  min-height: 0;
   -ms-overflow-style: none;
   scrollbar-width: none;
   overflow-x: hidden;
   overscroll-behavior-x: none;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
 }
 
 .contentAreaDeleteMode {
+  bottom: 0;
+  padding-bottom: calc(141px + env(safe-area-inset-bottom));
   touch-action: pan-y;
-  padding-bottom: 141px;
 }
 
 .contentArea::-webkit-scrollbar {
@@ -44,7 +93,8 @@
 }
 
 .groupList {
-  @apply flex flex-col gap-[18px] pb-8;
+  @apply flex flex-col gap-[18px];
+  padding-bottom: 28px;
 }
 
 .groupSection {
@@ -272,99 +322,7 @@
   @apply w-[16px] h-[16px] text-white;
 }
 
-.focusOverlay {
-  @apply absolute inset-0 z-[120] overflow-hidden bg-neutral-300;
-}
-
-.focusImageSection {
-  @apply absolute inset-0 bg-cover bg-center bg-no-repeat;
-}
-
-.focusTopGradient {
-  @apply absolute top-0 left-0 w-full h-28;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.36) 0%, rgba(0, 0, 0, 0) 100%);
-}
-
-.focusBottomGradient {
-  @apply absolute bottom-0 left-0 w-full h-48;
-  background: linear-gradient(0deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0) 100%);
-}
-
-.focusOverlayLayer {
-  @apply absolute inset-0 z-20 pointer-events-none;
-}
-
-.focusTopBar {
-  @apply absolute top-[32px] left-5 right-5 z-30 flex items-center justify-between;
-}
-
-.focusBackButton {
-  @apply h-8 w-8 rounded-full border-0 flex items-center justify-center pointer-events-auto;
-  background: rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
-}
-
-.focusTopBarPlaceholder {
-  @apply h-8 w-[54px];
-}
-
-.focusVoteGraphArea {
-  @apply absolute left-[22px] right-[22px] top-[703px] z-30 pointer-events-none;
-}
-
-.focusProgressTrack {
-  @apply relative h-[30px] px-2.5 py-[5px] rounded-[10px] inline-flex justify-start items-center gap-[5px] overflow-hidden w-full;
-  background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
-}
-
-.focusLikeFill {
-  @apply absolute left-0 top-0 h-full;
-  background: rgba(234, 138, 120, 0.82);
-}
-
-.focusDislikeFill {
-  @apply absolute right-0 top-0 h-full;
-  background: rgba(174, 178, 214, 0.78);
-}
-
-.focusLeftPercent,
-.focusRightPercent {
-  @apply absolute top-1/2 -translate-y-1/2 flex items-center text-white text-[11px] font-semibold leading-none;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
-}
-
-.focusLeftPercent {
-  @apply left-[12px] gap-[6px];
-}
-
-.focusRightPercent {
-  @apply right-[12px] gap-[6px];
-}
-
-.focusDetailButtonWrap {
-  @apply absolute left-1/2 top-[747px] -translate-x-1/2 z-30;
-}
-
-.focusDetailButton {
-  @apply flex items-center justify-center gap-2 border-0 bg-transparent px-0 py-0 text-[18px] font-semibold pointer-events-auto;
-  color: rgba(232, 232, 232, 0.82);
-  text-shadow:
-    0 0 10px rgba(255, 255, 255, 0.12),
-    0 6px 16px rgba(0, 0, 0, 0.22);
-}
-
-.focusDetailButton:active {
-  opacity: 0.72;
-}
-
-.focusDetailIcon {
-  @apply flex items-center justify-center;
-}:global(html.dark) .container,
+:global(html.dark) .container,
 :global(html.dark) .pageBody,
 :global(html.dark) .contentArea,
 :global(html.dark) .scrollArea,
@@ -407,6 +365,7 @@
 :global(html.dark) .tabSection,
 :global(html.dark) .menuItem,
 :global(html.dark) .footer,
+:global(html.dark) .header,
 :global(html.dark) .topArea,
 :global(html.dark) .bottomSheet,
 :global(html.dark) .compareImageWrap {
@@ -426,9 +385,13 @@
 
 :global(html.dark) .activePill {
   background: var(--footer-pill-bg);
-}:global(html.dark) .icon,
+}
+
+:global(html.dark) .menuButton,
+:global(html.dark) .icon,
 :global(html.dark) .label,
 :global(html.dark) .searchButton,
+:global(html.dark) .headerIconButton,
 :global(html.dark) .closeButton,
 :global(html.dark) .cancelButton,
 :global(html.dark) .iconWrap,
@@ -446,7 +409,10 @@
 :global(html.dark) .iconActive,
 :global(html.dark) .labelActive {
   color: var(--footer-pill-text);
-}:global(html.dark) .mainTitle,
+}
+
+:global(html.dark) .title,
+:global(html.dark) .mainTitle,
 :global(html.dark) .sectionTitle,
 :global(html.dark) .fieldTitle,
 :global(html.dark) .mainTitle,
@@ -596,7 +562,11 @@
 :global(html.dark) .messageBox,
 :global(html.dark) .sectionEmpty {
   color: var(--app-text-secondary);
-}:global(html.dark) .tabSection,
+}
+
+:global(html.dark) .header,
+:global(html.dark) .headerInner,
+:global(html.dark) .tabSection,
 :global(html.dark) .contentArea,
 :global(html.dark) .pageBody,
 :global(html.dark) .container,
@@ -612,7 +582,9 @@
 :global(html.dark) .scrollArea,
 :global(html.dark) .container {
   background-image: none;
-}:global(html.dark) .modalCancelButton,
+}
+
+:global(html.dark) .modalCancelButton,
 :global(html.dark) .modalSecondaryButton,
 :global(html.dark) .fieldActionButton,
 :global(html.dark) .nicknameCheckButton,
@@ -631,6 +603,7 @@
 :global(html.dark) .miniActionButton,
 :global(html.dark) .bookmarkActionButton,
 :global(html.dark) .reportActionButton,
+:global(html.dark) .headerTextButton,
 :global(html.dark) .filterButton,
 :global(html.dark) .modalActionButton {
   background: var(--app-surface-muted);

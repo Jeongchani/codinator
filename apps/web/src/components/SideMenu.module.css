@@ -43,6 +43,30 @@
     transition-transform duration-150 active:scale-95;
 }
 
+
+.adminShortcutArea {
+  @apply absolute left-4 top-[59px] z-10 -translate-y-1/2;
+}
+
+.adminShortcutButton {
+  @apply inline-flex h-10 w-auto items-center justify-center gap-3
+    rounded-[13px] border border-[#e7e7e7] bg-[#f7f7f8]
+    px-3 text-black shadow-[0_6px_18px_rgba(0,0,0,0.07)]
+    transition-all duration-150 active:scale-[0.985];
+}
+
+.adminShortcutButton:hover {
+  @apply bg-[#f1f2f4];
+}
+
+.adminShortcutIcon {
+  @apply flex h-5 w-5 shrink-0 items-center justify-center text-black;
+}
+
+.adminShortcutText {
+  @apply truncate text-[15px] font-bold leading-5 text-black;
+}
+
 .mainTitle {
   @apply absolute left-4 top-[111px] text-[20px] font-bold leading-7 text-black;
 }
@@ -185,6 +209,19 @@
 :global(html.dark) .activePill {
   background: var(--footer-pill-bg);
 }
+
+:global(html.dark) .adminShortcutButton {
+  background: var(--app-surface-muted);
+  color: var(--app-text);
+  border-color: var(--app-border);
+  box-shadow: 0 12px 30px var(--app-shadow-soft);
+}
+
+:global(html.dark) .adminShortcutText,
+:global(html.dark) .adminShortcutIcon {
+  color: var(--app-text-strong);
+}
+
 
 :global(html.dark) .menuButton,
 :global(html.dark) .icon,

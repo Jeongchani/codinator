@@ -8,9 +8,9 @@ export default function AppLayout() {
       style={{
         width: "var(--app-width)",
         height: "var(--app-height)",
-        background: "var(--app-surface)",
-        color: "var(--app-text)",
-        boxShadow: "0 24px 60px var(--app-shell-shadow)",
+        background: "var(--app-surface, var(--color-page-bg, #ffffff))",
+        color: "var(--app-text, #111827)",
+        boxShadow: "0 24px 60px var(--app-shell-shadow, rgba(15, 23, 42, 0.16))",
       }}
     >
       <div className="w-full h-full overflow-hidden">
@@ -18,9 +18,8 @@ export default function AppLayout() {
       </div>
 
       <div
-        className="absolute left-1/2 z-50 -translate-x-1/2"
+        className="absolute left-0 bottom-0 z-50 w-full"
         style={{
-          bottom: "calc(var(--footer-offset) + env(safe-area-inset-bottom))",
           pointerEvents: "none",
         }}
       >
