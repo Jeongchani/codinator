@@ -2,7 +2,6 @@ import type { RankingPeriod } from '@codinator/contracts';
 import { EvaluationStatus, PostStatus, RankingStatus, VoteChoice } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { getAllCurrentRankingWindows, getCurrentRankingWindow } from './ranking-window.util';
-import type { RankingWindow } from './ranking-window.util';
 
 const RANKING_TIMEZONE = 'Asia/Seoul';
 const RANKING_ALGORITHM_VERSION = 1;
@@ -60,38 +59,6 @@ function buildRankedPostDetails(
     });
 }
 
-async function markRankingGenerationFailed(
-  prisma: PrismaService,
-  period: RankingPeriod,
-  window: RankingWindow,
-  generatedAt: Date,
-): Promise<void> {
-  await prisma.ranking.upsert({
-    where: {
-      period_startDate_endDate_timezone_algorithmVersion: {
-        period,
-        startDate: window.startDate,
-        endDate: window.endDate,
-        timezone: RANKING_TIMEZONE,
-        algorithmVersion: RANKING_ALGORITHM_VERSION,
-      },
-    },
-    update: {
-      status: RankingStatus.FAILED,
-      generatedAt,
-    },
-    create: {
-      period,
-      startDate: window.startDate,
-      endDate: window.endDate,
-      timezone: RANKING_TIMEZONE,
-      algorithmVersion: RANKING_ALGORITHM_VERSION,
-      status: RankingStatus.FAILED,
-      generatedAt,
-    },
-  });
-}
-
 export async function syncCurrentRankingPeriod(
   prisma: PrismaService,
   period: RankingPeriod,
@@ -99,95 +66,84 @@ export async function syncCurrentRankingPeriod(
   const now = new Date();
   const window = getCurrentRankingWindow(period, now);
 
-  try {
-    const posts = await prisma.post.findMany({
-      where: {
-        status: PostStatus.ACTIVE,
-        deletedAt: null,
-        hiddenAt: null,
-        publishedAt: {
-          not: null,
-          gte: window.rangeStartUtc,
-          lt: window.rangeEndExclusiveUtc,
-        },
-        evaluation: {
-          is: {
-            status: EvaluationStatus.ENDED,
-          },
+  const posts = await prisma.post.findMany({
+    where: {
+      status: PostStatus.ACTIVE,
+      deletedAt: null,
+      publishedAt: {
+        not: null,
+        gte: window.rangeStartUtc,
+        lt: window.rangeEndExclusiveUtc,
+      },
+      evaluation: {
+        is: {
+          status: EvaluationStatus.ENDED,
         },
       },
-      select: {
-        id: true,
-        evaluation: {
-          select: {
-            votes: {
-              select: {
-                choice: true,
-              },
+    },
+    select: {
+      id: true,
+      evaluation: {
+        select: {
+          votes: {
+            select: {
+              choice: true,
             },
           },
         },
       },
-    });
+    },
+  });
 
-    const rankedDetails = buildRankedPostDetails(posts);
+  const rankedDetails = buildRankedPostDetails(posts);
 
-    await prisma.$transaction(async (tx) => {
-      const ranking = await tx.ranking.upsert({
-        where: {
-          period_startDate_endDate_timezone_algorithmVersion: {
-            period,
-            startDate: window.startDate,
-            endDate: window.endDate,
-            timezone: RANKING_TIMEZONE,
-            algorithmVersion: RANKING_ALGORITHM_VERSION,
-          },
-        },
-        update: {
-          status: RankingStatus.READY,
-          generatedAt: now,
-        },
-        create: {
+  await prisma.$transaction(async (tx) => {
+    const ranking = await tx.ranking.upsert({
+      where: {
+        period_startDate_endDate_timezone_algorithmVersion: {
           period,
           startDate: window.startDate,
           endDate: window.endDate,
           timezone: RANKING_TIMEZONE,
           algorithmVersion: RANKING_ALGORITHM_VERSION,
-          status: RankingStatus.READY,
-          generatedAt: now,
         },
-      });
-
-      await tx.rankingDetail.deleteMany({
-        where: {
-          rankingId: ranking.id,
-        },
-      });
-
-      if (rankedDetails.length > 0) {
-        await tx.rankingDetail.createMany({
-          data: rankedDetails.map((detail, index) => ({
-            rankingId: ranking.id,
-            postId: detail.postId,
-            rank: index + 1,
-            score: detail.score,
-            likeCount: detail.likeCount,
-            dislikeCount: detail.dislikeCount,
-            totalCount: detail.totalCount,
-            likeRate: detail.likeRate,
-          })),
-        });
-      }
+      },
+      update: {
+        status: RankingStatus.READY,
+        generatedAt: now,
+      },
+      create: {
+        period,
+        startDate: window.startDate,
+        endDate: window.endDate,
+        timezone: RANKING_TIMEZONE,
+        algorithmVersion: RANKING_ALGORITHM_VERSION,
+        status: RankingStatus.READY,
+        generatedAt: now,
+      },
     });
-  } catch (error) {
-    try {
-      await markRankingGenerationFailed(prisma, period, window, new Date());
-    } catch {
-      // Preserve the original ranking generation error for existing callers.
-    }
 
-    throw error;
-  }
+    await tx.rankingDetail.deleteMany({
+      where: {
+        rankingId: ranking.id,
+      },
+    });
+
+    if (rankedDetails.length > 0) {
+      await tx.rankingDetail.createMany({
+        data: rankedDetails.map((detail, index) => ({
+          rankingId: ranking.id,
+          postId: detail.postId,
+          rank: index + 1,
+          score: detail.score,
+          likeCount: detail.likeCount,
+          dislikeCount: detail.dislikeCount,
+          totalCount: detail.totalCount,
+          likeRate: detail.likeRate,
+        })),
+      });
+    }
+  });
 }
 
 export async function syncCurrentRankings(prisma: PrismaService): Promise<void> {

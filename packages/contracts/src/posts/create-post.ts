@@ -7,9 +7,12 @@ export interface CreateOutfitItemInput {
 }
 
 export interface CreatePostRequest {
-  content: string;
-  imageAssetId: number;
-  keywordIds?: number[];
+  content?: string | null;
+  image: {
+    imageUrl: string;
+    storageKey?: string | null;
+    thumbnailUrl?: string | null;
+  };
   outfitItems?: CreateOutfitItemInput[];
 }
 

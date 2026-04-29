@@ -8,7 +8,7 @@ export interface GetRankingsRequest {
 export interface RankingItem {
   rank: number;
   postId: Id;
-  thumbnailUrl: string | null; // Batch7: nullable — imageAsset.thumbnailUrl은 nullable
+  thumbnailUrl: string;
   likeCount: number;
   dislikeCount: number;
   totalCount: number;

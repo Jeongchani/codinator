@@ -5,20 +5,10 @@ export interface GetEvaluationsRequest {
   limit?: number;
 }
 
-export interface EvaluationKeywordItem {
-  id: Id;
-  code: string;
-  label: string;
-}
-
 export interface EvaluationListItem {
   evaluationId: Id;
   postId: Id;
-  thumbnailUrl: string | null;
-  /** 게시글 본문 — 평가존 카드 텍스트 표시용 */
-  content: string;
-  /** 게시글 키워드 태그 목록 */
-  keywords: EvaluationKeywordItem[];
+  thumbnailUrl: string;
   endsAt: string;
   hasVoted: boolean;
 }

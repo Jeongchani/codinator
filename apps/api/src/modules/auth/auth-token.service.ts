@@ -16,14 +16,6 @@ type RefreshTokenPayload = JwtPayload & {
   jti?: string;
 };
 
-export type PhoneVerificationTokenPayload = JwtPayload & {
-  phoneVerificationId: number;
-  phoneNumber: string;
-  purpose: string;
-  type: 'phone_verification';
-};
-
-
 @Injectable()
 export class AuthTokenService {
   private readonly accessTokenSecret =
@@ -31,9 +23,6 @@ export class AuthTokenService {
 
   private readonly refreshTokenSecret =
     process.env.REFRESH_TOKEN_SECRET || 'REFRESH_SECRET_KEY';
-
-  private readonly phoneVerificationTokenSecret =
-    process.env.PHONE_VERIFICATION_TOKEN_SECRET || 'PHONE_VERIFY_SECRET';
 
   signAccessToken(userId: number, email: string): string {
     return jwt.sign(
@@ -53,32 +42,6 @@ export class AuthTokenService {
         expiresIn: '7d',
       },
     );
-  }
-
-  signPhoneVerificationToken(
-    phoneVerificationId: number,
-    phoneNumber: string,
-    purpose: string,
-  ): string {
-    return jwt.sign(
-      { phoneVerificationId, phoneNumber, purpose, type: 'phone_verification' },
-      this.phoneVerificationTokenSecret,
-      { expiresIn: '10m' },
-    );
-  }
-
-  verifyPhoneVerificationToken(token: string): PhoneVerificationTokenPayload {
-    try {
-      const decoded = jwt.verify(token, this.phoneVerificationTokenSecret);
-
-      if (!this.isPhoneVerificationTokenPayload(decoded)) {
-        throw new UnauthorizedException('유효하지 않은 전화번호 인증 토큰입니다.');
-      }
-
-      return decoded;
-    } catch {
-      throw new UnauthorizedException('유효하지 않거나 만료된 전화번호 인증 토큰입니다.');
-    }
   }
 
   verifyRefreshToken(refreshToken: string): RefreshTokenPayload {
@@ -157,18 +120,6 @@ export class AuthTokenService {
       typeof value.sub === 'number' &&
       typeof value.email === 'string' &&
       value.type === 'refresh'
-    );
-  }
-
-  private isPhoneVerificationTokenPayload(
-    value: string | JwtPayload,
-  ): value is PhoneVerificationTokenPayload {
-    return (
-      typeof value !== 'string' &&
-      typeof (value as PhoneVerificationTokenPayload).phoneVerificationId === 'number' &&
-      typeof (value as PhoneVerificationTokenPayload).phoneNumber === 'string' &&
-      typeof (value as PhoneVerificationTokenPayload).purpose === 'string' &&
-      value.type === 'phone_verification'
     );
   }
 }

@@ -1,5 +1,4 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
@@ -12,22 +11,12 @@ async function bootstrap() {
     prefix: '/uploads/',
   });
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: false,      // DTO에 class-validator 데코레이터 없는 프로젝트이므로 false
-      transform: true,       // query/param 자동 형변환 (string → number 등)
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
-    }),
-  );
-
-  app.setGlobalPrefix('api/v3');
+  app.setGlobalPrefix('api/v1');
 
   const config = new DocumentBuilder()
     .setTitle('Codinator API')
     .setDescription('Codinator 백엔드 API 문서')
-    .setVersion('1.0(V3)')
+    .setVersion('1.0')
     .addBearerAuth()
     .build();
 
@@ -40,7 +29,7 @@ async function bootstrap() {
   await app.listen(process.env.PORT || 3000);
 
   const appUrl = await app.getUrl();
-  console.log(`Application is running on: ${appUrl}/api/v3`);
-  console.log(`Swagger docs: ${appUrl}/api/v3/docs`);
+  console.log(`Application is running on: ${appUrl}/api/v1`);
+  console.log(`Swagger docs: ${appUrl}/api/v1/docs`);
 }
 bootstrap();
