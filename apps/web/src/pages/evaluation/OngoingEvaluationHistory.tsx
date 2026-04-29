@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { EvaluationHistoryItem } from '@codinator/contracts';
 import { Check, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import evaluationHistoryBanner from '../../assets/evaluation/평가기록 배너.png';
+import evaluationHistoryBanner from '../../assets/evaluation/evaluation-history-banner.png';
 import {
   clearAuthTokens,
   fetchAllMyEvaluationHistory,

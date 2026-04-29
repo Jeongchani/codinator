@@ -468,50 +468,44 @@ export class PostsService {
   }
 
   /**
-   * imageAssetId 우선 경로 (V3).
-   * image 필드는 구버전 호환용으로 유지하되 deprecated 처리.
+   * V3 게시글 생성은 업로드 단계에서 생성된 POST imageAssetId만 허용한다.
+   * 클라이언트가 이미지 URL/블러 상태를 직접 넣어 ImageAsset을 생성하는 legacy 경로는 차단한다.
    */
   private async resolvePostImageAssetId(
     authorId: number,
     body: CreatePostRequest,
   ): Promise<number> {
-    if (Number.isInteger(body.imageAssetId) && Number(body.imageAssetId) > 0) {
-      const existingAsset = await this.prisma.imageAsset.findFirst({
-        where: {
-          id: Number(body.imageAssetId),
-          ownerUserId: authorId,
-          sourceType: ImageAssetSourceType.POST,
-        },
-        select: { id: true },
-      });
+    const imageAssetId = Number(body.imageAssetId);
 
-      if (!existingAsset) {
-        throw new BadRequestException('유효한 게시글 이미지 자산이 아닙니다.');
-      }
-
-      return existingAsset.id;
+    if (!Number.isInteger(imageAssetId) || imageAssetId <= 0) {
+      throw new BadRequestException('imageAssetId가 필요합니다.');
     }
 
-    // V2 compat: legacy image object 경로 (deprecated)
-    if (!body.image) {
-      throw new BadRequestException('imageAssetId 또는 image 정보가 필요합니다.');
-    }
-
-    const createdAsset = await this.prisma.imageAsset.create({
-      data: {
+    const existingAsset = await this.prisma.imageAsset.findFirst({
+      where: {
+        id: imageAssetId,
         ownerUserId: authorId,
         sourceType: ImageAssetSourceType.POST,
-        storageKey: body.image.storageKey ?? null,
-        originalImageUrl: body.image.originalImageUrl,
-        processedImageUrl: body.image.processedImageUrl ?? body.image.originalImageUrl,
-        thumbnailUrl: body.image.thumbnailUrl ?? null,
-        blurMethod: body.image.blurMethod ?? BlurMethod.NONE,
-        aiBlurStatus: body.image.aiBlurStatus ?? AiBlurStatus.NONE,
       },
-      select: { id: true },
+      select: {
+        id: true,
+        aiBlurStatus: true,
+        blurMethod: true,
+      },
     });
 
-    return createdAsset.id;
+    if (!existingAsset) {
+      throw new BadRequestException('유효한 게시글 이미지 자산이 아닙니다.');
+    }
+
+    if (
+      existingAsset.aiBlurStatus === AiBlurStatus.FAILED &&
+      existingAsset.blurMethod !== BlurMethod.MANUAL
+    ) {
+      throw new BadRequestException('AI 블러 실패 이미지는 수동 블러 완료 후 게시글을 생성할 수 있습니다.');
+    }
+
+    return existingAsset.id;
   }
 
   private normalizeKeywordIds(keywordIds?: number[]): number[] {

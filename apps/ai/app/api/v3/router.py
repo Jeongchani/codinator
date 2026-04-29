@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v2.endpoints import analyze_image, blur_face, health
+from app.api.v3.endpoints import analyze_image, blur_face, health
 
 api_router = APIRouter()
 

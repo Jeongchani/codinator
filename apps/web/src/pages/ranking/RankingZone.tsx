@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Bookmark, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import styles from './RankingZone.module.css';
-import rankingHeroBanner from '../../assets/ranking/랭킹존 배너.png';
-import algorithmBanner from '../../assets/ranking/알고리즘 배너.png';
+import rankingHeroBanner from '../../assets/ranking/ranking-zone-banner.png';
+import algorithmBanner from '../../assets/ranking/algorithm-banner.png';
 import {
   clearAuthTokens,
   fetcher,

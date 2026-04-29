@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.v2.router import api_router
+from app.api.v3.router import api_router
 from app.core.config import AI_CORS_ALLOW_ORIGINS, AI_ENV
 from app.core.errors import AppError, build_error_response
 

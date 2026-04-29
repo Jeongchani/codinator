@@ -1,45 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import type { AiBlurStatus, BlurMethod, GarmentCategory } from '@codinator/contracts';
-
-export class CreatePostImageDto {
-  @ApiProperty({
-    example: '/uploads/posts/originals/20260325/post-original.jpg',
-    description: '원본 이미지 URL',
-  })
-  originalImageUrl!: string;
-
-  @ApiPropertyOptional({
-    example: '/uploads/posts/processed/20260325/post-processed.jpg',
-    description: '얼굴 블러 등 후처리된 이미지 URL',
-  })
-  processedImageUrl?: string | null;
-
-  @ApiPropertyOptional({
-    example: '/uploads/posts/thumbnails/20260325/post-thumb.jpg',
-    description: '썸네일 이미지 URL',
-  })
-  thumbnailUrl?: string | null;
-
-  @ApiPropertyOptional({
-    example: 'posts/originals/20260325/post-original.jpg',
-    description: '스토리지 내부 키',
-  })
-  storageKey?: string | null;
-
-  @ApiPropertyOptional({
-    example: 'AUTO',
-    enum: ['NONE', 'AUTO', 'MANUAL'],
-    description: '얼굴 블러 처리 방식',
-  })
-  blurMethod?: BlurMethod;
-
-  @ApiPropertyOptional({
-    example: 'DONE',
-    enum: ['NONE', 'PENDING', 'PROCESSING', 'DONE', 'FAILED'],
-    description: 'AI 블러 처리 상태',
-  })
-  aiBlurStatus?: AiBlurStatus;
-}
+import type { GarmentCategory } from '@codinator/contracts';
 
 export class CreatePostOutfitItemDto {
   @ApiProperty({
@@ -60,17 +20,11 @@ export class CreatePostDto {
   @ApiProperty({ example: '봄 코디 평가 부탁드립니다.', description: '게시글 본문 (필수, 최대 500자)' })
   content!: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: 101,
-    description: '업로드 완료된 게시글 이미지 asset ID. 신규 구현은 이 필드를 사용한다.',
+    description: '업로드 단계에서 생성된 게시글 이미지 asset ID. 게시글 생성은 이 값만 사용한다.',
   })
-  imageAssetId?: number;
-
-  @ApiPropertyOptional({
-    type: CreatePostImageDto,
-    description: '구버전 호환용 이미지 입력. 가능하면 imageAssetId 사용.',
-  })
-  image?: CreatePostImageDto;
+  imageAssetId!: number;
 
   @ApiPropertyOptional({
     type: [Number],

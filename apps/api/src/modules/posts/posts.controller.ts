@@ -53,7 +53,7 @@ export class PostsController {
   @ApiOperation({
     summary: '게시글 작성 및 평가 시작 (V3)',
     description: [
-      'imageAssetId(V3 우선 경로) 또는 image 객체(V2 compat)로 이미지를 연결합니다.',
+      '업로드 단계에서 생성된 imageAssetId로 이미지를 연결합니다.',
       '게시글 생성 시 evaluation이 함께 생성되며 7일 후 ENDED 전환됩니다.',
       'POST_RESTRICTION 제재 대상 사용자는 작성할 수 없습니다.',
     ].join(' '),
@@ -70,7 +70,7 @@ export class PostsController {
     },
   })
   @ApiBadRequestResponse({
-    description: 'content 누락 / imageAssetId 유효하지 않음 / keywordIds 4개 이상 / image 정보 누락',
+    description: 'content 누락 / imageAssetId 누락 또는 유효하지 않음 / keywordIds 4개 이상 / AI 블러 실패 후 수동 블러 미완료',
   })
   @ApiForbiddenResponse({
     description: 'POST_RESTRICTION 제재 중인 사용자',
