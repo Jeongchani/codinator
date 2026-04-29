@@ -1,11 +1,4 @@
-import {
-  type ReactNode,
-  type RefObject,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Bookmark, ChevronLeft, List, ThumbsDown, ThumbsUp } from 'lucide-react';
 import Reports from '../Reports';
@@ -110,9 +103,7 @@ function getContentPreviewLines(
 
   return {
     firstLine,
-    secondLine: shouldTruncate
-      ? `${secondLine.replace(/\.{2,}|…/g, '').trimEnd()}...`
-      : secondLine,
+    secondLine: shouldTruncate ? `${secondLine.replace(/\.{2,}|…/g, '').trimEnd()}...` : secondLine,
   };
 }
 
@@ -224,8 +215,11 @@ export default function FocusScreen({
     contentFirstLineLimit,
   );
   const canShowPreview =
-    showContentPreview && (previewLines.firstLine.length > 0 || previewLines.secondLine.length > 0) && !sheetOpen;
-  const canShowActionRail = !sheetOpen && (showVoteActions || showBookmarkButton || showDetailButton);
+    showContentPreview &&
+    (previewLines.firstLine.length > 0 || previewLines.secondLine.length > 0) &&
+    !sheetOpen;
+  const canShowActionRail =
+    !sheetOpen && (showVoteActions || showBookmarkButton || showDetailButton);
   const hasReportTarget = reportPostId !== null && reportPostId !== undefined;
 
   const openReport = () => {
@@ -279,7 +273,10 @@ export default function FocusScreen({
     if (!container) return;
 
     const pageHeight = container.clientHeight || 1;
-    const nextIndex = Math.max(0, Math.min(Math.round(container.scrollTop / pageHeight), itemCount - 1));
+    const nextIndex = Math.max(
+      0,
+      Math.min(Math.round(container.scrollTop / pageHeight), itemCount - 1),
+    );
 
     if (nextIndex !== resolvedActiveIndex) {
       onActiveIndexChange?.(nextIndex);
@@ -288,7 +285,7 @@ export default function FocusScreen({
 
   return (
     <div
-      className={`${styles.focusOverlay} ${sheetOpen ? styles.focusOverlaySheetOpen : ""} ${className}`.trim()}
+      className={`${styles.focusOverlay} ${sheetOpen ? styles.focusOverlaySheetOpen : ''} ${className}`.trim()}
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel}
@@ -304,7 +301,12 @@ export default function FocusScreen({
                   aria-hidden="true"
                 />
                 <div className={styles.focusImageFrame}>
-                  <img src={item.imageUrl} alt="" className={styles.focusMainImage} draggable={false} />
+                  <img
+                    src={item.imageUrl}
+                    alt=""
+                    className={styles.focusMainImage}
+                    draggable={false}
+                  />
                 </div>
               </>
             ) : (
@@ -333,15 +335,14 @@ export default function FocusScreen({
       <div className={styles.overlay}>
         {showTopBar ? (
           <div className={styles.topBar}>
-            <motion.button
+            <button
               type="button"
               className={styles.closeButton}
               onClick={onClose}
               aria-label="뒤로가기"
-              whileTap={{ scale: 0.94 }}
             >
               <ChevronLeft size={20} strokeWidth={2.25} />
-            </motion.button>
+            </button>
 
             {rightAction ? (
               <div className={styles.reportSlot}>{rightAction}</div>
@@ -434,9 +435,13 @@ export default function FocusScreen({
         ) : null}
 
         {canShowPreview ? (
-          <div className={`${styles.contentCaption} ${!showVoteGraph ? styles.contentCaptionWithoutGraph : ''}`}>
+          <div
+            className={`${styles.contentCaption} ${!showVoteGraph ? styles.contentCaptionWithoutGraph : ''}`}
+          >
             <p className={styles.contentCaptionFirstLine}>{previewLines.firstLine}</p>
-            {previewLines.secondLine ? <p className={styles.contentCaptionSecondLine}>{previewLines.secondLine}</p> : null}
+            {previewLines.secondLine ? (
+              <p className={styles.contentCaptionSecondLine}>{previewLines.secondLine}</p>
+            ) : null}
           </div>
         ) : null}
 
