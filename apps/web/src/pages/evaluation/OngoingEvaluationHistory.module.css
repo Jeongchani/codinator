@@ -6,7 +6,7 @@
 }
 
 .deleteMode {
-  @apply z-20;
+  @apply z-[80];
 }
 
 .header {
