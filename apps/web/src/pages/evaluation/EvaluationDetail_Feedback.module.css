@@ -1,0 +1,253 @@
+.container {
+  @apply w-[375px] h-[812px] mx-auto bg-[#f5f5f5] text-black overflow-hidden;
+}
+
+.scrollArea {
+  @apply h-full overflow-y-auto px-4 pt-[56px] pb-8;
+  scrollbar-width: none;
+}
+
+.scrollArea::-webkit-scrollbar {
+  display: none;
+}
+
+.loadingBox {
+  @apply rounded-[24px] bg-white px-5 py-8 text-center text-[15px] font-medium text-neutral-600 shadow-[0_8px_20px_rgba(0,0,0,0.05)];
+}
+
+.headerSection {
+  @apply mb-6;
+}
+
+.textBlock {
+  @apply mb-6;
+}
+
+.mainTitle {
+  @apply text-[20px] font-semibold leading-8 text-neutral-900 tracking-[-0.02em];
+}
+
+.subText {
+  @apply mt-2 text-[16px] font-normal leading-5 text-stone-500;
+}
+
+.topKeywordRow {
+  @apply flex flex-wrap gap-2;
+}
+
+.topKeywordChip {
+  @apply h-7 px-3 rounded-2xl bg-[#e9e9e9] flex items-center justify-center text-[12px] font-normal leading-4 text-neutral-700;
+}
+
+.imageWrap {
+  @apply mt-4 overflow-hidden rounded-[24px];
+}
+
+.image {
+  @apply w-full max-h-[420px] object-cover;
+}
+
+.feedbackComposerSection {
+  @apply mb-6 rounded-[24px] bg-white px-4 py-5 shadow-[0_8px_24px_rgba(0,0,0,0.05)];
+}
+
+.feedbackComposerHeader {
+  @apply flex items-center justify-between gap-3;
+}
+
+.feedbackComposerTitle {
+  @apply text-[16px] font-semibold leading-7 text-neutral-900;
+}
+
+.voteChoiceBadge {
+  @apply rounded-full px-3 py-1 text-[12px] font-semibold leading-4;
+}
+
+.likeChoice {
+  @apply bg-[#f3e8ff] text-[#9d34da];
+}
+
+.dislikeChoice {
+  @apply bg-[#ffe4e6] text-[#e11d48];
+}
+
+.feedbackGuide {
+  @apply mt-2 text-[13px] font-normal leading-5 text-neutral-500;
+}
+
+.feedbackSelectGrid {
+  @apply mt-4 grid grid-cols-2 gap-3;
+}
+
+.selectChip {
+  @apply min-h-[52px] rounded-full border border-neutral-300 bg-white px-4 py-3 text-[14px] font-medium leading-5 text-neutral-800 transition-all duration-200;
+}
+
+.selectChipSelected {
+  @apply border-[#BE45F7] bg-[#faf2ff] text-[#9d34da] shadow-[0_0_0_1px_rgba(190,69,247,0.18)];
+}
+
+.feedbackHintText {
+  @apply mt-4 text-[12px] font-normal leading-4 text-neutral-400;
+}
+
+.feedbackSavedText {
+  @apply mt-4 text-[13px] font-medium leading-5 text-[#9d34da];
+}
+
+.feedbackErrorText {
+  @apply mt-4 text-[13px] font-normal leading-5 text-red-500;
+}
+
+.feedbackEmptyBox {
+  @apply mt-4 rounded-[18px] bg-neutral-100 px-4 py-4 text-[13px] font-normal leading-5 text-neutral-500;
+}
+
+.divider {
+  @apply w-full h-px bg-neutral-400 mb-5;
+}
+
+.sectionTitle {
+  @apply text-[16px] font-semibold leading-7 text-neutral-900;
+}
+
+.scoreSection {
+  @apply mb-5;
+}
+
+.scoreWrap {
+  @apply mt-4 flex items-end gap-6;
+}
+
+.mainScoreGroup {
+  @apply flex items-end gap-2;
+}
+
+.subScoreGroup {
+  @apply flex items-end gap-2 pt-3;
+}
+
+.bigScore {
+  @apply text-[58px] font-semibold leading-[1] text-black;
+}
+
+.smallScore {
+  @apply text-[42px] font-semibold leading-[1] text-black;
+}
+
+.percent {
+  @apply ml-1 text-[24px] font-medium leading-none text-black;
+}
+
+.smallPercent {
+  @apply ml-1 text-[20px] font-medium leading-none text-black;
+}
+
+.scoreLabel {
+  @apply mb-[6px] text-[16px] font-normal leading-5 text-neutral-400;
+}
+
+.feedbackListSection {
+  @apply mb-6 flex flex-col gap-4;
+}
+
+.feedbackRow {
+  @apply flex items-center gap-4;
+}
+
+.iconCircle {
+  @apply flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full bg-white shadow-[0_4px_8px_rgba(0,0,0,0.12)];
+}
+
+.iconText {
+  @apply text-[15px] leading-none;
+}
+
+.feedbackKeywords {
+  @apply flex flex-wrap gap-2;
+}
+
+.feedbackChip {
+  @apply h-7 px-3 rounded-2xl bg-[#d9d9d9] flex items-center justify-center text-[12px] font-normal leading-4 text-neutral-700;
+}
+
+.itemDivider {
+  @apply w-full h-px bg-neutral-400 mb-4;
+}
+
+.itemSection {
+  @apply mb-8;
+}
+
+.itemHeader {
+  @apply mb-4 flex items-center justify-between;
+}
+
+.itemTitle {
+  @apply text-[16px] font-semibold leading-7 text-neutral-900;
+}
+
+.itemScrollRow {
+  @apply flex gap-3 overflow-x-auto pb-2;
+  scrollbar-width: none;
+}
+
+.itemScrollRow::-webkit-scrollbar {
+  display: none;
+}
+
+.itemCard {
+  @apply w-[112px] shrink-0 overflow-hidden rounded-xl bg-white shadow-[8px_8px_5px_0px_rgba(0,0,0,0.05)];
+}
+
+.itemImage {
+  @apply h-[78px] w-full bg-neutral-400 rounded-t-xl;
+}
+
+.itemInfo {
+  @apply px-3 pt-3 pb-4;
+}
+
+.itemBrand {
+  @apply text-[12px] font-medium leading-4 text-neutral-900;
+}
+
+.itemPrice {
+  @apply mt-1 text-[12px] font-normal leading-4 text-neutral-900;
+}
+
+.buttonStack {
+  @apply mt-2 flex flex-col gap-3 pb-2;
+}
+
+.completeButton {
+  @apply w-full h-12 rounded-full text-[14px] font-semibold transition-all duration-200;
+}
+
+.completeButtonActive {
+  @apply bg-[#BE45F7] text-white;
+}
+
+.completeButtonDisabled {
+  @apply bg-[#E7C8F6] text-white cursor-not-allowed;
+}
+
+.secondaryButton {
+  @apply w-full h-12 rounded-full border border-neutral-300 bg-white text-[14px] font-semibold text-neutral-700 transition-all duration-200;
+}
+
+.feedbackActionArea {
+  @apply mt-5 pt-4 border-t border-neutral-200;
+}
+
+.feedbackInlineButton {
+  @apply w-full h-12 rounded-full text-[15px] font-semibold transition-all duration-200;
+}
+
+.feedbackInlineButtonActive {
+  @apply bg-[#BE45F7] text-white shadow-[0_8px_18px_rgba(190,69,247,0.28)];
+}
+
+.feedbackInlineButtonDisabled {
+  @apply bg-[#E9CFF7] text-white cursor-not-allowed;
+}

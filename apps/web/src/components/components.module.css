@@ -1,0 +1,50 @@
+/* src/components/components.module.css */
+
+/* 🔴 1. 흰색 배경 영역을 없앱니다 (투명 처리) */
+.whiteBackground {
+  @apply fixed bottom-0 left-1/2 -translate-x-1/2 w-[375px] h-[95px] z-[100];
+  /* bg-white 제거 -> 투명 배경 */
+}
+
+/* 푸터 내부 컨테이너 (기존 fixed로 변경하여 하단 고정) */
+.footerContainer {
+  @apply fixed bottom-0 left-1/2 -translate-x-1/2 w-full h-[95px] z-[100] flex justify-between items-end px-10 pb-4;
+  /* background-color를 주지 않습니다. */
+}
+
+/* 배경 SVG 위치: 검은색 (동일) */
+.svgWrapper {
+  @apply absolute bottom-0 left-0 w-full h-full -z-10;
+}
+
+.svgWrapper svg {
+  @apply w-full h-full;
+}
+
+/* 네비게이션 아이템 (동일) */
+.navItem {
+  @apply flex flex-col items-center gap-1 cursor-pointer w-12 pb-1;
+}
+
+.iconBox {
+  @apply w-6 h-6 flex items-center justify-center;
+}
+
+.navText {
+  @apply text-[10px] font-medium text-neutral-500 font-sans;
+}
+
+/* 활성화된 탭 글자색 (동일) */
+.activeText {
+  @apply text-white font-bold;
+}
+
+/* 🔴 2. 중앙 플러스 버튼: 하얀 원형 유지 (이전과 동일) */
+.addBtnWrapper {
+  @apply absolute left-1/2 -translate-x-1/2 top-[-10px] cursor-pointer active:scale-90 transition-transform;
+}
+
+.addBtnCircle {
+  @apply w-[55px] h-[55px] bg-white rounded-full flex items-center justify-center shadow-[0px_4px_10px_rgba(0,0,0,0.5)];
+  /* bg-white 유지 -> 동그라미는 하얗게 */
+}
