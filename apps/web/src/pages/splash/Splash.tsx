@@ -6,7 +6,7 @@ import splashIntroImage from '../../assets/splash/splash-intro.png';
 import splashUploadImage from '../../assets/splash/splash-upload.png';
 import splashEvaluationImage from '../../assets/splash/splash-evaluation.png';
 
-import styles from './splash.module.css';
+import styles from './Splash.module.css';
 
 type SplashStep = 0 | 1 | 2;
 type TransitionPhase = 'fadeIn' | 'fadeOut';
