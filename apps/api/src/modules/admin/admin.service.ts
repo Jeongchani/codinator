@@ -779,19 +779,30 @@ export class AdminService {
   ): Promise<ChangeUserStatusResponse> {
     const targetStatus = body.status as UserStatus;
 
-    // V3 Batch11: DELETED는 SUPER_ADMIN만, 나머지는 OPERATOR_ADMIN 이상
-    if (targetStatus === UserStatus.DELETED) {
+    // 자기 자신에 대한 DELETED / SUSPENDED 처리 금지
+    if (adminId === userId && (targetStatus === UserStatus.DELETED || targetStatus === UserStatus.SUSPENDED)) {
+      throw new ForbiddenException('자기 자신의 상태를 변경할 수 없습니다.');
+    }
+
+    // V3 Batch11: DELETED·ACTIVE(복구) 는 SUPER_ADMIN만, 나머지는 OPERATOR_ADMIN 이상
+    if (targetStatus === UserStatus.DELETED || targetStatus === UserStatus.ACTIVE) {
       await this.assertSuperAdmin(adminId);
     } else {
       await this.assertOperatorAdmin(adminId);
     }
 
+    // ACTIVE 복구: DELETED 상태 유저도 조회 허용
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, status: true, deletedAt: true },
     });
 
-    if (!user || user.status === UserStatus.DELETED || user.deletedAt) {
+    if (!user) {
+      throw new NotFoundException('회원을 찾을 수 없습니다.');
+    }
+
+    // ACTIVE 복구가 아닌 경우에만 DELETED 유저 차단
+    if (targetStatus !== UserStatus.ACTIVE && (user.status === UserStatus.DELETED || user.deletedAt)) {
       throw new NotFoundException('회원을 찾을 수 없습니다.');
     }
 
@@ -803,6 +814,9 @@ export class AdminService {
     const updateData: { status: UserStatus; deletedAt?: Date | null } = { status: targetStatus };
     if (targetStatus === UserStatus.DELETED) {
       updateData.deletedAt = now;
+    } else if (targetStatus === UserStatus.ACTIVE) {
+      // DELETED → ACTIVE 복구 시 deletedAt 초기화
+      updateData.deletedAt = null;
     }
 
     const updated = await this.prisma.user.update({
@@ -811,7 +825,6 @@ export class AdminService {
       select: { id: true, status: true, updatedAt: true },
     });
 
-    // V3 Batch11: admin_action_logs 기록
     await this.logAdminAction({
       adminId,
       targetType: AdminActionTargetType.USER,
@@ -895,6 +908,11 @@ export class AdminService {
     body: CreateSanctionRequest,
   ): Promise<CreateSanctionResponse> {
     const sanctionType = body.type as SanctionType;
+
+    // 자기 자신에 대한 제재 생성 금지
+    if (adminId === body.sanctionedUserId) {
+      throw new ForbiddenException('자기 자신에 대한 제재를 생성할 수 없습니다.');
+    }
 
     // V3 Batch11: PERMANENT_BAN은 SUPER_ADMIN만, 나머지는 OPERATOR_ADMIN 이상
     if (sanctionType === SanctionType.PERMANENT_BAN) {
