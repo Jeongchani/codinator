@@ -395,13 +395,15 @@ export class AdminController {
   @Delete('keywords/:keywordId')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: '키워드 삭제 (ADMIN) — 미사용 키워드만 가능' })
+  @ApiOperation({
+    summary: '키워드 비활성화 (ADMIN)',
+    description: '사용 중 여부에 관계없이 `isActive=false` 로 비활성화합니다 (soft delete).',
+  })
   @ApiParam({ name: 'keywordId', type: Number, example: 1 })
   @ApiOkResponse({
-    description: '삭제 성공',
-    schema: { example: { success: true, message: '키워드가 삭제되었습니다.' } },
+    description: '비활성화 성공',
+    schema: { example: { success: true, message: '키워드가 비활성화 처리되었습니다.' } },
   })
-  @ApiConflictResponse({ description: '게시글에서 사용 중 — isActive=false로 비활성화 권장' })
   @ApiForbiddenResponse({ description: '관리자 권한 없음' })
   @ApiNotFoundResponse({ description: '키워드를 찾을 수 없음' })
   async deleteKeyword(

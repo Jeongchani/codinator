@@ -1304,15 +1304,8 @@ export class AdminService {
       throw new NotFoundException('키워드를 찾을 수 없습니다.');
     }
 
-    const usageCount = await this.prisma.postKeyword.count({ where: { keywordId } });
-    if (usageCount > 0) {
-      throw new ConflictException(
-        `${usageCount}개의 게시글에서 사용 중입니다. 삭제 대신 isActive=false로 비활성화하세요.`,
-      );
-    }
-
-    await this.prisma.keyword.delete({ where: { id: keywordId } });
-    return { success: true, message: '키워드가 삭제되었습니다.' };
+    await this.prisma.keyword.update({ where: { id: keywordId }, data: { isActive: false } });
+    return { success: true, message: '키워드가 비활성화 처리되었습니다.' };
   }
 
   // ─── [Batch10] 피드백 태그 마스터 CRUD (SUPER_ADMIN only) ────────────────────

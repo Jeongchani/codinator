@@ -734,7 +734,7 @@ function S_AdminMasters() {
       <div style={C.card}>
         <h3 style={C.h3}>🏷️ 키워드 관리</h3>
         <div style={C.info('blue')}>
-          키워드 삭제는 <strong>미사용 키워드만 가능</strong>하다. 수정 시 code는 변경할 수 없다.
+          키워드 삭제는 사용 중 여부에 관계없이 <strong>비활성화(isActive=false)</strong> 처리된다. 수정 시 code는 변경할 수 없다.
         </div>
 
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -877,7 +877,7 @@ function S_AdminMasters() {
           {keywordMode === 'DELETE' && (
             <>
               <div style={C.info('red')}>
-                삭제는 <strong>미사용 키워드만</strong> 가능하다. 사용 중이면 conflict가 날 수 있다.
+                사용 중 여부에 관계없이 <strong>비활성화(isActive=false)</strong> 처리된다.
               </div>
               <Field
                 label="keywordId"
