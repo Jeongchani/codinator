@@ -734,7 +734,7 @@ function S_AdminMasters() {
       <div style={C.card}>
         <h3 style={C.h3}>🏷️ 키워드 관리</h3>
         <div style={C.info('blue')}>
-          키워드 삭제는 <strong>미사용 키워드만 가능</strong>하다. 수정 시 code는 변경할 수 없다.
+          키워드 삭제는 사용 중 여부에 관계없이 <strong>비활성화(isActive=false)</strong> 처리된다. 수정 시 code는 변경할 수 없다.
         </div>
 
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -877,7 +877,7 @@ function S_AdminMasters() {
           {keywordMode === 'DELETE' && (
             <>
               <div style={C.info('red')}>
-                삭제는 <strong>미사용 키워드만</strong> 가능하다. 사용 중이면 conflict가 날 수 있다.
+                사용 중 여부에 관계없이 <strong>비활성화(isActive=false)</strong> 처리된다.
               </div>
               <Field
                 label="keywordId"
@@ -899,7 +899,7 @@ function S_AdminMasters() {
       <div style={C.card}>
         <h3 style={C.h3}>💬 피드백 태그 관리</h3>
         <div style={C.info('blue')}>
-          피드백 태그 삭제는 <strong>미사용 태그만 가능</strong>하다. 수정 시 code와 voteChoice는
+          피드백 태그 삭제는 사용 중 여부에 관계없이 <strong>비활성화(isActive=false)</strong> 처리된다. 수정 시 code와 voteChoice는
           변경할 수 없다.
         </div>
 
@@ -1093,7 +1093,7 @@ function S_AdminMasters() {
           {tagMode === 'DELETE' && (
             <>
               <div style={C.info('red')}>
-                삭제는 <strong>미사용 태그만</strong> 가능하다. 사용 중이면 conflict가 날 수 있다.
+                사용 중 여부에 관계없이 <strong>비활성화(isActive=false)</strong> 처리된다.
               </div>
               <Field label="tagId" value={tagId} onChange={setTagId} placeholder="ex) 2" />
               <button
@@ -1130,11 +1130,6 @@ function S_AdminSanctions() {
 
   const [endSanctionId, setEndSanctionId] = useState('');
   const [endSanctionReason, setEndSanctionReason] = useState('');
-
-  const [restrictionUserId, setRestrictionUserId] = useState('');
-  const [restrictionReason, setRestrictionReason] = useState('');
-  const [restrictionStartsAt, setRestrictionStartsAt] = useState('');
-  const [restrictionEndsAt, setRestrictionEndsAt] = useState('');
 
   return (
     <PageShell
@@ -1293,64 +1288,6 @@ function S_AdminSanctions() {
           }}
         >
           제재 종료
-        </button>
-      </div>
-
-      <div style={C.card}>
-        <h3 style={C.h3}>➕ 게시글 제한 / 로그인 제한 생성</h3>
-        <Field
-          label="userId"
-          value={restrictionUserId}
-          onChange={setRestrictionUserId}
-          placeholder="ex) 7"
-        />
-        <TextAreaField
-          label="reason"
-          value={restrictionReason}
-          onChange={setRestrictionReason}
-          placeholder="반복 위반 행위"
-        />
-        <Field
-          label="startsAt (선택, ISO 8601)"
-          value={restrictionStartsAt}
-          onChange={setRestrictionStartsAt}
-          placeholder="2026-04-23T00:00:00.000Z"
-        />
-        <Field
-          label="endsAt (선택, ISO 8601)"
-          value={restrictionEndsAt}
-          onChange={setRestrictionEndsAt}
-          placeholder="2026-05-23T00:00:00.000Z"
-        />
-        <button
-          style={C.btn('#553c9a')}
-          onClick={() => {
-            const body: Record<string, unknown> = { reason: restrictionReason.trim() };
-            if (restrictionStartsAt.trim()) body.startsAt = restrictionStartsAt.trim();
-            if (restrictionEndsAt.trim()) body.endsAt = restrictionEndsAt.trim();
-            run(
-              () =>
-                api('POST', `/admin/users/${restrictionUserId}/sanctions/post-restriction`, body),
-              setRes,
-            );
-          }}
-        >
-          게시글 제한 제재 생성
-        </button>
-        <button
-          style={C.btn('#553c9a')}
-          onClick={() => {
-            const body: Record<string, unknown> = { reason: restrictionReason.trim() };
-            if (restrictionStartsAt.trim()) body.startsAt = restrictionStartsAt.trim();
-            if (restrictionEndsAt.trim()) body.endsAt = restrictionEndsAt.trim();
-            run(
-              () =>
-                api('POST', `/admin/users/${restrictionUserId}/sanctions/login-restriction`, body),
-              setRes,
-            );
-          }}
-        >
-          로그인 제한 제재 생성
         </button>
       </div>
 

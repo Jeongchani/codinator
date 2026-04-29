@@ -433,8 +433,8 @@ export class AdminService {
 
     const targetStatus = body.status as PostStatus;
 
-    // V3 Batch11: DELETED는 SUPER_ADMIN만, 나머지는 OPERATOR_ADMIN 이상
-    if (targetStatus === PostStatus.DELETED) {
+    // V3 Batch11: DELETED·ACTIVE(복구)는 SUPER_ADMIN만, 나머지는 OPERATOR_ADMIN 이상
+    if (targetStatus === PostStatus.DELETED || targetStatus === PostStatus.ACTIVE) {
       await this.assertSuperAdmin(adminId);
     } else {
       await this.assertOperatorAdmin(adminId);
@@ -445,7 +445,12 @@ export class AdminService {
       select: { id: true, status: true, deletedAt: true },
     });
 
-    if (!post || post.status === PostStatus.DELETED || post.deletedAt) {
+    if (!post) {
+      throw new NotFoundException('게시글을 찾을 수 없습니다.');
+    }
+
+    // ACTIVE 복구가 아닌 경우에만 DELETED 게시글 차단
+    if (targetStatus !== PostStatus.ACTIVE && (post.status === PostStatus.DELETED || post.deletedAt)) {
       throw new NotFoundException('게시글을 찾을 수 없습니다.');
     }
 
@@ -466,6 +471,7 @@ export class AdminService {
       updateData.hiddenAt = null;
       updateData.hiddenReason = null;
       updateData.hiddenById = null;
+      updateData.deletedAt = null; // DELETED → ACTIVE 복구 시 초기화
     } else if (targetStatus === PostStatus.DELETED) {
       updateData.deletedAt = now;
     }
@@ -1304,15 +1310,8 @@ export class AdminService {
       throw new NotFoundException('키워드를 찾을 수 없습니다.');
     }
 
-    const usageCount = await this.prisma.postKeyword.count({ where: { keywordId } });
-    if (usageCount > 0) {
-      throw new ConflictException(
-        `${usageCount}개의 게시글에서 사용 중입니다. 삭제 대신 isActive=false로 비활성화하세요.`,
-      );
-    }
-
-    await this.prisma.keyword.delete({ where: { id: keywordId } });
-    return { success: true, message: '키워드가 삭제되었습니다.' };
+    await this.prisma.keyword.update({ where: { id: keywordId }, data: { isActive: false } });
+    return { success: true, message: '키워드가 비활성화 처리되었습니다.' };
   }
 
   // ─── [Batch10] 피드백 태그 마스터 CRUD (SUPER_ADMIN only) ────────────────────
@@ -1427,15 +1426,8 @@ export class AdminService {
       throw new NotFoundException('피드백 태그를 찾을 수 없습니다.');
     }
 
-    const usageCount = await this.prisma.feedback.count({ where: { tagId } });
-    if (usageCount > 0) {
-      throw new ConflictException(
-        `${usageCount}개의 피드백에서 사용 중입니다. 삭제 대신 isActive=false로 비활성화하세요.`,
-      );
-    }
-
-    await this.prisma.feedbackTag.delete({ where: { id: tagId } });
-    return { success: true, message: '피드백 태그가 삭제되었습니다.' };
+    await this.prisma.feedbackTag.update({ where: { id: tagId }, data: { isActive: false } });
+    return { success: true, message: '피드백 태그가 비활성화 처리되었습니다.' };
   }
 
   // ─── private helpers ──────────────────────────────────────────────────────────

@@ -243,7 +243,17 @@ export class AdminController {
   @Patch('posts/:postId/status')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: '게시글 상태 강제 변경 (ADMIN)' })
+  @ApiOperation({
+    summary: '게시글 상태 강제 변경 (ADMIN)',
+    description: [
+      '- `DELETED` 처리 및 `ACTIVE` 복구는 **SUPER_ADMIN** 전용입니다.',
+      '- `HIDDEN` ↔ `ACTIVE` 전환은 OPERATOR_ADMIN 이상 가능합니다.',
+      '',
+      '**복구 (DELETED → ACTIVE)**',
+      '- `status: ACTIVE` 를 전송하면 삭제된 게시글도 복구할 수 있습니다.',
+      '- 복구 시 `deletedAt`, `hiddenAt`, `hiddenReason`, `hiddenById` 가 자동으로 `null` 초기화됩니다.',
+    ].join('\n'),
+  })
   @ApiParam({ name: 'postId', type: Number, example: 12, description: '게시글 ID' })
   @ApiBody({ type: ChangePostStatusDto })
   @ApiOkResponse({
@@ -259,8 +269,8 @@ export class AdminController {
     },
   })
   @ApiBadRequestResponse({ description: '잘못된 status 값 또는 hiddenReason 규칙 위반' })
-  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
-  @ApiNotFoundResponse({ description: '게시글을 찾을 수 없음 (이미 삭제됨 포함)' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음 또는 SUPER_ADMIN 전용 작업' })
+  @ApiNotFoundResponse({ description: '게시글을 찾을 수 없음' })
   async changePostStatus(
     @Param('postId', ParseIntPipe) postId: number,
     @Body() body: ChangePostStatusDto,
@@ -395,13 +405,15 @@ export class AdminController {
   @Delete('keywords/:keywordId')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: '키워드 삭제 (ADMIN) — 미사용 키워드만 가능' })
+  @ApiOperation({
+    summary: '키워드 비활성화 (ADMIN)',
+    description: '사용 중 여부에 관계없이 `isActive=false` 로 비활성화합니다 (soft delete).',
+  })
   @ApiParam({ name: 'keywordId', type: Number, example: 1 })
   @ApiOkResponse({
-    description: '삭제 성공',
-    schema: { example: { success: true, message: '키워드가 삭제되었습니다.' } },
+    description: '비활성화 성공',
+    schema: { example: { success: true, message: '키워드가 비활성화 처리되었습니다.' } },
   })
-  @ApiConflictResponse({ description: '게시글에서 사용 중 — isActive=false로 비활성화 권장' })
   @ApiForbiddenResponse({ description: '관리자 권한 없음' })
   @ApiNotFoundResponse({ description: '키워드를 찾을 수 없음' })
   async deleteKeyword(
@@ -510,13 +522,22 @@ export class AdminController {
   @Delete('feedback-tags/:tagId')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: '피드백 태그 삭제 (ADMIN) — 미사용 태그만 가능' })
+  @ApiOperation({
+    summary: '피드백 태그 비활성화 (ADMIN)',
+    description: [
+      '태그를 `isActive=false` 로 비활성화합니다 (soft delete).',
+      '사용 중 여부와 관계없이 동일하게 처리됩니다.',
+      '- 기존 피드백 이력·집계는 그대로 보존됩니다.',
+      '- 신규 태그 선택 목록(GET /feedback-tags 등)에서 즉시 제외됩니다.',
+    ].join('\n'),
+  })
   @ApiParam({ name: 'tagId', type: Number, example: 1 })
   @ApiOkResponse({
-    description: '삭제 성공',
-    schema: { example: { success: true, message: '피드백 태그가 삭제되었습니다.' } },
+    description: '비활성화 성공',
+    schema: {
+      example: { success: true, message: '피드백 태그가 비활성화 처리되었습니다.' },
+    },
   })
-  @ApiConflictResponse({ description: '피드백에서 사용 중 — isActive=false로 비활성화 권장' })
   @ApiForbiddenResponse({ description: '관리자 권한 없음' })
   @ApiNotFoundResponse({ description: '피드백 태그를 찾을 수 없음' })
   async deleteFeedbackTag(
