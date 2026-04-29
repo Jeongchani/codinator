@@ -1,0 +1,213 @@
+.root {
+  @apply relative mx-auto bg-white overflow-hidden;
+  width: var(--app-width, 375px);
+  height: var(--app-height, 812px);
+  min-height: var(--app-height, 812px);
+}
+
+.heroSection {
+  @apply absolute left-0 overflow-hidden bg-white;
+  top: 39px;
+  width: 375px;
+  height: 362px;
+}
+
+.heroImage {
+  @apply block w-full h-full select-none pointer-events-none;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.contentPanel {
+  @apply absolute left-0 bottom-0 bg-white rounded-t-[32px];
+  width: 375px;
+  height: 411px;
+  box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.06);
+}
+
+.title {
+  @apply absolute text-center text-neutral-900 text-[28px] font-semibold leading-9;
+  left: 48px;
+  top: 54px;
+  width: 288px;
+  letter-spacing: -0.04em;
+}
+
+.loginButton {
+  @apply absolute flex items-center justify-center bg-black rounded-[10px] text-white text-xl font-medium leading-7;
+  left: 16px;
+  top: 133px;
+  width: 343px;
+  height: 42px;
+  padding: 7px 16px;
+  border: 0;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease;
+}
+
+.loginButton:active:not(:disabled) {
+  transform: scale(0.99);
+  opacity: 0.92;
+}
+
+.loginButton:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.orRow {
+  @apply absolute flex items-center justify-center;
+  left: 16px;
+  top: 207px;
+  width: 343px;
+  gap: 11px;
+}
+
+.orLine {
+  @apply block h-px bg-stone-300;
+  width: 144px;
+}
+
+.orText {
+  @apply text-center text-neutral-400 text-sm font-medium leading-5 tracking-tight;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+
+.socialButtonRow {
+  @apply absolute flex items-center justify-center;
+  left: 105px;
+  top: 252px;
+  gap: 20px;
+}
+
+.socialButton {
+  @apply rounded-full bg-white flex items-center justify-center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    opacity 160ms ease;
+}
+
+.socialButton:active:not(:disabled) {
+  transform: scale(0.96);
+  background-color: #f5f5f5;
+}
+
+.socialButton:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.socialLogoImage {
+  @apply block select-none pointer-events-none;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  object-position: center;
+}
+
+.signupRow {
+  @apply absolute flex items-center justify-center;
+  left: 0;
+  top: 334px;
+  width: 100%;
+  gap: 14px;
+}
+
+.signupGuideText {
+  @apply text-center text-neutral-400 text-sm font-medium leading-[18.2px] whitespace-nowrap;
+  width: auto;
+  letter-spacing: -0.03em;
+}
+
+.signupButton {
+  @apply text-center text-neutral-900 text-sm font-medium leading-[18.2px] whitespace-nowrap;
+  width: auto;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  letter-spacing: -0.03em;
+}
+
+.signupButton:active:not(:disabled) {
+  opacity: 0.65;
+}
+
+.signupButton:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.modalBackdrop {
+  @apply absolute inset-0 z-50 flex items-center justify-center bg-black/40 px-4;
+}
+
+.modalCard {
+  @apply w-full max-w-[340px] rounded-2xl bg-white p-6 shadow-xl flex flex-col items-center;
+}
+
+.modalIcon {
+  @apply mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600 text-xl font-bold;
+  overflow: hidden;
+}
+
+.modalIconSocial {
+  background: #ffffff;
+  border: 1px solid #d6d3d1;
+  color: inherit;
+}
+
+.modalLogoImage {
+  @apply block select-none pointer-events-none;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  object-position: center;
+}
+
+.modalTitle {
+  @apply mb-2 text-center text-lg font-bold text-neutral-900;
+}
+
+.modalMessage {
+  @apply mb-6 text-center text-sm font-medium leading-relaxed text-neutral-500;
+}
+
+.modalButton {
+  @apply w-full rounded-[10px] bg-neutral-900 py-3 text-base font-medium text-white;
+  transition:
+    transform 150ms ease,
+    opacity 150ms ease;
+}
+
+.modalButton:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+@media (max-width: 374px) {
+  .root,
+  .heroSection,
+  .contentPanel {
+    width: 100vw;
+  }
+
+  .loginButton,
+  .orRow {
+    width: calc(100vw - 32px);
+  }
+}

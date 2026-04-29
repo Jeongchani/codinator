@@ -1,9 +1,31 @@
 import type { Id } from '../common/id';
-import type { EvaluationStatus, GarmentCategory, PostStatus, RankingPeriod } from '../common/enums';
+import type {
+  AiBlurStatus,
+  BlurMethod,
+  EvaluationStatus,
+  GarmentCategory,
+  PostStatus,
+  RankingPeriod,
+  VoteChoice,
+} from '../common/enums';
 
 export interface PostImage {
   id: Id;
-  imageUrl: string;
+  storageKey?: string | null;
+  originalImageUrl: string;
+  processedImageUrl?: string | null;
+  thumbnailUrl?: string | null;
+  blurMethod: BlurMethod;
+  aiBlurStatus: AiBlurStatus;
+  sortOrder: number;
+  isPrimary: boolean;
+}
+
+export interface KeywordSummary {
+  id: Id;
+  code: string;
+  label: string;
+  sortOrder: number;
 }
 
 export interface OutfitItem {
@@ -25,21 +47,12 @@ export interface FeedbackTagSummary {
   code: string;
   label: string;
   count: number;
-  voteChoice?: 'LIKE' | 'DISLIKE';
+  voteChoice: VoteChoice;
 }
 
 export interface PostAuthorSummary {
   userId: Id;
   nickname: string;
-}
-
-export interface PostCoreDetail {
-  postId: Id;
-  content?: string | null;
-  status: PostStatus;
-  createdAt: string;
-  image: PostImage;
-  outfitItems: OutfitItem[];
 }
 
 export interface EvaluationInfo {
@@ -48,17 +61,32 @@ export interface EvaluationInfo {
   endsAt: string;
 }
 
-export interface MyPostDetail extends PostCoreDetail {
+export interface MyVoteContext {
+  myVoteId: Id | null;
+  myVoteChoice: VoteChoice | null;
+  myFeedbackTagIds: Id[];
+}
+
+export interface PostCoreDetail {
+  postId: Id;
+  content?: string | null;
+  status: PostStatus;
+  createdAt: string;
+  images: PostImage[];
+  keywords: KeywordSummary[];
+  outfitItems: OutfitItem[];
+}
+
+export interface MyPostDetail extends PostCoreDetail, MyVoteContext {
   author: PostAuthorSummary;
   evaluation: EvaluationInfo;
   voteSummary: VoteSummary;
   feedbackSummary: FeedbackTagSummary[];
 }
 
-export interface EvaluationPostDetail extends PostCoreDetail {
+export interface EvaluationPostDetail extends PostCoreDetail, MyVoteContext {
   evaluation: EvaluationInfo;
   hasVoted: boolean;
-  myVoteId: Id | null;
   canVote: boolean;
   voteSummary: VoteSummary;
   feedbackSummary: FeedbackTagSummary[];
@@ -71,7 +99,7 @@ export interface RankingInfo {
   endDate: string;
 }
 
-export interface RankingPostDetail extends PostCoreDetail {
+export interface RankingPostDetail extends PostCoreDetail, MyVoteContext {
   author: PostAuthorSummary;
   evaluation: EvaluationInfo;
   hasVoted: boolean;
@@ -83,12 +111,12 @@ export interface RankingPostDetail extends PostCoreDetail {
 
 export interface FeedListItem {
   postId: Id;
-  thumbnailUrl: string;
+  thumbnailUrl: string | null;
   createdAt: string;
   rankingPeriods: RankingPeriod[];
 }
 
-export interface FeedPostDetail extends PostCoreDetail {
+export interface FeedPostDetail extends PostCoreDetail, MyVoteContext {
   author: PostAuthorSummary;
   evaluation: EvaluationInfo;
   voteSummary: VoteSummary;

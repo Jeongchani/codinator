@@ -1,89 +1,597 @@
-.container {
-  @apply w-[375px] min-h-[812px] bg-white mx-auto relative overflow-y-auto pb-10;
+.root {
+  @apply relative mx-auto bg-white overflow-y-auto overflow-x-hidden;
+  width: var(--app-width, 375px);
+  height: var(--app-height, 812px);
+  min-height: var(--app-height, 812px);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-.headerSection {
-  @apply px-8 pt-16 pb-8;
+.root::-webkit-scrollbar {
+  display: none;
 }
 
-.mainTitle {
-  @apply text-neutral-900 text-3xl font-bold leading-tight;
+.content {
+  @apply relative bg-white overflow-hidden;
+  width: var(--app-width, 375px);
+  min-height: var(--signup-content-height, 1324px);
 }
 
-.subTitle {
-  @apply text-neutral-400 text-sm mt-2;
+.contentDefault {
+  --signup-content-height: 1324px;
 }
 
-.formContainer {
-  @apply px-8 space-y-5;
+.contentExpanded {
+  --signup-content-height: 1468px;
+}
+
+.decorationImage {
+  @apply absolute select-none pointer-events-none;
+  right: 20px;
+  top: 76px;
+  width: 82px;
+  height: 55px;
+  object-fit: contain;
+}
+
+.header {
+  @apply absolute left-4;
+  top: 72px;
+}
+
+.title {
+  @apply text-neutral-900 text-[28px] font-bold leading-9;
+  margin: 0;
+  letter-spacing: -0.04em;
+}
+
+.description {
+  @apply text-neutral-400 text-sm font-normal leading-5;
+  margin-top: 16px;
+  letter-spacing: -0.03em;
+}
+
+.form {
+  @apply absolute inset-0;
 }
 
 .fieldGroup {
-  @apply space-y-1.5;
+  @apply absolute;
+  left: 16px;
+  width: 343px;
+}
+
+.nicknameGroup {
+  top: 168px;
+}
+
+.emailGroup {
+  top: 294px;
+}
+
+.passwordGroup {
+  top: 420px;
+}
+
+.passwordConfirmGroup {
+  top: 552px;
+}
+
+.birthDateGroup {
+  top: 684px;
+}
+
+.genderGroup {
+  @apply absolute;
+  left: 16px;
+  top: 828px;
+  width: 343px;
+}
+
+.phoneGroup {
+  top: 928px;
 }
 
 .label {
-  @apply text-neutral-900 text-sm font-bold;
+  @apply block text-neutral-900 text-base font-bold leading-[22.5px];
+  margin: 0 0 12px;
 }
 
-.emailInputRow {
-  @apply flex gap-2;
+.input,
+.inputButtonBox {
+  @apply w-full h-12 bg-white rounded-[10px];
+  border: 1px solid #d6d3d1;
 }
 
-.flexFill {
-  @apply flex-1;
+.input {
+  @apply text-neutral-900 text-[15px] font-normal leading-5 outline-none;
+  padding: 12px 16px;
 }
 
-.inputWrapper {
-  @apply h-12 bg-neutral-50 rounded-xl px-4 flex items-center border border-neutral-100;
+.inputButtonBox {
+  @apply flex items-center justify-between;
+  padding: 8px 14px 8px 16px;
 }
 
-.inputField {
-  @apply w-full bg-transparent outline-none text-neutral-900 text-sm placeholder:text-neutral-300;
+.inputWithButton {
+  @apply min-w-0 flex-1 bg-transparent text-neutral-900 text-[15px] font-normal leading-5 outline-none;
+  padding: 0;
 }
 
-/* 🔴 중복 확인 기본 버튼 */
-.checkButton {
-  @apply px-4 h-12 rounded-xl text-xs font-bold transition-all active:scale-95;
+.input::placeholder,
+.inputWithButton::placeholder,
+.phoneInput::placeholder,
+.verificationInput::placeholder {
+  color: #a3a3a3;
 }
 
-.checkButtonDefault {
-  @apply bg-neutral-900 text-white;
+.input:focus,
+.inputButtonBox:focus-within,
+.phoneCard:focus-within,
+.verificationRow:focus-within {
+  border-color: #111111;
 }
 
-/* 🟢 중복 확인 성공 시 (연두색) */
+.input:disabled,
+.inputWithButton:disabled,
+.phoneInput:disabled,
+.verificationInput:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.innerButton,
+.phoneButton,
+.resendButton,
+.verifyCodeButton {
+  @apply shrink-0 flex items-center justify-center rounded-[10px] text-center text-neutral-900 text-xs font-normal leading-4;
+  height: 30px;
+  padding: 0 16px;
+  border: 1px solid #a3a3a3;
+  background: #ffffff;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    opacity 140ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.innerButton:active:not(:disabled),
+.phoneButton:active:not(:disabled),
+.resendButton:active:not(:disabled),
+.verifyCodeButton:active:not(:disabled) {
+  transform: scale(0.96);
+  background-color: #f5f5f5;
+}
+
+.innerButton:disabled,
+.phoneButton:disabled,
+.resendButton:disabled,
+.verifyCodeButton:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
 .checkButtonDone {
-  @apply bg-green-500 text-white;
+  background: #e9f8df;
+  border-color: #9fd17d;
+  color: #3f7f2b;
+  opacity: 1;
 }
 
-.genderSection {
-  @apply flex gap-8 py-1.5;
+.checkButtonDone:disabled {
+  background: #e9f8df;
+  border-color: #9fd17d;
+  color: #3f7f2b;
+  opacity: 1;
 }
 
-.genderOption {
-  @apply flex items-center gap-2 cursor-pointer;
+.successText {
+  @apply text-lime-700 text-xs font-normal leading-4;
+  margin-top: 14px;
+  min-height: 16px;
 }
 
-.genderText {
-  @apply text-neutral-400 text-sm font-medium;
+.helperText {
+  @apply text-neutral-400 text-xs font-normal leading-4;
+  margin-top: 14px;
+  min-height: 16px;
 }
 
-.genderTextActive {
-  @apply text-neutral-900 font-bold;
+.errorText {
+  @apply text-red-600 text-xs font-normal leading-4;
+  margin-top: 14px;
+  min-height: 16px;
 }
 
-.submitButton {
-  @apply w-full h-14 bg-neutral-900 text-white rounded-[100px] text-base font-bold mt-8;
+.genderRow {
+  @apply flex items-center;
+  gap: 28px;
 }
 
-.loginPrompt {
-  @apply flex justify-center gap-2 mt-6;
+.genderButton {
+  @apply flex items-center;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    opacity 140ms ease;
 }
 
-.promptTextGray {
-  @apply text-neutral-400 text-sm;
+.genderButton:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
-.promptTextBlack {
-  @apply text-neutral-900 text-sm font-bold cursor-pointer underline;
+.genderButton:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.genderIconChecked {
+  @apply shrink-0 text-neutral-900;
+}
+
+.genderIconUnchecked {
+  @apply shrink-0 text-stone-300;
+  opacity: 0.82;
+}
+
+.genderTextChecked {
+  @apply text-neutral-900 text-base font-bold leading-[22.5px];
+}
+
+.genderTextUnchecked {
+  @apply text-stone-300 text-base font-bold leading-[22.5px];
+}
+
+.phoneCard {
+  @apply w-full bg-white rounded-[10px];
+  min-height: 48px;
+  padding: 8px 14px 8px 16px;
+  border: 1px solid #d6d3d1;
+}
+
+.phoneCardExpanded {
+  padding: 12px 10px 14px;
+}
+
+.phoneTopRow {
+  @apply flex items-center;
+  height: 32px;
+  gap: 10px;
+}
+
+.phoneInput {
+  @apply min-w-0 flex-1 bg-transparent text-neutral-900 text-[15px] font-normal leading-5 outline-none;
+  padding: 0;
+}
+
+.phoneButton {
+  padding: 0 14px;
+}
+
+.sentText {
+  @apply shrink-0 text-right text-[12px] leading-4 text-[#8a8a8a];
+}
+
+.verificationMetaRow {
+  @apply mt-3 flex items-center justify-between;
+}
+
+.timerText {
+  @apply text-[12px] font-medium leading-4 text-[#7b7b7b];
+}
+
+.resendButton {
+  padding: 0 18px;
+}
+
+.verificationRow {
+  @apply mt-3 flex h-[52px] items-center gap-[10px] rounded-[10px] border border-[#d6d3d1] bg-white pl-[14px] pr-[10px];
+}
+
+.verificationInput {
+  @apply min-w-0 flex-1 border-0 bg-transparent p-0 text-[15px] leading-5 text-[#111111] outline-none;
+}
+
+.verifyCodeButton {
+  padding: 0 18px;
+}
+
+.debugCodeText {
+  @apply mt-1 text-[12px] leading-4 text-[#8a8a8a];
+}
+
+.signupSubmitButton {
+  @apply absolute flex items-center justify-center bg-black rounded-[10px] text-white text-xl font-medium leading-7;
+  left: 16px;
+  width: 343px;
+  height: 48px;
+  padding: 8px 16px;
+  border: 0;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease,
+    background-color 160ms ease;
+}
+
+.signupSubmitButton:active:not(:disabled) {
+  transform: scale(0.99);
+  opacity: 0.92;
+}
+
+.signupSubmitButton:disabled {
+  cursor: default;
+}
+
+.buttonDisabled {
+  opacity: 0.35;
+}
+
+.orRow {
+  @apply absolute flex items-center justify-center;
+  left: 16px;
+  width: 343px;
+  gap: 11px;
+}
+
+.orLine {
+  @apply block h-px bg-stone-300;
+  width: 144px;
+}
+
+.orText {
+  @apply text-center text-neutral-400 text-sm font-medium leading-5 tracking-tight;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+
+.socialButtonRow {
+  @apply absolute flex items-center justify-center;
+  left: 105px;
+  gap: 20px;
+}
+
+.socialButton {
+  @apply rounded-full bg-white flex items-center justify-center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    opacity 160ms ease;
+}
+
+.socialButton:active:not(:disabled) {
+  transform: scale(0.94);
+  background-color: #f5f5f5;
+}
+
+.socialButton:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.socialLogoImage {
+  @apply block select-none pointer-events-none;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  object-position: center;
+}
+
+.loginGuideRow {
+  @apply absolute flex items-center justify-center;
+  left: 0;
+  width: 100%;
+  gap: 6px;
+}
+
+.loginGuideText {
+  @apply text-center text-neutral-400 text-sm font-medium leading-[18.2px] whitespace-nowrap;
+  letter-spacing: -0.03em;
+}
+
+.loginButton {
+  @apply text-center text-neutral-900 text-sm font-medium leading-[18.2px] whitespace-nowrap;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  letter-spacing: -0.03em;
+}
+
+.loginButton:active:not(:disabled) {
+  opacity: 0.65;
+}
+
+.loginButton:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.signupSubmitButton.bottomObjectsDefault {
+  top: 1052px;
+}
+
+.orRow.bottomObjectsDefault {
+  top: 1136px;
+}
+
+.socialButtonRow.bottomObjectsDefault {
+  top: 1181px;
+}
+
+.loginGuideRow.bottomObjectsDefault {
+  top: 1263px;
+}
+
+.signupSubmitButton.bottomObjectsExpanded {
+  top: 1198px;
+}
+
+.orRow.bottomObjectsExpanded {
+  top: 1282px;
+}
+
+.socialButtonRow.bottomObjectsExpanded {
+  top: 1327px;
+}
+
+.loginGuideRow.bottomObjectsExpanded {
+  top: 1409px;
+}
+
+.modalBackdrop {
+  @apply fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4;
+}
+
+.modalCard {
+  @apply w-full max-w-[340px] rounded-2xl bg-white p-6 shadow-xl flex flex-col items-center;
+}
+
+.modalIcon {
+  @apply mx-auto mb-4 flex items-center justify-center rounded-full;
+  width: 52px;
+  height: 52px;
+  overflow: hidden;
+}
+
+.modalIconSuccess {
+  background: #b8f28a;
+}
+
+.modalIconError {
+  background: #ffd9d9;
+  color: #ff4d4f;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.modalIconSocial {
+  background: #ffffff;
+  border: 1px solid #d6d3d1;
+  color: inherit;
+}
+
+.modalLogoImage {
+  @apply block select-none pointer-events-none;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  object-position: center;
+}
+
+.modalTitle {
+  @apply mb-2 text-center text-lg font-bold text-neutral-900;
+}
+
+.modalMessage {
+  @apply mb-6 text-center text-sm font-medium leading-relaxed text-neutral-500;
+}
+
+.modalButton {
+  @apply w-full rounded-[10px] bg-neutral-900 py-3 text-base font-medium text-white;
+  transition:
+    transform 150ms ease,
+    opacity 150ms ease;
+}
+
+.modalButton:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+@media (max-width: 374px) {
+  .root,
+  .content {
+    width: 100vw;
+  }
+
+  .fieldGroup,
+  .genderGroup,
+  .signupSubmitButton,
+  .orRow {
+    width: calc(100vw - 32px);
+  }
+
+  .socialButtonRow {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+.socialContent.contentDefault {
+  --signup-content-height: 1200px;
+}
+
+.socialContent.contentExpanded {
+  --signup-content-height: 1348px;
+}
+
+.socialForm .passwordGroup {
+  top: 294px;
+}
+
+.socialForm .passwordConfirmGroup {
+  top: 426px;
+}
+
+.socialForm .birthDateGroup {
+  top: 558px;
+}
+
+.socialForm .genderGroup {
+  top: 702px;
+}
+
+.socialForm .phoneGroup {
+  top: 802px;
+}
+
+.socialForm .signupSubmitButton.bottomObjectsDefault {
+  top: 926px;
+}
+
+.socialForm .signupSubmitButton.bottomObjectsExpanded {
+  top: 1072px;
+}
+
+.socialForm .orRow.bottomObjectsDefault {
+  top: 1010px;
+}
+
+.socialForm .socialButtonRow.bottomObjectsDefault {
+  top: 1055px;
+}
+
+.socialForm .loginGuideRow.bottomObjectsDefault {
+  top: 1137px;
+}
+
+.socialForm .orRow.bottomObjectsExpanded {
+  top: 1156px;
+}
+
+.socialForm .socialButtonRow.bottomObjectsExpanded {
+  top: 1201px;
+}
+
+.socialForm .loginGuideRow.bottomObjectsExpanded {
+  top: 1283px;
 }

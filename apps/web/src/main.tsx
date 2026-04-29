@@ -3,8 +3,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import './styles/global.css';
+import { bootstrapThemeMode } from './lib/theme';
 
 // App.tsx에서 App 컴포넌트를 가져와서 ReactDOM을 사용하여 렌더링
+bootstrapThemeMode();
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />

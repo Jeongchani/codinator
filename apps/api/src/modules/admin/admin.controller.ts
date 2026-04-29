@@ -1,0 +1,1151 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiBadRequestResponse,
+  ApiConflictResponse,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
+import type {
+  ChangePostStatusResponse,
+  ChangeUserStatusResponse,
+  CreateFeedbackTagResponse,
+  CreateKeywordResponse,
+  CreateSanctionResponse,
+  DeleteFeedbackTagResponse,
+  DeleteKeywordResponse,
+  EndSanctionResponse,
+  GetAdminFeedbackTagsResponse,
+  GetAdminKeywordsResponse,
+  ListActionLogsResponse,
+  ListAdminPostsResponse,
+  ListAdminUsersResponse,
+  ListPostReportsResponse,
+  ListReportHistoriesResponse,
+  ListSanctionsResponse,
+  ListUserReportsResponse,
+  ReopenReportResponse,
+  ReviewReportResponse,
+  UpdateFeedbackTagResponse,
+  UpdateKeywordResponse,
+} from '@codinator/contracts';
+import { AuthTokenService } from '../auth/auth-token.service';
+import { ReviewReportDto } from './dto/review-report.dto';
+import { ChangePostStatusDto } from './dto/change-post-status.dto';
+import { ListReportsQueryDto } from './dto/list-reports-query.dto';
+import { ListAdminKeywordsQueryDto } from './dto/list-admin-keywords-query.dto';
+import { CreateKeywordDto } from './dto/create-keyword.dto';
+import { UpdateKeywordDto } from './dto/update-keyword.dto';
+import { ListAdminFeedbackTagsQueryDto } from './dto/list-admin-feedback-tags-query.dto';
+import { CreateFeedbackTagDto } from './dto/create-feedback-tag.dto';
+import { UpdateFeedbackTagDto } from './dto/update-feedback-tag.dto';
+import { ListAdminPostsQueryDto } from './dto/list-admin-posts-query.dto';
+import { ListAdminUsersQueryDto } from './dto/list-admin-users-query.dto';
+import { ChangeUserStatusDto } from './dto/change-user-status.dto';
+import { ListSanctionsQueryDto } from './dto/list-sanctions-query.dto';
+import { CreateSanctionDto } from './dto/create-sanction.dto';
+import { EndSanctionDto } from './dto/end-sanction.dto';
+import { ListActionLogsQueryDto } from './dto/list-action-logs-query.dto';
+import { ListReportHistoriesQueryDto } from './dto/list-report-histories-query.dto';
+import { ReopenReportDto } from './dto/reopen-report.dto';
+import { CreateUserRestrictionDto } from './dto/create-user-restriction.dto';
+import { AdminService } from './admin.service';
+
+@ApiTags('admin')
+@Controller('admin')
+export class AdminController {
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly authTokenService: AuthTokenService,
+  ) {}
+
+  // ─── GET /admin/post-reports ─────────────────────────────────────────────────
+
+  @Get('post-reports')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '게시글 신고 목록 조회 (ADMIN)',
+    description:
+      '신고 상태(PENDING / RESOLVED / REJECTED)로 필터링할 수 있습니다. ' +
+      '커서 기반 페이지네이션(cursor=마지막 reportId)을 사용합니다.',
+  })
+  @ApiQuery({ name: 'status', required: false, enum: ['PENDING', 'RESOLVED', 'REJECTED'], description: '상태 필터' })
+  @ApiQuery({ name: 'cursor', required: false, type: Number, description: '마지막 항목 reportId' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: '페이지 크기 (기본 20, 최대 100)' })
+  @ApiOkResponse({
+    description: '게시글 신고 목록',
+    schema: {
+      example: {
+        items: [
+          {
+            reportId: 7,
+            postId: 12,
+            postThumbnailUrl: '/uploads/posts/processed/20260401/thumb-abc.jpg',
+            reporterId: 3,
+            reporterNickname: '신고자닉',
+            title: '스팸 게시글',
+            reason: 'SPAM',
+            description: '같은 내용을 반복 게시합니다.',
+            status: 'PENDING',
+            reviewedAt: null,
+            reviewedByNickname: null,
+            createdAt: '2026-04-01T10:00:00.000Z',
+          },
+        ],
+        nextCursor: 6,
+        total: 42,
+      },
+    },
+  })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  async getPostReports(
+    @Query() query: ListReportsQueryDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ListPostReportsResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.getPostReports(adminId!, query);
+  }
+
+  // ─── GET /admin/user-reports ─────────────────────────────────────────────────
+
+  @Get('user-reports')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '사용자 신고 목록 조회 (ADMIN)',
+    description:
+      '신고 상태(PENDING / RESOLVED / REJECTED)로 필터링할 수 있습니다. ' +
+      '커서 기반 페이지네이션(cursor=마지막 reportId)을 사용합니다.',
+  })
+  @ApiQuery({ name: 'status', required: false, enum: ['PENDING', 'RESOLVED', 'REJECTED'], description: '상태 필터' })
+  @ApiQuery({ name: 'cursor', required: false, type: Number, description: '마지막 항목 reportId' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: '페이지 크기 (기본 20, 최대 100)' })
+  @ApiOkResponse({
+    description: '사용자 신고 목록',
+    schema: {
+      example: {
+        items: [
+          {
+            reportId: 5,
+            reportedUserId: 8,
+            reportedUserNickname: '피신고자닉',
+            reporterId: 3,
+            reporterNickname: '신고자닉',
+            title: '욕설 사용',
+            reason: 'ABUSE',
+            description: '댓글에서 지속적으로 욕설을 사용합니다.',
+            status: 'PENDING',
+            reviewedAt: null,
+            reviewedByNickname: null,
+            createdAt: '2026-04-01T09:30:00.000Z',
+          },
+        ],
+        nextCursor: null,
+        total: 5,
+      },
+    },
+  })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  async getUserReports(
+    @Query() query: ListReportsQueryDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ListUserReportsResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.getUserReports(adminId!, query);
+  }
+
+  // ─── PATCH /admin/post-reports/:reportId ──────────────────────────────────────
+
+  @Patch('post-reports/:reportId')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '게시글 신고 처리 (ADMIN)' })
+  @ApiParam({ name: 'reportId', type: Number, example: 3, description: '신고 ID' })
+  @ApiBody({ type: ReviewReportDto })
+  @ApiOkResponse({
+    description: '신고 처리 완료',
+    schema: {
+      example: { reportId: 3, status: 'RESOLVED', reviewedAt: '2026-03-30T12:00:00.000Z' },
+    },
+  })
+  @ApiBadRequestResponse({ description: '잘못된 action 값 또는 이미 처리된 신고' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  @ApiNotFoundResponse({ description: '신고를 찾을 수 없음' })
+  async reviewReport(
+    @Param('reportId', ParseIntPipe) reportId: number,
+    @Body() body: ReviewReportDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ReviewReportResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.reviewReport(adminId!, reportId, body);
+  }
+
+  // ─── PATCH /admin/user-reports/:reportId ────────────────────────────────────
+
+  @Patch('user-reports/:reportId')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '유저 신고 처리 (ADMIN)' })
+  @ApiParam({ name: 'reportId', type: Number, example: 5, description: '유저 신고 ID' })
+  @ApiBody({ type: ReviewReportDto })
+  @ApiOkResponse({
+    description: '유저 신고 처리 완료',
+    schema: {
+      example: { reportId: 5, status: 'REJECTED', reviewedAt: '2026-03-30T12:00:00.000Z' },
+    },
+  })
+  @ApiBadRequestResponse({ description: '잘못된 action 값 또는 이미 처리된 신고' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  @ApiNotFoundResponse({ description: '신고를 찾을 수 없음' })
+  async reviewUserReport(
+    @Param('reportId', ParseIntPipe) reportId: number,
+    @Body() body: ReviewReportDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ReviewReportResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.reviewUserReport(adminId!, reportId, body);
+  }
+
+  // ─── PATCH /admin/posts/:postId/status ───────────────────────────────────────
+
+  @Patch('posts/:postId/status')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '게시글 상태 강제 변경 (ADMIN)',
+    description: [
+      '- `DELETED` 처리 및 `ACTIVE` 복구는 **SUPER_ADMIN** 전용입니다.',
+      '- `HIDDEN` ↔ `ACTIVE` 전환은 OPERATOR_ADMIN 이상 가능합니다.',
+      '',
+      '**복구 (DELETED → ACTIVE)**',
+      '- `status: ACTIVE` 를 전송하면 삭제된 게시글도 복구할 수 있습니다.',
+      '- 복구 시 `deletedAt`, `hiddenAt`, `hiddenReason`, `hiddenById` 가 자동으로 `null` 초기화됩니다.',
+    ].join('\n'),
+  })
+  @ApiParam({ name: 'postId', type: Number, example: 12, description: '게시글 ID' })
+  @ApiBody({ type: ChangePostStatusDto })
+  @ApiOkResponse({
+    description: '게시글 상태 변경 완료',
+    schema: {
+      example: {
+        postId: 12,
+        status: 'HIDDEN',
+        hiddenAt: '2026-03-30T12:00:00.000Z',
+        hiddenReason: '커뮤니티 가이드라인 위반',
+        updatedAt: '2026-03-30T12:00:00.000Z',
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: '잘못된 status 값 또는 hiddenReason 규칙 위반' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음 또는 SUPER_ADMIN 전용 작업' })
+  @ApiNotFoundResponse({ description: '게시글을 찾을 수 없음' })
+  async changePostStatus(
+    @Param('postId', ParseIntPipe) postId: number,
+    @Body() body: ChangePostStatusDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ChangePostStatusResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.changePostStatus(adminId!, postId, body);
+  }
+
+  // ─── POST /admin/reindex-post-images ────────────────────────────────────────
+
+  @Post('reindex-post-images')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '[DEV] 게시글 이미지 일괄 재인덱싱',
+    description:
+      '시드 데이터 등 POST_INDEX AI 분석이 누락된 게시글 이미지를 일괄 재인덱싱합니다. ' +
+      '이미 SUCCEEDED 상태인 분석 run 이 있으면 건너뜁니다. ' +
+      '분석 실패한 이미지는 failedIds 에 포함됩니다.',
+  })
+  @ApiOkResponse({
+    description: '재인덱싱 완료 결과',
+    schema: {
+      example: { total: 26, succeeded: 25, failed: 1, failedIds: [42] },
+    },
+  })
+  @ApiForbiddenResponse({ description: 'SUPER_ADMIN 권한 없음' })
+  async reindexPostImages(
+    @Headers('authorization') authorization?: string,
+  ): Promise<{ total: number; succeeded: number; failed: number; failedIds: number[] }> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.reindexPostImages(adminId!); // Batch11-Fix: SUPER_ADMIN 검증은 service 내부 assertSuperAdmin에서 처리
+  }
+
+  // ─── [Batch10] GET /admin/keywords ──────────────────────────────────────────
+
+  @Get('keywords')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '키워드 목록 조회 (ADMIN)',
+    description: 'isActive 필터 가능. 생략 시 전체 반환. sortOrder ASC → id ASC 정렬.',
+  })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean, description: 'isActive 필터' })
+  @ApiOkResponse({
+    description: '키워드 목록',
+    schema: {
+      example: {
+        items: [
+          { id: 1, code: 'STREET_LOOK', label: '스트릿 룩', sortOrder: 0, isActive: true, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+        ],
+      },
+    },
+  })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  async getAdminKeywords(
+    @Query() query: ListAdminKeywordsQueryDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<GetAdminKeywordsResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.getAdminKeywords(adminId!, query);
+  }
+
+  // ─── [Batch10] POST /admin/keywords ─────────────────────────────────────────
+
+  @Post('keywords')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '키워드 생성 (ADMIN)' })
+  @ApiBody({ type: CreateKeywordDto })
+  @ApiOkResponse({
+    description: '생성된 키워드',
+    schema: {
+      example: { id: 10, code: 'STREET_LOOK', label: '스트릿 룩', sortOrder: 0, isActive: true, createdAt: '2026-04-21T00:00:00.000Z' },
+    },
+  })
+  @ApiBadRequestResponse({ description: '유효성 검사 실패' })
+  @ApiConflictResponse({ description: 'code 중복' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  async createKeyword(
+    @Body() body: CreateKeywordDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<CreateKeywordResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.createKeyword(adminId!, body);
+  }
+
+  // ─── [Batch10] PATCH /admin/keywords/:keywordId ──────────────────────────────
+
+  @Patch('keywords/:keywordId')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '키워드 수정 (ADMIN) — code 변경 불가' })
+  @ApiParam({ name: 'keywordId', type: Number, example: 1 })
+  @ApiBody({ type: UpdateKeywordDto })
+  @ApiOkResponse({
+    description: '수정된 키워드',
+    schema: {
+      example: { id: 1, code: 'STREET_LOOK', label: '스트릿 스타일', sortOrder: 5, isActive: true, updatedAt: '2026-04-21T00:00:00.000Z' },
+    },
+  })
+  @ApiBadRequestResponse({ description: '유효성 검사 실패' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  @ApiNotFoundResponse({ description: '키워드를 찾을 수 없음' })
+  async updateKeyword(
+    @Param('keywordId', ParseIntPipe) keywordId: number,
+    @Body() body: UpdateKeywordDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<UpdateKeywordResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.updateKeyword(adminId!, keywordId, body);
+  }
+
+  // ─── [Batch10] DELETE /admin/keywords/:keywordId ─────────────────────────────
+
+  @Delete('keywords/:keywordId')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '키워드 비활성화 (ADMIN)',
+    description: '사용 중 여부에 관계없이 `isActive=false` 로 비활성화합니다 (soft delete).',
+  })
+  @ApiParam({ name: 'keywordId', type: Number, example: 1 })
+  @ApiOkResponse({
+    description: '비활성화 성공',
+    schema: { example: { success: true, message: '키워드가 비활성화 처리되었습니다.' } },
+  })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  @ApiNotFoundResponse({ description: '키워드를 찾을 수 없음' })
+  async deleteKeyword(
+    @Param('keywordId', ParseIntPipe) keywordId: number,
+    @Headers('authorization') authorization?: string,
+  ): Promise<DeleteKeywordResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.deleteKeyword(adminId!, keywordId);
+  }
+
+  // ─── [Batch10] GET /admin/feedback-tags ─────────────────────────────────────
+
+  @Get('feedback-tags')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '피드백 태그 목록 조회 (ADMIN)',
+    description: 'voteChoice / groupCode / isActive 필터 가능. 생략 시 전체 반환.',
+  })
+  @ApiQuery({ name: 'voteChoice', required: false, enum: ['LIKE', 'DISLIKE'], description: 'voteChoice 필터' })
+  @ApiQuery({ name: 'groupCode', required: false, type: String, description: 'groupCode 필터' })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean, description: 'isActive 필터' })
+  @ApiOkResponse({
+    description: '피드백 태그 목록',
+    schema: {
+      example: {
+        items: [
+          { id: 1, code: 'TRENDY_STYLE', label: '트렌디한 스타일', groupCode: 'STYLE', voteChoice: 'LIKE', isActive: true, sortOrder: 0, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+        ],
+      },
+    },
+  })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  async getAdminFeedbackTags(
+    @Query() query: ListAdminFeedbackTagsQueryDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<GetAdminFeedbackTagsResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.getAdminFeedbackTags(adminId!, query);
+  }
+
+  // ─── [Batch10] POST /admin/feedback-tags ────────────────────────────────────
+
+  @Post('feedback-tags')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '피드백 태그 생성 (ADMIN)' })
+  @ApiBody({ type: CreateFeedbackTagDto })
+  @ApiOkResponse({
+    description: '생성된 피드백 태그',
+    schema: {
+      example: { id: 5, code: 'TRENDY_STYLE', label: '트렌디한 스타일', groupCode: 'STYLE', voteChoice: 'LIKE', isActive: true, sortOrder: 0, createdAt: '2026-04-21T00:00:00.000Z' },
+    },
+  })
+  @ApiBadRequestResponse({ description: '유효성 검사 실패' })
+  @ApiConflictResponse({ description: 'code 중복' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  async createFeedbackTag(
+    @Body() body: CreateFeedbackTagDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<CreateFeedbackTagResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.createFeedbackTag(adminId!, body);
+  }
+
+  // ─── [Batch10] PATCH /admin/feedback-tags/:tagId ────────────────────────────
+
+  @Patch('feedback-tags/:tagId')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '피드백 태그 수정 (ADMIN) — code·voteChoice 변경 불가' })
+  @ApiParam({ name: 'tagId', type: Number, example: 1 })
+  @ApiBody({ type: UpdateFeedbackTagDto })
+  @ApiOkResponse({
+    description: '수정된 피드백 태그',
+    schema: {
+      example: { id: 1, code: 'TRENDY_STYLE', label: '세련된 스타일', groupCode: 'STYLE', voteChoice: 'LIKE', isActive: true, sortOrder: 5, updatedAt: '2026-04-21T00:00:00.000Z' },
+    },
+  })
+  @ApiBadRequestResponse({ description: '유효성 검사 실패' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  @ApiNotFoundResponse({ description: '피드백 태그를 찾을 수 없음' })
+  async updateFeedbackTag(
+    @Param('tagId', ParseIntPipe) tagId: number,
+    @Body() body: UpdateFeedbackTagDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<UpdateFeedbackTagResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.updateFeedbackTag(adminId!, tagId, body);
+  }
+
+  // ─── [Batch10] DELETE /admin/feedback-tags/:tagId ───────────────────────────
+
+  @Delete('feedback-tags/:tagId')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '피드백 태그 비활성화 (ADMIN)',
+    description: [
+      '태그를 `isActive=false` 로 비활성화합니다 (soft delete).',
+      '사용 중 여부와 관계없이 동일하게 처리됩니다.',
+      '- 기존 피드백 이력·집계는 그대로 보존됩니다.',
+      '- 신규 태그 선택 목록(GET /feedback-tags 등)에서 즉시 제외됩니다.',
+    ].join('\n'),
+  })
+  @ApiParam({ name: 'tagId', type: Number, example: 1 })
+  @ApiOkResponse({
+    description: '비활성화 성공',
+    schema: {
+      example: { success: true, message: '피드백 태그가 비활성화 처리되었습니다.' },
+    },
+  })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  @ApiNotFoundResponse({ description: '피드백 태그를 찾을 수 없음' })
+  async deleteFeedbackTag(
+    @Param('tagId', ParseIntPipe) tagId: number,
+    @Headers('authorization') authorization?: string,
+  ): Promise<DeleteFeedbackTagResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.deleteFeedbackTag(adminId!, tagId);
+  }
+
+  // ─── [Batch11] GET /admin/posts ──────────────────────────────────────────────
+
+  @Get('posts')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '게시글 목록 조회 (ADMIN)',
+    description: 'status 필터 및 커서 기반 페이지네이션(cursor=마지막 postId)을 지원합니다.',
+  })
+  @ApiQuery({ name: 'status', required: false, enum: ['ACTIVE', 'HIDDEN', 'DELETED'], description: '게시글 상태 필터' }) // Batch11-Fix: PUBLISHED → ACTIVE
+  @ApiQuery({ name: 'cursor', required: false, type: Number, description: '마지막 항목 postId' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: '페이지 크기 (기본 20, 최대 100)' })
+  @ApiOkResponse({
+    description: '게시글 목록',
+    schema: {
+      example: { // Batch11-Fix: PUBLISHED→ACTIVE, hasMore 제거, total 추가 (contract 기준)
+        items: [
+          {
+            postId: 12,
+            authorId: 3,
+            authorNickname: '닉네임',
+            status: 'ACTIVE',
+            thumbnailUrl: '/uploads/posts/processed/20260401/thumb-abc.jpg',
+            content: '오늘 코디',
+            publishedAt: '2026-04-01T10:00:00.000Z',
+            hiddenAt: null,
+            hiddenReason: null,
+            deletedAt: null,
+            createdAt: '2026-04-01T10:00:00.000Z',
+          },
+        ],
+        nextCursor: 11,
+        total: 42,
+      },
+    },
+  })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  async getAdminPosts(
+    @Query() query: ListAdminPostsQueryDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ListAdminPostsResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.getAdminPosts(adminId!, query);
+  }
+
+  // ─── [Batch11] GET /admin/users ──────────────────────────────────────────────
+
+  @Get('users')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '사용자 목록 조회 (ADMIN)',
+    description: 'status / role 필터 및 커서 기반 페이지네이션(cursor=마지막 userId)을 지원합니다.',
+  })
+  @ApiQuery({ name: 'status', required: false, enum: ['ACTIVE', 'SUSPENDED', 'DELETED'], description: '상태 필터' })
+  @ApiQuery({ name: 'role', required: false, enum: ['USER', 'OPERATOR_ADMIN', 'SUPER_ADMIN'], description: '역할 필터' })
+  @ApiQuery({ name: 'cursor', required: false, type: Number, description: '마지막 항목 userId' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: '페이지 크기 (기본 20, 최대 100)' })
+  @ApiOkResponse({
+    description: '사용자 목록',
+    schema: {
+      example: { // Batch11-Fix: hasMore 제거, total/deletedAt 추가 (contract 기준)
+        items: [
+          {
+            userId: 5,
+            nickname: '사용자닉',
+            email: 'user@example.com',
+            role: 'USER',
+            status: 'ACTIVE',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            deletedAt: null,
+          },
+        ],
+        nextCursor: 4,
+        total: 120,
+      },
+    },
+  })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  async getAdminUsers(
+    @Query() query: ListAdminUsersQueryDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ListAdminUsersResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.getAdminUsers(adminId!, query);
+  }
+
+  // ─── [Batch11] PATCH /admin/users/:userId/status ────────────────────────────
+
+  @Patch('users/:userId/status')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '사용자 상태 변경 (ADMIN)',
+    description: [
+      '- `DELETED` 처리 및 `ACTIVE` 복구는 **SUPER_ADMIN** 전용입니다.',
+      '- `SUSPENDED` ↔ `ACTIVE` 전환은 OPERATOR_ADMIN 이상 가능합니다.',
+      '',
+      '**복구 (DELETED → ACTIVE)**',
+      '- `status: ACTIVE` 를 전송하면 소프트삭제된 유저도 복구할 수 있습니다.',
+      '- 복구 시 `deletedAt` 이 자동으로 `null` 로 초기화됩니다.',
+      '',
+      '**자기 자신 제한**',
+      '- 관리자는 자기 자신을 `DELETED` 또는 `SUSPENDED` 처리할 수 없습니다 (403).',
+    ].join('\n'),
+  })
+  @ApiParam({ name: 'userId', type: Number, example: 5, description: '대상 사용자 ID' })
+  @ApiBody({ type: ChangeUserStatusDto })
+  @ApiOkResponse({
+    description: '상태 변경 완료',
+    schema: {
+      example: {
+        userId: 5,
+        status: 'SUSPENDED',
+        updatedAt: '2026-04-21T12:00:00.000Z',
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: '잘못된 status 값 또는 이미 해당 상태인 경우' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음, SUPER_ADMIN 전용 작업, 또는 자기 자신 대상 금지 작업' })
+  @ApiNotFoundResponse({ description: '사용자를 찾을 수 없음' })
+  async changeUserStatus(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body() body: ChangeUserStatusDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ChangeUserStatusResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.changeUserStatus(adminId!, userId, body);
+  }
+
+  // ─── [Batch11] GET /admin/sanctions ─────────────────────────────────────────
+
+  @Get('sanctions')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '제재 목록 조회 (ADMIN)',
+    description: 'userId / type 필터 및 커서 기반 페이지네이션(cursor=마지막 sanctionId)을 지원합니다.',
+  })
+  @ApiQuery({ name: 'userId', required: false, type: Number, description: '대상 사용자 ID 필터' })
+  @ApiQuery({ name: 'type', required: false, enum: ['TEMP_SUSPENSION', 'PERMANENT_BAN', 'POST_RESTRICTION'], description: '제재 유형 필터' })
+  @ApiQuery({ name: 'cursor', required: false, type: Number, description: '마지막 항목 sanctionId' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: '페이지 크기 (기본 20, 최대 100)' })
+  @ApiOkResponse({
+    description: '제재 목록',
+    schema: {
+      example: { // Batch11-Fix: hasMore 제거, total 추가, endedAt→endsAt(null=영구) (contract 기준)
+        items: [
+          {
+            sanctionId: 1,
+            sanctionedUserId: 5,
+            sanctionedUserNickname: '사용자닉',
+            processedById: 2,
+            processedByNickname: '관리자닉',
+            type: 'TEMP_SUSPENSION',
+            reason: '반복 스팸 행위',
+            startsAt: '2026-04-21T00:00:00.000Z',
+            endsAt: '2026-05-21T00:00:00.000Z',
+            createdAt: '2026-04-21T00:00:00.000Z',
+          },
+        ],
+        nextCursor: null,
+        total: 3,
+      },
+    },
+  })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  async getSanctions(
+    @Query() query: ListSanctionsQueryDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ListSanctionsResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.getSanctions(adminId!, query);
+  }
+
+  // ─── [Batch11] POST /admin/sanctions ────────────────────────────────────────
+
+  @Post('sanctions')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '사용자 제재 생성 (ADMIN)',
+    description: [
+      '- `PERMANENT_BAN` 유형은 **SUPER_ADMIN** 전용입니다.',
+      '- `TEMP_SUSPENSION` / `POST_RESTRICTION` 은 OPERATOR_ADMIN 이상 가능합니다.',
+      '- 관리자는 자기 자신에게 제재를 생성할 수 없습니다 (403).',
+    ].join('\n'),
+  })
+  @ApiBody({ type: CreateSanctionDto })
+  @ApiOkResponse({
+    description: '제재 생성 완료',
+    schema: {
+      example: {
+        sanctionId: 1,
+        sanctionedUserId: 5,
+        type: 'TEMP_SUSPENSION',
+        reason: '반복 스팸 행위',
+        startsAt: '2026-04-21T00:00:00.000Z',
+        endsAt: '2026-05-21T00:00:00.000Z',
+        createdAt: '2026-04-21T00:00:00.000Z',
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: '유효성 검사 실패 또는 endsAt이 startsAt보다 이전' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음, SUPER_ADMIN 전용 작업, 또는 자기 자신 대상 제재 금지' })
+  @ApiNotFoundResponse({ description: '대상 사용자를 찾을 수 없음' })
+  async createSanction(
+    @Body() body: CreateSanctionDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<CreateSanctionResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.createSanction(adminId!, body);
+  }
+
+  // ─── [Batch11] PATCH /admin/sanctions/:sanctionId/end ───────────────────────
+
+  @Patch('sanctions/:sanctionId/end')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '제재 조기 종료 (ADMIN)',
+    description: 'PERMANENT_BAN 제재 종료는 SUPER_ADMIN만 가능합니다. endsAt을 현재 시각으로 업데이트합니다.',
+  })
+  @ApiParam({ name: 'sanctionId', type: Number, example: 1, description: '제재 ID' })
+  @ApiBody({ type: EndSanctionDto })
+  @ApiOkResponse({
+    description: '제재 종료 완료',
+    schema: {
+      example: {
+        sanctionId: 1,
+        endsAt: '2026-04-21T12:00:00.000Z',
+        updatedAt: '2026-04-21T12:00:00.000Z',
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: '이미 종료된 제재' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음 또는 SUPER_ADMIN 전용 작업' })
+  @ApiNotFoundResponse({ description: '제재를 찾을 수 없음' })
+  async endSanction(
+    @Param('sanctionId', ParseIntPipe) sanctionId: number,
+    @Body() body: EndSanctionDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<EndSanctionResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.endSanction(adminId!, sanctionId, body);
+  }
+
+  // ─── [Batch11] GET /admin/action-logs ───────────────────────────────────────
+
+  @Get('action-logs')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '관리자 액션 로그 목록 조회 (ADMIN)',
+    description: 'adminId / targetType / actionType 필터 및 커서 기반 페이지네이션(cursor=마지막 logId)을 지원합니다.',
+  })
+  @ApiQuery({ name: 'adminId', required: false, type: Number, description: '특정 관리자 ID 필터' })
+  @ApiQuery({ name: 'targetType', required: false, enum: ['POST', 'POST_REPORT', 'USER_REPORT', 'USER', 'USER_SANCTION'], description: '대상 타입 필터' })
+  @ApiQuery({ name: 'actionType', required: false, enum: ['CREATED', 'RESOLVED', 'REJECTED', 'REOPENED', 'HIDDEN', 'UNHIDDEN', 'DELETED', 'RESTORED', 'SANCTION_UPDATED', 'SANCTION_ENDED', 'USER_STATUS_UPDATED'], description: '액션 타입 필터' })
+  @ApiQuery({ name: 'cursor', required: false, type: Number, description: '마지막 항목 logId' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: '페이지 크기 (기본 20, 최대 100)' })
+  @ApiOkResponse({
+    description: '관리자 액션 로그 목록',
+    schema: {
+      example: { // Batch11-Fix: hasMore 제거, total 추가 (contract 기준)
+        items: [
+          {
+            logId: 10,
+            adminId: 2,
+            adminNickname: '관리자닉',
+            targetType: 'POST_REPORT',
+            targetId: 7,
+            actionType: 'RESOLVED',
+            reason: '커뮤니티 가이드라인 위반 확인',
+            metadataJson: null,
+            createdAt: '2026-04-21T10:00:00.000Z',
+          },
+        ],
+        nextCursor: 9,
+        total: 58,
+      },
+    },
+  })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  async getActionLogs(
+    @Query() query: ListActionLogsQueryDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ListActionLogsResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.getActionLogs(adminId!, query);
+  }
+
+  // ─── [Batch11] GET /admin/report-histories ──────────────────────────────────
+
+  @Get('report-histories')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '신고 이력 목록 조회 (ADMIN)',
+    description: 'targetType / targetId 필터 및 커서 기반 페이지네이션(cursor=마지막 historyId)을 지원합니다.',
+  })
+  @ApiQuery({ name: 'targetType', required: false, enum: ['POST_REPORT', 'USER_REPORT'], description: '신고 대상 타입 필터' })
+  @ApiQuery({ name: 'targetId', required: false, type: Number, description: '특정 신고 ID 필터' })
+  @ApiQuery({ name: 'cursor', required: false, type: Number, description: '마지막 항목 historyId' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: '페이지 크기 (기본 20, 최대 100)' })
+  @ApiOkResponse({
+    description: '신고 이력 목록',
+    schema: {
+      example: { // Batch11-Fix: hasMore 제거, total 추가 (contract 기준)
+        items: [
+          {
+            historyId: 5,
+            targetType: 'POST_REPORT',
+            targetId: 7,
+            actorId: 3,
+            actorNickname: '신고자닉',
+            actionType: 'CREATED',
+            note: null,
+            createdAt: '2026-04-01T10:00:00.000Z',
+          },
+        ],
+        nextCursor: 4,
+        total: 15,
+      },
+    },
+  })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  async getReportHistories(
+    @Query() query: ListReportHistoriesQueryDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ListReportHistoriesResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.getReportHistories(adminId!, query);
+  }
+
+  // ─── [Batch12] PATCH /admin/post-reports/:reportId/reopen ────────────────────
+
+  @Patch('post-reports/:reportId/reopen')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '게시글 신고 재오픈 (ADMIN)',
+    description: 'RESOLVED / REJECTED 처리된 신고를 PENDING 으로 되돌립니다. reviewedAt / reviewedById / reviewReason 이 초기화됩니다.',
+  })
+  @ApiParam({ name: 'reportId', type: Number, example: 3, description: '신고 ID' })
+  @ApiBody({ type: ReopenReportDto })
+  @ApiOkResponse({
+    description: '재오픈 완료',
+    schema: {
+      example: { reportId: 3, status: 'PENDING', reopenedAt: '2026-04-23T10:00:00.000Z' },
+    },
+  })
+  @ApiBadRequestResponse({ description: '이미 PENDING 상태인 신고' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  @ApiNotFoundResponse({ description: '신고를 찾을 수 없음' })
+  async reopenPostReport(
+    @Param('reportId', ParseIntPipe) reportId: number,
+    @Body() body: ReopenReportDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ReopenReportResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.reopenPostReport(adminId!, reportId, body);
+  }
+
+  // ─── [Batch12] PATCH /admin/user-reports/:reportId/reopen ────────────────────
+
+  @Patch('user-reports/:reportId/reopen')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '유저 신고 재오픈 (ADMIN)',
+    description: 'RESOLVED / REJECTED 처리된 유저 신고를 PENDING 으로 되돌립니다. reviewedAt / reviewedById / reviewReason 이 초기화됩니다.',
+  })
+  @ApiParam({ name: 'reportId', type: Number, example: 5, description: '유저 신고 ID' })
+  @ApiBody({ type: ReopenReportDto })
+  @ApiOkResponse({
+    description: '재오픈 완료',
+    schema: {
+      example: { reportId: 5, status: 'PENDING', reopenedAt: '2026-04-23T10:00:00.000Z' },
+    },
+  })
+  @ApiBadRequestResponse({ description: '이미 PENDING 상태인 신고' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  @ApiNotFoundResponse({ description: '신고를 찾을 수 없음' })
+  async reopenUserReport(
+    @Param('reportId', ParseIntPipe) reportId: number,
+    @Body() body: ReopenReportDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ReopenReportResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.reopenUserReport(adminId!, reportId, body);
+  }
+
+  // ─── [Batch12] GET /admin/user-sanctions ─────────────────────────────────────
+
+  @Get('user-sanctions')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '유저 제재 목록 조회 (ADMIN) — /admin/sanctions 명세 호환 alias',
+    description: 'userId / type 필터 및 커서 기반 페이지네이션(cursor=마지막 sanctionId)을 지원합니다.',
+  })
+  @ApiQuery({ name: 'userId', required: false, type: Number, description: '대상 사용자 ID 필터' })
+  @ApiQuery({ name: 'type', required: false, enum: ['TEMP_SUSPENSION', 'PERMANENT_BAN', 'POST_RESTRICTION'], description: '제재 유형 필터' })
+  @ApiQuery({ name: 'cursor', required: false, type: Number, description: '마지막 항목 sanctionId' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: '페이지 크기 (기본 20, 최대 100)' })
+  @ApiOkResponse({
+    description: '유저 제재 목록',
+    schema: {
+      example: {
+        items: [
+          {
+            sanctionId: 1,
+            sanctionedUserId: 5,
+            sanctionedUserNickname: '사용자닉',
+            processedById: 2,
+            processedByNickname: '관리자닉',
+            type: 'TEMP_SUSPENSION',
+            reason: '반복 스팸 행위',
+            startsAt: '2026-04-21T00:00:00.000Z',
+            endsAt: '2026-05-21T00:00:00.000Z',
+            createdAt: '2026-04-21T00:00:00.000Z',
+          },
+        ],
+        nextCursor: null,
+        total: 3,
+      },
+    },
+  })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  async getUserSanctions(
+    @Query() query: ListSanctionsQueryDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ListSanctionsResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.getSanctions(adminId!, query);
+  }
+
+  // ─── [Batch12] PATCH /admin/user-sanctions/:sanctionId/end ──────────────────
+
+  @Patch('user-sanctions/:sanctionId/end')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '유저 제재 조기 종료 (ADMIN) — /admin/sanctions/:id/end 명세 호환 alias',
+    description: 'PERMANENT_BAN 제재 종료는 SUPER_ADMIN만 가능합니다. endsAt을 현재 시각으로 업데이트합니다.',
+  })
+  @ApiParam({ name: 'sanctionId', type: Number, example: 1, description: '제재 ID' })
+  @ApiBody({ type: EndSanctionDto })
+  @ApiOkResponse({
+    description: '제재 종료 완료',
+    schema: {
+      example: {
+        sanctionId: 1,
+        endsAt: '2026-04-23T12:00:00.000Z',
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: '이미 종료된 제재' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음 또는 SUPER_ADMIN 전용 작업' })
+  @ApiNotFoundResponse({ description: '제재를 찾을 수 없음' })
+  async endUserSanction(
+    @Param('sanctionId', ParseIntPipe) sanctionId: number,
+    @Body() body: EndSanctionDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<EndSanctionResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.endSanction(adminId!, sanctionId, body);
+  }
+
+  // ─── [Batch12] POST /admin/users/:userId/sanctions/post-restriction ──────────
+
+  @Post('users/:userId/sanctions/post-restriction')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '게시글 제한 제재 생성 (ADMIN)',
+    description: '특정 사용자에게 POST_RESTRICTION 제재를 부여합니다. (type 고정, userId 는 path param)',
+  })
+  @ApiParam({ name: 'userId', type: Number, example: 5, description: '제재 대상 사용자 ID' })
+  @ApiBody({ type: CreateUserRestrictionDto })
+  @ApiOkResponse({
+    description: '게시글 제한 제재 생성 완료',
+    schema: {
+      example: {
+        sanctionId: 2,
+        sanctionedUserId: 5,
+        type: 'POST_RESTRICTION',
+        reason: '부적절한 게시글 반복 게시',
+        startsAt: '2026-04-23T00:00:00.000Z',
+        endsAt: '2026-05-23T00:00:00.000Z',
+        createdAt: '2026-04-23T00:00:00.000Z',
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: '유효성 검사 실패 또는 endsAt이 startsAt보다 이전' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  @ApiNotFoundResponse({ description: '대상 사용자를 찾을 수 없음' })
+  async createPostRestriction(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body() body: CreateUserRestrictionDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<CreateSanctionResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.createSanction(adminId!, {
+      sanctionedUserId: userId,
+      type: 'POST_RESTRICTION',
+      reason: body.reason,
+      startsAt: body.startsAt,
+      endsAt: body.endsAt,
+    });
+  }
+
+  // ─── [Batch12] POST /admin/users/:userId/sanctions/login-restriction ─────────
+
+  @Post('users/:userId/sanctions/login-restriction')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '로그인 제한 제재 생성 (ADMIN)',
+    description: '특정 사용자에게 TEMP_SUSPENSION(로그인 제한) 제재를 부여합니다. (type 고정, userId 는 path param)',
+  })
+  @ApiParam({ name: 'userId', type: Number, example: 5, description: '제재 대상 사용자 ID' })
+  @ApiBody({ type: CreateUserRestrictionDto })
+  @ApiOkResponse({
+    description: '로그인 제한 제재 생성 완료',
+    schema: {
+      example: {
+        sanctionId: 3,
+        sanctionedUserId: 5,
+        type: 'TEMP_SUSPENSION',
+        reason: '반복 욕설 및 스팸 행위',
+        startsAt: '2026-04-23T00:00:00.000Z',
+        endsAt: '2026-05-23T00:00:00.000Z',
+        createdAt: '2026-04-23T00:00:00.000Z',
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: '유효성 검사 실패 또는 endsAt이 startsAt보다 이전' })
+  @ApiForbiddenResponse({ description: '관리자 권한 없음' })
+  @ApiNotFoundResponse({ description: '대상 사용자를 찾을 수 없음' })
+  async createLoginRestriction(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body() body: CreateUserRestrictionDto,
+    @Headers('authorization') authorization?: string,
+  ): Promise<CreateSanctionResponse> {
+    const adminId = this.authTokenService.extractUserIdFromAuthorizationHeader(
+      authorization,
+      { required: true },
+    );
+    return this.adminService.createSanction(adminId!, {
+      sanctionedUserId: userId,
+      type: 'TEMP_SUSPENSION',
+      reason: body.reason,
+      startsAt: body.startsAt,
+      endsAt: body.endsAt,
+    });
+  }
+}

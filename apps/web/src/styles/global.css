@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --app-width: 375px;
+  --app-height: 812px;
+  --app-header-height: 93px;
+  --footer-height: 90px;
+  --footer-offset: 0px;
+  --footer-safe-bottom: calc(
+    var(--footer-height) + var(--footer-offset) + env(safe-area-inset-bottom)
+  );
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
 body {
   @apply bg-gray-50 text-gray-900;
+  margin: 0;
 }

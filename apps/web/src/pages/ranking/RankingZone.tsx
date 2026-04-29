@@ -1,300 +1,618 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Bookmark, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import styles from './RankingZone.module.css';
-import Footer from '../../components/Footer';
+import rankingHeroBanner from '../../assets/ranking/ranking-zone-banner.png';
+import algorithmBanner from '../../assets/ranking/algorithm-banner.png';
 import {
   clearAuthTokens,
   fetcher,
   getAuthHeaders,
-  getRefreshToken,
   resolveAssetUrl,
+  fetchMyBookmarkMap,
+  isAuthError,
+  subscribeBookmarkUpdated,
+  togglePostBookmark,
 } from '../../lib/api';
-import type { GetRankingsResponse, LogoutResponse, RankingItem } from '@codinator/contracts';
+import type {
+  GetPersonalizedRankingsResponse,
+  GetRankingPostDetailResponse,
+  GetRankingsResponse,
+  RankingItem,
+  RankingPeriod,
+} from '@codinator/contracts';
+import Header from '../../components/Header';
+import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
+import FocusScreen from '../../components/focus/FocusScreen';
+import RankingDetail from './RankingDetail';
+import PersonalizedDetail from './PersonalizedDetail';
+import PersonalizedSection, { type PersonalizedFocusItem } from './PersonalizedSection';
 
-type RankingSection = {
-  id: string;
-  title: string;
-  period: 'WEEKLY' | 'MONTHLY';
-  items: RankingItem[];
+type RankingFocusItem = {
+  kind: 'ranking';
+  likeCount: number;
+  dislikeCount: number;
+  bookmarked?: boolean;
+  imageUrl?: string;
+  postId: number;
+  period: RankingPeriod;
+  sectionTitle: 'This Week' | 'This Month';
 };
 
-const RankingZone: React.FC = () => {
-  const navigate = useNavigate();
+type FocusItem = RankingFocusItem | PersonalizedFocusItem;
 
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+type ReportAuthorTarget = {
+  userId: number | string;
+  displayText: string;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function toReportTargetId(value: unknown): number | string | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  return null;
+}
+
+function getStringValue(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function getReportAuthorTarget(value: unknown): ReportAuthorTarget | null {
+  const records: Record<string, unknown>[] = [];
+
+  if (isRecord(value)) {
+    records.push(value);
+
+    const nestedCandidates = [
+      value.author,
+      value.user,
+      value.writer,
+      value.owner,
+      value.creator,
+      value.createdBy,
+      value.authorInfo,
+    ];
+
+    nestedCandidates.forEach((candidate) => {
+      if (isRecord(candidate)) records.push(candidate);
+    });
+  }
+
+  for (const record of records) {
+    const userId =
+      toReportTargetId(record.userId) ??
+      toReportTargetId(record.authorUserId) ??
+      toReportTargetId(record.authorId) ??
+      toReportTargetId(record.id) ??
+      toReportTargetId(record.writerId) ??
+      toReportTargetId(record.ownerId) ??
+      toReportTargetId(record.createdById);
+
+    if (userId === null) continue;
+
+    const displayText =
+      getStringValue(record.nickname) ??
+      getStringValue(record.name) ??
+      getStringValue(record.displayName) ??
+      getStringValue(record.username) ??
+      getStringValue(record.email) ??
+      '사용자';
+
+    return { userId, displayText };
+  }
+
+  return null;
+}
+
+
+function HeroBanner() {
+  return (
+    <section className={`${styles.bannerBlock} ${styles.heroBanner}`} aria-label="랭킹존 배너">
+      <img src={rankingHeroBanner} alt="Ranking Zone banner" className={styles.bannerImage} />
+    </section>
+  );
+}
+
+function RecommendationBanner() {
+  return (
+    <section className={`${styles.bannerBlock} ${styles.recommendBanner}`} aria-label="추천 배너">
+      <img src={algorithmBanner} alt="추천 알고리즘 banner" className={styles.bannerImage} />
+    </section>
+  );
+}
+
+function getPersonalizedContentText(item: PersonalizedFocusItem): string {
+  const raw = item.raw as unknown as Record<string, unknown>;
+  const candidates = [raw.content, raw.caption, raw.description];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  return '코디 설명이 없습니다.';
+}
+
+function RankingCard({
+  item,
+  onCardClick,
+  onToggleBookmark,
+  isBookmarkLoading,
+  isBookmarkPressed,
+}: {
+  item: RankingFocusItem;
+  onCardClick: (item: RankingFocusItem) => void;
+  onToggleBookmark: (e: React.MouseEvent<HTMLButtonElement>, postId: number) => void;
+  isBookmarkLoading: boolean;
+  isBookmarkPressed: boolean;
+}) {
+  return (
+    <article
+      className={`${styles.card} ${isBookmarkPressed ? styles.cardPressed : ''}`}
+      onClick={() => onCardClick(item)}
+    >
+      <div className={`${styles.thumbnail} ${isBookmarkPressed ? styles.thumbnailPressed : ''}`}>
+        {item.imageUrl ? (
+          <img src={item.imageUrl} alt={`ranking-${item.postId}`} className={styles.cardImage} />
+        ) : (
+          <div className={styles.cardImageFallback}>이미지 없음</div>
+        )}
+        <div className={styles.thumbnailGradient} />
+        <button
+          type="button"
+          className={`${styles.bookmarkButton} ${isBookmarkPressed ? styles.bookmarkButtonPressed : ''}`}
+          aria-label={item.bookmarked ? '북마크 해제' : '북마크 추가'}
+          onClick={(e) => onToggleBookmark(e, item.postId)}
+          disabled={isBookmarkLoading}
+        >
+          <Bookmark
+            size={12}
+            strokeWidth={2.2}
+            className={item.bookmarked ? styles.bookmarkFilled : styles.bookmarkDefault}
+            fill={item.bookmarked ? 'currentColor' : 'none'}
+          />
+        </button>
+      </div>
+
+      <div className={styles.statsRow}>
+        <div className={styles.statItem}>
+          <ThumbsUp size={13} strokeWidth={2.2} className={styles.statIcon} />
+          <span className={styles.statText}>{String(item.likeCount).padStart(3, '0')}</span>
+        </div>
+        <div className={styles.statItem}>
+          <ThumbsDown size={13} strokeWidth={2.2} className={styles.statIcon} />
+          <span className={styles.statText}>{String(item.dislikeCount).padStart(3, '0')}</span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function RankingSection({
+  title,
+  items,
+  bookmarkLoadingIds,
+  bookmarkPressedIds,
+  onCardClick,
+  onToggleBookmark,
+  emptyMessage = '게시글이 없습니다.',
+}: {
+  title: string;
+  items: RankingFocusItem[];
+  bookmarkLoadingIds: number[];
+  bookmarkPressedIds: number[];
+  onCardClick: (item: RankingFocusItem, list: RankingFocusItem[]) => void;
+  onToggleBookmark: (e: React.MouseEvent<HTMLButtonElement>, postId: number) => void;
+  emptyMessage?: string;
+}) {
+  return (
+    <section className={styles.section}>
+      <h2 className={styles.sectionTitle}>{title}</h2>
+
+      {items.length > 0 ? (
+        <div className={styles.horizontalScroll}>
+          {items.map((item) => (
+            <RankingCard
+              key={`${item.kind}-${item.sectionTitle}-${item.period}-${item.postId}`}
+              item={item}
+              onCardClick={(clicked) => onCardClick(clicked, items)}
+              onToggleBookmark={onToggleBookmark}
+              isBookmarkLoading={bookmarkLoadingIds.includes(item.postId)}
+              isBookmarkPressed={bookmarkPressedIds.includes(item.postId)}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className={styles.sectionEmpty}>{emptyMessage}</div>
+      )}
+    </section>
+  );
+}
+
+export default function RankingZone() {
+  const navigate = useNavigate();
   const [weeklyRankings, setWeeklyRankings] = useState<RankingItem[]>([]);
   const [monthlyRankings, setMonthlyRankings] = useState<RankingItem[]>([]);
+  const [personalizedRankings, setPersonalizedRankings] = useState<
+    GetPersonalizedRankingsResponse['items']
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [bookmarks, setBookmarks] = useState<Record<number, boolean>>({});
+  const [bookmarkLoadingIds, setBookmarkLoadingIds] = useState<number[]>([]);
+  const [bookmarkPressedIds, setBookmarkPressedIds] = useState<number[]>([]);
+  const [focusOpen, setFocusOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [focusContentMap, setFocusContentMap] = useState<Record<number, string>>({});
+  const [focusAuthorMap, setFocusAuthorMap] = useState<Record<number, ReportAuthorTarget>>({});
+  const [focusIndex, setFocusIndex] = useState(0);
+  const [focusItems, setFocusItems] = useState<FocusItem[]>([]);
+  const bookmarkAnimTimeoutMap = useRef<Record<number, number>>({});
 
-  const [bookmarks, setBookmarks] = useState<Record<string, boolean>>(() => {
-    const saved = localStorage.getItem('codinator_bookmarks');
-    return saved ? (JSON.parse(saved) as Record<string, boolean>) : {};
-  });
+  const moveToLogin = useCallback(() => {
+    clearAuthTokens();
+    navigate('/login', { replace: true });
+  }, [navigate]);
+
+  const loadBookmarks = useCallback(async () => {
+    try {
+      const nextMap = await fetchMyBookmarkMap();
+      setBookmarks(nextMap);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '북마크 정보를 불러오지 못했습니다.';
+      if (isAuthError(message)) moveToLogin();
+    }
+  }, [moveToLogin]);
 
   useEffect(() => {
-    const syncBookmarks = () => {
-      const saved = localStorage.getItem('codinator_bookmarks');
-      setBookmarks(saved ? (JSON.parse(saved) as Record<string, boolean>) : {});
-    };
-
-    syncBookmarks();
-    window.addEventListener('storage', syncBookmarks);
-
-    return () => {
-      window.removeEventListener('storage', syncBookmarks);
-    };
-  }, []);
+    void loadBookmarks();
+  }, [loadBookmarks]);
 
   useEffect(() => {
+    const unsubscribe = subscribeBookmarkUpdated((detail) => {
+      if (!detail) {
+        void loadBookmarks();
+        return;
+      }
+      setBookmarks((prev) => ({ ...prev, [detail.postId]: detail.bookmarked }));
+    });
+    return unsubscribe;
+  }, [loadBookmarks]);
+
+  useEffect(() => {
+    let cancelled = false;
+
     const loadRankings = async () => {
       try {
         setLoading(true);
         setError('');
 
-        const [weeklyData, monthlyData] = await Promise.all([
-          fetcher<GetRankingsResponse>('/rankings?period=WEEKLY', {
-            headers: getAuthHeaders(),
-          }),
-          fetcher<GetRankingsResponse>('/rankings?period=MONTHLY', {
-            headers: getAuthHeaders(),
-          }),
+        const personalizedPromise = fetcher<GetPersonalizedRankingsResponse>(
+          '/rankings/personalized?limit=20',
+          { headers: getAuthHeaders() },
+        ).catch((err) => {
+          const message =
+            err instanceof Error ? err.message : '개인화 추천 데이터를 불러오지 못했습니다.';
+          console.warn(message);
+          return {
+            items: [],
+            nextCursor: null,
+            hasMore: false,
+          } satisfies GetPersonalizedRankingsResponse;
+        });
+
+        const [weeklyData, monthlyData, personalizedData] = await Promise.all([
+          fetcher<GetRankingsResponse>('/rankings?period=WEEKLY', { headers: getAuthHeaders() }),
+          fetcher<GetRankingsResponse>('/rankings?period=MONTHLY', { headers: getAuthHeaders() }),
+          personalizedPromise,
         ]);
+
+        if (cancelled) return;
 
         setWeeklyRankings(weeklyData.items ?? []);
         setMonthlyRankings(monthlyData.items ?? []);
+        setPersonalizedRankings(personalizedData.items ?? []);
       } catch (err) {
-        console.error('랭킹 불러오기 실패:', err);
-
-        const message =
-          err instanceof Error ? err.message : '랭킹 데이터를 불러오지 못했습니다.';
-        setError(message);
-
-        if (
-          message.includes('Unauthorized') ||
-          message.includes('유효하지 않거나 만료된 토큰') ||
-          message.includes('로그인이 필요합니다')
-        ) {
-          clearAuthTokens();
-          navigate('/login');
+        const message = err instanceof Error ? err.message : '랭킹 데이터를 불러오지 못했습니다.';
+        if (isAuthError(message)) {
+          moveToLogin();
           return;
         }
-
-        setWeeklyRankings([]);
-        setMonthlyRankings([]);
+        if (!cancelled) {
+          setError(message);
+          setWeeklyRankings([]);
+          setMonthlyRankings([]);
+          setPersonalizedRankings([]);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     void loadRankings();
-  }, [navigate]);
+    return () => {
+      cancelled = true;
+    };
+  }, [moveToLogin]);
 
-  const handleLogout = async () => {
-    if (!window.confirm('로그아웃 하시겠습니까?')) return;
+  useEffect(() => {
+    return () => {
+      Object.values(bookmarkAnimTimeoutMap.current).forEach((timeoutId) =>
+        window.clearTimeout(timeoutId),
+      );
+    };
+  }, []);
+
+  const triggerBookmarkPress = (postId: number) => {
+    const prevTimeout = bookmarkAnimTimeoutMap.current[postId];
+    if (prevTimeout) window.clearTimeout(prevTimeout);
+    setBookmarkPressedIds((prev) => (prev.includes(postId) ? prev : [...prev, postId]));
+    bookmarkAnimTimeoutMap.current[postId] = window.setTimeout(() => {
+      setBookmarkPressedIds((prev) => prev.filter((id) => id !== postId));
+      delete bookmarkAnimTimeoutMap.current[postId];
+    }, 240);
+  };
+
+  const toggleBookmarkByPostId = async (postId: number) => {
+    if (bookmarkLoadingIds.includes(postId)) return;
+
+    triggerBookmarkPress(postId);
+
+    const isBookmarked = Boolean(bookmarks[postId]);
+    setBookmarkLoadingIds((prev) => [...prev, postId]);
+    setBookmarks((prev) => ({ ...prev, [postId]: !isBookmarked }));
 
     try {
-      const refreshToken = getRefreshToken();
-
-      if (refreshToken) {
-        await fetcher<LogoutResponse>('/auth/logout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken }),
-        });
-      }
+      const nextValue = await togglePostBookmark(postId, isBookmarked);
+      setBookmarks((prev) => ({ ...prev, [postId]: nextValue }));
     } catch (err) {
-      console.error('로그아웃 요청 실패:', err);
+      const message = err instanceof Error ? err.message : '북마크 처리에 실패했습니다.';
+      setBookmarks((prev) => ({ ...prev, [postId]: isBookmarked }));
+      if (isAuthError(message)) {
+        moveToLogin();
+        return;
+      }
+      window.alert(message);
     } finally {
-      clearAuthTokens();
-      navigate('/login');
+      setBookmarkLoadingIds((prev) => prev.filter((id) => id !== postId));
     }
   };
 
-  const handleMovePage = (path: string) => {
-    setIsMenuOpen(false);
-    navigate(path);
-  };
-
-  const toggleBookmark = (e: React.MouseEvent, postId: string) => {
+  const handleToggleBookmark = (e: React.MouseEvent<HTMLButtonElement>, postId: number) => {
+    e.preventDefault();
     e.stopPropagation();
-
-    setBookmarks((prev) => {
-      const next = { ...prev, [postId]: !prev[postId] };
-      localStorage.setItem('codinator_bookmarks', JSON.stringify(next));
-      return next;
-    });
+    void toggleBookmarkByPostId(postId);
   };
 
-  const sections: RankingSection[] = useMemo(
-    () => [
-      { id: 'week', title: 'This Week', period: 'WEEKLY', items: weeklyRankings },
-      { id: 'month', title: 'This Month', period: 'MONTHLY', items: monthlyRankings },
-    ],
-    [weeklyRankings, monthlyRankings],
+  const convertRankingItem = (
+    post: RankingItem,
+    period: RankingPeriod,
+    sectionTitle: 'This Week' | 'This Month',
+  ): RankingFocusItem => ({
+    kind: 'ranking',
+    likeCount: post.likeCount ?? 0,
+    dislikeCount: post.dislikeCount ?? 0,
+    bookmarked: Boolean(bookmarks[post.postId]),
+    imageUrl: resolveAssetUrl(post.thumbnailUrl),
+    postId: post.postId,
+    period,
+    sectionTitle,
+  });
+
+  const convertPersonalizedItem = (
+    post: GetPersonalizedRankingsResponse['items'][number],
+  ): PersonalizedFocusItem => ({
+    kind: 'personalized',
+    likeCount: post.likeCount ?? 0,
+    dislikeCount: post.dislikeCount ?? 0,
+    bookmarked: Boolean(bookmarks[post.postId]),
+    imageUrl: resolveAssetUrl(post.thumbnailUrl),
+    postId: post.postId,
+    sectionTitle: 'For You',
+    raw: post,
+  });
+
+  const weeklyItems = useMemo(
+    () => weeklyRankings.map((post) => convertRankingItem(post, 'WEEKLY', 'This Week')),
+    [weeklyRankings, bookmarks],
   );
+
+  const monthlyItems = useMemo(
+    () => monthlyRankings.map((post) => convertRankingItem(post, 'MONTHLY', 'This Month')),
+    [monthlyRankings, bookmarks],
+  );
+
+  const personalizedItems = useMemo(
+    () => personalizedRankings.map(convertPersonalizedItem),
+    [personalizedRankings, bookmarks],
+  );
+
+  const focusedItem = focusItems[focusIndex] ?? null;
+
+  const focusedContentText = focusedItem
+    ? (focusContentMap[focusedItem.postId] ?? '내용 불러오는 중...')
+    : '';
+  const focusedReportAuthor = focusedItem
+    ? focusAuthorMap[focusedItem.postId] ??
+      (focusedItem.kind === 'personalized' ? getReportAuthorTarget(focusedItem.raw) : null)
+    : null;
+
+  useEffect(() => {
+    if (!focusOpen || !focusedItem || focusContentMap[focusedItem.postId]) return;
+
+    if (focusedItem.kind === 'personalized') {
+      setFocusContentMap((prev) => ({
+        ...prev,
+        [focusedItem.postId]: getPersonalizedContentText(focusedItem),
+      }));
+
+      const authorTarget = getReportAuthorTarget(focusedItem.raw);
+      if (authorTarget) {
+        setFocusAuthorMap((prev) => ({
+          ...prev,
+          [focusedItem.postId]: authorTarget,
+        }));
+      }
+
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadFocusContent = async () => {
+      try {
+        const data = await fetcher<GetRankingPostDetailResponse>(
+          `/rankings/posts/${focusedItem.postId}?period=${focusedItem.period}`,
+          { headers: getAuthHeaders() },
+        );
+
+        if (cancelled) return;
+
+        const nextContent = data.content?.trim() || '코디 설명이 없습니다.';
+        const authorTarget = getReportAuthorTarget(data);
+
+        setFocusContentMap((prev) => ({ ...prev, [focusedItem.postId]: nextContent }));
+        if (authorTarget) {
+          setFocusAuthorMap((prev) => ({ ...prev, [focusedItem.postId]: authorTarget }));
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '';
+        if (isAuthError(message)) {
+          clearAuthTokens();
+          moveToLogin();
+          return;
+        }
+
+        if (!cancelled) {
+          setFocusContentMap((prev) => ({
+            ...prev,
+            [focusedItem.postId]: '코디 설명이 없습니다.',
+          }));
+        }
+      }
+    };
+
+    void loadFocusContent();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [focusOpen, focusedItem, focusContentMap, moveToLogin]);
+
+  const handleCardClick = (item: FocusItem, list: FocusItem[]) => {
+    const nextIndex = list.findIndex((candidate) => candidate.postId === item.postId);
+    setFocusItems(list);
+    setFocusIndex(nextIndex >= 0 ? nextIndex : 0);
+    setSheetOpen(false);
+    setFocusOpen(true);
+  };
+
+  const totalCount = (focusedItem?.likeCount ?? 0) + (focusedItem?.dislikeCount ?? 0);
+  const likePercent =
+    totalCount > 0 ? Math.round(((focusedItem?.likeCount ?? 0) / totalCount) * 100) : 0;
+  const dislikePercent = totalCount > 0 ? 100 - likePercent : 0;
 
   return (
     <div className={styles.container}>
-      <div className={`${styles.drawer} ${isMenuOpen ? styles.drawerOpen : ''}`}>
-        <div className={styles.drawerHeader}>
-          <div className={styles.profileSection}>
-            <div className={styles.profileCircle} />
-            <span className={styles.profileName}>내 프로필</span>
-          </div>
-
-          <button
-            type="button"
-            className={styles.closeBtn}
-            onClick={() => setIsMenuOpen(false)}
-          >
-            ✕
-          </button>
-        </div>
-
-        <nav className={styles.drawerNav}>
-          <div className={styles.navItem} onClick={() => handleMovePage('/myFeeds')}>
-            내 피드
-          </div>
-
-          <div className={styles.navItem} onClick={() => handleMovePage('/postUpload')}>
-            게시글 작성
-          </div>
-
-          <div className={styles.navItem} onClick={() => handleMovePage('/evaluationZone')}>
-            평가 존
-          </div>
-
-          <div className={`${styles.navItem} ${styles.logoutBtn}`} onClick={handleLogout}>
-            로그아웃
-          </div>
-        </nav>
-      </div>
-
-      {isMenuOpen && <div className={styles.overlay} onClick={() => setIsMenuOpen(false)} />}
-
+      <Header />
       <div className={styles.contentArea}>
-        <header className={styles.header}>
-          <div className={styles.logo}>C:dinator</div>
-
-          <button
-            type="button"
-            className={styles.menuBtn}
-            onClick={() => setIsMenuOpen(true)}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M4 6H20" stroke="black" strokeWidth="2" strokeLinecap="round" />
-              <path d="M4 12H20" stroke="black" strokeWidth="2" strokeLinecap="round" />
-              <path d="M4 18H20" stroke="black" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </button>
-        </header>
-
-        <div className={styles.divider} />
+        <HeroBanner />
 
         {loading ? (
-          <div className={styles.loadingBox}>데이터 불러오는 중...</div>
+          <div className={styles.messageBox}>데이터 불러오는 중...</div>
         ) : error ? (
-          <div className={styles.loadingBox}>{error}</div>
+          <div className={styles.messageBox}>{error}</div>
         ) : (
-          sections.map((section) => (
-            <section key={section.id} className={styles.section}>
-              <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>{section.title}</h2>
-              </div>
-
-              <div className={styles.horizontalScroll}>
-                {section.items.length > 0 ? (
-                  section.items.map((post) => {
-                    const postId = String(post.postId);
-                    const isBookmarked = !!bookmarks[postId];
-                    const imageUrl = resolveAssetUrl(post.thumbnailUrl);
-
-                    return (
-                      <div
-                        key={`${section.period}-${post.postId}`}
-                        className={styles.card}
-                        onClick={() =>
-                          navigate(`/rankingDetail/${post.postId}?period=${section.period}`)
-                        }
-                        style={{
-                          position: 'relative',
-                          overflow: 'hidden',
-                          borderRadius: '24px',
-                          cursor: 'pointer',
-                          backgroundColor: '#f4f4f4',
-                        }}
-                      >
-                        {imageUrl ? (
-                          <img
-                            src={imageUrl}
-                            alt={`ranking-${post.rank}`}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                              display: 'block',
-                            }}
-                          />
-                        ) : (
-                          <div
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: '#999',
-                              fontSize: '12px',
-                              background: '#f3f3f3',
-                            }}
-                          >
-                            이미지 없음
-                          </div>
-                        )}
-
-                        <button
-                          type="button"
-                          className={styles.heartIcon}
-                          onClick={(e) => toggleBookmark(e, postId)}
-                          aria-label="북마크"
-                          style={{
-                            position: 'absolute',
-                            top: '10px',
-                            right: '10px',
-                            width: '24px',
-                            height: '24px',
-                            border: 'none',
-                            background: 'transparent',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            padding: 0,
-                          }}
-                        >
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                            <path
-                              d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.03L12 21.35Z"
-                              fill={isBookmarked ? '#FF3B30' : '#D1D5DB'}
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className={styles.loadingBox}>표시할 랭킹이 없습니다.</div>
-                )}
-              </div>
-            </section>
-          ))
+          <>
+            <RankingSection
+              title="This Week"
+              items={weeklyItems}
+              bookmarkLoadingIds={bookmarkLoadingIds}
+              bookmarkPressedIds={bookmarkPressedIds}
+              onCardClick={handleCardClick}
+              onToggleBookmark={handleToggleBookmark}
+            />
+            <RankingSection
+              title="This Month"
+              items={monthlyItems}
+              bookmarkLoadingIds={bookmarkLoadingIds}
+              bookmarkPressedIds={bookmarkPressedIds}
+              onCardClick={handleCardClick}
+              onToggleBookmark={handleToggleBookmark}
+            />
+            <RecommendationBanner />
+            <PersonalizedSection
+              title="For You"
+              items={personalizedItems}
+              bookmarkLoadingIds={bookmarkLoadingIds}
+              bookmarkPressedIds={bookmarkPressedIds}
+              onCardClick={handleCardClick}
+              onToggleBookmark={handleToggleBookmark}
+              emptyMessage="추천 게시글이 아직 없어요."
+            />
+          </>
         )}
       </div>
 
-      <Footer />
+      {focusOpen && focusedItem ? (
+        <FocusScreen
+          isOpen={focusOpen}
+          items={focusItems.map((item) => ({
+            id: `${item.kind}-${item.sectionTitle}-${item.postId}`,
+            imageUrl: item.imageUrl,
+          }))}
+          activeIndex={focusIndex}
+          onActiveIndexChange={(nextIndex) => {
+            setFocusIndex(nextIndex);
+            setSheetOpen(false);
+          }}
+          onClose={() => {
+            setSheetOpen(false);
+            setFocusOpen(false);
+          }}
+          sheetOpen={sheetOpen}
+          onCloseSheet={() => setSheetOpen(false)}
+          showVoteGraph
+          likePercent={likePercent}
+          dislikePercent={dislikePercent}
+          showDetailButton
+          detailLabel="상세보기"
+          showActionCounts
+          likeCount={focusedItem.likeCount}
+          dislikeCount={focusedItem.dislikeCount}
+          showBookmarkButton
+          isBookmarked={Boolean(bookmarks[focusedItem.postId])}
+          bookmarkDisabled={bookmarkLoadingIds.includes(focusedItem.postId)}
+          onBookmarkClick={() => void toggleBookmarkByPostId(focusedItem.postId)}
+          reportPostId={focusedItem.postId}
+          reportDisplayText={focusedContentText}
+          reportAuthorUserId={focusedReportAuthor?.userId ?? null}
+          reportAuthorDisplayText={focusedReportAuthor?.displayText ?? null}
+          contentText={focusedContentText}
+          onOpenDetail={() => setSheetOpen(true)}
+        >
+          {sheetOpen ? (
+            <PostDetailBottomSheet isOpen={sheetOpen} onCloseRequest={() => setSheetOpen(false)}>
+              {focusedItem.kind === 'ranking' ? (
+                <RankingDetail postId={focusedItem.postId} period={focusedItem.period} />
+              ) : (
+                <PersonalizedDetail item={focusedItem.raw} />
+              )}
+            </PostDetailBottomSheet>
+          ) : null}
+        </FocusScreen>
+      ) : null}
     </div>
   );
-};
-
-export default RankingZone;
+}

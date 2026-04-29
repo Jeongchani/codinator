@@ -1,0 +1,317 @@
+.overlay {
+  @apply fixed inset-0 z-[220] flex items-end justify-center;
+  pointer-events: auto;
+}
+
+.backdrop {
+  @apply absolute inset-0 border-0 bg-black/20 p-0;
+  animation: backdropFadeIn 180ms ease-out both;
+}
+
+.backdropClosing {
+  pointer-events: none;
+  animation: backdropFadeOut 240ms ease-out both;
+}
+
+.sheet {
+  @apply relative z-[1] flex w-full max-w-[var(--app-width)] flex-col overflow-hidden rounded-t-[28px] bg-white shadow-[0_-16px_36px_rgba(0,0,0,0.14)];
+  height: min(622px, calc(var(--app-height) - 22px));
+  touch-action: pan-y;
+  transition: transform 260ms cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+}
+
+.sheetDragging {
+  transition: none;
+}
+
+@keyframes backdropFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes backdropFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+
+.dragArea {
+  @apply flex h-8 shrink-0 cursor-grab items-center justify-center;
+  touch-action: none;
+  user-select: none;
+}
+
+.dragHandle {
+  @apply h-1.5 w-12 rounded-full bg-stone-300;
+}
+
+.tabScrollArea {
+  @apply shrink-0 overflow-x-auto overflow-y-hidden px-4 pt-2;
+  scrollbar-width: none;
+}
+
+.tabScrollArea::-webkit-scrollbar,
+.sheetContent::-webkit-scrollbar,
+.appliedChipRow::-webkit-scrollbar {
+  display: none;
+}
+
+.tabRow {
+  @apply relative flex w-max items-center gap-8 pb-3;
+}
+
+.tabButton {
+  @apply h-[30px] shrink-0 border-0 bg-transparent p-0 text-[15px] font-normal leading-5 text-black transition-colors duration-200;
+}
+
+.tabButtonActive {
+  @apply text-black;
+}
+
+.tabIndicator {
+  @apply absolute left-0 h-px bg-black transition-all duration-300 ease-out;
+  bottom: 7px;
+}
+
+.sheetContent {
+  @apply min-h-0 flex-1 overflow-y-auto px-4 pt-6;
+  scrollbar-width: none;
+}
+
+.filterPanel {
+  @apply min-h-[260px];
+}
+
+.optionRowSingleLine {
+  @apply flex w-full flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden;
+  scrollbar-width: none;
+}
+
+.optionRowSingleLine::-webkit-scrollbar {
+  display: none;
+}
+
+.optionRowMultiline {
+  @apply flex flex-wrap items-center gap-x-3 gap-y-4;
+}
+
+.optionChip {
+  @apply flex h-[30px] shrink-0 items-center justify-center rounded-[10px] border border-stone-300 bg-white px-3 text-xs font-normal leading-4 text-neutral-900 transition-colors duration-150;
+  min-width: 60px;
+}
+
+.optionChipActive {
+  @apply border-black bg-black text-white;
+}
+
+.detailBlock {
+  @apply mt-8;
+}
+
+.detailTitle {
+  @apply m-0 text-xs font-normal leading-4 text-black;
+}
+
+.dateRangeBox {
+  @apply mt-5 flex items-center gap-2;
+}
+
+.dateBox {
+  @apply flex h-10 min-w-0 flex-1 items-center gap-1 rounded-[10px] border border-stone-300 bg-white px-2 text-xs font-normal leading-4 text-black;
+}
+
+.dateDash {
+  @apply shrink-0 text-sm font-normal text-neutral-500;
+}
+
+.dateIcon {
+  @apply shrink-0 text-[#999999];
+}
+
+.dateInput {
+  @apply h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-xs font-normal leading-4 text-black outline-none;
+}
+
+.rangeInput {
+  @apply mt-8 h-8 w-full cursor-pointer appearance-none bg-transparent;
+}
+
+.rangeInput::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 999px;
+  background: #999999;
+}
+
+.rangeInput::-webkit-slider-thumb {
+  width: 26px;
+  height: 26px;
+  margin-top: -10.5px;
+  appearance: none;
+  border: 3px solid #ffffff;
+  border-radius: 999px;
+  background: #000000;
+}
+
+.rangeInput::-moz-range-track {
+  height: 5px;
+  border-radius: 999px;
+  background: #999999;
+}
+
+.rangeInput::-moz-range-thumb {
+  width: 26px;
+  height: 26px;
+  border: 3px solid #ffffff;
+  border-radius: 999px;
+  background: #000000;
+}
+
+.rangeLabelRow {
+  @apply mt-3 flex items-center justify-between text-xs font-normal leading-4 text-black;
+}
+
+.keywordSearchBox {
+  @apply mb-6 flex h-9 w-full items-center gap-2 rounded-[10px] border border-neutral-400 bg-white px-4;
+}
+
+.keywordSearchIcon {
+  @apply shrink-0 text-[#999999];
+}
+
+.keywordInput {
+  @apply h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-[15px] font-normal leading-5 text-black outline-none placeholder:text-neutral-400;
+}
+
+.emptyText {
+  @apply mt-5 text-xs font-normal leading-4 text-neutral-400;
+}
+
+.feedbackSection {
+  @apply mb-8;
+}
+
+.feedbackTitle {
+  @apply m-0 text-xs font-normal leading-4 text-black;
+}
+
+.feedbackDivider {
+  @apply mt-5 h-px w-full bg-stone-300;
+}
+
+.feedbackTagGrid {
+  @apply mt-5 flex flex-wrap items-center gap-x-4 gap-y-4;
+}
+
+.appliedArea {
+  @apply shrink-0 bg-white px-4 pb-6 pt-3;
+}
+
+.appliedDivider {
+  @apply h-px w-full bg-stone-300;
+}
+
+.appliedTitle {
+  @apply m-0 mt-4 text-xs font-normal leading-4 text-neutral-900;
+}
+
+.appliedChipRow {
+  @apply mt-5 flex min-h-[30px] flex-nowrap items-center gap-2.5 overflow-x-auto overflow-y-hidden;
+  scrollbar-width: none;
+}
+
+.appliedChip {
+  @apply flex h-[30px] shrink-0 items-center justify-center gap-[5px] rounded-[10px] border border-stone-300 bg-zinc-100 px-3 text-xs font-normal leading-4 text-neutral-900;
+}
+
+.appliedChip span {
+  @apply max-w-[150px] truncate;
+}
+
+.appliedChip svg {
+  @apply shrink-0 text-[#999999];
+}
+
+.emptyAppliedText {
+  @apply m-0 mt-5 text-xs font-normal leading-4 text-neutral-400;
+}
+
+.actionRow {
+  @apply mt-7 flex items-center gap-2;
+}
+
+.resetButton,
+.applyButton {
+  @apply flex h-10 flex-1 items-center justify-center rounded-[10px] text-xs font-normal leading-4;
+}
+
+.resetButton {
+  @apply border border-stone-300 bg-white text-neutral-900;
+}
+
+.applyButton {
+  @apply border border-black bg-black text-white;
+}
+
+:global(html.dark) .sheet,
+:global(html.dark) .appliedArea,
+:global(html.dark) .optionChip,
+:global(html.dark) .dateBox,
+:global(html.dark) .keywordSearchBox,
+:global(html.dark) .resetButton {
+  background: var(--app-surface);
+  color: var(--app-text);
+  border-color: var(--app-border);
+}
+
+:global(html.dark) .dragHandle,
+:global(html.dark) .feedbackDivider,
+:global(html.dark) .appliedDivider {
+  background: var(--app-border);
+}
+
+:global(html.dark) .tabButton,
+:global(html.dark) .detailTitle,
+:global(html.dark) .rangeLabelRow,
+:global(html.dark) .keywordInput,
+:global(html.dark) .feedbackTitle,
+:global(html.dark) .appliedTitle,
+:global(html.dark) .dateInput {
+  color: var(--app-text-strong);
+}
+
+:global(html.dark) .optionChipActive,
+:global(html.dark) .applyButton {
+  background: var(--app-text-strong);
+  color: var(--app-surface);
+  border-color: var(--app-text-strong);
+}
+
+:global(html.dark) .tabIndicator,
+:global(html.dark) .rangeInput::-webkit-slider-thumb,
+:global(html.dark) .rangeInput::-moz-range-thumb {
+  background: var(--app-text-strong);
+}
+
+:global(html.dark) .dateIcon,
+:global(html.dark) .keywordSearchIcon,
+:global(html.dark) .appliedChip svg,
+:global(html.dark) .keywordInput::placeholder,
+:global(html.dark) .emptyText,
+:global(html.dark) .emptyAppliedText {
+  color: var(--app-text-secondary);
+}
+
+:global(html.dark) .appliedChip {
+  background: var(--app-surface-muted);
+  color: var(--app-text);
+  border-color: var(--app-border);
+}

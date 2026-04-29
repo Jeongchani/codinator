@@ -1,7 +1,6 @@
-version: '3.8'
 services:
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-codinator}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-codinator_pw}

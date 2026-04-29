@@ -1,0 +1,401 @@
+.page {
+  @apply bg-white overflow-hidden flex flex-col;
+  width: var(--app-width);
+  height: var(--app-height);
+  color: #111111;
+}
+
+
+
+
+
+
+.scrollArea {
+  @apply flex-1 min-h-0 overflow-y-auto overflow-x-hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.scrollArea::-webkit-scrollbar,
+.filterScrollArea::-webkit-scrollbar {
+  display: none;
+}
+
+.contentArea {
+  @apply px-4 pb-4;
+}
+
+.modeSwitch {
+  @apply relative grid grid-cols-2 items-center overflow-hidden rounded-[10px] bg-zinc-100 p-0.5;
+  width: 343px;
+  height: 40px;
+}
+
+.modeSwitchThumb {
+  @apply absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-[10px] bg-white border border-stone-300 shadow-sm transition-transform duration-300 ease-out;
+  left: 2px;
+}
+
+.modeSwitchThumbText {
+  transform: translateX(0);
+}
+
+.modeSwitchThumbImage {
+  transform: translateX(100%);
+}
+
+.modeButton {
+  @apply relative z-10 h-full rounded-[10px] border-0 bg-transparent p-0 text-center text-[15px] font-normal leading-5 text-neutral-400 transition-colors duration-200;
+}
+
+.modeButtonActive {
+  @apply text-neutral-900;
+}
+
+.textSearchSection {
+  @apply pt-3;
+}
+
+.textSearchRow {
+  @apply flex items-center gap-3;
+}
+
+.searchInputBox {
+  @apply flex h-10 min-w-0 flex-1 items-center justify-between gap-2 rounded-[10px] border border-stone-300 bg-white px-2.5;
+}
+
+.searchInputIcon {
+  @apply shrink-0 text-[#999999];
+}
+
+.searchInput {
+  @apply h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-xs font-normal leading-4 text-neutral-900 outline-none placeholder:text-neutral-400;
+}
+
+.clearInputButton {
+  @apply flex h-5 w-5 shrink-0 items-center justify-center border-0 bg-transparent p-0 text-[#999999];
+}
+
+.scopeButton {
+  @apply shrink-0;
+}
+
+.filterScrollArea {
+  @apply mt-3 overflow-x-auto overflow-y-hidden;
+  width: calc(var(--app-width) - 32px);
+  scrollbar-width: none;
+}
+
+.filterRow {
+  @apply flex w-max items-center gap-2.5 pr-4;
+}
+
+.filterButton {
+  @apply flex h-[30px] shrink-0 items-center justify-center gap-[5px] rounded-[10px] border border-stone-300 bg-white px-3 text-xs font-normal leading-4 text-neutral-900;
+}
+
+.filterButton svg {
+  @apply shrink-0 text-[#999999];
+}
+
+.divider {
+  @apply mt-5 h-px w-full bg-stone-300;
+}
+
+.recentHeaderRow {
+  @apply mt-6 flex items-center justify-between;
+}
+
+.recentTitle {
+  @apply m-0 text-xs font-normal leading-4 text-neutral-900;
+}
+
+.clearAllButton {
+  @apply border-0 bg-transparent p-0 text-center text-xs font-normal leading-4 text-neutral-900;
+}
+
+.recentChipRow {
+  @apply mt-6 flex flex-wrap items-center gap-2.5;
+}
+
+.recentChip {
+  @apply flex h-[30px] items-center justify-center gap-[5px] rounded-[10px] border border-stone-300 bg-zinc-100 px-2.5 text-xs font-normal leading-4 text-neutral-900;
+}
+
+.recentChipTextButton {
+  @apply border-0 bg-transparent p-0 text-xs font-normal leading-4 text-neutral-900;
+}
+
+.recentChipRemove {
+  @apply flex h-5 w-5 items-center justify-center border-0 bg-transparent p-0 text-[#999999];
+}
+
+.emptyRecentText {
+  @apply mt-5 text-xs font-normal leading-4 text-neutral-400;
+}
+
+.imageSearchSection {
+  @apply pt-6;
+}
+
+.fileInput {
+  @apply hidden;
+}
+
+.imageUploadBox {
+  @apply flex h-[104px] w-full items-center justify-center rounded-[10px] border border-stone-300 bg-white p-3;
+}
+
+.imageUploadInner {
+  @apply flex h-20 w-full items-center gap-6 rounded-[10px] border border-dashed border-neutral-400 bg-zinc-100 px-5;
+}
+
+.imagePlusIcon {
+  @apply shrink-0 text-[#cccccc];
+}
+
+.imageUploadText {
+  @apply text-left text-xs font-normal leading-4 text-neutral-400;
+}
+
+.imageResultBox {
+  @apply flex h-[104px] w-full items-center gap-2 rounded-[10px] border border-stone-300 bg-white px-4;
+}
+
+.uploadedImageWrap {
+  @apply flex h-[88px] w-[62px] shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-zinc-100;
+}
+
+.uploadedImage {
+  @apply block h-full w-full rounded-[10px] object-cover;
+}
+
+.imageResultCopy {
+  @apply min-w-0 flex-1;
+}
+
+.imageResultTitle {
+  @apply m-0 text-[12px] font-semibold leading-[18px] text-neutral-900;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+  word-break: keep-all;
+  letter-spacing: -0.02em;
+}
+
+.imageResultDescription {
+  @apply m-0 mt-1 text-[11px] font-normal leading-[15px] text-neutral-400;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+  word-break: keep-all;
+  letter-spacing: -0.01em;
+}
+
+.changeImageButton {
+  @apply flex h-[32px] w-[70px] shrink-0 items-center justify-center rounded-[10px] border border-stone-300 bg-white px-1.5 text-[11px] font-normal leading-4 text-neutral-900;
+}
+
+.resultSection {
+  @apply mt-6;
+}
+
+.imageSearchSection + .resultSection {
+  @apply mt-3;
+}
+
+.resultCount {
+  @apply m-0 text-xs font-normal leading-4 text-neutral-400;
+}
+
+.userResultList {
+  @apply mt-7 flex flex-col gap-2.5;
+}
+
+.userResultCard {
+  @apply flex h-[70px] w-full items-center gap-3 rounded-[14px] border border-stone-300 bg-white px-4 text-left;
+}
+
+.userAvatar {
+  @apply flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-200;
+}
+
+.userAvatarImage {
+  @apply h-full w-full object-cover;
+}
+
+.userResultCopy {
+  @apply flex min-w-0 flex-col justify-center;
+}
+
+.userNickname {
+  @apply truncate text-[14px] font-semibold leading-5 text-neutral-900;
+}
+
+.userFeedLinkText {
+  @apply mt-0.5 truncate text-[12px] font-normal leading-4 text-neutral-400;
+}
+
+.resultGrid {
+  @apply mt-7 grid grid-cols-3 gap-x-2 gap-y-2;
+}
+
+.resultGridAfterUsers {
+  @apply mt-4;
+}
+
+.resultCard {
+  @apply relative h-[152px] overflow-hidden rounded-[10px] border-0 bg-zinc-300 p-0;
+}
+
+.resultGradient {
+  @apply absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-black/0 to-black/25;
+}
+
+.footerSpacer {
+  @apply shrink-0;
+  height: 90px;
+}
+
+:global(html.dark) .page,
+:global(html.dark) .header,
+:global(html.dark) .contentArea,
+:global(html.dark) .scrollArea {
+  background: var(--app-surface);
+  color: var(--app-text);
+}
+
+:global(html.dark) .backButton,
+:global(html.dark) .menuButton,
+:global(html.dark) .searchInputIcon,
+:global(html.dark) .clearInputButton,
+:global(html.dark) .recentChipRemove,
+:global(html.dark) .filterButton svg,
+:global(html.dark) .imagePlusIcon {
+  color: var(--app-text-secondary);
+}
+
+:global(html.dark) .modeSwitch,
+:global(html.dark) .recentChip,
+:global(html.dark) .imageUploadInner {
+  background: var(--app-surface-muted);
+  border-color: var(--app-border);
+}
+
+:global(html.dark) .modeSwitchThumb,
+:global(html.dark) .searchInputBox,
+:global(html.dark) .filterButton,
+:global(html.dark) .imageUploadBox,
+:global(html.dark) .imageResultBox,
+:global(html.dark) .changeImageButton,
+:global(html.dark) .userResultCard {
+  background: var(--app-surface);
+  border-color: var(--app-border);
+  color: var(--app-text);
+}
+
+:global(html.dark) .modeButton,
+:global(html.dark) .searchInput::placeholder,
+:global(html.dark) .emptyRecentText,
+:global(html.dark) .imageUploadText,
+:global(html.dark) .imageResultDescription,
+:global(html.dark) .resultCount,
+:global(html.dark) .userFeedLinkText {
+  color: var(--app-text-secondary);
+}
+
+:global(html.dark) .modeButtonActive,
+:global(html.dark) .searchInput,
+:global(html.dark) .filterButton,
+:global(html.dark) .recentTitle,
+:global(html.dark) .clearAllButton,
+:global(html.dark) .recentChip,
+:global(html.dark) .recentChipTextButton,
+:global(html.dark) .imageResultTitle,
+:global(html.dark) .changeImageButton,
+:global(html.dark) .userNickname {
+  color: var(--app-text-strong);
+}
+
+:global(html.dark) .divider {
+  background: var(--app-border);
+}
+
+:global(html.dark) .resultCard,
+:global(html.dark) .uploadedImageWrap,
+:global(html.dark) .userAvatar {
+  background: var(--app-surface-muted);
+}
+
+.filterButtonActive {
+  @apply border-black bg-black text-white;
+}
+
+.filterButtonActive svg {
+  @apply text-white;
+}
+
+:global(html.dark) .filterButtonActive {
+  background: var(--app-text-strong);
+  color: var(--app-surface);
+  border-color: var(--app-text-strong);
+}
+
+:global(html.dark) .filterButtonActive svg {
+  color: var(--app-surface);
+}
+
+.searchInputButton {
+  @apply flex h-5 w-5 shrink-0 items-center justify-center border-0 bg-transparent p-0 text-[#999999];
+}
+
+.scopeWrap {
+  @apply relative shrink-0;
+}
+
+.scopeMenu {
+  @apply absolute right-0 top-11 z-20 w-[132px] rounded-[14px] border border-stone-300 bg-white p-1.5 shadow-lg;
+}
+
+.scopeOption {
+  @apply flex h-9 w-full items-center justify-between rounded-[10px] border-0 bg-transparent px-3 text-left text-xs font-normal leading-4 text-neutral-700;
+}
+
+.scopeOptionActive {
+  @apply bg-zinc-100 text-black;
+}
+
+.resultImage {
+  @apply h-full w-full object-cover;
+}
+
+.resultErrorText {
+  @apply mt-3 text-xs font-normal leading-4 text-red-500;
+}
+
+.resultEmptyText {
+  @apply mt-8 text-center text-xs font-normal leading-4 text-neutral-400;
+}
+
+.resultLoadingText {
+  @apply mt-3 text-xs font-normal leading-4 text-neutral-400;
+}
+
+:global(html.dark) .scopeMenu {
+  background: var(--app-surface);
+  border-color: var(--app-border);
+  box-shadow: 0 12px 30px var(--app-shadow-soft);
+}
+
+:global(html.dark) .scopeOption {
+  color: var(--app-text-secondary);
+}
+
+:global(html.dark) .scopeOptionActive {
+  background: var(--app-surface-muted);
+  color: var(--app-text-strong);
+}
+
+:global(html.dark) .searchInputButton {
+  color: var(--app-text-secondary);
+}

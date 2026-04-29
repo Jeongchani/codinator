@@ -1,0 +1,4 @@
+/*
+ * PersonalizedDetail now reuses the shared ranking bottom-sheet content.
+ * This module intentionally stays empty so old personalized-only bottom-sheet styles are removed.
+ */

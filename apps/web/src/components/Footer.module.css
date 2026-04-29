@@ -1,0 +1,78 @@
+.footerWrap {
+  width: var(--app-width, 375px);
+  max-width: 100%;
+  height: var(--footer-height, 90px);
+  pointer-events: none;
+  background: #ffffff;
+}
+
+.footer {
+  @apply relative w-full overflow-hidden;
+  pointer-events: auto;
+  height: var(--footer-height, 90px);
+  padding: 12px 32px 0;
+  background: #ffffff;
+  border-top: 1px solid #e5e7eb;
+  box-shadow: none;
+}
+
+.inner {
+  @apply flex items-start justify-between;
+  width: 100%;
+  height: 56px;
+  gap: 40px;
+}
+
+.menuButton {
+  @apply flex flex-col items-center justify-start bg-transparent border-0 p-0 cursor-pointer shrink-0;
+  width: 30px;
+  min-width: 30px;
+  height: 56px;
+  gap: 4px;
+  color: #9ca3af;
+  opacity: 1;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color 0.16s ease,
+    transform 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.menuButton:active {
+  transform: scale(0.96);
+}
+
+.menuButtonActive {
+  color: #111827;
+  opacity: 1;
+}
+
+.icon {
+  @apply shrink-0;
+  width: 18px;
+  height: 18px;
+  color: currentColor;
+  transition:
+    color 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.iconActive {
+  color: currentColor;
+}
+
+.label {
+  @apply text-[10px] font-medium text-center break-keep whitespace-nowrap;
+  line-height: 1;
+  color: currentColor;
+  letter-spacing: -0.04em;
+  transition:
+    color 0.16s ease,
+    opacity 0.16s ease,
+    font-weight 0.16s ease;
+}
+
+.labelActive {
+  @apply font-semibold;
+  color: currentColor;
+}
