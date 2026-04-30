@@ -70,10 +70,10 @@ export class SettingsService {
     }
 
     for (const k of keys) {
-      if ((body as any)[k] === null) {
-        throw new BadRequestException(`${k} 값은 null일 수 없습니다.`);
-      }
-    }
+  if (body[k] === null) {
+    throw new BadRequestException(`${k} 값은 null일 수 없습니다.`);
+  }
+}
 
     const data: Partial<{
       theme: ThemeMode;

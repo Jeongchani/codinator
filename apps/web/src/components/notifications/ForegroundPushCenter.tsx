@@ -173,16 +173,27 @@ export default function ForegroundPushCenter() {
   }, [clearCloseTimer, clearDismissTimer]);
 
   useEffect(() => {
-    if (active || queue.length === 0) {
+  if (active || queue.length === 0) {
+    return;
+  }
+
+  const timerId = window.setTimeout(() => {
+    const next = queue[0];
+
+    if (!next) {
       return;
     }
 
-    const next = queue[0];
     setActive(next);
     setQueue((prev) => prev.slice(1));
     setIsClosing(false);
     resetGesture();
-  }, [active, queue, resetGesture]);
+  }, 0);
+
+  return () => {
+    window.clearTimeout(timerId);
+  };
+}, [active, queue, resetGesture]);
 
   useEffect(() => {
     if (!active || isClosing) {

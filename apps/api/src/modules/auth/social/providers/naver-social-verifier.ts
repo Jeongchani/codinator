@@ -41,15 +41,19 @@ export class NaverSocialVerifier implements SocialProviderVerifier {
         },
       );
       data = response.data;
-    } catch (err: any) {
-      const status = err.response?.status;
-      if (status === 401 || status === 403) {
-        throw new UnauthorizedException('유효하지 않거나 만료된 Naver access token 입니다.');
-      }
-      throw new BadGatewayException(
-        'Naver 인증 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.',
-      );
-    }
+    } catch (err: unknown) {
+  const status = axios.isAxiosError<NaverProfileResponse>(err)
+    ? err.response?.status
+    : undefined;
+
+  if (status === 401 || status === 403) {
+    throw new UnauthorizedException('유효하지 않거나 만료된 Naver access token 입니다.');
+  }
+
+  throw new BadGatewayException(
+    'Naver 인증 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.',
+  );
+}
 
     if (data.resultcode !== '00' || !data.response?.id) {
       throw new UnauthorizedException('Naver 사용자 식별자(id)를 확인할 수 없습니다.');

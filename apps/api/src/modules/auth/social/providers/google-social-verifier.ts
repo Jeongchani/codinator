@@ -39,17 +39,24 @@ export class GoogleSocialVerifier implements SocialProviderVerifier {
         },
       );
       tokenInfo = data;
-    } catch (err: any) {
-      if (err.response?.status === 400) {
-        // Google 이 400 으로 토큰 무효/만료를 알림
-        throw new UnauthorizedException(
-          err.response.data?.error_description ?? '유효하지 않은 Google ID token 입니다.',
-        );
-      }
-      throw new BadGatewayException(
-        'Google 인증 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.',
-      );
-    }
+    } catch (err: unknown) {
+  const status = axios.isAxiosError<GoogleTokenInfoResponse>(err)
+    ? err.response?.status
+    : undefined;
+  const responseData = axios.isAxiosError<GoogleTokenInfoResponse>(err)
+    ? err.response?.data
+    : undefined;
+
+  if (status === 400) {
+    throw new UnauthorizedException(
+      responseData?.error_description ?? '유효하지 않은 Google ID token 입니다.',
+    );
+  }
+
+  throw new BadGatewayException(
+    'Google 인증 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.',
+  );
+}
 
     // iss 검증
     const validIss = ['accounts.google.com', 'https://accounts.google.com'];
