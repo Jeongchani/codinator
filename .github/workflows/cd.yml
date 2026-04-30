@@ -1,0 +1,198 @@
+name: CD
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-ai:
+    name: Deploy AI server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create release archive
+        run: |
+          tar \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='**/node_modules' \
+            --exclude='apps/api/uploads' \
+            -czf /tmp/codinator-main.tar.gz .
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AI_SSH_KEY }}" > ~/.ssh/ai_key
+          chmod 600 ~/.ssh/ai_key
+          ssh-keyscan -p "${{ secrets.AI_PORT }}" "${{ secrets.AI_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload archive to AI server
+        run: |
+          scp -i ~/.ssh/ai_key -P "${{ secrets.AI_PORT }}" \
+            /tmp/codinator-main.tar.gz \
+            "${{ secrets.AI_USER }}@${{ secrets.AI_HOST }}:/home/${{ secrets.AI_USER }}/codinator-main.tar.gz"
+
+      - name: Deploy AI server
+        run: |
+          ssh -i ~/.ssh/ai_key -p "${{ secrets.AI_PORT }}" \
+            "${{ secrets.AI_USER }}@${{ secrets.AI_HOST }}" \
+            "RELEASE_SHA=${{ github.sha }} bash -s" <<'EOF'
+          set -e
+
+          LIVE=/opt/codinator-ai
+          STAGE=/home/codinator/releases/codinator-ai-$RELEASE_SHA
+          ARCHIVE=/home/codinator/codinator-main.tar.gz
+          BACKUP_ROOT=/home/codinator/backups
+          TS=$(date +%Y%m%d-%H%M%S)
+
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE" "$BACKUP_ROOT"
+
+          tar -xzf "$ARCHIVE" -C "$STAGE"
+
+          tar \
+            --exclude='codinator-ai/.venv' \
+            --exclude='codinator-ai/storage' \
+            --exclude='codinator-ai/__pycache__' \
+            -czf "$BACKUP_ROOT/codinator-ai-before-cd-$TS.tar.gz" \
+            -C /opt \
+            codinator-ai
+
+          rsync -a --delete \
+            "$STAGE/apps/ai/" \
+            "$LIVE/" \
+            --exclude ".env" \
+            --exclude ".venv" \
+            --exclude "storage" \
+            --exclude "__pycache__"
+
+          cd "$LIVE"
+
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+          sudo -n systemctl restart codinator-ai
+          sleep 8
+
+          sudo -n systemctl status codinator-ai --no-pager -l
+          curl -sS -f http://127.0.0.1:8000/api/v3/health
+
+          echo "AI deploy complete"
+          EOF
+
+  deploy-web-api:
+    name: Deploy Web/API server
+    runs-on: ubuntu-latest
+    needs: deploy-ai
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create release archive
+        run: |
+          tar \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='**/node_modules' \
+            --exclude='apps/api/uploads' \
+            -czf /tmp/codinator-main.tar.gz .
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.API_SSH_KEY }}" > ~/.ssh/api_key
+          chmod 600 ~/.ssh/api_key
+          ssh-keyscan -p "${{ secrets.API_PORT }}" "${{ secrets.API_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload archive to Web/API server
+        run: |
+          scp -i ~/.ssh/api_key -P "${{ secrets.API_PORT }}" \
+            /tmp/codinator-main.tar.gz \
+            "${{ secrets.API_USER }}@${{ secrets.API_HOST }}:/home/${{ secrets.API_USER }}/codinator-main.tar.gz"
+
+      - name: Deploy Web/API server
+        run: |
+          ssh -i ~/.ssh/api_key -p "${{ secrets.API_PORT }}" \
+            "${{ secrets.API_USER }}@${{ secrets.API_HOST }}" \
+            "RELEASE_SHA=${{ github.sha }} bash -s" <<'EOF'
+          set -e
+
+          LIVE=/home/codinator2/services/codinator
+          STAGE=/home/codinator2/releases/codinator-main-$RELEASE_SHA
+          ARCHIVE=/home/codinator2/codinator-main.tar.gz
+          BACKUP_ROOT=/home/codinator2/backups
+          TS=$(date +%Y%m%d-%H%M%S)
+
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE" "$BACKUP_ROOT/live" "$BACKUP_ROOT/db"
+
+          tar -xzf "$ARCHIVE" -C "$STAGE"
+
+          cp "$LIVE/apps/api/.env" "$STAGE/apps/api/.env"
+
+          cat > "$STAGE/apps/web/.env.production" <<'ENVEOF'
+          VITE_API_BASE_URL=/api/v3
+          VITE_ASSET_BASE_URL=https://codinator.cloud
+          VITE_API_ORIGIN=https://codinator.cloud
+          ENVEOF
+
+          cd "$STAGE"
+
+          pnpm install --frozen-lockfile
+          pnpm --filter @codinator/api exec prisma generate
+          pnpm --filter @codinator/contracts build
+          pnpm --filter @codinator/api build
+          pnpm --filter @codinator/web build
+
+          set -a
+          . "$STAGE/apps/api/.env"
+          set +a
+
+          pg_dump "$DATABASE_URL" > "$BACKUP_ROOT/db/codinator-before-cd-$TS.sql"
+
+          pnpm --filter @codinator/api exec prisma migrate deploy
+
+          tar \
+            --exclude='codinator/apps/api/uploads' \
+            --exclude='codinator/node_modules' \
+            --exclude='codinator/apps/*/node_modules' \
+            -czf "$BACKUP_ROOT/live/codinator-live-before-cd-$TS.tar.gz" \
+            -C /home/codinator2/services \
+            codinator
+
+          rsync -a --delete \
+            "$STAGE/" \
+            "$LIVE/" \
+            --exclude ".git" \
+            --exclude "apps/api/.env" \
+            --exclude "apps/api/uploads" \
+            --exclude "node_modules" \
+            --exclude "apps/*/node_modules"
+
+          cp "$STAGE/apps/api/.env" "$LIVE/apps/api/.env"
+          cp "$STAGE/apps/web/.env.production" "$LIVE/apps/web/.env.production"
+
+          cd "$LIVE"
+
+          pnpm install --frozen-lockfile
+          pnpm --filter @codinator/api exec prisma generate
+
+          sudo -n systemctl restart codinator-api
+          sleep 8
+
+          sudo -n systemctl status codinator-api --no-pager -l
+
+          sudo -n nginx -t
+          sudo -n systemctl reload nginx
+
+          curl -sS -f http://127.0.0.1:3000/api/v3/health
+          curl -sS -f https://codinator.cloud/api/v3/health
+          curl -sS -f https://codinator.cloud/api/v3/keywords
+          curl -sS -f https://codinator.cloud/api/v3/feedback-tags
+
+          echo "Web/API deploy complete"
+          EOF
