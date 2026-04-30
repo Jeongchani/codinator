@@ -4,9 +4,15 @@ on:
   pull_request:
     branches: [main, develop]
 
+  push:
+    branches: [develop]
+
+  workflow_dispatch:
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -20,19 +26,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
-          cache: 'pnpm'
+          cache: pnpm
 
       - name: Install Dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @codinator/api exec prisma generate
 
       - name: Lint
         run: pnpm run lint
 
-      - name: Build
-        run: pnpm run build
-
       - name: Build Contracts
-        run: pnpm --filter @codinator/contracts run build
+        run: pnpm --filter @codinator/contracts build
 
-      - name: Build All Apps
-        run: pnpm run build
+      - name: Build API
+        run: pnpm --filter @codinator/api build
+
+      - name: Build Web
+        run: pnpm --filter @codinator/web build
