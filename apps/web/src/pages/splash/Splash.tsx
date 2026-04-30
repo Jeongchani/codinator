@@ -32,7 +32,7 @@ type LandingScreenProps = {
   className?: string;
 };
 
-const FADE_DURATION_MS = 280;
+const TRANSITION_DURATION_MS = 320;
 
 function cx(...classNames: Array<string | false | null | undefined>) {
   return classNames.filter(Boolean).join(' ');
@@ -40,16 +40,8 @@ function cx(...classNames: Array<string | false | null | undefined>) {
 
 function IntroScreen({ imageSrc, className }: IntroScreenProps) {
   return (
-    <section
-      className={cx(styles.introScreen, className)}
-      aria-label="C:Dinator 스플래시 화면"
-    >
-      <img
-        src={imageSrc}
-        alt="C:Dinator"
-        className={styles.introImage}
-        draggable={false}
-      />
+    <section className={cx(styles.introScreen, className)} aria-label="C:Dinator 스플래시 화면">
+      <img src={imageSrc} alt="C:Dinator" className={styles.introImage} draggable={false} />
     </section>
   );
 }
@@ -65,10 +57,7 @@ function LandingScreen({
   className,
 }: LandingScreenProps) {
   return (
-    <section
-      className={cx(styles.landingScreen, className)}
-      aria-label={`랜딩 화면 ${pageLabel}`}
-    >
+    <section className={cx(styles.landingScreen, className)} aria-label={`랜딩 화면 ${pageLabel}`}>
       <div className={styles.pageLabel}>{pageLabel}</div>
 
       <button type="button" className={styles.skipButton} onClick={onSkip}>
@@ -80,12 +69,7 @@ function LandingScreen({
         <p className={styles.subtitle}>{subtitle}</p>
       </div>
 
-      <img
-        src={imageSrc}
-        alt={imageAlt}
-        className={styles.landingImage}
-        draggable={false}
-      />
+      <img src={imageSrc} alt={imageAlt} className={styles.landingImage} draggable={false} />
 
       <button type="button" className={styles.nextButton} onClick={onNext}>
         <span className={styles.nextText}>다음</span>
@@ -102,7 +86,7 @@ export default function Splash({ onFinish, introDurationMs = 1200 }: SplashProps
 
   const isTransitioningRef = useRef(false);
   const autoTimerRef = useRef<number | null>(null);
-  const fadeTimerRef = useRef<number | null>(null);
+  const transitionTimerRef = useRef<number | null>(null);
   const unlockTimerRef = useRef<number | null>(null);
 
   const clearAutoTimer = useCallback(() => {
@@ -112,10 +96,10 @@ export default function Splash({ onFinish, introDurationMs = 1200 }: SplashProps
     }
   }, []);
 
-  const clearFadeTimers = useCallback(() => {
-    if (fadeTimerRef.current !== null) {
-      window.clearTimeout(fadeTimerRef.current);
-      fadeTimerRef.current = null;
+  const clearTransitionTimers = useCallback(() => {
+    if (transitionTimerRef.current !== null) {
+      window.clearTimeout(transitionTimerRef.current);
+      transitionTimerRef.current = null;
     }
 
     if (unlockTimerRef.current !== null) {
@@ -140,38 +124,38 @@ export default function Splash({ onFinish, introDurationMs = 1200 }: SplashProps
       isTransitioningRef.current = true;
 
       clearAutoTimer();
-      clearFadeTimers();
+      clearTransitionTimers();
 
       setPhase('fadeOut');
 
-      fadeTimerRef.current = window.setTimeout(() => {
+      transitionTimerRef.current = window.setTimeout(() => {
         setStep(nextStep);
         setPhase('fadeIn');
 
         unlockTimerRef.current = window.setTimeout(() => {
           isTransitioningRef.current = false;
-          fadeTimerRef.current = null;
+          transitionTimerRef.current = null;
           unlockTimerRef.current = null;
-        }, FADE_DURATION_MS);
-      }, FADE_DURATION_MS);
+        }, TRANSITION_DURATION_MS);
+      }, TRANSITION_DURATION_MS);
     },
-    [clearAutoTimer, clearFadeTimers],
+    [clearAutoTimer, clearTransitionTimers],
   );
 
-  const finishWithFade = useCallback(() => {
+  const finishWithSlideOut = useCallback(() => {
     if (isTransitioningRef.current) return;
 
     isTransitioningRef.current = true;
 
     clearAutoTimer();
-    clearFadeTimers();
+    clearTransitionTimers();
 
     setPhase('fadeOut');
 
-    fadeTimerRef.current = window.setTimeout(() => {
+    transitionTimerRef.current = window.setTimeout(() => {
       finishSplash();
-    }, FADE_DURATION_MS);
-  }, [clearAutoTimer, clearFadeTimers, finishSplash]);
+    }, TRANSITION_DURATION_MS);
+  }, [clearAutoTimer, clearTransitionTimers, finishSplash]);
 
   const handleNext = useCallback(() => {
     if (step === 1) {
@@ -179,8 +163,8 @@ export default function Splash({ onFinish, introDurationMs = 1200 }: SplashProps
       return;
     }
 
-    finishWithFade();
-  }, [finishWithFade, moveToStep, step]);
+    finishWithSlideOut();
+  }, [finishWithSlideOut, moveToStep, step]);
 
   useEffect(() => {
     if (step !== 0) return;
@@ -199,19 +183,19 @@ export default function Splash({ onFinish, introDurationMs = 1200 }: SplashProps
   useEffect(() => {
     return () => {
       clearAutoTimer();
-      clearFadeTimers();
+      clearTransitionTimers();
     };
-  }, [clearAutoTimer, clearFadeTimers]);
+  }, [clearAutoTimer, clearTransitionTimers]);
 
-  const transitionClassName = phase === 'fadeOut' ? styles.fadeOut : styles.fadeIn;
+  const introTransitionClassName = phase === 'fadeOut' ? styles.introFadeOut : styles.introFadeIn;
+
+  const landingTransitionClassName =
+    phase === 'fadeOut' ? styles.onboardingSlideOutLeft : styles.onboardingFadeIn;
 
   return (
     <main className={styles.root}>
       {step === 0 ? (
-        <IntroScreen
-          imageSrc={splashIntroImage}
-          className={transitionClassName}
-        />
+        <IntroScreen imageSrc={splashIntroImage} className={introTransitionClassName} />
       ) : null}
 
       {step === 1 ? (
@@ -219,9 +203,9 @@ export default function Splash({ onFinish, introDurationMs = 1200 }: SplashProps
           pageLabel="1/2"
           imageSrc={splashUploadImage}
           imageAlt="AI 블러 또는 직접 가리기로 얼굴을 숨기는 안내 이미지"
-          onSkip={finishWithFade}
+          onSkip={finishWithSlideOut}
           onNext={handleNext}
-          className={transitionClassName}
+          className={landingTransitionClassName}
           title={
             <>
               <span className={styles.pinkText}>익명으로 편하게</span>
@@ -238,9 +222,9 @@ export default function Splash({ onFinish, introDurationMs = 1200 }: SplashProps
           pageLabel="2/2"
           imageSrc={splashEvaluationImage}
           imageAlt="좋아요와 싫어요 평가 결과를 받는 안내 이미지"
-          onSkip={finishWithFade}
+          onSkip={finishWithSlideOut}
           onNext={handleNext}
-          className={transitionClassName}
+          className={landingTransitionClassName}
           title={
             <>
               <span className={styles.tealText}>솔직한 평가</span>
