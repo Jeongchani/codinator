@@ -6,7 +6,7 @@ on:
 jobs:
   deploy-ai:
     name: Deploy AI server
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, codinator, deploy]
 
     steps:
       - name: Checkout repository
@@ -21,7 +21,7 @@ jobs:
             --exclude='apps/api/uploads' \
             -czf /tmp/codinator-main.tar.gz .
 
-      - name: Configure SSH
+      - name: Configure SSH for AI server
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.AI_SSH_KEY }}" > ~/.ssh/ai_key
@@ -85,52 +85,32 @@ jobs:
 
   deploy-web-api:
     name: Deploy Web/API server
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, codinator, deploy]
     needs: deploy-ai
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Create release archive
+      - name: Deploy Web/API server locally
         run: |
-          tar \
-            --exclude='.git' \
-            --exclude='node_modules' \
-            --exclude='**/node_modules' \
-            --exclude='apps/api/uploads' \
-            -czf /tmp/codinator-main.tar.gz .
-
-      - name: Configure SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.API_SSH_KEY }}" > ~/.ssh/api_key
-          chmod 600 ~/.ssh/api_key
-          ssh-keyscan -p "${{ secrets.API_PORT }}" "${{ secrets.API_HOST }}" >> ~/.ssh/known_hosts
-
-      - name: Upload archive to Web/API server
-        run: |
-          scp -i ~/.ssh/api_key -P "${{ secrets.API_PORT }}" \
-            /tmp/codinator-main.tar.gz \
-            "${{ secrets.API_USER }}@${{ secrets.API_HOST }}:/home/${{ secrets.API_USER }}/codinator-main.tar.gz"
-
-      - name: Deploy Web/API server
-        run: |
-          ssh -i ~/.ssh/api_key -p "${{ secrets.API_PORT }}" \
-            "${{ secrets.API_USER }}@${{ secrets.API_HOST }}" \
-            "RELEASE_SHA=${{ github.sha }} bash -s" <<'EOF'
           set -e
 
           LIVE=/home/codinator2/services/codinator
-          STAGE=/home/codinator2/releases/codinator-main-$RELEASE_SHA
-          ARCHIVE=/home/codinator2/codinator-main.tar.gz
+          STAGE=/home/codinator2/releases/codinator-main-${{ github.sha }}
           BACKUP_ROOT=/home/codinator2/backups
           TS=$(date +%Y%m%d-%H%M%S)
 
           rm -rf "$STAGE"
           mkdir -p "$STAGE" "$BACKUP_ROOT/live" "$BACKUP_ROOT/db"
 
-          tar -xzf "$ARCHIVE" -C "$STAGE"
+          rsync -a --delete \
+            "$GITHUB_WORKSPACE/" \
+            "$STAGE/" \
+            --exclude ".git" \
+            --exclude "node_modules" \
+            --exclude "apps/*/node_modules" \
+            --exclude "apps/api/uploads"
 
           cp "$LIVE/apps/api/.env" "$STAGE/apps/api/.env"
 
@@ -195,4 +175,3 @@ jobs:
           curl -sS -f https://codinator.cloud/api/v3/feedback-tags
 
           echo "Web/API deploy complete"
-          EOF
