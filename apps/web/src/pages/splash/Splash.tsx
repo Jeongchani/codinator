@@ -27,6 +27,7 @@ type LandingScreenProps = {
   subtitle: string;
   imageSrc: string;
   imageAlt: string;
+  nextLabel: string;
   onSkip: () => void;
   onNext: () => void;
   className?: string;
@@ -52,6 +53,7 @@ function LandingScreen({
   subtitle,
   imageSrc,
   imageAlt,
+  nextLabel,
   onSkip,
   onNext,
   className,
@@ -72,7 +74,7 @@ function LandingScreen({
       <img src={imageSrc} alt={imageAlt} className={styles.landingImage} draggable={false} />
 
       <button type="button" className={styles.nextButton} onClick={onNext}>
-        <span className={styles.nextText}>다음</span>
+        <span className={styles.nextText}>{nextLabel}</span>
       </button>
     </section>
   );
@@ -201,6 +203,7 @@ export default function Splash({ onFinish, introDurationMs = 1200 }: SplashProps
       {step === 1 ? (
         <LandingScreen
           pageLabel="1/2"
+          nextLabel="다음"
           imageSrc={splashUploadImage}
           imageAlt="AI 블러 또는 직접 가리기로 얼굴을 숨기는 안내 이미지"
           onSkip={finishWithSlideOut}
@@ -220,6 +223,7 @@ export default function Splash({ onFinish, introDurationMs = 1200 }: SplashProps
       {step === 2 ? (
         <LandingScreen
           pageLabel="2/2"
+          nextLabel="시작하기"
           imageSrc={splashEvaluationImage}
           imageAlt="좋아요와 싫어요 평가 결과를 받는 안내 이미지"
           onSkip={finishWithSlideOut}
