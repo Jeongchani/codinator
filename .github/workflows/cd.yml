@@ -114,10 +114,21 @@ jobs:
 
           cp "$LIVE/apps/api/.env" "$STAGE/apps/api/.env"
 
-          cat > "$STAGE/apps/web/.env.production" <<'ENVEOF'
+          set -a
+          . "$STAGE/apps/api/.env"
+          set +a
+
+          : "${KAKAO_REST_API_KEY:?KAKAO_REST_API_KEY is required}"
+          : "${NAVER_CLIENT_ID:?NAVER_CLIENT_ID is required}"
+          : "${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID is required}"
+
+          cat > "$STAGE/apps/web/.env.production" <<ENVEOF
           VITE_API_BASE_URL=/api/v3
           VITE_ASSET_BASE_URL=https://codinator.cloud
           VITE_API_ORIGIN=https://codinator.cloud
+          VITE_KAKAO_REST_API_KEY=${KAKAO_REST_API_KEY}
+          VITE_NAVER_CLIENT_ID=${NAVER_CLIENT_ID}
+          VITE_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
           ENVEOF
 
           cd "$STAGE"
