@@ -12,9 +12,9 @@ import {
   ImageAssetSourceType,
 } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { spawn } from 'child_process';
 import { promises as fs } from 'fs';
 import { extname, join } from 'path';
-import sharp from 'sharp';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AiService } from '../ai/ai.service';
 import { ImageIndexingService } from '../ai/image-indexing.service';
@@ -350,6 +350,7 @@ export class UploadsService {
 
   /**
    * 필요한 경우에만 이미지를 리사이징한 Buffer를 반환한다.
+   * Python + Pillow를 사용하므로 외부 npm 의존성 불필요.
    *
    * 리사이징 조건 (AND):
    *   1. 파일 크기 >= RESIZE_THRESHOLD_BYTES (3MB)
@@ -358,34 +359,72 @@ export class UploadsService {
    * 조건 미충족 시 원본 buffer를 그대로 반환 (리사이징 없음).
    * 목적: 휴대폰 원본 사진처럼 해상도가 과도해서 용량이 큰 경우만 줄임.
    */
-  private async normalizeBuffer(
+  /**
+   * 필요한 경우에만 이미지를 리사이징한 Buffer를 반환한다.
+   * Python3 + Pillow를 사용 (외부 npm 의존성 불필요).
+   *
+   * 리사이징 조건 (AND):
+   *   1. 파일 크기 >= RESIZE_THRESHOLD_BYTES (3MB)
+   *   2. 긴 변 >= RESIZE_THRESHOLD_PX (1920px)
+   *
+   * 조건 미충족 시 원본 buffer를 그대로 반환 (리사이징 없음).
+   * 목적: 휴대폰 원본 사진처럼 해상도가 과도해서 용량이 큰 경우만 줄임.
+   */
+  private normalizeBuffer(
     file: Express.Multer.File,
   ): Promise<{ buffer: Buffer; resized: boolean }> {
-    // 파일 크기가 기준 미만이면 즉시 원본 반환
+    // 1차 조건: 파일 크기가 기준 미만이면 즉시 원본 반환 (Python 호출 없음)
     if (file.size < RESIZE_THRESHOLD_BYTES) {
-      return { buffer: file.buffer, resized: false };
+      return Promise.resolve({ buffer: file.buffer, resized: false });
     }
 
-    const metadata = await sharp(file.buffer).metadata();
-    const longerSide = Math.max(metadata.width ?? 0, metadata.height ?? 0);
+    const pythonScript = [
+      'import sys, io',
+      'from PIL import Image',
+      'data = sys.stdin.buffer.read()',
+      'img = Image.open(io.BytesIO(data))',
+      'w, h = img.size',
+      'longer = max(w, h)',
+      `if longer < ${RESIZE_THRESHOLD_PX}:`,
+      '    sys.stdout.buffer.write(b"SKIP"); sys.exit(0)',
+      `img.thumbnail((${RESIZE_TARGET_PX}, ${RESIZE_TARGET_PX}), Image.LANCZOS)`,
+      'out = io.BytesIO()',
+      `img.convert("RGB").save(out, format="JPEG", quality=${RESIZE_QUALITY})`,
+      'sys.stdout.buffer.write(out.getvalue())',
+    ].join('\n');
 
-    // 해상도가 기준 미만이면 원본 반환
-    if (longerSide < RESIZE_THRESHOLD_PX) {
-      return { buffer: file.buffer, resized: false };
-    }
+    return new Promise((resolve) => {
+      const child = spawn('python3', ['-c', pythonScript]);
+      const chunks: Buffer[] = [];
+      const errChunks: Buffer[] = [];
 
-    // 두 조건 모두 충족 → 리사이징
-    const resizedBuffer = await sharp(file.buffer)
-      .resize({
-        width: metadata.width! >= metadata.height! ? RESIZE_TARGET_PX : undefined,
-        height: metadata.width! < metadata.height! ? RESIZE_TARGET_PX : undefined,
-        fit: 'inside',
-        withoutEnlargement: true,
-      })
-      .jpeg({ quality: RESIZE_QUALITY }) // JPEG로 통일 (PNG·WebP도 JPEG로 최적화 출력)
-      .toBuffer();
+      child.stdout.on('data', (chunk: Buffer) => chunks.push(chunk));
+      child.stderr.on('data', (chunk: Buffer) => errChunks.push(chunk));
 
-    return { buffer: resizedBuffer, resized: true };
+      child.on('error', (err) => {
+        this.logger.warn(`이미지 리사이징 실패(spawn error), 원본 사용: ${err.message}`);
+        resolve({ buffer: file.buffer, resized: false });
+      });
+
+      child.on('close', (code) => {
+        if (code !== 0) {
+          const errMsg = Buffer.concat(errChunks).toString().trim();
+          this.logger.warn(`이미지 리사이징 실패(exit ${code}), 원본 사용: ${errMsg}`);
+          resolve({ buffer: file.buffer, resized: false });
+          return;
+        }
+
+        const result = Buffer.concat(chunks);
+        if (result.slice(0, 4).toString('utf8') === 'SKIP') {
+          resolve({ buffer: file.buffer, resized: false });
+        } else {
+          resolve({ buffer: result, resized: true });
+        }
+      });
+
+      child.stdin.write(file.buffer);
+      child.stdin.end();
+    });
   }
 
   private getDatePath() {
