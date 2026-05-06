@@ -65,6 +65,19 @@ const BRUSH_PRESETS: BrushPreset[] = [
   { id: 'l', size: 84, dot: 26, block: 18 },
 ];
 
+const MANUAL_BLUR_MAX_LONG_EDGE = 1600;
+const MANUAL_BLUR_JPEG_QUALITY = 0.92;
+
+function getManualBlurEditSize(width: number, height: number) {
+  const longEdge = Math.max(width, height);
+  const scale = longEdge > MANUAL_BLUR_MAX_LONG_EDGE ? MANUAL_BLUR_MAX_LONG_EDGE / longEdge : 1;
+
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  };
+}
+
 const wearTypeOptions: Exclude<WearType, ''>[] = [
   '상의',
   '하의',
@@ -456,16 +469,21 @@ function ManualBlurEditor({
 }) {
   const [tool, setTool] = useState<BrushTool>('blur');
   const [brushSize, setBrushSize] = useState(BRUSH_PRESETS[1].size);
-  const [imgLoaded, setImgLoaded] = useState(false);
+  const [loadedImageUrl, setLoadedImageUrl] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
-  const [imageLoadError, setImageLoadError] = useState('');
+  const [imageLoadError, setImageLoadError] = useState<{ url: string; message: string } | null>(
+    null,
+  );
+  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
 
   const toolRef = useRef<BrushTool>('blur');
   const brushRef = useRef(BRUSH_PRESETS[1].size);
 
+  const editorInnerRef = useRef<HTMLDivElement>(null);
   const displayCanvasRef = useRef<HTMLCanvasElement>(null);
+  const editCanvasRef = useRef<HTMLCanvasElement>(null);
   const origCanvasRef = useRef<HTMLCanvasElement>(null);
   const mosaicCacheRef = useRef<Map<number, HTMLCanvasElement>>(new Map());
 
@@ -475,6 +493,11 @@ function ManualBlurEditor({
 
   const pendingPointRef = useRef<{ x: number; y: number; canvas: HTMLCanvasElement } | null>(null);
   const rafRef = useRef<number | null>(null);
+
+  const imageLoadErrorMessage =
+    imageLoadError?.url === originalImageUrl ? imageLoadError.message : '';
+  const imgLoaded =
+    loadedImageUrl === originalImageUrl && naturalSize !== null && !imageLoadErrorMessage;
 
   const getCurrentPreset = () =>
     BRUSH_PRESETS.find((preset) => preset.size === brushRef.current) ?? BRUSH_PRESETS[1];
@@ -489,8 +512,51 @@ function ManualBlurEditor({
     setBrushSize(nextBrush);
   };
 
+  const renderDisplayCanvas = useCallback(() => {
+    const displayCanvas = displayCanvasRef.current;
+    const editCanvas = editCanvasRef.current;
+    if (!displayCanvas || !editCanvas || editCanvas.width <= 0 || editCanvas.height <= 0) return;
+
+    const displayCtx = displayCanvas.getContext('2d');
+    if (!displayCtx) return;
+
+    displayCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
+    displayCtx.imageSmoothingEnabled = true;
+    displayCtx.imageSmoothingQuality = 'high';
+    displayCtx.drawImage(editCanvas, 0, 0, displayCanvas.width, displayCanvas.height);
+  }, []);
+
+  const syncDisplayCanvasSize = useCallback(() => {
+    const editorInner = editorInnerRef.current;
+    const displayCanvas = displayCanvasRef.current;
+    if (!editorInner || !displayCanvas) return;
+
+    const rect = editorInner.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const nextWidth = Math.max(1, Math.round(rect.width * dpr));
+    const nextHeight = Math.max(1, Math.round(rect.height * dpr));
+
+    if (displayCanvas.width !== nextWidth || displayCanvas.height !== nextHeight) {
+      displayCanvas.width = nextWidth;
+      displayCanvas.height = nextHeight;
+    }
+
+    displayCanvas.style.width = `${rect.width}px`;
+    displayCanvas.style.height = `${rect.height}px`;
+
+    renderDisplayCanvas();
+  }, [renderDisplayCanvas]);
+
   useEffect(() => {
     let cancelled = false;
+
+    historyRef.current = [];
+    mosaicCacheRef.current.clear();
+    pendingPointRef.current = null;
+    lastCvsPos.current = null;
+    isDrawing.current = false;
 
     const sameOriginUrl = originalImageUrl.replace(/^https?:\/\/localhost:\d+/, '');
     const img = new Image();
@@ -498,42 +564,49 @@ function ManualBlurEditor({
     img.onload = () => {
       if (cancelled) return;
 
-      const displayCanvas = displayCanvasRef.current;
+      const editCanvas = editCanvasRef.current;
       const origCanvas = origCanvasRef.current;
-      if (!displayCanvas || !origCanvas) return;
+      if (!editCanvas || !origCanvas) return;
 
-      const width = img.naturalWidth;
-      const height = img.naturalHeight;
+      const { width, height } = getManualBlurEditSize(img.naturalWidth, img.naturalHeight);
 
-      displayCanvas.width = origCanvas.width = width;
-      displayCanvas.height = origCanvas.height = height;
+      editCanvas.width = origCanvas.width = width;
+      editCanvas.height = origCanvas.height = height;
 
-      const displayCtx = displayCanvas.getContext('2d');
+      const editCtx = editCanvas.getContext('2d');
       const origCtx = origCanvas.getContext('2d');
-      if (!displayCtx || !origCtx) return;
+      if (!editCtx || !origCtx) return;
 
-      displayCtx.clearRect(0, 0, width, height);
+      editCtx.clearRect(0, 0, width, height);
       origCtx.clearRect(0, 0, width, height);
 
-      displayCtx.drawImage(img, 0, 0);
-      origCtx.drawImage(img, 0, 0);
+      editCtx.imageSmoothingEnabled = true;
+      editCtx.imageSmoothingQuality = 'high';
+      origCtx.imageSmoothingEnabled = true;
+      origCtx.imageSmoothingQuality = 'high';
+
+      editCtx.drawImage(img, 0, 0, width, height);
+      origCtx.drawImage(img, 0, 0, width, height);
 
       mosaicCacheRef.current.clear();
-      for (const preset of BRUSH_PRESETS) {
-        const cached = buildPixelatedCanvas(origCanvas, preset.block);
-        if (cached) {
-          mosaicCacheRef.current.set(preset.block, cached);
-        }
-      }
-
       historyRef.current = [];
+
       setCanUndo(false);
-      setImgLoaded(true);
+      setCursorPos(null);
+      setImageLoadError(null);
+      setNaturalSize({ width, height });
+      setLoadedImageUrl(originalImageUrl);
     };
 
     img.onerror = () => {
       if (cancelled) return;
-      setImageLoadError('원본 이미지를 불러오지 못했습니다.');
+
+      setLoadedImageUrl(null);
+      setNaturalSize(null);
+      setImageLoadError({
+        url: originalImageUrl,
+        message: '원본 이미지를 불러오지 못했습니다.',
+      });
     };
 
     img.src = sameOriginUrl;
@@ -546,15 +619,42 @@ function ManualBlurEditor({
     };
   }, [originalImageUrl]);
 
+  useLayoutEffect(() => {
+    if (!imgLoaded || !naturalSize) return undefined;
+
+    let animationFrameId = window.requestAnimationFrame(syncDisplayCanvasSize);
+    const editorInner = editorInnerRef.current;
+
+    const resizeObserver =
+      editorInner && typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => {
+            window.cancelAnimationFrame(animationFrameId);
+            animationFrameId = window.requestAnimationFrame(syncDisplayCanvasSize);
+          })
+        : null;
+
+    if (editorInner) {
+      resizeObserver?.observe(editorInner);
+    }
+
+    window.addEventListener('resize', syncDisplayCanvasSize);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', syncDisplayCanvasSize);
+    };
+  }, [imgLoaded, naturalSize, syncDisplayCanvasSize]);
+
   const saveSnapshot = () => {
-    const displayCanvas = displayCanvasRef.current;
-    if (!displayCanvas) return;
+    const editCanvas = editCanvasRef.current;
+    if (!editCanvas) return;
 
     try {
-      const ctx = displayCanvas.getContext('2d');
+      const ctx = editCanvas.getContext('2d');
       if (!ctx) return;
 
-      const snapshot = ctx.getImageData(0, 0, displayCanvas.width, displayCanvas.height);
+      const snapshot = ctx.getImageData(0, 0, editCanvas.width, editCanvas.height);
       historyRef.current.push(snapshot);
 
       if (historyRef.current.length > 20) {
@@ -568,56 +668,84 @@ function ManualBlurEditor({
   };
 
   const handleUndo = () => {
-    const displayCanvas = displayCanvasRef.current;
-    if (!displayCanvas || historyRef.current.length === 0) return;
+    const editCanvas = editCanvasRef.current;
+    if (!editCanvas || historyRef.current.length === 0) return;
 
-    const ctx = displayCanvas.getContext('2d');
+    const ctx = editCanvas.getContext('2d');
     if (!ctx) return;
 
     const prev = historyRef.current.pop();
     if (!prev) return;
 
     ctx.putImageData(prev, 0, 0);
+    renderDisplayCanvas();
     setCanUndo(historyRef.current.length > 0);
   };
 
   const toCanvasPosition = (clientX: number, clientY: number, canvas: HTMLCanvasElement) => {
+    const editCanvas = editCanvasRef.current;
     const rect = canvas.getBoundingClientRect();
 
     return {
-      x: (clientX - rect.left) * (canvas.width / rect.width),
-      y: (clientY - rect.top) * (canvas.height / rect.height),
+      x: (clientX - rect.left) * ((editCanvas?.width ?? canvas.width) / rect.width),
+      y: (clientY - rect.top) * ((editCanvas?.height ?? canvas.height) / rect.height),
     };
   };
 
   const toCanvasRadius = (cssRadius: number, canvas: HTMLCanvasElement) => {
+    const editCanvas = editCanvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    return cssRadius * (canvas.width / rect.width);
+    return cssRadius * ((editCanvas?.width ?? canvas.width) / rect.width);
+  };
+
+  const getCanvasBlockSize = (canvas: HTMLCanvasElement) => {
+    const editCanvas = editCanvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const currentPreset = getCurrentPreset();
+    const baseWidth = editCanvas?.width ?? canvas.width;
+    const ratio = rect.width > 0 ? baseWidth / rect.width : 1;
+
+    return Math.max(4, Math.round(currentPreset.block * ratio));
+  };
+
+  const getMosaicSource = (block: number) => {
+    const origCanvas = origCanvasRef.current;
+    if (!origCanvas) return null;
+
+    const cached = mosaicCacheRef.current.get(block);
+    if (cached) return cached;
+
+    const nextCache = buildPixelatedCanvas(origCanvas, block);
+    if (nextCache) {
+      mosaicCacheRef.current.set(block, nextCache);
+    }
+
+    return nextCache;
   };
 
   const applyAt = (cx: number, cy: number, canvasRadius: number) => {
-    const displayCanvas = displayCanvasRef.current;
+    const editCanvas = editCanvasRef.current;
     const origCanvas = origCanvasRef.current;
-    if (!displayCanvas || !origCanvas) return;
+    if (!editCanvas || !origCanvas) return;
 
-    const displayCtx = displayCanvas.getContext('2d');
-    if (!displayCtx) return;
+    const editCtx = editCanvas.getContext('2d');
+    if (!editCtx) return;
 
-    const currentPreset = getCurrentPreset();
-    const block = currentPreset.block;
+    const displayCanvas = displayCanvasRef.current;
+    const block = displayCanvas ? getCanvasBlockSize(displayCanvas) : getCurrentPreset().block;
 
-    const blurSource = mosaicCacheRef.current.get(block);
+    const blurSource = getMosaicSource(block);
     const sourceCanvas = toolRef.current === 'blur' ? blurSource : origCanvas;
     if (!sourceCanvas) return;
 
     const bx1 = Math.max(0, Math.floor((cx - canvasRadius) / block));
     const by1 = Math.max(0, Math.floor((cy - canvasRadius) / block));
     const bx2 = Math.min(
-      Math.ceil(displayCanvas.width / block) - 1,
+      Math.ceil(editCanvas.width / block) - 1,
       Math.floor((cx + canvasRadius) / block),
     );
     const by2 = Math.min(
-      Math.ceil(displayCanvas.height / block) - 1,
+      Math.ceil(editCanvas.height / block) - 1,
       Math.floor((cy + canvasRadius) / block),
     );
 
@@ -625,11 +753,11 @@ function ManualBlurEditor({
       for (let by = by1; by <= by2; by += 1) {
         const gx = bx * block;
         const gy = by * block;
-        const gw = Math.min(block, displayCanvas.width - gx);
-        const gh = Math.min(block, displayCanvas.height - gy);
+        const gw = Math.min(block, editCanvas.width - gx);
+        const gh = Math.min(block, editCanvas.height - gy);
         if (gw <= 0 || gh <= 0) continue;
 
-        displayCtx.drawImage(sourceCanvas, gx, gy, gw, gh, gx, gy, gw, gh);
+        editCtx.drawImage(sourceCanvas, gx, gy, gw, gh, gx, gy, gw, gh);
       }
     }
   };
@@ -659,6 +787,7 @@ function ManualBlurEditor({
 
     const canvasRadius = toCanvasRadius(brushRef.current / 2, pending.canvas);
     interpolate(lastCvsPos.current, pending, canvasRadius);
+    renderDisplayCanvas();
     lastCvsPos.current = { x: pending.x, y: pending.y };
     pendingPointRef.current = null;
     rafRef.current = null;
@@ -679,6 +808,7 @@ function ManualBlurEditor({
       const pending = pendingPointRef.current;
       const canvasRadius = toCanvasRadius(brushRef.current / 2, pending.canvas);
       interpolate(lastCvsPos.current, pending, canvasRadius);
+      renderDisplayCanvas();
       lastCvsPos.current = { x: pending.x, y: pending.y };
       pendingPointRef.current = null;
     }
@@ -707,6 +837,7 @@ function ManualBlurEditor({
     setCursorPos({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
 
     applyAt(pos.x, pos.y, canvasRadius);
+    renderDisplayCanvas();
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -741,14 +872,14 @@ function ManualBlurEditor({
   };
 
   const handleApprove = () => {
-    const displayCanvas = displayCanvasRef.current;
-    if (!displayCanvas || !imgLoaded) return;
+    const editCanvas = editCanvasRef.current;
+    if (!editCanvas || !imgLoaded) return;
 
     setApproving(true);
 
-    const previewDataUrl = displayCanvas.toDataURL('image/jpeg', 0.92);
+    const previewDataUrl = editCanvas.toDataURL('image/jpeg', MANUAL_BLUR_JPEG_QUALITY);
 
-    displayCanvas.toBlob(
+    editCanvas.toBlob(
       (blob) => {
         if (!blob) {
           setApproving(false);
@@ -758,7 +889,7 @@ function ManualBlurEditor({
         onApprove(new File([blob], 'manual-blur.jpg', { type: 'image/jpeg' }), previewDataUrl);
       },
       'image/jpeg',
-      0.92,
+      MANUAL_BLUR_JPEG_QUALITY,
     );
   };
 
@@ -830,16 +961,16 @@ function ManualBlurEditor({
           type="button"
           className={styles.undoIconButton}
           onClick={handleUndo}
-          disabled={!canUndo}
+          disabled={!imgLoaded || !canUndo}
           aria-label="되돌리기"
         >
           <Undo2 size={18} strokeWidth={2.2} />
         </button>
       </div>
 
-      {imageLoadError && <p className={styles.editorError}>{imageLoadError}</p>}
+      {imageLoadErrorMessage && <p className={styles.editorError}>{imageLoadErrorMessage}</p>}
 
-      {!imgLoaded && !imageLoadError && (
+      {!imgLoaded && !imageLoadErrorMessage && (
         <div className={styles.editorLoading}>이미지 불러오는 중...</div>
       )}
 
@@ -850,7 +981,17 @@ function ManualBlurEditor({
           borderColor: toolColor,
         }}
       >
-        <div className={styles.editorCanvasInner}>
+        <div
+          ref={editorInnerRef}
+          className={styles.editorCanvasInner}
+          style={
+            naturalSize
+              ? {
+                  aspectRatio: `${naturalSize.width} / ${naturalSize.height}`,
+                }
+              : undefined
+          }
+        >
           <canvas
             ref={displayCanvasRef}
             className={styles.editorCanvas}
@@ -861,7 +1002,7 @@ function ManualBlurEditor({
             onPointerLeave={handlePointerLeave}
           />
 
-          {cursorPos && (
+          {imgLoaded && cursorPos && (
             <div
               className={styles.editorCursor}
               style={{
@@ -889,6 +1030,7 @@ function ManualBlurEditor({
       </div>
 
       <canvas ref={origCanvasRef} className={styles.hiddenCanvas} />
+      <canvas ref={editCanvasRef} className={styles.hiddenCanvas} />
     </div>
   );
 }

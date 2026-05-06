@@ -308,9 +308,9 @@ export class UploadsService {
       throw new BadRequestException('jpg, png, webp 파일만 업로드할 수 있습니다.');
     }
 
-    const maxSize = 5 * 1024 * 1024;
+    const maxSize = 15 * 1024 * 1024;
     if (file.size > maxSize) {
-      throw new BadRequestException('이미지 최대 크기는 5MB입니다.');
+      throw new BadRequestException('이미지 최대 크기는 15MB입니다.');
     }
   }
 
