@@ -412,7 +412,7 @@ export default function PasswordReset() {
           )}
 
           <p
-            className={`${styles.helperText} ${
+            className={`${styles.phoneMessageText} ${styles.helperText} ${
               phoneErrorMessage || timerExpired
                 ? styles.errorText
                 : phoneVerified

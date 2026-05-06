@@ -1,4 +1,12 @@
-import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  ChangeEvent,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronDown,
@@ -41,7 +49,7 @@ type WearItem = {
 };
 
 type BlurFlowStep = 'idle' | 'decision' | 'manual';
-type SubmitModalKind = 'missingImage' | 'missingContent' | 'finalWarning';
+type SubmitModalKind = 'missingImage' | 'missingContent' | 'keywordLimit' | 'finalWarning';
 type BrushTool = 'blur' | 'eraser';
 
 type BrushPreset = {
@@ -155,6 +163,41 @@ function matchesKeywordSearch(label: string, query: string) {
 
   const labelChoseong = getChoseongText(label);
   return labelChoseong.includes(normalizedQuery);
+}
+
+function getKeywordSortGroup(label: string) {
+  const firstChar = label.trim().charAt(0);
+
+  if (/^[가-힣ㄱ-ㅎㅏ-ㅣ]$/u.test(firstChar)) {
+    return 0;
+  }
+
+  if (/^[A-Za-z]$/u.test(firstChar)) {
+    return 1;
+  }
+
+  return 2;
+}
+
+function compareKeywordItems(a: KeywordItem, b: KeywordItem) {
+  const aGroup = getKeywordSortGroup(a.label);
+  const bGroup = getKeywordSortGroup(b.label);
+
+  if (aGroup !== bGroup) {
+    return aGroup - bGroup;
+  }
+
+  const locale = aGroup === 0 ? 'ko-KR' : 'en-US';
+  const labelCompare = a.label.localeCompare(b.label, locale, {
+    numeric: true,
+    sensitivity: 'base',
+  });
+
+  if (labelCompare !== 0) {
+    return labelCompare;
+  }
+
+  return a.id - b.id;
 }
 
 function mapWearTypeToCategory(type: WearType): GarmentCategory | null {
@@ -865,6 +908,9 @@ export default function PostUpload() {
   const [uploadedImage, setUploadedImage] = useState<UploadedPostImageResponse | null>(null);
   const [keywordOptions, setKeywordOptions] = useState<KeywordItem[]>([]);
   const [keywordQuery, setKeywordQuery] = useState('');
+  const keywordSuggestionMeasureRef = useRef<HTMLDivElement | null>(null);
+  const [visibleKeywordCount, setVisibleKeywordCount] = useState<number>(Number.POSITIVE_INFINITY);
+  const [keywordSuggestionsOverflowing, setKeywordSuggestionsOverflowing] = useState(false);
 
   const [rawLocalPreview, setRawLocalPreview] = useState('');
   const [approvedPreview, setApprovedPreview] = useState('');
@@ -881,18 +927,135 @@ export default function PostUpload() {
 
   const previewUrl = useMemo(() => approvedPreview || '', [approvedPreview]);
 
-  const filteredKeywordOptions = useMemo(() => {
-    const normalized = normalizeKeywordSearchText(keywordQuery);
-    if (!normalized) return keywordOptions;
-
-    return keywordOptions.filter((keyword) => matchesKeywordSearch(keyword.label, normalized));
-  }, [keywordOptions, keywordQuery]);
-
-  const selectedKeywordItems = useMemo(
-    () => keywordOptions.filter((keyword) => selectedKeywords.includes(keyword.id)),
-    [keywordOptions, selectedKeywords],
+  const sortedKeywordOptions = useMemo(
+    () => [...keywordOptions].sort(compareKeywordItems),
+    [keywordOptions],
   );
 
+  const filteredKeywordOptions = useMemo(() => {
+    const normalized = normalizeKeywordSearchText(keywordQuery);
+    if (!normalized) return sortedKeywordOptions;
+
+    return sortedKeywordOptions.filter((keyword) =>
+      matchesKeywordSearch(keyword.label, normalized),
+    );
+  }, [sortedKeywordOptions, keywordQuery]);
+
+  const selectedKeywordItems = useMemo(
+    () => sortedKeywordOptions.filter((keyword) => selectedKeywords.includes(keyword.id)),
+    [sortedKeywordOptions, selectedKeywords],
+  );
+
+  const unselectedKeywordOptions = useMemo(
+    () => filteredKeywordOptions.filter((keyword) => !selectedKeywords.includes(keyword.id)),
+    [filteredKeywordOptions, selectedKeywords],
+  );
+
+  const visibleUnselectedKeywordOptions = useMemo(() => {
+    if (!Number.isFinite(visibleKeywordCount)) return unselectedKeywordOptions;
+
+    return unselectedKeywordOptions.slice(0, visibleKeywordCount);
+  }, [unselectedKeywordOptions, visibleKeywordCount]);
+
+  useLayoutEffect(() => {
+    const measureWrap = keywordSuggestionMeasureRef.current;
+
+    if (!measureWrap || unselectedKeywordOptions.length === 0) {
+      setVisibleKeywordCount(Number.POSITIVE_INFINITY);
+      setKeywordSuggestionsOverflowing(false);
+      return undefined;
+    }
+
+    let animationFrameId = 0;
+
+    const getWrappedRowCount = (widths: number[], containerWidth: number, columnGap: number) => {
+      if (widths.length === 0) return 0;
+
+      let rowCount = 1;
+      let rowWidth = 0;
+
+      widths.forEach((width) => {
+        if (rowWidth <= 0) {
+          rowWidth = width;
+          return;
+        }
+
+        if (rowWidth + columnGap + width <= containerWidth + 0.5) {
+          rowWidth += columnGap + width;
+          return;
+        }
+
+        rowCount += 1;
+        rowWidth = width;
+      });
+
+      return rowCount;
+    };
+
+    const updateVisibleKeywordCount = () => {
+      window.cancelAnimationFrame(animationFrameId);
+
+      animationFrameId = window.requestAnimationFrame(() => {
+        const containerWidth = measureWrap.clientWidth;
+        const chipNodes = Array.from(
+          measureWrap.querySelectorAll<HTMLElement>('[data-keyword-measure-chip="true"]'),
+        );
+        const overflowText = measureWrap.querySelector<HTMLElement>(
+          '[data-keyword-measure-overflow="true"]',
+        );
+
+        if (containerWidth <= 0 || chipNodes.length === 0) {
+          setVisibleKeywordCount(Number.POSITIVE_INFINITY);
+          setKeywordSuggestionsOverflowing(false);
+          return;
+        }
+
+        const wrapStyle = window.getComputedStyle(measureWrap);
+        const columnGap = Number.parseFloat(wrapStyle.columnGap || wrapStyle.gap || '0') || 0;
+        const chipWidths = chipNodes.map((node) => Math.ceil(node.getBoundingClientRect().width));
+        const overflowWidth = Math.ceil(overflowText?.getBoundingClientRect().width ?? 0);
+        const maxVisibleRows = 3;
+
+        if (getWrappedRowCount(chipWidths, containerWidth, columnGap) <= maxVisibleRows) {
+          setVisibleKeywordCount(chipWidths.length);
+          setKeywordSuggestionsOverflowing(false);
+          return;
+        }
+
+        let nextVisibleCount = 0;
+
+        for (let count = 0; count < chipWidths.length; count += 1) {
+          const rowCount = getWrappedRowCount(
+            [...chipWidths.slice(0, count), overflowWidth],
+            containerWidth,
+            columnGap,
+          );
+
+          if (rowCount > maxVisibleRows) {
+            break;
+          }
+
+          nextVisibleCount = count;
+        }
+
+        setVisibleKeywordCount(nextVisibleCount);
+        setKeywordSuggestionsOverflowing(true);
+      });
+    };
+
+    updateVisibleKeywordCount();
+
+    const resizeObserver =
+      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateVisibleKeywordCount);
+    resizeObserver?.observe(measureWrap);
+    window.addEventListener('resize', updateVisibleKeywordCount);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', updateVisibleKeywordCount);
+    };
+  }, [unselectedKeywordOptions]);
 
   const handleBack = () => {
     navigate(-1);
@@ -916,8 +1079,7 @@ export default function PostUpload() {
     if (scrollArea) {
       const scrollRect = scrollArea.getBoundingClientRect();
       const textareaRect = textarea.getBoundingClientRect();
-      const nextScrollTop =
-        scrollArea.scrollTop + textareaRect.top - scrollRect.top - 96;
+      const nextScrollTop = scrollArea.scrollTop + textareaRect.top - scrollRect.top - 96;
 
       scrollArea.scrollTo({
         top: Math.max(0, nextScrollTop),
@@ -965,21 +1127,24 @@ export default function PostUpload() {
     setApprovedPreview('');
   };
 
-  const handleAuthError = (err: unknown) => {
-    const errorMessage = err instanceof Error ? err.message : '요청 처리 실패';
+  const handleAuthError = useCallback(
+    (err: unknown) => {
+      const errorMessage = err instanceof Error ? err.message : '요청 처리 실패';
 
-    if (
-      errorMessage.includes('Unauthorized') ||
-      errorMessage.includes('로그인이 필요합니다') ||
-      errorMessage.includes('유효하지 않거나 만료된 토큰')
-    ) {
-      clearAuthTokens();
-      navigate('/login');
-      return true;
-    }
+      if (
+        errorMessage.includes('Unauthorized') ||
+        errorMessage.includes('로그인이 필요합니다') ||
+        errorMessage.includes('유효하지 않거나 만료된 토큰')
+      ) {
+        clearAuthTokens();
+        navigate('/login');
+        return true;
+      }
 
-    return false;
-  };
+      return false;
+    },
+    [navigate],
+  );
 
   const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
@@ -1027,20 +1192,17 @@ export default function PostUpload() {
   };
 
   const toggleKeyword = (keywordId: number) => {
-    setSelectedKeywords((prev) => {
-      const alreadySelected = prev.includes(keywordId);
+    if (selectedKeywords.includes(keywordId)) {
+      setSelectedKeywords((prev) => prev.filter((id) => id !== keywordId));
+      return;
+    }
 
-      if (alreadySelected) {
-        return prev.filter((id) => id !== keywordId);
-      }
+    if (selectedKeywords.length >= 3) {
+      setSubmitModalKind('keywordLimit');
+      return;
+    }
 
-      if (prev.length >= 3) {
-        alert('키워드는 최대 3개까지 선택할 수 있습니다.');
-        return prev;
-      }
-
-      return [...prev, keywordId];
-    });
+    setSelectedKeywords((prev) => [...prev, keywordId]);
   };
 
   const handleWearItemChange = (
@@ -1207,7 +1369,7 @@ export default function PostUpload() {
         URL.revokeObjectURL(objectUrlRef.current);
       }
     };
-  }, [navigate]);
+  }, [handleAuthError]);
 
   return (
     <div className={styles.container}>
@@ -1337,28 +1499,56 @@ export default function PostUpload() {
                 </div>
               )}
 
-              <div className={styles.keywordSuggestionWrap}>
-                {filteredKeywordOptions.length > 0 ? (
-                  filteredKeywordOptions.map((keyword) => {
-                    const selected = selectedKeywords.includes(keyword.id);
+              <div className={styles.keywordSuggestionViewport}>
+                <div
+                  ref={keywordSuggestionMeasureRef}
+                  className={styles.keywordSuggestionMeasureWrap}
+                  aria-hidden="true"
+                >
+                  {unselectedKeywordOptions.map((keyword) => (
+                    <button
+                      key={`measure-${keyword.id}`}
+                      type="button"
+                      tabIndex={-1}
+                      className={styles.keywordSuggestionChip}
+                      data-keyword-measure-chip="true"
+                    >
+                      {keyword.label}
+                    </button>
+                  ))}
+                  <span className={styles.keywordOverflowText} data-keyword-measure-overflow="true">
+                    ...
+                  </span>
+                </div>
 
-                    return (
-                      <button
-                        key={keyword.id}
-                        type="button"
-                        className={cls(
-                          styles.keywordSuggestionChip,
-                          selected && styles.keywordSuggestionChipSelected,
-                        )}
-                        onClick={() => toggleKeyword(keyword.id)}
-                      >
-                        {keyword.label}
-                      </button>
-                    );
-                  })
-                ) : (
-                  <div className={styles.emptyKeywordText}>검색 결과가 없습니다.</div>
-                )}
+                <div className={styles.keywordSuggestionWrap}>
+                  {unselectedKeywordOptions.length > 0 ? (
+                    <>
+                      {visibleUnselectedKeywordOptions.map((keyword) => (
+                        <button
+                          key={keyword.id}
+                          type="button"
+                          className={styles.keywordSuggestionChip}
+                          onClick={() => toggleKeyword(keyword.id)}
+                        >
+                          {keyword.label}
+                        </button>
+                      ))}
+
+                      {keywordSuggestionsOverflowing ? (
+                        <span className={styles.keywordOverflowText} aria-hidden="true">
+                          ...
+                        </span>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div className={styles.emptyKeywordText}>
+                      {filteredKeywordOptions.length > 0
+                        ? '선택 가능한 키워드가 없습니다.'
+                        : '검색 결과가 없습니다.'}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </section>
@@ -1423,7 +1613,6 @@ export default function PostUpload() {
             </div>
           </section>
 
-
           <div className={styles.submitArea}>
             <button
               type="button"
@@ -1437,7 +1626,6 @@ export default function PostUpload() {
         </section>
       </div>
 
-
       {submitModalKind === 'missingImage' && (
         <Modal variant="confirm" onClose={closeSubmitModal}>
           <h3 className={styles.confirmModalTitle}>이미지가 필요해요</h3>
@@ -1447,7 +1635,11 @@ export default function PostUpload() {
           </p>
 
           <div className={styles.confirmModalButtonRow}>
-            <button type="button" className={styles.confirmModalCancelButton} onClick={closeSubmitModal}>
+            <button
+              type="button"
+              className={styles.confirmModalCancelButton}
+              onClick={closeSubmitModal}
+            >
               닫기
             </button>
 
@@ -1493,17 +1685,41 @@ export default function PostUpload() {
         </Modal>
       )}
 
+      {submitModalKind === 'keywordLimit' && (
+        <Modal variant="confirm" onClose={closeSubmitModal}>
+          <h3 className={styles.confirmModalTitle}>키워드는 최대 3개까지 선택할 수 있어요</h3>
+
+          <p className={styles.confirmModalDescription}>
+            다른 키워드를 선택하려면 이미 선택한 키워드를 먼저 해제해주세요.
+          </p>
+
+          <div className={styles.confirmModalButtonRow}>
+            <button
+              type="button"
+              className={styles.confirmModalPrimaryButton}
+              onClick={closeSubmitModal}
+            >
+              확인
+            </button>
+          </div>
+        </Modal>
+      )}
+
       {submitModalKind === 'finalWarning' && (
         <Modal variant="confirm" onClose={closeSubmitModal}>
           <h3 className={styles.confirmModalTitle}>업로드 전 확인할까요?</h3>
 
           <p className={styles.confirmModalDescription}>
-            얼굴이 충분히 가려졌는지 확인해주세요. 얼굴 노출 또는 신고 누적 시 게시글 숨김이나
-            이용 제한이 적용될 수 있습니다.
+            얼굴이 충분히 가려졌는지 확인해주세요. 얼굴 노출 또는 신고 누적 시 게시글 숨김이나 이용
+            제한이 적용될 수 있습니다.
           </p>
 
           <div className={styles.confirmModalButtonRow}>
-            <button type="button" className={styles.confirmModalCancelButton} onClick={closeSubmitModal}>
+            <button
+              type="button"
+              className={styles.confirmModalCancelButton}
+              onClick={closeSubmitModal}
+            >
               다시 확인
             </button>
 

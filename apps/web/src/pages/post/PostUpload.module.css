@@ -142,8 +142,24 @@
   @apply flex h-[30px] items-center justify-center rounded-[10px] bg-black px-4 text-[15px] leading-5 text-white;
 }
 
+.keywordSuggestionViewport {
+  @apply relative mt-3;
+}
+
 .keywordSuggestionWrap {
-  @apply mt-3 flex flex-wrap gap-[6px];
+  @apply flex flex-wrap gap-[6px];
+  max-height: 102px;
+  overflow: hidden;
+}
+
+.keywordSuggestionMeasureWrap {
+  @apply pointer-events-none absolute left-0 right-0 top-0 flex flex-wrap gap-[6px];
+  visibility: hidden;
+}
+
+.keywordOverflowText {
+  @apply flex h-[30px] items-center text-[15px] font-semibold leading-5 text-neutral-500;
+  margin-left: -2px;
 }
 
 .keywordSuggestionChip {
@@ -859,4 +875,8 @@
 :global(html.dark) .feedbackSuccess,
 :global(html.dark) .sentText {
   color: #86efac;
+}
+
+:global(html.dark) .keywordOverflowText {
+  color: var(--app-text-muted);
 }

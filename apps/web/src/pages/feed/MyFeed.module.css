@@ -229,6 +229,14 @@
   @apply mt-6 flex items-center gap-3;
 }
 
+.modalSingleAction {
+  @apply justify-center;
+}
+
+.modalSingleAction .modalActionButton {
+  @apply flex-none w-[128px];
+}
+
 .modalCancelButton {
   @apply flex-1 h-12 rounded-[999px] bg-[#f3f3f3] text-[15px] font-medium text-black border-0;
 }
@@ -347,7 +355,8 @@
 
 .selectionActionIconSvg {
   @apply w-[16px] h-[16px] text-white;
-}:global(html.dark) .container,
+}
+:global(html.dark) .container,
 :global(html.dark) .pageBody,
 :global(html.dark) .contentArea,
 :global(html.dark) .scrollArea,
@@ -409,7 +418,8 @@
 
 :global(html.dark) .activePill {
   background: var(--footer-pill-bg);
-}:global(html.dark) .icon,
+}
+:global(html.dark) .icon,
 :global(html.dark) .label,
 :global(html.dark) .searchButton,
 :global(html.dark) .closeButton,
@@ -429,7 +439,8 @@
 :global(html.dark) .iconActive,
 :global(html.dark) .labelActive {
   color: var(--footer-pill-text);
-}:global(html.dark) .mainTitle,
+}
+:global(html.dark) .mainTitle,
 :global(html.dark) .sectionTitle,
 :global(html.dark) .fieldTitle,
 :global(html.dark) .mainTitle,
@@ -579,7 +590,8 @@
 :global(html.dark) .messageBox,
 :global(html.dark) .sectionEmpty {
   color: var(--app-text-secondary);
-}:global(html.dark) .tabSection,
+}
+:global(html.dark) .tabSection,
 :global(html.dark) .contentArea,
 :global(html.dark) .pageBody,
 :global(html.dark) .container,
