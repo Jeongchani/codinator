@@ -54,15 +54,16 @@ type BrushTool = 'blur' | 'eraser';
 
 type BrushPreset = {
   id: 's' | 'm' | 'l';
-  size: number;
   dot: number;
-  block: number;
+  cssBrushSize: number;
 };
 
+const MANUAL_BLUR_PIXEL_SIZE = 22;
+
 const BRUSH_PRESETS: BrushPreset[] = [
-  { id: 's', size: 28, dot: 10, block: 18 },
-  { id: 'm', size: 52, dot: 18, block: 18 },
-  { id: 'l', size: 84, dot: 26, block: 18 },
+  { id: 's', dot: 10, cssBrushSize: 34 },
+  { id: 'm', dot: 18, cssBrushSize: 56 },
+  { id: 'l', dot: 26, cssBrushSize: 86 },
 ];
 
 const wearTypeOptions: Exclude<WearType, ''>[] = [
@@ -455,15 +456,19 @@ function ManualBlurEditor({
   onBack: () => void;
 }) {
   const [tool, setTool] = useState<BrushTool>('blur');
-  const [brushSize, setBrushSize] = useState(BRUSH_PRESETS[1].size);
+  const [brushSize, setBrushSize] = useState(BRUSH_PRESETS[1].cssBrushSize);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [approving, setApproving] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
-  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
+  const [cursorCircle, setCursorCircle] = useState<{
+    left: number;
+    top: number;
+    size: number;
+  } | null>(null);
   const [imageLoadError, setImageLoadError] = useState('');
 
   const toolRef = useRef<BrushTool>('blur');
-  const brushRef = useRef(BRUSH_PRESETS[1].size);
+  const brushSizeRef = useRef(BRUSH_PRESETS[1].cssBrushSize);
 
   const displayCanvasRef = useRef<HTMLCanvasElement>(null);
   const origCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -477,16 +482,17 @@ function ManualBlurEditor({
   const rafRef = useRef<number | null>(null);
 
   const getCurrentPreset = () =>
-    BRUSH_PRESETS.find((preset) => preset.size === brushRef.current) ?? BRUSH_PRESETS[1];
+    BRUSH_PRESETS.find((preset) => preset.cssBrushSize === brushSizeRef.current) ??
+    BRUSH_PRESETS[1];
 
   const changeTool = (nextTool: BrushTool) => {
     toolRef.current = nextTool;
     setTool(nextTool);
   };
 
-  const changeBrush = (nextBrush: number) => {
-    brushRef.current = nextBrush;
-    setBrushSize(nextBrush);
+  const changeBrushSize = (nextBrushSize: number) => {
+    brushSizeRef.current = nextBrushSize;
+    setBrushSize(nextBrushSize);
   };
 
   useEffect(() => {
@@ -519,12 +525,6 @@ function ManualBlurEditor({
       origCtx.drawImage(img, 0, 0);
 
       mosaicCacheRef.current.clear();
-      for (const preset of BRUSH_PRESETS) {
-        const cached = buildPixelatedCanvas(origCanvas, preset.block);
-        if (cached) {
-          mosaicCacheRef.current.set(preset.block, cached);
-        }
-      }
 
       historyRef.current = [];
       setCanUndo(false);
@@ -595,6 +595,33 @@ function ManualBlurEditor({
     return cssRadius * (canvas.width / rect.width);
   };
 
+  const toCanvasPixelSize = (cssPixelSize: number, canvas: HTMLCanvasElement) => {
+    const rect = canvas.getBoundingClientRect();
+    const scale = canvas.width / rect.width;
+
+    return Math.max(4, Math.round(cssPixelSize * scale));
+  };
+
+  const getCurrentBrushRadius = (canvas: HTMLCanvasElement) => {
+    const currentPreset = getCurrentPreset();
+    return toCanvasRadius(currentPreset.cssBrushSize / 2, canvas);
+  };
+
+  const getMosaicBlockSize = (canvas: HTMLCanvasElement) => {
+    return toCanvasPixelSize(MANUAL_BLUR_PIXEL_SIZE, canvas);
+  };
+
+  const updateCursorCircle = (clientX: number, clientY: number, canvas: HTMLCanvasElement) => {
+    const rect = canvas.getBoundingClientRect();
+    const size = brushSizeRef.current;
+
+    setCursorCircle({
+      left: clientX - rect.left - size / 2,
+      top: clientY - rect.top - size / 2,
+      size,
+    });
+  };
+
   const applyAt = (cx: number, cy: number, canvasRadius: number) => {
     const displayCanvas = displayCanvasRef.current;
     const origCanvas = origCanvasRef.current;
@@ -603,35 +630,34 @@ function ManualBlurEditor({
     const displayCtx = displayCanvas.getContext('2d');
     if (!displayCtx) return;
 
-    const currentPreset = getCurrentPreset();
-    const block = currentPreset.block;
+    const block = getMosaicBlockSize(displayCanvas);
 
-    const blurSource = mosaicCacheRef.current.get(block);
+    let blurSource = mosaicCacheRef.current.get(block);
+    if (!blurSource) {
+      blurSource = buildPixelatedCanvas(origCanvas, block) ?? undefined;
+      if (blurSource) {
+        mosaicCacheRef.current.set(block, blurSource);
+      }
+    }
+
     const sourceCanvas = toolRef.current === 'blur' ? blurSource : origCanvas;
     if (!sourceCanvas) return;
 
-    const bx1 = Math.max(0, Math.floor((cx - canvasRadius) / block));
-    const by1 = Math.max(0, Math.floor((cy - canvasRadius) / block));
-    const bx2 = Math.min(
-      Math.ceil(displayCanvas.width / block) - 1,
-      Math.floor((cx + canvasRadius) / block),
-    );
-    const by2 = Math.min(
-      Math.ceil(displayCanvas.height / block) - 1,
-      Math.floor((cy + canvasRadius) / block),
-    );
+    const x = Math.max(0, cx - canvasRadius);
+    const y = Math.max(0, cy - canvasRadius);
+    const right = Math.min(displayCanvas.width, cx + canvasRadius);
+    const bottom = Math.min(displayCanvas.height, cy + canvasRadius);
+    const width = Math.max(0, right - x);
+    const height = Math.max(0, bottom - y);
 
-    for (let bx = bx1; bx <= bx2; bx += 1) {
-      for (let by = by1; by <= by2; by += 1) {
-        const gx = bx * block;
-        const gy = by * block;
-        const gw = Math.min(block, displayCanvas.width - gx);
-        const gh = Math.min(block, displayCanvas.height - gy);
-        if (gw <= 0 || gh <= 0) continue;
+    if (width <= 0 || height <= 0) return;
 
-        displayCtx.drawImage(sourceCanvas, gx, gy, gw, gh, gx, gy, gw, gh);
-      }
-    }
+    displayCtx.save();
+    displayCtx.beginPath();
+    displayCtx.arc(cx, cy, canvasRadius, 0, Math.PI * 2);
+    displayCtx.clip();
+    displayCtx.drawImage(sourceCanvas, x, y, width, height, x, y, width, height);
+    displayCtx.restore();
   };
 
   const interpolate = (
@@ -657,7 +683,7 @@ function ManualBlurEditor({
       return;
     }
 
-    const canvasRadius = toCanvasRadius(brushRef.current / 2, pending.canvas);
+    const canvasRadius = getCurrentBrushRadius(pending.canvas);
     interpolate(lastCvsPos.current, pending, canvasRadius);
     lastCvsPos.current = { x: pending.x, y: pending.y };
     pendingPointRef.current = null;
@@ -677,7 +703,7 @@ function ManualBlurEditor({
 
     if (pendingPointRef.current && lastCvsPos.current) {
       const pending = pendingPointRef.current;
-      const canvasRadius = toCanvasRadius(brushRef.current / 2, pending.canvas);
+      const canvasRadius = getCurrentBrushRadius(pending.canvas);
       interpolate(lastCvsPos.current, pending, canvasRadius);
       lastCvsPos.current = { x: pending.x, y: pending.y };
       pendingPointRef.current = null;
@@ -701,22 +727,18 @@ function ManualBlurEditor({
     saveSnapshot();
 
     const pos = toCanvasPosition(e.clientX, e.clientY, canvas);
-    const canvasRadius = toCanvasRadius(brushRef.current / 2, canvas);
+    const canvasRadius = getCurrentBrushRadius(canvas);
 
     lastCvsPos.current = pos;
-    setCursorPos({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
+    updateCursorCircle(e.clientX, e.clientY, canvas);
 
     applyAt(pos.x, pos.y, canvasRadius);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = e.currentTarget;
-    const rect = canvas.getBoundingClientRect();
 
-    setCursorPos({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    });
+    updateCursorCircle(e.clientX, e.clientY, canvas);
 
     if (!isDrawing.current || !lastCvsPos.current) return;
 
@@ -737,7 +759,7 @@ function ManualBlurEditor({
   };
 
   const handlePointerLeave = () => {
-    setCursorPos(null);
+    setCursorCircle(null);
   };
 
   const handleApprove = () => {
@@ -769,7 +791,9 @@ function ManualBlurEditor({
       <div className={styles.manualHeaderRow}>
         <div className={styles.manualHeaderText}>
           <h3 className={styles.manualTitle}>수동 블러 편집</h3>
-          <p className={styles.manualSubText}>터치하거나 드래그해서 바로 수정</p>
+          <p className={styles.manualSubText}>
+            S/M/L로 붓 크기를 바꾸고 터치하거나 드래그해서 수정
+          </p>
         </div>
 
         <button
@@ -802,15 +826,15 @@ function ManualBlurEditor({
         <div className={styles.sizeGroup}>
           <div className={styles.sizeDots}>
             {BRUSH_PRESETS.map((preset) => {
-              const active = brushSize === preset.size;
+              const active = brushSize === preset.cssBrushSize;
 
               return (
                 <button
                   key={preset.id}
                   type="button"
                   className={cls(styles.sizeDotButton, active && styles.sizeDotButtonActive)}
-                  onClick={() => changeBrush(preset.size)}
-                  aria-label={`블러 크기 ${preset.id}`}
+                  onClick={() => changeBrushSize(preset.cssBrushSize)}
+                  aria-label={`브러시 크기 ${preset.id}`}
                 >
                   <span
                     className={styles.sizeDot}
@@ -861,14 +885,14 @@ function ManualBlurEditor({
             onPointerLeave={handlePointerLeave}
           />
 
-          {cursorPos && (
+          {cursorCircle && (
             <div
               className={styles.editorCursor}
               style={{
-                left: `${cursorPos.x - brushSize / 2}px`,
-                top: `${cursorPos.y - brushSize / 2}px`,
-                width: `${brushSize}px`,
-                height: `${brushSize}px`,
+                left: `${cursorCircle.left}px`,
+                top: `${cursorCircle.top}px`,
+                width: `${cursorCircle.size}px`,
+                height: `${cursorCircle.size}px`,
                 borderColor: toolColor,
                 background: tool === 'blur' ? 'rgba(37,99,235,0.14)' : 'rgba(239,68,68,0.14)',
               }}

@@ -562,6 +562,7 @@
 
 .editorCursor {
   @apply pointer-events-none absolute rounded-full border-2;
+  box-sizing: border-box;
 }
 
 .editorBottomActions {
