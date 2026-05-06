@@ -78,7 +78,7 @@ const keywordSeeds = [
   { code: 'DAILY_LOOK', label: '데일리룩', sortOrder: 2 },
   { code: 'OFFICE_LOOK', label: '출근룩', sortOrder: 3 },
   { code: 'STREET_LOOK', label: '스트릿룩', sortOrder: 4 },
-  { code: 'CAMPUS_LOOK', label: '캠퍼스룩', sortOrder: 5 },
+  { code: 'CAMPUS_LOOK', label: '캠퍼스룩', sortOrder: 5 }
 ];
 
 const feedbackTagSeeds = [

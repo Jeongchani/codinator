@@ -1204,12 +1204,13 @@ export default function Signup() {
         ? styles.successText
         : styles.helperText;
 
-  const phoneMessageClass =
+  const phoneMessageClass = `${styles.phoneMessageText} ${
     phoneErrorMessage || timerExpired
       ? styles.errorText
       : phoneReady
         ? styles.successText
-        : styles.helperText;
+        : styles.helperText
+  }`;
 
   const bottomOffsetClass = phoneVerificationSent
     ? styles.bottomObjectsExpanded
