@@ -422,6 +422,11 @@ export class UploadsService {
         }
       });
 
+      // Python이 stdin을 다 읽기 전에 종료하면 broken pipe(EPIPE/write EOF) 발생 가능.
+      // error 핸들러를 먼저 등록해 unhandled 'error' event 크래시를 방지한다.
+      child.stdin.on('error', () => {
+        // broken pipe — child.on('close')에서 이미 처리되므로 여기선 무시
+      });
       child.stdin.write(file.buffer);
       child.stdin.end();
     });
