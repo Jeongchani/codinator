@@ -75,6 +75,7 @@ declare global {
 
 const SOCIAL_OAUTH_STATE_KEY = 'codinator:socialOAuthState';
 const GOOGLE_IDENTITY_SCRIPT_ID = 'google-identity-services';
+const SOCIAL_LOGIN_REMEMBER_ME = true;
 
 const SOCIAL_LOGIN_BUTTONS: SocialLoginButton[] = [
   {
@@ -467,7 +468,7 @@ export default function Login() {
     const oauthState: SocialOAuthState = {
       provider: 'KAKAO',
       redirectUri,
-      rememberMe: keepLoggedIn,
+      rememberMe: SOCIAL_LOGIN_REMEMBER_ME,
     };
 
     sessionStorage.setItem(SOCIAL_OAUTH_STATE_KEY, JSON.stringify(oauthState));
@@ -496,7 +497,7 @@ export default function Login() {
     const oauthState: SocialOAuthState = {
       provider: 'NAVER',
       redirectUri,
-      rememberMe: keepLoggedIn,
+      rememberMe: SOCIAL_LOGIN_REMEMBER_ME,
       state,
     };
 
@@ -542,7 +543,11 @@ export default function Login() {
                 throw new Error('Google ID token을 확인할 수 없습니다.');
               }
 
-              await handleProviderTokenLogin('GOOGLE', response.credential, keepLoggedIn);
+              await handleProviderTokenLogin(
+                'GOOGLE',
+                response.credential,
+                SOCIAL_LOGIN_REMEMBER_ME,
+              );
             } catch (err) {
               console.error('Google 로그인 오류:', err);
               openModal(

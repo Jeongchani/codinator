@@ -551,12 +551,13 @@
 
 .editorCanvasInner {
   @apply relative overflow-hidden;
+  width: 100%;
   line-height: 0;
   touch-action: none;
 }
 
 .editorCanvas {
-  @apply block h-auto w-full;
+  @apply block h-full w-full;
   touch-action: none;
 }
 
