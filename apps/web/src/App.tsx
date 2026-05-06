@@ -24,9 +24,17 @@ import PasswordReset from './pages/auth/PasswordReset';
 import ForegroundPushCenter from './components/notifications/ForegroundPushCenter';
 import RequireAdminRoute from './components/RequireAdminRoute';
 
-import { fetchMySettings, getAccessToken } from './lib/api';
+import {
+  fetchMySettings,
+  getAccessToken,
+  getAccessTokenRefreshDelay,
+  hasRefreshableSession,
+  refreshAccessToken,
+} from './lib/api';
 import { applyThemeMode, getStoredThemeMode, saveAndApplyThemeMode } from './lib/theme';
 import Signup from './pages/auth/Signup';
+
+const AUTH_FREE_PATHS = new Set(['/loginSelect', '/login', '/signup', '/passwordReset']);
 
 function ThemeSettingsHydrator() {
   const location = useLocation();
@@ -86,6 +94,106 @@ function ThemeSettingsHydrator() {
 
 function AppRoutes() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    let cancelled = false;
+    let timerId: number | null = null;
+
+    const clearRefreshTimer = () => {
+      if (timerId !== null) {
+        window.clearTimeout(timerId);
+        timerId = null;
+      }
+    };
+
+    const scheduleNextRefresh = () => {
+      clearRefreshTimer();
+
+      if (cancelled || !hasRefreshableSession()) {
+        return;
+      }
+
+      timerId = window.setTimeout(() => {
+        void runRefresh();
+      }, getAccessTokenRefreshDelay());
+    };
+
+    const moveToLoginSelectWhenNeeded = () => {
+      if (cancelled || location.pathname === '/' || AUTH_FREE_PATHS.has(location.pathname)) {
+        return;
+      }
+
+      navigate('/loginSelect', { replace: true });
+    };
+
+    const runRefresh = async () => {
+      if (!hasRefreshableSession()) {
+        clearRefreshTimer();
+        return;
+      }
+
+      try {
+        await refreshAccessToken();
+        scheduleNextRefresh();
+      } catch {
+        clearRefreshTimer();
+        moveToLoginSelectWhenNeeded();
+      }
+    };
+
+    const refreshIfTokenIsNearExpiry = () => {
+      if (!hasRefreshableSession()) {
+        clearRefreshTimer();
+        return;
+      }
+
+      if (getAccessTokenRefreshDelay() <= 0) {
+        void runRefresh();
+        return;
+      }
+
+      scheduleNextRefresh();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshIfTokenIsNearExpiry();
+      }
+    };
+
+    scheduleNextRefresh();
+
+    window.addEventListener('focus', refreshIfTokenIsNearExpiry);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      clearRefreshTimer();
+      window.removeEventListener('focus', refreshIfTokenIsNearExpiry);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [location.pathname, navigate]);
+
+  const handleSplashFinish = () => {
+    if (hasRefreshableSession()) {
+      void refreshAccessToken()
+        .then(() => {
+          navigate('/rankingZone', { replace: true });
+        })
+        .catch(() => {
+          navigate('/loginSelect', { replace: true });
+        });
+      return;
+    }
+
+    if (getAccessToken()) {
+      navigate('/rankingZone', { replace: true });
+      return;
+    }
+
+    navigate('/loginSelect', { replace: true });
+  };
 
   return (
     <>
@@ -93,7 +201,7 @@ function AppRoutes() {
       <ForegroundPushCenter />
 
       <Routes>
-        <Route path="/" element={<Splash onFinish={() => navigate('/loginSelect')} />} />
+        <Route path="/" element={<Splash onFinish={handleSplashFinish} />} />
 
         <Route path="/loginSelect" element={<LoginSelect />} />
         <Route path="/login" element={<Login />} />
