@@ -1,4 +1,12 @@
-import React, { ChangeEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  ChangeEvent,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronDown,
@@ -1119,21 +1127,24 @@ export default function PostUpload() {
     setApprovedPreview('');
   };
 
-  const handleAuthError = (err: unknown) => {
-    const errorMessage = err instanceof Error ? err.message : '요청 처리 실패';
+  const handleAuthError = useCallback(
+    (err: unknown) => {
+      const errorMessage = err instanceof Error ? err.message : '요청 처리 실패';
 
-    if (
-      errorMessage.includes('Unauthorized') ||
-      errorMessage.includes('로그인이 필요합니다') ||
-      errorMessage.includes('유효하지 않거나 만료된 토큰')
-    ) {
-      clearAuthTokens();
-      navigate('/login');
-      return true;
-    }
+      if (
+        errorMessage.includes('Unauthorized') ||
+        errorMessage.includes('로그인이 필요합니다') ||
+        errorMessage.includes('유효하지 않거나 만료된 토큰')
+      ) {
+        clearAuthTokens();
+        navigate('/login');
+        return true;
+      }
 
-    return false;
-  };
+      return false;
+    },
+    [navigate],
+  );
 
   const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
@@ -1358,7 +1369,7 @@ export default function PostUpload() {
         URL.revokeObjectURL(objectUrlRef.current);
       }
     };
-  }, [navigate]);
+  }, [handleAuthError]);
 
   return (
     <div className={styles.container}>
