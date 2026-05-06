@@ -20,12 +20,10 @@ import { AiService } from '../ai/ai.service';
 import { ImageIndexingService } from '../ai/image-indexing.service';
 
 // ── 리사이징 정책 상수 ──────────────────────────────────────────────────────
-// 목적: 휴대폰 원본 사진처럼 해상도가 과도하게 커서 파일 용량이 큰 경우만 축소.
-// "10MB 이하라도 무조건 리사이징" 하지 않는다.
-const RESIZE_THRESHOLD_BYTES = 3 * 1024 * 1024; // 3MB 이상일 때만 리사이징 검토
-const RESIZE_THRESHOLD_PX = 1920;               // 긴 변이 1920px 이상일 때 리사이징
-const RESIZE_TARGET_PX = 1440;                  // 리사이징 후 긴 변 목표 크기
-const RESIZE_QUALITY = 85;                      // JPEG/WebP 출력 품질
+// 10MB 초과 파일만 리사이징. 10MB 이하는 원본 그대로 사용.
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB — 초과 시 리사이징 트리거
+const RESIZE_TARGET_PX = 1440;          // 리사이징 후 긴 변 목표 크기
+const RESIZE_QUALITY = 85;              // JPEG 출력 품질
 
 /**
  * Batch4 — blurMethod / aiBlurStatus 상태 전이 정책
@@ -342,51 +340,31 @@ export class UploadsService {
       throw new BadRequestException('jpg, png, webp 파일만 업로드할 수 있습니다.');
     }
 
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (file.size > maxSize) {
-      throw new BadRequestException('이미지 최대 크기는 10MB입니다.');
+    // 50MB 초과는 서버 보호 차원에서 거부. 10MB~50MB 구간은 리사이징으로 처리.
+    const hardLimit = 50 * 1024 * 1024;
+    if (file.size > hardLimit) {
+      throw new BadRequestException('이미지 최대 크기는 50MB입니다.');
     }
   }
 
   /**
-   * 필요한 경우에만 이미지를 리사이징한 Buffer를 반환한다.
-   * Python + Pillow를 사용하므로 외부 npm 의존성 불필요.
-   *
-   * 리사이징 조건 (AND):
-   *   1. 파일 크기 >= RESIZE_THRESHOLD_BYTES (3MB)
-   *   2. 긴 변 >= RESIZE_THRESHOLD_PX (1920px)
-   *
-   * 조건 미충족 시 원본 buffer를 그대로 반환 (리사이징 없음).
-   * 목적: 휴대폰 원본 사진처럼 해상도가 과도해서 용량이 큰 경우만 줄임.
-   */
-  /**
-   * 필요한 경우에만 이미지를 리사이징한 Buffer를 반환한다.
-   * Python3 + Pillow를 사용 (외부 npm 의존성 불필요).
-   *
-   * 리사이징 조건 (AND):
-   *   1. 파일 크기 >= RESIZE_THRESHOLD_BYTES (3MB)
-   *   2. 긴 변 >= RESIZE_THRESHOLD_PX (1920px)
-   *
-   * 조건 미충족 시 원본 buffer를 그대로 반환 (리사이징 없음).
-   * 목적: 휴대폰 원본 사진처럼 해상도가 과도해서 용량이 큰 경우만 줄임.
+   * 10MB 초과 파일만 Python3 + Pillow로 리사이징한 Buffer를 반환한다.
+   * 10MB 이하는 원본 buffer를 그대로 반환 (Python 호출 없음).
    */
   private normalizeBuffer(
     file: Express.Multer.File,
   ): Promise<{ buffer: Buffer; resized: boolean }> {
-    // 1차 조건: 파일 크기가 기준 미만이면 즉시 원본 반환 (Python 호출 없음)
-    if (file.size < RESIZE_THRESHOLD_BYTES) {
+    // 10MB 이하면 원본 그대로 사용
+    if (file.size <= MAX_FILE_SIZE) {
       return Promise.resolve({ buffer: file.buffer, resized: false });
     }
 
+    // 10MB 초과 → RESIZE_TARGET_PX 기준으로 축소 후 JPEG 변환
     const pythonScript = [
       'import sys, io',
       'from PIL import Image',
       'data = sys.stdin.buffer.read()',
       'img = Image.open(io.BytesIO(data))',
-      'w, h = img.size',
-      'longer = max(w, h)',
-      `if longer < ${RESIZE_THRESHOLD_PX}:`,
-      '    sys.stdout.buffer.write(b"SKIP"); sys.exit(0)',
       `img.thumbnail((${RESIZE_TARGET_PX}, ${RESIZE_TARGET_PX}), Image.LANCZOS)`,
       'out = io.BytesIO()',
       `img.convert("RGB").save(out, format="JPEG", quality=${RESIZE_QUALITY})`,
@@ -414,12 +392,7 @@ export class UploadsService {
           return;
         }
 
-        const result = Buffer.concat(chunks);
-        if (result.slice(0, 4).toString('utf8') === 'SKIP') {
-          resolve({ buffer: file.buffer, resized: false });
-        } else {
-          resolve({ buffer: result, resized: true });
-        }
+        resolve({ buffer: Buffer.concat(chunks), resized: true });
       });
 
       // Python이 stdin을 다 읽기 전에 종료하면 broken pipe(EPIPE/write EOF) 발생 가능.
