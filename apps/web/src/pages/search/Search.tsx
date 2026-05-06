@@ -51,6 +51,12 @@ import styles from './Search.module.css';
 
 type SearchMode = 'text' | 'image';
 
+type ImageUploadNotice = {
+  title: string;
+  description: string;
+  helperText?: string;
+};
+
 type SearchFilter = {
   id: SearchFilterId;
   label: string;
@@ -110,6 +116,12 @@ const FILTERS: SearchFilter[] = [
   { id: 'feedbackTag', label: '피드백 태그' },
 ];
 
+const SEARCH_IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp';
+const SEARCH_IMAGE_MAX_SIZE_MB = 5;
+const SEARCH_IMAGE_MAX_SIZE_BYTES = SEARCH_IMAGE_MAX_SIZE_MB * 1024 * 1024;
+const SUPPORTED_SEARCH_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'] as const;
+const SUPPORTED_SEARCH_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
 const TYPE_OPTIONS: Array<{ value: SearchType; label: string; shortLabel: string }> = [
   { value: 'ALL', label: '전체 검색', shortLabel: '전체' },
   { value: 'NICKNAME', label: '닉네임', shortLabel: '닉네임' },
@@ -127,12 +139,88 @@ const OUTFIT_CATEGORY_MAP: Record<string, AiGarmentCategory> = {
   액세서리: 'ACCESSORY',
 };
 
+const normalizeApiErrorMessage = (message: string) => {
+  const trimmedMessage = message.trim();
+
+  if (!trimmedMessage) {
+    return '';
+  }
+
+  try {
+    const parsed = JSON.parse(trimmedMessage) as { message?: unknown };
+    const parsedMessage = parsed.message;
+
+    if (Array.isArray(parsedMessage)) {
+      return parsedMessage.filter(Boolean).join('\n');
+    }
+
+    if (typeof parsedMessage === 'string' && parsedMessage.trim()) {
+      return parsedMessage;
+    }
+  } catch {
+    // 서버가 일반 문자열을 내려주는 경우에는 원문을 그대로 사용한다.
+  }
+
+  return trimmedMessage;
+};
+
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof Error && error.message.trim()) {
-    return error.message;
+    return normalizeApiErrorMessage(error.message) || fallback;
   }
 
   return fallback;
+};
+
+const getFileExtension = (fileName: string) => {
+  const normalizedFileName = fileName.trim().toLowerCase();
+  const dotIndex = normalizedFileName.lastIndexOf('.');
+
+  if (dotIndex < 0 || dotIndex === normalizedFileName.length - 1) {
+    return '';
+  }
+
+  return normalizedFileName.slice(dotIndex + 1);
+};
+
+const getUnsupportedImageNotice = (fileName?: string): ImageUploadNotice => ({
+  title: '이 파일은 업로드할 수 없어요',
+  description:
+    '선택한 파일은 AI 이미지 검색에 사용할 수 없어요. JPG, JPEG, PNG, WEBP 파일만 업로드할 수 있어요.',
+  helperText: fileName ? `선택한 파일: ${fileName}` : '파일 확장자를 확인한 뒤 다시 선택해주세요.',
+});
+
+const validateSearchImageFile = (file: File): ImageUploadNotice | null => {
+  const extension = getFileExtension(file.name);
+  const hasSupportedExtension = SUPPORTED_SEARCH_IMAGE_EXTENSIONS.some(
+    (supportedExtension) => supportedExtension === extension,
+  );
+  const hasSupportedMimeType = file.type ? SUPPORTED_SEARCH_IMAGE_MIME_TYPES.has(file.type) : true;
+
+  if (!hasSupportedExtension || !hasSupportedMimeType) {
+    return getUnsupportedImageNotice(file.name);
+  }
+
+  if (file.size > SEARCH_IMAGE_MAX_SIZE_BYTES) {
+    return {
+      title: '이미지 용량이 너무 커요',
+      description: `AI 이미지 검색은 ${SEARCH_IMAGE_MAX_SIZE_MB}MB 이하 이미지만 업로드할 수 있어요.`,
+      helperText: '이미지 용량을 줄인 뒤 다시 선택해주세요.',
+    };
+  }
+
+  return null;
+};
+
+const isUnsupportedImageErrorMessage = (message: string) => {
+  const normalizedMessage = message.toLowerCase();
+
+  return (
+    normalizedMessage.includes('jpg') ||
+    normalizedMessage.includes('jpeg') ||
+    normalizedMessage.includes('png') ||
+    normalizedMessage.includes('webp')
+  );
 };
 
 const formatResultCount = (count: number) => count.toLocaleString('ko-KR').padStart(2, '0');
@@ -285,6 +373,7 @@ export default function Search() {
   const [resultCount, setResultCount] = useState(0);
   const [resultLoading, setResultLoading] = useState(false);
   const [resultError, setResultError] = useState('');
+  const [imageUploadNotice, setImageUploadNotice] = useState<ImageUploadNotice | null>(null);
   const [textSearchSubmitted, setTextSearchSubmitted] = useState(false);
   const [focusPost, setFocusPost] = useState<FocusPostState | null>(null);
   const [focusContentText, setFocusContentText] = useState('');
@@ -584,10 +673,33 @@ export default function Search() {
     fileInputRef.current?.click();
   };
 
+  const handleCloseImageUploadNotice = () => {
+    setImageUploadNotice(null);
+  };
+
+  const clearImagePreview = () => {
+    setImagePreviewUrl((previousPreviewUrl) => {
+      if (previousPreviewUrl) {
+        URL.revokeObjectURL(previousPreviewUrl);
+      }
+
+      return null;
+    });
+  };
+
   const handleChangeImage = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    event.target.value = '';
 
     if (!file) {
+      return;
+    }
+
+    const validationNotice = validateSearchImageFile(file);
+
+    if (validationNotice) {
+      setImageUploadNotice(validationNotice);
+      setResultError('');
       return;
     }
 
@@ -605,19 +717,28 @@ export default function Search() {
     setImageUploading(true);
     setResultLoading(true);
     setResultError('');
+    setImageUploadNotice(null);
     setResultItems([]);
     setResultCount(0);
-    event.target.value = '';
 
     try {
       const uploaded = await uploadSearchImage(file);
       setImageAssetId(uploaded.imageAssetId);
       await executeImageSearch(uploaded.imageAssetId, appliedFilters);
     } catch (error) {
+      const message = getErrorMessage(error, '이미지 업로드에 실패했습니다.');
+
       setImageAssetId(null);
+      clearImagePreview();
       setResultItems([]);
       setResultCount(0);
-      setResultError(getErrorMessage(error, '이미지 업로드에 실패했습니다.'));
+
+      if (isUnsupportedImageErrorMessage(message)) {
+        setImageUploadNotice(getUnsupportedImageNotice(file.name));
+        setResultError('');
+      } else {
+        setResultError(message);
+      }
     } finally {
       setImageUploading(false);
       setResultLoading(false);
@@ -947,7 +1068,7 @@ export default function Search() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept={SEARCH_IMAGE_ACCEPT}
                   className={styles.fileInput}
                   onChange={handleChangeImage}
                 />
@@ -1019,6 +1140,53 @@ export default function Search() {
 
           <div className={styles.footerSpacer} aria-hidden="true" />
         </main>
+
+        {imageUploadNotice ? (
+          <div
+            className={styles.uploadNoticeOverlay}
+            role="presentation"
+            onClick={handleCloseImageUploadNotice}
+          >
+            <div
+              className={styles.uploadNoticeCard}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="search-image-upload-notice-title"
+              aria-describedby="search-image-upload-notice-description"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <h2 id="search-image-upload-notice-title" className={styles.uploadNoticeTitle}>
+                {imageUploadNotice.title}
+              </h2>
+              <p
+                id="search-image-upload-notice-description"
+                className={styles.uploadNoticeDescription}
+              >
+                {imageUploadNotice.description}
+              </p>
+
+              <div className={styles.uploadExtensionList} aria-label="업로드 가능한 이미지 확장자">
+                {SUPPORTED_SEARCH_IMAGE_EXTENSIONS.map((extension) => (
+                  <span key={extension} className={styles.uploadExtensionChip}>
+                    .{extension}
+                  </span>
+                ))}
+              </div>
+
+              {imageUploadNotice.helperText ? (
+                <p className={styles.uploadNoticeHelper}>{imageUploadNotice.helperText}</p>
+              ) : null}
+
+              <button
+                type="button"
+                className={styles.uploadNoticeButton}
+                onClick={handleCloseImageUploadNotice}
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {filterSheetOpen ? (
