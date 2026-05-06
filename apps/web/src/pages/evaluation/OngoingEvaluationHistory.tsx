@@ -14,7 +14,7 @@ import {
   togglePostBookmark,
 } from '../../lib/api';
 import Header from '../../components/Header';
-import FocusScreen from '../../components/focus/FocusScreen';
+import FocusScreen, { type FocusScreenItem } from '../../components/focus/FocusScreen';
 import PostDetailBottomSheet from '../../components/postdetail/PostDetailBottomSheet';
 import EvaluationDetailFeedback from './EvaluationDetailFeedback';
 import styles from './OngoingEvaluationHistory.module.css';
@@ -288,10 +288,34 @@ export default function OngoingEvaluationHistory() {
 
   const flatItems = useMemo(() => groupedItems.flatMap((group) => group.items), [groupedItems]);
 
-  const focusedItem = useMemo(() => {
-    if (focusedPostId === null) return null;
-    return flatItems.find((item) => item.postId === focusedPostId) ?? null;
+  const focusItems = useMemo<FocusScreenItem[]>(
+    () =>
+      flatItems.map((item) => ({
+        id: item.postId,
+        imageUrl: item.imageUrl,
+        fallbackText: '이미지 없음',
+        contentText: item.contentPreview,
+      })),
+    [flatItems],
+  );
+
+  const focusedItemIndex = useMemo(() => {
+    if (focusedPostId === null) return -1;
+    return flatItems.findIndex((item) => item.postId === focusedPostId);
   }, [flatItems, focusedPostId]);
+
+  const focusedItem = focusedItemIndex >= 0 ? (flatItems[focusedItemIndex] ?? null) : null;
+
+  const handleFocusActiveIndexChange = useCallback(
+    (nextIndex: number) => {
+      const nextItem = flatItems[nextIndex];
+      if (!nextItem) return;
+
+      setFocusedPostId(nextItem.postId);
+      setDetailSheetOpen(false);
+    },
+    [flatItems],
+  );
 
   const focusedReportAuthor =
     focusedItem && focusedItem.authorUserId !== null && focusedItem.authorUserId !== undefined
@@ -429,8 +453,9 @@ export default function OngoingEvaluationHistory() {
       {focusedItem ? (
         <FocusScreen
           isOpen={Boolean(focusedItem)}
-          items={[{ id: focusedItem.postId, imageUrl: focusedItem.imageUrl }]}
-          activeIndex={0}
+          items={focusItems}
+          activeIndex={Math.max(focusedItemIndex, 0)}
+          onActiveIndexChange={handleFocusActiveIndexChange}
           closeButtonType="back"
           onClose={() => {
             setFocusedPostId(null);
@@ -438,7 +463,7 @@ export default function OngoingEvaluationHistory() {
           }}
           sheetOpen={detailSheetOpen}
           onCloseSheet={() => setDetailSheetOpen(false)}
-          showSwipeIndicator={false}
+          showSwipeIndicator={focusItems.length > 1}
           showVoteGraph
           likePercent={focusedVoteSummary.likePercent}
           dislikePercent={focusedVoteSummary.dislikePercent}
@@ -472,7 +497,7 @@ export default function OngoingEvaluationHistory() {
                   voteIdOverride={focusedItem.myVoteId ?? null}
                   voteChoiceOverride={focusedItem.myChoice}
                   allowReadonlyDetail
-                  hideFeedbackSectionOverride
+                  hideFeedbackComposerOverride
                 />
               </div>
             </PostDetailBottomSheet>
