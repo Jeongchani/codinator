@@ -80,7 +80,7 @@ export class UploadsController {
     summary: '이미지 검색용 업로드 (V3)',
     description: [
       '검색에 사용할 이미지 1장을 업로드합니다.',
-      '지원 형식: jpg/jpeg, png, webp (최대 5MB).',
+      '지원 형식: jpg/jpeg, png, webp (최대 10MB).',
       '검색용 이미지는 공개되지 않으므로 face blur가 적용되지 않습니다.',
       '응답으로 받은 imageAssetId를 POST /search/image 에서 사용하세요.',
       'AI 분석(garment 감지 + 임베딩 추출)은 /search/image 호출 시 자동으로 수행됩니다.',
@@ -94,7 +94,7 @@ export class UploadsController {
         file: {
           type: 'string',
           format: 'binary',
-          description: '검색용 이미지 파일 (jpg/jpeg/png/webp, 최대 5MB)',
+          description: '검색용 이미지 파일 (jpg/jpeg/png/webp, 최대 10MB)',
         },
       },
       required: ['file'],
@@ -146,7 +146,7 @@ export class UploadsController {
         file: {
           type: 'string',
           format: 'binary',
-          description: '직접 블러 처리한 이미지 파일 (jpg/png/webp, 최대 5MB)',
+          description: '직접 블러 처리한 이미지 파일 (jpg/png/webp, 최대 10MB)',
         },
       },
       required: ['file'],

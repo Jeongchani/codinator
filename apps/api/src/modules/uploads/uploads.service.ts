@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -15,9 +14,18 @@ import {
 import { randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
 import { extname, join } from 'path';
+import sharp from 'sharp';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AiService } from '../ai/ai.service';
 import { ImageIndexingService } from '../ai/image-indexing.service';
+
+// ── 리사이징 정책 상수 ──────────────────────────────────────────────────────
+// 목적: 휴대폰 원본 사진처럼 해상도가 과도하게 커서 파일 용량이 큰 경우만 축소.
+// "10MB 이하라도 무조건 리사이징" 하지 않는다.
+const RESIZE_THRESHOLD_BYTES = 3 * 1024 * 1024; // 3MB 이상일 때만 리사이징 검토
+const RESIZE_THRESHOLD_PX = 1920;               // 긴 변이 1920px 이상일 때 리사이징
+const RESIZE_TARGET_PX = 1440;                  // 리사이징 후 긴 변 목표 크기
+const RESIZE_QUALITY = 85;                      // JPEG/WebP 출력 품질
 
 /**
  * Batch4 — blurMethod / aiBlurStatus 상태 전이 정책
@@ -144,10 +152,17 @@ export class UploadsService {
     const originalDir = join(this.uploadRoot, 'search', 'originals', today);
     await fs.mkdir(originalDir, { recursive: true });
 
-    const originalExtension = extname(file.originalname) || '.jpg';
+    const { buffer: normalizedBuffer, resized } = await this.normalizeBuffer(file);
+    if (resized) {
+      this.logger.log(
+        `검색이미지 리사이징 적용 — 원본크기=${file.size}B → 리사이징후=${normalizedBuffer.length}B`,
+      );
+    }
+
+    const originalExtension = resized ? '.jpg' : (extname(file.originalname) || '.jpg');
     const originalFilename = `${randomUUID()}${originalExtension}`;
     const originalFullPath = join(originalDir, originalFilename);
-    await fs.writeFile(originalFullPath, file.buffer);
+    await fs.writeFile(originalFullPath, normalizedBuffer);
 
     const storageKey = `search/originals/${today}/${originalFilename}`;
     const originalImageUrl = `/uploads/${storageKey}`;
@@ -203,11 +218,23 @@ export class UploadsService {
       fs.mkdir(processedDir, { recursive: true }),
     ]);
 
-    const originalExtension = extname(file.originalname) || '.jpg';
+    // 필요한 경우에만 리사이징 (휴대폰 고해상도 원본 대응)
+    const { buffer: normalizedBuffer, resized } = await this.normalizeBuffer(file);
+    const normalizedFile: Express.Multer.File = resized
+      ? { ...file, buffer: normalizedBuffer, size: normalizedBuffer.length, mimetype: 'image/jpeg' }
+      : file;
+
+    if (resized) {
+      this.logger.log(
+        `이미지 리사이징 적용 — 원본크기=${file.size}B → 리사이징후=${normalizedBuffer.length}B`,
+      );
+    }
+
+    const originalExtension = resized ? '.jpg' : (extname(file.originalname) || '.jpg');
     const originalFilename = `${randomUUID()}${originalExtension}`;
     const originalFullPath = join(originalDir, originalFilename);
 
-    await fs.writeFile(originalFullPath, file.buffer);
+    await fs.writeFile(originalFullPath, normalizedFile.buffer);
 
     const originalStorageKey = `${folderPrefix}/originals/${today}/${originalFilename}`;
     const originalImageUrl = `/uploads/${originalStorageKey}`;
@@ -217,7 +244,7 @@ export class UploadsService {
     let aiBlurStatus: AiBlurStatus = AiBlurStatus.NONE;
 
     try {
-      const processed = await this.aiService.blurFace(file);
+      const processed = await this.aiService.blurFace(normalizedFile);
 
       if (processed.blurred) {
         // 시나리오 1 대기 상태: AI 성공 + 블러 적용 → aiBlurStatus=DONE, blurMethod=AUTO
@@ -294,10 +321,17 @@ export class UploadsService {
     const processedDir = join(this.uploadRoot, 'posts', 'processed', today);
     await fs.mkdir(processedDir, { recursive: true });
 
-    const ext = extname(file.originalname) || '.jpg';
+    const { buffer: normalizedBuffer, resized } = await this.normalizeBuffer(file);
+    if (resized) {
+      this.logger.log(
+        `수동블러 이미지 리사이징 적용 — 원본크기=${file.size}B → 리사이징후=${normalizedBuffer.length}B`,
+      );
+    }
+
+    const ext = resized ? '.jpg' : (extname(file.originalname) || '.jpg');
     const filename = `manual-${randomUUID()}${ext}`;
     const fullPath = join(processedDir, filename);
-    await fs.writeFile(fullPath, file.buffer);
+    await fs.writeFile(fullPath, normalizedBuffer);
 
     return `/uploads/posts/processed/${today}/${filename}`;
   }
@@ -308,10 +342,50 @@ export class UploadsService {
       throw new BadRequestException('jpg, png, webp 파일만 업로드할 수 있습니다.');
     }
 
-    const maxSize = 5 * 1024 * 1024;
+    const maxSize = 10 * 1024 * 1024; // 10MB
     if (file.size > maxSize) {
-      throw new BadRequestException('이미지 최대 크기는 5MB입니다.');
+      throw new BadRequestException('이미지 최대 크기는 10MB입니다.');
     }
+  }
+
+  /**
+   * 필요한 경우에만 이미지를 리사이징한 Buffer를 반환한다.
+   *
+   * 리사이징 조건 (AND):
+   *   1. 파일 크기 >= RESIZE_THRESHOLD_BYTES (3MB)
+   *   2. 긴 변 >= RESIZE_THRESHOLD_PX (1920px)
+   *
+   * 조건 미충족 시 원본 buffer를 그대로 반환 (리사이징 없음).
+   * 목적: 휴대폰 원본 사진처럼 해상도가 과도해서 용량이 큰 경우만 줄임.
+   */
+  private async normalizeBuffer(
+    file: Express.Multer.File,
+  ): Promise<{ buffer: Buffer; resized: boolean }> {
+    // 파일 크기가 기준 미만이면 즉시 원본 반환
+    if (file.size < RESIZE_THRESHOLD_BYTES) {
+      return { buffer: file.buffer, resized: false };
+    }
+
+    const metadata = await sharp(file.buffer).metadata();
+    const longerSide = Math.max(metadata.width ?? 0, metadata.height ?? 0);
+
+    // 해상도가 기준 미만이면 원본 반환
+    if (longerSide < RESIZE_THRESHOLD_PX) {
+      return { buffer: file.buffer, resized: false };
+    }
+
+    // 두 조건 모두 충족 → 리사이징
+    const resizedBuffer = await sharp(file.buffer)
+      .resize({
+        width: metadata.width! >= metadata.height! ? RESIZE_TARGET_PX : undefined,
+        height: metadata.width! < metadata.height! ? RESIZE_TARGET_PX : undefined,
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+      .jpeg({ quality: RESIZE_QUALITY }) // JPEG로 통일 (PNG·WebP도 JPEG로 최적화 출력)
+      .toBuffer();
+
+    return { buffer: resizedBuffer, resized: true };
   }
 
   private getDatePath() {
