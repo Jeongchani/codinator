@@ -79,6 +79,16 @@ const keywordSeeds = [
   { code: 'OFFICE_LOOK', label: '출근룩', sortOrder: 3 },
   { code: 'STREET_LOOK', label: '스트릿룩', sortOrder: 4 },
   { code: 'CAMPUS_LOOK', label: '캠퍼스룩', sortOrder: 5 },
+  { code: 'BOYFRIEND_OOK', label: 'dd룩', sortOrder: 6 },
+  { code: 'DAILY_OOK', label: 'aa룩', sortOrder: 7 },
+  { code: 'OFFICE_OOK', label: 'cc룩', sortOrder: 8 },
+  { code: 'STREET_OOK', label: 'ff룩', sortOrder: 9 },
+  { code: 'CAMPUS_OOK', label: 'qq룩', sortOrder: 10 },
+  { code: 'OYFRIEND_LOOK', label: 'ww룩', sortOrder: 11 },
+  { code: 'AILY_LOOK', label: 'ee룩', sortOrder: 12 },
+  { code: 'FFICE_LOOK', label: 'err', sortOrder: 13 },
+  { code: 'TREET_LOOK', label: 'ttt룩', sortOrder: 14 },
+  { code: 'AMPUS_LOOK', label: 'yyyy룩', sortOrder: 15 },
 ];
 
 const feedbackTagSeeds = [

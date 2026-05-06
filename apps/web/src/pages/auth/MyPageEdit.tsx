@@ -681,7 +681,7 @@ export default function MyPageEdit() {
             </div>
 
             <p
-              className={`${styles.helperText} ${
+              className={`${styles.phoneMessageText} ${styles.helperText} ${
                 phoneErrorMessage ? styles.errorText : phoneReady ? styles.successText : ''
               }`}
             >

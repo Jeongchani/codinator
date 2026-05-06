@@ -42,6 +42,13 @@ const LONG_PRESS_MOVE_THRESHOLD = 8;
 
 const isHiddenPost = (item: MyFeedItem) => item.postStatus === 'HIDDEN';
 
+const isHideablePost = (item: MyFeedItem) => {
+  const evaluationStatus = item.evaluation?.status;
+  return evaluationStatus === 'ENDED' || evaluationStatus === 'CLOSED';
+};
+
+const HIDE_ONLY_ENDED_MESSAGE = '평가가 완료(ENDED)된 게시글만 숨길 수 있습니다.';
+
 const getItemsByTab = (items: MyFeedItem[], tab: TabType) => {
   if (tab === 'hidden') {
     return items.filter(isHiddenPost);
@@ -194,6 +201,7 @@ export default function MyFeed() {
   const [showActionConfirm, setShowActionConfirm] = useState(false);
   const [pendingAction, setPendingAction] = useState<ActionType | null>(null);
   const [actionSubmitting, setActionSubmitting] = useState(false);
+  const [actionNoticeMessage, setActionNoticeMessage] = useState('');
 
   const [isTouchDragging, setIsTouchDragging] = useState(false);
   const [touchDragMode, setTouchDragMode] = useState<TouchDragMode>('select');
@@ -570,6 +578,20 @@ export default function MyFeed() {
 
   const handleActionConfirmOpen = (action: ActionType) => {
     if (selectedIds.length === 0 || actionSubmitting) return;
+
+    if (action === 'hide') {
+      const selectedItemMap = new Map(items.map((item) => [item.postId, item]));
+      const hasNotEndedPost = selectedIds.some((postId) => {
+        const item = selectedItemMap.get(postId);
+        return !item || !isHideablePost(item);
+      });
+
+      if (hasNotEndedPost) {
+        setActionNoticeMessage(HIDE_ONLY_ENDED_MESSAGE);
+        return;
+      }
+    }
+
     setPendingAction(action);
     setShowActionConfirm(true);
   };
@@ -578,6 +600,10 @@ export default function MyFeed() {
     if (actionSubmitting) return;
     setShowActionConfirm(false);
     setPendingAction(null);
+  };
+
+  const handleActionNoticeClose = () => {
+    setActionNoticeMessage('');
   };
 
   const handleApplyAction = async () => {
@@ -629,7 +655,9 @@ export default function MyFeed() {
           return;
         }
 
-        window.alert(message);
+        setActionNoticeMessage(message);
+        setShowActionConfirm(false);
+        return;
       }
 
       await refreshFeed();
@@ -926,6 +954,11 @@ export default function MyFeed() {
   const nextPaneEnterClass =
     slideDirection === 'right' ? styles.enterFromRight : styles.enterFromLeft;
 
+  const actionNoticeTitle =
+    actionNoticeMessage === HIDE_ONLY_ENDED_MESSAGE
+      ? '숨김 처리할 수 없어요'
+      : '요청을 처리할 수 없어요';
+
   const confirmTitle =
     pendingAction === 'delete'
       ? '선택한 피드를 삭제할까요?'
@@ -1086,6 +1119,31 @@ export default function MyFeed() {
           onDelete={() => handleActionConfirmOpen('delete')}
         />
       ) : null}
+
+      {actionNoticeMessage && (
+        <div className={styles.modalOverlay} onClick={handleActionNoticeClose}>
+          <div
+            className={styles.modalCard}
+            onClick={(e) => e.stopPropagation()}
+            role="alertdialog"
+            aria-modal="true"
+            aria-label="나의 피드 안내"
+          >
+            <p className={styles.modalTitle}>{actionNoticeTitle}</p>
+            <p className={styles.modalDesc}>{actionNoticeMessage}</p>
+
+            <div className={`${styles.modalActions} ${styles.modalSingleAction}`}>
+              <button
+                type="button"
+                className={styles.modalActionButton}
+                onClick={handleActionNoticeClose}
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showActionConfirm && pendingAction && (
         <div className={styles.modalOverlay} onClick={handleActionConfirmClose}>

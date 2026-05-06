@@ -114,6 +114,15 @@
   @apply text-[#dc4d36];
 }
 
+
+.phoneMessageText {
+  display: block;
+  width: max-content;
+  max-width: none;
+  overflow: visible;
+  white-space: nowrap;
+}
+
 .debugCodeText {
   @apply mt-1 text-[12px] leading-4 text-[#8a8a8a];
 }
