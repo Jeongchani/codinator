@@ -107,6 +107,7 @@ declare global {
 const PHONE_CODE_TTL_SECONDS = 5 * 60;
 const SOCIAL_OAUTH_STATE_KEY = 'codinator:socialOAuthState';
 const GOOGLE_IDENTITY_SCRIPT_ID = 'google-identity-services';
+const SOCIAL_LOGIN_REMEMBER_ME = true;
 
 const SOCIAL_LOGIN_BUTTONS: SocialLoginButton[] = [
   {
@@ -326,7 +327,7 @@ export default function Signup() {
     return {
       provider: state.provider,
       providerToken: state.providerToken,
-      rememberMe: Boolean(state.rememberMe),
+      rememberMe: SOCIAL_LOGIN_REMEMBER_ME,
     };
   }, [location.state]);
 
@@ -467,7 +468,10 @@ export default function Signup() {
     setModalSocialProvider(null);
   };
 
-  const persistSocialAuthSession = (authData: PersistAuthData, rememberMe = false) => {
+  const persistSocialAuthSession = (
+    authData: PersistAuthData,
+    rememberMe = SOCIAL_LOGIN_REMEMBER_ME,
+  ) => {
     clearAuthTokens();
 
     const refreshToken = rememberMe ? (authData.refreshToken ?? undefined) : undefined;
@@ -498,7 +502,7 @@ export default function Signup() {
             mode: 'social',
             provider,
             providerToken,
-            rememberMe: false,
+            rememberMe: SOCIAL_LOGIN_REMEMBER_ME,
           },
         }),
       provider as SocialButtonProvider,
@@ -509,7 +513,7 @@ export default function Signup() {
     const requestBody: SocialCompleteProfileRequest = {
       provider,
       providerToken,
-      rememberMe: false,
+      rememberMe: SOCIAL_LOGIN_REMEMBER_ME,
     };
 
     const data = await fetcher<SocialCompleteProfileResponse>('/auth/social/complete-profile', {
@@ -524,7 +528,7 @@ export default function Signup() {
         refreshToken: data.refreshToken,
         user: data.user,
       },
-      false,
+      SOCIAL_LOGIN_REMEMBER_ME,
     );
   };
 
@@ -662,7 +666,7 @@ export default function Signup() {
     const oauthState: SocialOAuthState = {
       provider: 'KAKAO',
       redirectUri,
-      rememberMe: false,
+      rememberMe: SOCIAL_LOGIN_REMEMBER_ME,
     };
 
     sessionStorage.setItem(SOCIAL_OAUTH_STATE_KEY, JSON.stringify(oauthState));
@@ -692,7 +696,7 @@ export default function Signup() {
     const oauthState: SocialOAuthState = {
       provider: 'NAVER',
       redirectUri,
-      rememberMe: false,
+      rememberMe: SOCIAL_LOGIN_REMEMBER_ME,
       state,
     };
 
@@ -1069,7 +1073,7 @@ export default function Signup() {
           gender,
           phoneNumber: phoneDigits,
           phoneVerificationToken,
-          rememberMe: socialSignupContext.rememberMe,
+          rememberMe: SOCIAL_LOGIN_REMEMBER_ME,
         };
 
         const data = await fetcher<SocialCompleteProfileResponse>('/auth/social/complete-profile', {
@@ -1085,7 +1089,7 @@ export default function Signup() {
               refreshToken: data.refreshToken,
               user: data.user,
             },
-            socialSignupContext.rememberMe,
+            SOCIAL_LOGIN_REMEMBER_ME,
           );
         });
         return;

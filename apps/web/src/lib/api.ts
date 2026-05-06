@@ -24,6 +24,9 @@ export const USER_NICKNAME_KEY = "nickname";
 
 export const BOOKMARKS_UPDATED_EVENT = "codinator:bookmarks-updated";
 
+const ACCESS_TOKEN_REFRESH_LEEWAY_MS = 60 * 1000;
+const ACCESS_TOKEN_REFRESH_FALLBACK_DELAY_MS = 14 * 60 * 1000;
+
 export type BookmarkMap = Record<number, boolean>;
 
 export type BookmarkUpdatedDetail = {
@@ -124,6 +127,55 @@ export const getRefreshToken = (): string | null => {
 
 export const shouldKeepLoggedIn = (): boolean => {
   return localStorage.getItem("keepLoggedIn") === "true";
+};
+
+type AccessTokenPayload = {
+  exp?: number;
+};
+
+const decodeBase64Url = (value: string): string => {
+  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+
+  return atob(padded);
+};
+
+export const getAccessTokenExpiresAt = (accessToken = getAccessToken()): number | null => {
+  if (!accessToken) {
+    return null;
+  }
+
+  const [, payload] = accessToken.split(".");
+
+  if (!payload) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(decodeBase64Url(payload)) as AccessTokenPayload;
+
+    if (typeof parsed.exp !== "number") {
+      return null;
+    }
+
+    return parsed.exp * 1000;
+  } catch {
+    return null;
+  }
+};
+
+export const getAccessTokenRefreshDelay = (accessToken = getAccessToken()): number => {
+  const expiresAt = getAccessTokenExpiresAt(accessToken);
+
+  if (!expiresAt) {
+    return ACCESS_TOKEN_REFRESH_FALLBACK_DELAY_MS;
+  }
+
+  return Math.max(expiresAt - Date.now() - ACCESS_TOKEN_REFRESH_LEEWAY_MS, 0);
+};
+
+export const hasRefreshableSession = (): boolean => {
+  return shouldKeepLoggedIn() && Boolean(getRefreshToken());
 };
 
 export const saveAuthTokens = (accessToken: string, refreshToken?: string): void => {

@@ -70,6 +70,7 @@ declare global {
 
 const SOCIAL_OAUTH_STATE_KEY = 'codinator:socialOAuthState';
 const GOOGLE_IDENTITY_SCRIPT_ID = 'google-identity-services';
+const SOCIAL_LOGIN_REMEMBER_ME = true;
 
 const SOCIAL_LOGIN_BUTTONS: SocialLoginButton[] = [
   {
@@ -199,14 +200,18 @@ export default function LoginSelect() {
   const persistAuthSession = (authData: PersistAuthData) => {
     clearAuthTokens();
 
-    saveAuthTokens(authData.accessToken, undefined);
+    saveAuthTokens(authData.accessToken, authData.refreshToken ?? undefined);
 
     saveCurrentUser({
       ...authData.user,
       email: authData.user.email ?? '',
     } as LoginResponse['user']);
 
-    localStorage.removeItem('keepLoggedIn');
+    if (authData.refreshToken) {
+      localStorage.setItem('keepLoggedIn', 'true');
+    } else {
+      localStorage.removeItem('keepLoggedIn');
+    }
 
     navigate('/rankingZone', { replace: true });
   };
@@ -221,7 +226,7 @@ export default function LoginSelect() {
             mode: 'social',
             provider,
             providerToken,
-            rememberMe: false,
+            rememberMe: SOCIAL_LOGIN_REMEMBER_ME,
           },
         }),
       getSocialLogoImage(provider),
@@ -232,7 +237,7 @@ export default function LoginSelect() {
     const requestBody: SocialCompleteProfileRequest = {
       provider,
       providerToken,
-      rememberMe: false,
+      rememberMe: SOCIAL_LOGIN_REMEMBER_ME,
     };
 
     const data = await fetcher<SocialCompleteProfileResponse>('/auth/social/complete-profile', {
@@ -392,7 +397,7 @@ export default function LoginSelect() {
     const oauthState: SocialOAuthState = {
       provider: 'KAKAO',
       redirectUri,
-      rememberMe: false,
+      rememberMe: SOCIAL_LOGIN_REMEMBER_ME,
     };
 
     sessionStorage.setItem(SOCIAL_OAUTH_STATE_KEY, JSON.stringify(oauthState));
@@ -421,7 +426,7 @@ export default function LoginSelect() {
     const oauthState: SocialOAuthState = {
       provider: 'NAVER',
       redirectUri,
-      rememberMe: false,
+      rememberMe: SOCIAL_LOGIN_REMEMBER_ME,
       state,
     };
 

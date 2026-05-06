@@ -33,6 +33,7 @@ type EvaluationDetailFeedbackProps = {
   voteChoiceOverride?: VoteChoice | null;
   allowReadonlyDetail?: boolean;
   hideFeedbackSectionOverride?: boolean;
+  hideFeedbackComposerOverride?: boolean;
 };
 
 type OutfitItem = NonNullable<GetEvaluationPostDetailResponse['outfitItems']>[number];
@@ -437,6 +438,7 @@ function EvaluationDetailFeedbackContent({
   voteChoice,
   allowReadonlyDetail = false,
   hideFeedbackSection = false,
+  hideFeedbackComposer = false,
   onHeroImageChange,
 }: {
   postId: number | null;
@@ -444,6 +446,7 @@ function EvaluationDetailFeedbackContent({
   voteChoice: VoteChoice | null;
   allowReadonlyDetail?: boolean;
   hideFeedbackSection?: boolean;
+  hideFeedbackComposer?: boolean;
   onHeroImageChange?: (url: string) => void;
 }) {
   const navigate = useNavigate();
@@ -458,7 +461,9 @@ function EvaluationDetailFeedbackContent({
   const [detailError, setDetailError] = useState('');
   const [tagError, setTagError] = useState('');
 
-  const canWriteFeedback = Boolean(postId && voteId && voteChoice);  const shouldLoadTags = canWriteFeedback && !hideFeedbackSection;
+  const canWriteFeedback = Boolean(postId && voteId && voteChoice);
+  const canShowFeedbackComposer = canWriteFeedback && !hideFeedbackComposer;
+  const shouldLoadTags = canShowFeedbackComposer && !hideFeedbackSection;
 
   const requestDetail = useCallback(async () => {
     if (!postId) throw new Error('게시글 정보가 없습니다.');
@@ -710,7 +715,7 @@ function EvaluationDetailFeedbackContent({
                 <h3 className={styles.sectionTitle}>피드백</h3>
               </div>
 
-              {canWriteFeedback ? (
+              {canShowFeedbackComposer ? (
                 <div
                   className={`${styles.feedbackComposerCard} ${
                     savedKeywordIds.length > 0
@@ -829,6 +834,7 @@ const EvaluationDetailFeedback: React.FC<EvaluationDetailFeedbackProps> = ({
   voteChoiceOverride,
   allowReadonlyDetail = false,
   hideFeedbackSectionOverride = false,
+  hideFeedbackComposerOverride = false,
 }) => {
   const navigate = useNavigate();
   const { postId } = useParams();
@@ -853,6 +859,7 @@ const EvaluationDetailFeedback: React.FC<EvaluationDetailFeedbackProps> = ({
         voteChoice={voteChoice}
         allowReadonlyDetail={allowReadonlyDetail}
         hideFeedbackSection={Boolean(hideFeedbackSectionOverride)}
+        hideFeedbackComposer={Boolean(hideFeedbackComposerOverride)}
       />
     );
   }
