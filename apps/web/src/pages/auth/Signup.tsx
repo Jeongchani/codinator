@@ -108,6 +108,12 @@ const PHONE_CODE_TTL_SECONDS = 5 * 60;
 const SOCIAL_OAUTH_STATE_KEY = 'codinator:socialOAuthState';
 const GOOGLE_IDENTITY_SCRIPT_ID = 'google-identity-services';
 const SOCIAL_LOGIN_REMEMBER_ME = true;
+const DEMO_SIGNUP_NICKNAME = '코디데모0508';
+const DEMO_SIGNUP_EMAIL = 'demo0508@codinator.com';
+const DEMO_SIGNUP_PASSWORD = 'qwer1234!';
+const DEMO_SIGNUP_BIRTH_DATE = '050508';
+const DEMO_SIGNUP_GENDER: SignupGender = 'MALE';
+const DEMO_SIGNUP_PHONE_NUMBER = '010-0508-0508';
 
 const SOCIAL_LOGIN_BUTTONS: SocialLoginButton[] = [
   {
@@ -333,13 +339,13 @@ export default function Signup() {
 
   const isSocialSignup = socialSignupContext !== null;
 
-  const [nickname, setNickname] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [passwordConfirm, setPasswordConfirm] = useState('');
-  const [birthDate, setBirthDate] = useState('');
-  const [gender, setGender] = useState<SignupGender>('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [nickname, setNickname] = useState(DEMO_SIGNUP_NICKNAME);
+  const [email, setEmail] = useState(DEMO_SIGNUP_EMAIL);
+  const [password, setPassword] = useState(DEMO_SIGNUP_PASSWORD);
+  const [passwordConfirm, setPasswordConfirm] = useState(DEMO_SIGNUP_PASSWORD);
+  const [birthDate, setBirthDate] = useState(DEMO_SIGNUP_BIRTH_DATE);
+  const [gender, setGender] = useState<SignupGender>(DEMO_SIGNUP_GENDER);
+  const [phoneNumber, setPhoneNumber] = useState(DEMO_SIGNUP_PHONE_NUMBER);
 
   const [verificationCode, setVerificationCode] = useState('');
   const [phoneVerificationSent, setPhoneVerificationSent] = useState(false);
