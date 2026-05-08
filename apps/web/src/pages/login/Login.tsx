@@ -76,6 +76,8 @@ declare global {
 const SOCIAL_OAUTH_STATE_KEY = 'codinator:socialOAuthState';
 const GOOGLE_IDENTITY_SCRIPT_ID = 'google-identity-services';
 const SOCIAL_LOGIN_REMEMBER_ME = true;
+const DEMO_LOGIN_EMAIL = 'test3@codinator.com';
+const DEMO_LOGIN_PASSWORD = 'qwer1234!';
 
 const SOCIAL_LOGIN_BUTTONS: SocialLoginButton[] = [
   {
@@ -162,8 +164,8 @@ const loadGoogleIdentityScript = () => {
 export default function Login() {
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState('alice@codinator.com');
-  const [password, setPassword] = useState('1234');
+  const [email, setEmail] = useState(DEMO_LOGIN_EMAIL);
+  const [password, setPassword] = useState(DEMO_LOGIN_PASSWORD);
 
   const [keepLoggedIn, setKeepLoggedIn] = useState(() => {
     return localStorage.getItem('keepLoggedIn') === 'true';
